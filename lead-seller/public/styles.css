@@ -1,0 +1,20 @@
+* { box-sizing: border-box; }
+body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; color: #111; }
+.container { max-width: 960px; margin: 0 auto; padding: 0 1rem; }
+header { border-bottom: 1px solid #eee; }
+.brand { font-weight: 700; text-decoration: none; color: #111; }
+nav.flex { display: flex; align-items: center; justify-content: space-between; }
+.py-3 { padding-top: 1rem; padding-bottom: 1rem; }
+.py-4 { padding-top: 2rem; padding-bottom: 2rem; }
+.hero { text-align: center; padding: 3rem 0; }
+.btn { display: inline-block; padding: 0.6rem 1rem; border: 1px solid #ddd; border-radius: 8px; text-decoration: none; color: #111; background: #fff; }
+.btn-primary { background: #111; color: #fff; border-color: #111; }
+.card { border: 1px solid #eee; border-radius: 12px; padding: 1rem; background: #fff; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+.alert { background: #ffefef; color: #900; padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid #fcc; }
+.text-muted { color: #666; }
+pre { background: #f7f7f7; padding: 1rem; border-radius: 8px; overflow-x: auto; }
+label { display: block; margin-top: 0.75rem; }
+input { width: 100%; padding: 0.6rem; border: 1px solid #ddd; border-radius: 8px; margin-top: 0.25rem; }
+button { cursor: pointer; }
+code { background: #f0f0f0; padding: 0.2rem 0.4rem; border-radius: 6px; }

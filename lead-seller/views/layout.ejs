@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lead Seller</title>
+    <link rel="stylesheet" href="/public/styles.css" />
+  </head>
+  <body>
+    <header class="container py-3">
+      <nav class="flex space-between">
+        <a href="/" class="brand">Lead Seller</a>
+        <div>
+          <a href="/buyers/signup" class="btn">Get Leads</a>
+        </div>
+      </nav>
+    </header>
+    <main class="container py-4">
+      <%- body %>
+    </main>
+    <footer class="container py-4 text-muted">
+      <small>© <%= new Date().getFullYear() %> Lead Seller. $60 per qualified lead. Cancel anytime.</small>
+    </footer>
+  </body>
+</html>
