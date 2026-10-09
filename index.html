@@ -2954,7 +2954,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.6.1';
+  KD.VERSION = '0.6.2';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -15648,7 +15648,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         { id: 'greymaw_throat', set: 'B', name: 'Throat Snap', anim: 'bite', windup: 1.0, recover: 0.9, range: 3.0, cooldown: 9, weight: 2, heavy: true, armor: true, cond: { hpBelow: 0.67 },
           effects: [{ type: 'melee', range: 3.6, arc: 90, mult: 1.5, status: 'bleed' }] }];
   // Moves of the body version. `pose` picks the wolf rig's pose (src/gfx/36_plan_quadruped.js), `gap` the pause before
-  // a link of a string, `hold` a wind-up that is held and released late. Hit shapes follow the jaws, paws and tail:
+  // a link of a string (v0.6.2: 0.1 to 0.15 s longer on the paw and jaw links, owner: "more time between some attacks"), `hold` a wind-up that is held and released late. Hit shapes follow the jaws, paws and tail:
   // measured against the rig in tests/greymaw_body.test.js.
   var GM_STEP = function (d) { return { type: 'dash', dir: 'target', dist: d, speed: 14, keep: 1.3 }; };     // a short step in before a follow-up bite, stopping where the jaws reach you
   var GREYMAW_BODY = [
@@ -15659,27 +15659,27 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     // ---- shared: jaws, paws, tail ----
     { id: 'greymaw_bite', name: 'Snap', anim: 'bite', pose: 'snap', windup: 0.62, recover: 0.55, range: 2.3, weight: 3,
       effects: [{ type: 'melee', range: 2.0, arc: 60, mult: 0.95 }] },
-    { id: 'greymaw_rend', name: 'Rake', anim: 'claw', pose: 'rake', windup: 0.68, recover: 0.45, range: 1.8, cooldown: 8, weight: 2, gap: 0.4,
+    { id: 'greymaw_rend', name: 'Rake', anim: 'claw', pose: 'rake', windup: 0.68, recover: 0.45, range: 1.8, cooldown: 8, weight: 2, gap: 0.5,
       effects: [{ type: 'melee', range: 1.5, arc: 100, mult: 0.85 }] },
-    { id: 'greymaw_tail', name: 'Tail Whirl', anim: 'tail', pose: 'tail', windup: 0.72, recover: 0.6, range: 1.6, cooldown: 7, weight: 6, gap: 0.45, los: false, cond: { custom: 'body_flanked' },
+    { id: 'greymaw_tail', name: 'Tail Whirl', anim: 'tail', pose: 'tail', windup: 0.72, recover: 0.6, range: 1.6, cooldown: 7, weight: 6, gap: 0.55, los: false, cond: { custom: 'body_flanked' },
       effects: [{ type: 'melee', range: 1.45, arc: 360, mult: 0.8, knockback: 2.5 }] },
     // from movement: he keeps running at you through the wind-up (head low, ears back), then bursts in and bites
     { id: 'greymaw_runbite', name: 'Running Bite', anim: 'bite', pose: 'runbite', windup: 0.62, recover: 0.6, range: [3.2, 9], cooldown: 7, weight: 2, moveMult: 0.75, gap: 0.3,
       effects: [{ type: 'dash', dir: 'target', dist: 7, speed: 21, keep: 1.3 }, { type: 'melee', t: 0.3, range: 2.0, arc: 70, mult: 0.9 }] },
     // a snap that stops short: the head jerks in and draws back; no glint, nothing lands. The real blow comes late.
-    { id: 'greymaw_feint', name: 'Feint', anim: 'bite', pose: 'feint', feint: true, windup: 0.56, recover: 0.4, range: 2.6, cooldown: 10, weight: 2, noGlint: true, cond: { hpBelow: 0.67 },
+    { id: 'greymaw_feint', name: 'Feint', anim: 'bite', pose: 'feint', feint: true, windup: 0.56, recover: 0.4, range: 2.6, cooldown: 10, weight: 2, noGlint: true,
       effects: [{ type: 'sfx', name: 'beast_growl' }] },
     // links (weight 0: only inside a string)
-    { id: 'greymaw_bite2', name: 'Second Snap', anim: 'bite', pose: 'snap2', windup: 0.48, recover: 0.6, range: 4.2, weight: 0, gap: 0.45,
+    { id: 'greymaw_bite2', name: 'Second Snap', anim: 'bite', pose: 'snap2', windup: 0.48, recover: 0.6, range: 4.2, weight: 0, gap: 0.55,
       effects: [GM_STEP(2.6), { type: 'melee', t: 0.16, range: 2.0, arc: 60, mult: 0.8 }] },
     { id: 'greymaw_bite_late', name: 'Held Snap', anim: 'bite', pose: 'snap', hold: true, windup: 1.3, recover: 1.05, range: 4.2, weight: 0, gap: 0.2,
       effects: [GM_STEP(2.6), { type: 'melee', t: 0.16, range: 2.0, arc: 60, mult: 1.05 }] },
-    { id: 'greymaw_rend2', name: 'Sweeping Bite', anim: 'bite', pose: 'sweep', windup: 0.55, recover: 0.75, range: 3.6, weight: 0, gap: 0.5,
+    { id: 'greymaw_rend2', name: 'Sweeping Bite', anim: 'bite', pose: 'sweep', windup: 0.55, recover: 0.75, range: 3.6, weight: 0, gap: 0.6,
       effects: [GM_STEP(1.6), { type: 'melee', t: 0.12, range: 2.0, arc: 110, mult: 0.95, status: 'bleed' }] },
-    { id: 'greymaw_rake2', name: 'Backhand Rake', anim: 'claw', pose: 'rake_l', windup: 0.52, recover: 0.5, range: 3.6, weight: 0, gap: 0.5,
+    { id: 'greymaw_rake2', name: 'Backhand Rake', anim: 'claw', pose: 'rake_l', windup: 0.52, recover: 0.5, range: 3.6, weight: 0, gap: 0.65,
       effects: [GM_STEP(1.4), { type: 'melee', t: 0.12, range: 1.5, arc: 100, mult: 0.75 }] },
     // you rolled behind him: he wheels round, the jaws sweeping across where you went
-    { id: 'greymaw_turnbite', name: 'Turnabout Bite', anim: 'bite', pose: 'sweep', windup: 0.6, recover: 0.7, range: 4.0, weight: 0, gap: 0.5,
+    { id: 'greymaw_turnbite', name: 'Turnabout Bite', anim: 'bite', pose: 'sweep', windup: 0.6, recover: 0.7, range: 4.0, weight: 0, gap: 0.6,
       effects: [GM_STEP(1.6), { type: 'melee', t: 0.12, range: 2.0, arc: 120, mult: 0.9 }] },
     // marked area finishers
     { id: 'greymaw_slam', name: 'Rearing Slam', anim: 'pounce', pose: 'slam', mark: true, windup: 0.95, recover: 1.0, range: 3.4, weight: 0, armor: true, gap: 0.4,
@@ -15687,7 +15687,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     { id: 'greymaw_moonhowl', name: 'Blood Moon Howl', anim: 'roar', pose: 'howl', mark: true, windup: 1.05, recover: 0.9, range: 4.5, weight: 0, armor: true, los: false, gap: 0.3,
       effects: [{ type: 'aoe', at: 'self', radius: 4.6, mult: 1.0, knockback: 5 }] },
     // Blood Moon signature: rears, leaps high to where you stand (marked) and lands with a shockwave (marked when it lands)
-    { id: 'greymaw_moonfall', name: 'Moonfall', anim: 'pounce', pose: 'rear', mark: true, windup: 1.15, recover: 1.1, range: [3, 13], cooldown: 14, weight: 4, armor: true, gap: 0.2, cond: { hpBelow: 0.34 },
+    { id: 'greymaw_moonfall', name: 'Moonfall', anim: 'pounce', pose: 'rear', mark: true, windup: 1.15, recover: 1.1, range: [3, 13], cooldown: 14, weight: 4, armor: true, gap: 0.2, cond: { hpBelow: 0.67 },
       effects: [{ type: 'dash', dir: 'aimPoint', keep: 0, dist: 13, speed: 17, onEnd: [{ type: 'aoe', at: 'self', radius: 2.6, mult: 1.15, fx: 'ground_slam' },
         { type: 'aoe', at: 'self', shape: 'ring', radius: 6.5, inner: 2.6, delay: 0.6, mult: 0.4, persist: true, fx: 'ground_slam' }] }] },
     // phase turns (no damage; played while he cannot be hurt, src/sim/27_boss_strings.js)
@@ -15702,13 +15702,13 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       effects: [{ type: 'dash', dir: 'aimPoint', keep: 1.5, dist: 11, speed: 19, onEnd: [{ type: 'aoe', at: 'front', dist: 1.5, radius: 2.0, mult: 1.2, knockback: 3 }] }] },
     { id: 'greymaw_coil', set: 'A', name: 'Held Lunge', anim: 'pounce', pose: 'lunge', hold: true, windup: 1.45, recover: 0.9, range: [2.5, 12], weight: 0, armor: true, gap: 0.15,
       effects: [{ type: 'dash', dist: 8, speed: 24, width: 1.9, mult: 1.1 }] },
-    { id: 'greymaw_lunge', set: 'A', name: 'Coiled Lunge', anim: 'pounce', pose: 'lunge', windup: 0.8, recover: 0.8, range: [3, 8], cooldown: 8, weight: 2, armor: true, gap: 0.3,
+    { id: 'greymaw_lunge', set: 'A', name: 'Coiled Lunge', anim: 'pounce', pose: 'lunge', windup: 0.8, recover: 0.8, range: [3, 8], cooldown: 8, weight: 2, armor: true, gap: 0.4,
       effects: [{ type: 'dash', dist: 7, speed: 22, width: 1.9, mult: 1.05 }] },
     { id: 'greymaw_stalk', set: 'A', name: 'Into the Wheat', anim: 'pounce', pose: 'slink', windup: 0.7, recover: 0.25, range: [4, 14], cooldown: 13, weight: 2, los: false, telegraph: false,
       effects: [{ type: 'blink', to: 'behind', range: 14 }] },
     { id: 'greymaw_ambush', set: 'A', name: 'Out of the Wheat', anim: 'bite', pose: 'sweep', windup: 0.8, recover: 0.8, range: 4.0, weight: 0, gap: 0.1,
       effects: [GM_STEP(1.6), { type: 'melee', t: 0.12, range: 2.0, arc: 110, mult: 1.1, status: 'bleed' }] },
-    { id: 'greymaw_chase', set: 'A', name: 'Blood Moon Chase', anim: 'pounce', pose: 'lunge', windup: 0.9, recover: 0.4, range: 12, cooldown: 15, weight: 3, armor: true, cond: { hpBelow: 0.34 },
+    { id: 'greymaw_chase', set: 'A', name: 'Blood Moon Chase', anim: 'pounce', pose: 'lunge', windup: 0.9, recover: 0.4, range: 12, cooldown: 15, weight: 3, armor: true, cond: { hpBelow: 0.67 },
       effects: [{ type: 'dash', dist: 10, speed: 21, width: 1.9, mult: 1.0 }] },
     { id: 'greymaw_chase2', set: 'A', name: 'Second Pounce', anim: 'pounce', pose: 'lunge', windup: 0.72, recover: 0.4, range: 14, weight: 0, armor: true, gap: 0.2,
       effects: [{ type: 'dash', dist: 10, speed: 21, width: 1.9, mult: 1.0 }] },
@@ -15729,6 +15729,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   // link instead of the move's own gap (the late beat of a rhythm). Every two blows of a string land at least one roll
   // cooldown apart (tests/greymaw_body.test.js), so every blow can be rolled; the rhythm comes from the gaps, the held
   // blows and the feint.
+  // v0.6.2 (owner: "start off about as hard as its stage 2, and stage 2 as hard as 3"): every chain opens one phase
+  // earlier (the first phase has what the second had, the second what the Blood Moon had) and the Blood Moon has a top
+  // tier of its own: six-blow chains and the marked finisher (slam, howl, pounce) more often.
   var GREYMAW_STRINGS = [
     // ---- from the first phase ----
     { id: 'twin_bites', name: 'Twin Bites', open: 'bite', links: ['bite2'], w: 3, punish: 0.2, branch: [
@@ -15737,45 +15740,53 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       { w: 2, then: ['lunge'], far: 3 },                           // ...or, when you backed off, lunges after you (A)
       { w: 2, then: ['runbite'], far: 3 },                         // ...or runs you down and bites
       { w: 4, then: ['turnbite'], flank: true },                   // rolled behind him? he wheels round and bites
-      { w: 2, then: ['feint', 'bite_late'], phase: 1 },            // phase 2: a feint, then the held bite
-      { w: 4, then: ['throat'], phase: 1 }] },                     // set B from phase 2: the held throat snap
+      { w: 2, then: ['feint', 'bite_late'] },                      // a feint, then the held bite
+      { w: 4, then: ['throat'] },                                  // set B: the held throat snap
+      { w: 3, then: ['rend:0.6', 'slam'], phase: 2 }] },           // Blood Moon: a rake into the marked slam
     { id: 'hunters_rhythm', name: 'Hunter\'s Rhythm', open: 'bite', links: ['bite2', 'rend:0.95'], w: 2, punish: 0.4, branch: [   // fast, fast... late
       { w: 3 },
-      { w: 3, then: ['turnbite'], flank: true }] },
-    { id: 'rake_rend', name: 'Rake and Rend', open: 'rend', links: ['rend2'], w: 3, phaseTo: 1, punish: 0.2, branch: [
+      { w: 3, then: ['turnbite'], flank: true },
+      { w: 3, then: ['rake2', 'moonhowl'], phase: 2 }] },          // Blood Moon: on into the marked howl
+    { id: 'rake_rend', name: 'Rake and Rend', open: 'rend', links: ['rend2'], w: 3, phaseTo: 0, punish: 0.2, branch: [
       { w: 3 },
       { w: 2, then: ['rake2'] },
-      { w: 2, then: ['bite2'], phase: 1 },
-      { w: 2, then: ['bite_late'], phase: 1 }] },
+      { w: 2, then: ['bite2'] },
+      { w: 2, then: ['bite_late'] }] },
     { id: 'running_bite', name: 'Running Bite', open: 'runbite', links: ['rend:0.6'], w: 3, punish: 0.2, branch: [     // a running bite into a rake
       { w: 3 },
       { w: 3, then: ['tail'], flank: true },
-      { w: 2, then: ['rake2'], phase: 1 }] },
+      { w: 2, then: ['rake2'] }] },
     { id: 'coiled_spring', name: 'Coiled Spring', set: 'A', open: 'spring', w: 3, branch: [
       { w: 3, then: ['pounce'] },                                  // springs back and rears into the pounce (marked landing)
       { w: 2, then: ['coil'] },                                    // ...or stays low, coiled, and waits before it lunges
-      { w: 2, then: ['runbite', 'rend:0.6'] },                         // ...or comes straight back at a run: a running bite into a rake
-      { w: 2, then: ['pounce', 'bite2'], phase: 1 }] },            // phase 2: lands and snaps again
+      { w: 2, then: ['runbite', 'rend:0.6'] },                     // ...or comes straight back at a run: a running bite into a rake
+      { w: 2, then: ['pounce', 'bite2'] },                         // ...or lands and snaps again
+      { w: 3, then: ['pounce', 'bite2', 'rend:0.6'], phase: 2 }] },  // Blood Moon: lands, snaps and rakes
     { id: 'tail_turn', name: 'Tail Turn', open: 'tail', w: 3, punish: 0.2, branch: [
       { w: 3 },
       { w: 2, then: ['bite2'] },
       { w: 2, then: ['lunge'], far: 3 }] },
     { id: 'wheat_ambush', name: 'Out of the Wheat', set: 'A', open: 'stalk', links: ['ambush'], w: 1 },
     { id: 'pack_call', name: 'Call of the Pack', set: 'B', open: 'call', links: ['alpha:0.6'], w: 1 },                                  // the wolves come, then the howl that drives them
-    // ---- from the second phase ----
-    { id: 'feint_rake', name: 'Feint and Rake', open: 'feint', links: ['rend:0.55', 'rend2'], w: 3, phase: 1, punish: 0.3, branch: [
+    { id: 'feint_rake', name: 'Feint and Rake', open: 'feint', links: ['rend:0.55', 'rend2'], w: 3, punish: 0.3, branch: [
       { w: 3 },
       { w: 2, then: ['tail'], flank: true }] },
-    { id: 'wolfs_waltz', name: 'Wolf\'s Waltz', open: 'rend', links: ['rake2', 'bite2:0.6', 'tail'], w: 3, phase: 1, punish: 0.7 },          // four blows: paw, paw, jaws, the tail round
-    { id: 'running_rend', name: 'Running Rend', open: 'runbite', links: ['rend:0.6', 'rake2', 'slam'], w: 2, phase: 1, punish: 0.8 },        // from a run, ends in a marked slam
-    // ---- Blood Moon ----
+    { id: 'wolfs_waltz', name: 'Wolf\'s Waltz', open: 'rend', links: ['rake2', 'bite2:0.6', 'tail'], w: 3, punish: 0.7, branch: [          // four blows: paw, paw, jaws, the tail round
+      { w: 3 },
+      { w: 3, then: ['slam:0.6'], phase: 2 }] },                   // Blood Moon: the marked slam after the tail
+    { id: 'running_rend', name: 'Running Rend', open: 'runbite', links: ['rend:0.6', 'rake2', 'slam'], w: 2, punish: 0.8 },        // from a run, ends in a marked slam
+    // ---- from the second phase (they were the Blood Moon's) ----
     { id: 'blood_moon', name: 'Blood Moon Chase', set: 'A', open: 'chase', links: ['chase2', 'chase3'], w: 1, punish: 0.6 },
-    { id: 'moonlit_frenzy', name: 'Moonlit Frenzy', open: 'bite', links: ['rend', 'rake2', 'rend2:0.9', 'moonhowl'], w: 3, phase: 2, punish: 0.9 },     // five blows, the howl marked
-    { id: 'moonlit_frenzy_b', name: 'Moonlit Frenzy', open: 'rend', links: ['rake2', 'bite2:0.6', 'turnbite', 'slam'], w: 2, phase: 2, punish: 0.9 },     // five blows, the slam marked
-    { id: 'moonfall', name: 'Moonfall', open: 'moonfall', links: ['bite2'], w: 3, phase: 2, punish: 0.5, branch: [
+    { id: 'moonlit_frenzy', name: 'Moonlit Frenzy', open: 'bite', links: ['rend', 'rake2', 'rend2:0.9', 'moonhowl'], w: 3, phase: 1, punish: 0.9 },     // five blows, the howl marked
+    { id: 'moonlit_frenzy_b', name: 'Moonlit Frenzy', open: 'rend', links: ['rake2', 'bite2:0.6', 'turnbite', 'slam'], w: 2, phase: 1, punish: 0.9 },     // five blows, the slam marked
+    { id: 'moonfall', name: 'Moonfall', open: 'moonfall', links: ['bite2'], w: 3, phase: 1, punish: 0.5, branch: [
       { w: 2 },
       { w: 2, then: ['rend:0.6'] },
-      { w: 3, then: ['turnbite'], flank: true }] },
+      { w: 3, then: ['turnbite'], flank: true },
+      { w: 3, then: ['rend:0.6', 'rake2'], phase: 2 }] },
+    // ---- Blood Moon: the top tier ----
+    { id: 'blood_frenzy', name: 'Blood Moon Frenzy', open: 'bite', links: ['rend', 'rake2', 'bite2:0.6', 'rend2:0.9', 'slam'], w: 3, phase: 2, punish: 1.1 },   // six blows, the slam marked
+    { id: 'red_waltz', name: 'Red Waltz', open: 'rend', links: ['rake2', 'bite2:0.6', 'tail', 'turnbite', 'moonhowl'], w: 2, phase: 2, punish: 1.1 },          // six blows, the howl marked
     // when the moon turns red: he howls to the sky (the phase's intro), then leaps at you
     { id: 'moonrise_fall', name: 'Moonfall', open: 'moonfall', links: ['bite2'], onPhase: 2 }];
   /**
@@ -15787,19 +15798,26 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     function assign(a, b) { for (var k in b) a[k] = b[k]; return a; }
     var moon = body ? undefined : [{ type: 'aoe', at: 'self', radius: 5, delay: 1.2, mult: 1.1, knockback: 5, persist: true }];
     var p2 = body ? { intro: 'rouse', invuln: 1.45, aura: 'greymaw_hackles' } : {}, p3 = body ? { intro: 'moonrise', invuln: 1.65, aura: 'greymaw_bloodmoon' } : {};
-    var fast2 = body ? [{ s: 'moveSpeed', t: 'inc', v: 0.1 }] : undefined, fast3 = body ? [{ s: 'moveSpeed', t: 'inc', v: 0.18 }] : [];
+    // v0.6.2: each phase one step harder (owner). The Hunt has what Circling had (a shorter pause, its chains; half its
+    // extra speed on his feet: +10% shut kiting heroes out, tests/shipped_balance.test.js) and strikes a little faster, Circling what the Blood Moon had (and a little more), and the Blood Moon is a
+    // new top tier: faster still (+18% attack speed: the shortest follow-up wind-up is still 0.4 s), the shortest pause.
+    var fast1 = body ? [{ s: 'moveSpeed', t: 'inc', v: 0.05 }] : undefined, fast2 = body ? [{ s: 'moveSpeed', t: 'inc', v: 0.18 }] : undefined, fast3 = body ? [{ s: 'moveSpeed', t: 'inc', v: 0.25 }] : [];
+    var gcd = body ? { A: [0.9, 0.8, 0.72], B: [0.9, 0.82, 0.74] } : { A: [1.0, 0.9, 0.78], B: [1.0, 0.9, 0.8] };
+    var atk1 = body ? { A: [{ s: 'atkSpeed', t: 'inc', v: 0.06 }], B: [{ s: 'atkSpeed', t: 'inc', v: 0.05 }] } : { A: [], B: [] };
+    var atk2 = body ? { A: [{ s: 'atkSpeed', t: 'inc', v: 0.14 }], B: [{ s: 'atkSpeed', t: 'inc', v: 0.12 }] } : { A: undefined, B: undefined };
+    var atk3 = body ? { A: 0.18, B: 0.16 } : { A: 0.12, B: 0.1 };
     if (set === 'A') return [
-      { at: 1, name: 'The Hunt', gcd: 1.0 },
-      assign({ at: 0.66, name: 'Circling', gcd: 0.9, mods: fast2, msg: 'Greymaw slips into the tall wheat...',
+      { at: 1, name: 'The Hunt', gcd: gcd.A[0], mods: body ? atk1.A.concat(fast1) : undefined },
+      assign({ at: 0.66, name: 'Circling', gcd: gcd.A[1], mods: body ? atk2.A.concat(fast2) : undefined, msg: 'Greymaw slips into the tall wheat...',
         summon: { enemy: 'field_wolf', count: 1, every: 22, first: 3, cap: 2, tier: 'minion' } }, p2),
-      assign({ at: 0.33, name: 'Blood Moon', gcd: 0.78, mods: [{ s: 'atkSpeed', t: 'inc', v: 0.12 }].concat(fast3), msg: 'The moon turns red.', onEnter: moon,
+      assign({ at: 0.33, name: 'Blood Moon', gcd: gcd.A[2], mods: [{ s: 'atkSpeed', t: 'inc', v: atk3.A }].concat(fast3), msg: 'The moon turns red.', onEnter: moon,
         summon: { enemy: 'field_wolf', count: 1, every: 24, first: 6, cap: 2, tier: 'minion' },
         hazards: [{ every: 12, first: 5, at: 'self', effects: [HAY_BURST] }] }, p3)];
     return [
-      { at: 1, name: 'The Pack Lord', gcd: 1.0 },
-      assign({ at: 0.66, name: 'The Pack Closes', gcd: 0.9, mods: fast2, msg: 'Greymaw calls its pack from the hay!',
+      { at: 1, name: 'The Pack Lord', gcd: gcd.B[0], mods: body ? atk1.B.concat(fast1) : undefined },
+      assign({ at: 0.66, name: 'The Pack Closes', gcd: gcd.B[1], mods: body ? atk2.B.concat(fast2) : undefined, msg: 'Greymaw calls its pack from the hay!',
         hazards: [{ every: 16, first: 3, at: 'self', effects: [HAY_WOLF] }] }, p2),
-      assign({ at: 0.33, name: 'Blood Moon', gcd: 0.8, mods: [{ s: 'atkSpeed', t: 'inc', v: 0.1 }].concat(fast3), msg: 'The moon turns red.', onEnter: moon,
+      assign({ at: 0.33, name: 'Blood Moon', gcd: gcd.B[2], mods: [{ s: 'atkSpeed', t: 'inc', v: atk3.B }].concat(fast3), msg: 'The moon turns red.', onEnter: moon,
         hazards: [{ every: 13, first: 4, at: 'self', effects: [HAY_WOLF] }, { every: 17, first: 9, at: 'self', effects: [HAY_BURST] }] }, p3)];
   }
   var GM_BODY = GREYMAW_TELLS === 'body';
@@ -15811,7 +15829,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     // =========================================================================================
     // GREYMAW, THE ALPHA WOLF (Farm Village; arena: The Threshing Field: six haystacks in a ring)
     // =========================================================================================
-    { id: 'greymaw', name: 'Greymaw, the Alpha Wolf', area: 'farm_village', role: 'rusher', tier: 'boss', hp: 1.05, dmg: GREYMAW_TELLS === 'body' ? 0.86 : 0.72, speed: 1.0,   // body: +6% for blows that can all be rolled. was 1.12 / 0.8: without potions the first boss beat three classes two times in three
+    { id: 'greymaw', name: 'Greymaw, the Alpha Wolf', area: 'farm_village', role: 'rusher', tier: 'boss', hp: 1.05, dmg: GREYMAW_TELLS === 'body' ? 1.03 : 0.72, speed: 1.0,   // body: 0.86 -> 1.03 in v0.6.2 (owner: "more damage a bit for sure", +20% per blow); was +6% for blows that can all be rolled. was 1.12 / 0.8: without potions the first boss beat three classes two times in three
       teaches: GREYMAW_TELLS === 'body' ? 'Read the wolf for his jaws, paws and tail (his eyes glint when it is time to roll), and the floor for his howls, slams and leaps: those still mark their red area.' : 'Read the crouch: every pounce is a straight line, and the wolves in the hay announce themselves.',
       body: { plan: 'quadruped', species: 'wolf', scale: 2.2, unique: 'greymaw', colors: C('#8a8f96', '#3a3d42', null, null, '#ffcf5a'), extras: ['mane', 'glow_eyes', 'spikes'] },
       r: 1.0, h: 1.9, turn: 6, weak: 'fire', resist: 'cold', ai: BOSS_AI, affixes: false,
@@ -27519,6 +27537,56 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   K.HOLLOW_COST = 0.08;      // Hollow Sigil: fraction of maximum Health per use
   K.TITHE_COST = 0.005;      // Blood Tithe: fraction of maximum Health per point of resource cost
 
+  /**
+   * AIM LOCK (owner report, v0.6.2: "if you have minions and it's targeting them it sometimes turns around mid hit and
+   * hits you instead"). An enemy attack is committed once its wind-up starts:
+   *   - its target never changes (cast.target; the AI's own target may change, the cast keeps its own);
+   *   - the aim may follow that target during the first AIM_LOCK of the wind-up only (24_ai.js), at the body's turn rate;
+   *   - at AIM_LOCK the aim is pulled to within LOCK_ARC of where the body faces and frozen (cast.lock): the body turns
+   *     less than LOCK_ARC in the last part of the wind-up and the blow goes where the body shows it;
+   *   - a wind-up that starts far from the body's facing is stretched until the turn fits before AIM_LOCK (the turn is
+   *     part of the tell); the AI also turns first and starts only when nearly facing (TURN_FIRST, 24_ai.js);
+   *   - a dash at its target leaves within DASH_ARC of the locked aim.
+   * Players are never affected (their aim is their own). docs/SIM.md "Aim lock".
+   */
+  K.AIM_LOCK = 0.6;
+  K.LOCK_ARC = 12 * Math.PI / 180;
+  K.DASH_ARC = 20 * Math.PI / 180;
+  K.TURN_FIRST = 90 * Math.PI / 180;
+  /** Does the direction of the ability matter (a cone, a line, a leap, a point in front)? Not for circles round itself. */
+  K.aimed = function (def) {
+    if (def._aimed !== undefined) return def._aimed;
+    var r = false;
+    if (def.use !== 'self' && def.use !== 'summon' && def.use !== 'ally') {
+      (function walk(list) {
+        (list || []).forEach(function (fx) {
+          if (!fx || r) return;
+          if (fx.type === 'melee') { if (!((fx.arc || 100) >= 360)) r = true; }
+          else if (fx.type === 'dash') r = true;                    // a lunge, a leap, a spring back: all along the aim
+          else if (fx.type === 'projectile' || fx.type === 'hook' || fx.type === 'blink') r = true;
+          else if (fx.type === 'aoe' || fx.type === 'zone') { if ((fx.at && fx.at !== 'self') || fx.shape === 'cone' || fx.shape === 'line') r = true; }
+          if (fx.effects) walk(fx.effects);
+        });
+      })(def.effects);
+    }
+    Object.defineProperty(def, '_aimed', { value: r, enumerable: false, writable: true });
+    return r;
+  };
+  /** Freezes an enemy cast's aim within LOCK_ARC of the body's facing (the aim point turns with it). */
+  K.lockAim = function (e, c) {
+    if (c.lock) return;
+    c.lock = true;
+    if (!K.aimed(c.inst.def)) { e.faceYaw = e.yaw; return; }        // a circle round itself: the body stops turning too
+    var d = U.wrapAngle(c.aimYaw - e.yaw);
+    if (Math.abs(d) > K.LOCK_ARC) {
+      var ny = U.wrapAngle(e.yaw + (d > 0 ? K.LOCK_ARC : -K.LOCK_ARC)), rot = U.wrapAngle(ny - c.aimYaw);
+      var ax = c.aimX - e.x, az = c.aimZ - e.z, cs = Math.cos(rot), sn = Math.sin(rot);
+      // yaw is atan2(x, z): turning by +rot maps (x, z) to (x cos + z sin, z cos - x sin)
+      c.aimX = e.x + ax * cs + az * sn; c.aimZ = e.z + az * cs - ax * sn; c.aimYaw = ny;
+    }
+    e.faceYaw = c.aimYaw;
+  };
+
   K.TRIGGERS = ['onSpawn', 'onTick', 'onCast', 'onFire', 'onBeforeHit', 'onHit', 'onCrit', 'onKill', 'onBeforeDamaged', 'onDamaged',
     'onBlock', 'onEvade', 'onDodge', 'onDodgeHit', 'onLowLife', 'onPotion', 'onStealthBreak', 'onMinionSpawn', 'onMinionDeath', 'onMinionHit',
     'onStatusApplied', 'onReaction', 'onBreak', 'onLevelUp', 'onDeath', 'onDied', 'onTrap', 'onHeal', 'onPickup', 'onInteract', 'onResource', 'onEmpower', 'onAllyDeath', 'onStance',
@@ -27879,6 +27947,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var windup = def.windup / speed;
     if (e.kind === 'enemy' && def.windup > 0) windup = Math.max(windup, Math.min(def.windup, 0.3));
     if (e.boss && S.boss && S.boss.windupMult && def.windup > 0) windup *= S.boss.windupMult(world, e, def);      // a boss may hold a swing back or let it go early
+    // aim lock: an enemy that must turn far first gets the time to show the whole turn before the aim locks
+    if (e.kind === 'enemy' && windup > 0 && K.aimed(def)) {
+      var need = Math.abs(U.wrapAngle(yaw - e.yaw)) - K.LOCK_ARC;
+      if (need > 0) windup = Math.max(windup, need / (e.turnRate || S.TUNE.enemyTurn) / K.AIM_LOCK);
+    }
     var cast = { inst: inst, state: 'windup', t: 0, dur: windup, speed: speed, fired: false, fresh: true,
       aimYaw: yaw, aimX: aim.aimX !== undefined ? aim.aimX : e.x + Math.sin(yaw) * (def.range || 3), aimZ: aim.aimZ !== undefined ? aim.aimZ : e.z + Math.cos(yaw) * (def.range || 3),
       target: aim.target || null, activeDur: def.active / speed, recoverDur: def.recover / speed, tele: null, slotId: abilityId, lock: false, chainBase: aim.slotId || null, combo: aim.combo || 0 };
@@ -27948,7 +28021,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var c = e.cast; if (!c) return;
     c.t += dt;
     if (c.state === 'windup') {
-      if (!c.lock) e.faceYaw = c.aimYaw;
+      if (!c.lock) {
+        if (e.kind === 'enemy' && c.t >= c.dur * K.AIM_LOCK) K.lockAim(e, c);      // committed: the last part of the wind-up turns no further
+        else e.faceYaw = c.aimYaw;
+      }
       if (c.t >= c.dur) {
         var over = c.t - c.dur;
         c.state = 'active'; c.t = over; c.dur = c.activeDur;
@@ -29171,6 +29247,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     else if (dir === 'move' && (src.wx !== 0 || src.wz !== 0)) yaw = Math.atan2(src.wx, src.wz);
     else if (dir === 'target' && ctx.target && !ctx.target.removed) {
       var t = ctx.target; yaw = Math.atan2(t.x - src.x, t.z - src.z);
+      // aim lock (16_skills.js): an enemy's step or lunge at its target leaves close to where its body faces
+      if (src.kind === 'enemy' && ctx.cast && ctx.depth === 0) { var dy = U.wrapAngle(yaw - ctx.yaw); if (Math.abs(dy) > K.DASH_ARC) yaw = ctx.yaw + (dy > 0 ? K.DASH_ARC : -K.DASH_ARC); }
       dist = Math.min(dist, Math.max(0, U.dist(src.x, src.z, t.x, t.z) - src.r - t.r - (fx.keep === undefined ? 0.3 : fx.keep)));      // keep: the gap left to the target
     } else if (dir === 'aimPoint') dist = Math.min(dist, Math.max(0, U.dist(src.x, src.z, ctx.aimX, ctx.aimZ) - (fx.keep || 0)));      // keep: stop short of the point (a leap whose landing blast reaches it)
     var time = (fx.time || dist / (fx.speed || 18)) / (fx.fixedTime ? 1 : castSpeed(ctx));
@@ -30445,7 +30523,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       mode: 'none', gx: 0, gz: 0, stop: 0.5, speedMul: 1, chase: null, sx: e.x, sz: e.z, direct: false, arrived: false, path: null, pathI: 0, pathT: 0, pathFail: 0,
       strafeDir: (e.id & 1) ? 1 : -1, strafeT: 0, strafing: false, orbitR: 3, retreatT: 0, kiteT: 0, fleeT: 0, fleeCd: 0,
       ax: 0, az: 0, stuckT: 0, lx: e.x, lz: e.z, forceNav: 0, moving: false,
-      lostT: 0, retT: 0, combatSince: 0, forced: null, forcedUntil: 0, tickT: 0, guardHp: 0, guardDown: 0, revealR: 0, slotAng: (e.id * 2.39996) % TAU, minionT: 0 };
+      lostT: 0, retT: 0, combatSince: 0, forced: null, forcedUntil: 0, commit: null, tickT: 0, guardHp: 0, guardDown: 0, revealR: 0, slotAng: (e.id * 2.39996) % TAU, minionT: 0 };
   };
 
   // ---------------------------------------------------------------------------------------------
@@ -30500,7 +30578,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (ai.state !== 'combat') { A.aggro(world, tgt, src); return; }
     var cur = ai.target;
     if (!validTarget(tgt, cur)) ai.target = src;
-    else if (cur !== src && validTarget(tgt, src) && !tgt.taunter && !(ai.forced && world.time < ai.forcedUntil)) {
+    else if (cur !== src && validTarget(tgt, src) && !tgt.taunter && !(ai.forced && world.time < ai.forcedUntil) && !(ai.commit && validTarget(tgt, ai.commit))) {
       // switch to an attacker that is clearly closer, or to a player ignoring a minion now and then
       var dc = U.dist2(tgt.x, tgt.z, cur.x, cur.z), ds = U.dist2(tgt.x, tgt.z, src.x, src.z);
       if (ds < dc * 0.5 || (src.kind === 'player' && cur.kind !== 'player' && world.rng.next() < 0.3)) ai.target = src;
@@ -30509,7 +30587,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   /** Everything targeting `src` forgets it (stealth). */
   A.dropAggro = function (world, src) {
     var c = world.chars;
-    for (var i = 0; i < c.length; i++) { var ai = c[i].ai; if (ai && ai.target === src) { ai.target = null; ai.lostT = 0; if (ai.forced === src) ai.forced = null; } }
+    for (var i = 0; i < c.length; i++) { var ai = c[i].ai; if (ai && ai.target === src) { ai.target = null; ai.lostT = 0; if (ai.forced === src) ai.forced = null; } if (ai && ai.commit === src) ai.commit = null; }
   };
   A.forceTarget = function (world, e, src, dur) {
     if (!e.ai || e.dead) return;
@@ -30731,6 +30809,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     }
     var aim = { aimX: ax, aimZ: az, target: tgt || null };
     if (tgt === e || !tgt) aim.aimYaw = e.yaw;
+    // aim lock (16_skills.js): an enemy facing far away from its target turns first (steer turns it) and attacks once
+    // it nearly faces it, so a new target is never struck by a body that is still turning
+    else if (e.kind === 'enemy' && K.aimed(a.def)) {
+      var off = Math.abs(U.wrapAngle(Math.atan2(ax - e.x, az - e.z) - e.yaw));
+      if (off > K.TURN_FIRST) { e.faceYaw = Math.atan2(ax - e.x, az - e.z); return false; }
+    }
     var r = K.use(world, e, a.def, aim);
     if (!r.ok) return false;
     ai.lastAtk = a; ai.casting = true; ai.arrived = false;
@@ -30837,6 +30921,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (e.feared && e.fearFrom) { if (retreatPoint(world, e, e.fearFrom, 4)) setGoto(ai, P.x, P.z, 0.3, 1.1); else setNone(ai); return; }
     if (e.taunter && !e.taunter.dead && !e.taunter.removed) t = e.taunter;
     else if (ai.forced && world.time < ai.forcedUntil && validTarget(e, ai.forced)) t = ai.forced;
+    else if (ai.commit && validTarget(e, ai.commit)) t = ai.commit;          // a running chain (27_boss_strings.js) keeps its target
     else {
       if (!validTarget(e, t)) t = null;
       ai.retT -= T.thinkEvery;
@@ -30858,7 +30943,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       if (ai.lostT > 2.5 || world.over) leashed = true; else return;
     } else ai.lostT = 0;
     if (leashed) {
-      ai.state = 'return'; ai.target = null; ai.comboQ = null; e.guarding = false;
+      ai.state = 'return'; ai.target = null; ai.comboQ = null; ai.commit = null; e.guarding = false;
       if (e.boss && S.boss) S.boss.reset(world, e);
       if (e.statuses.length) S.cleanse(world, e, ['dot', 'debuff'], 99);
       world.events.emit('aggro', { e: e, target: null, leash: true, x: e.x, z: e.z });
@@ -30875,7 +30960,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (!e.cast && ai.gcd <= 0 && ai.fleeT <= 0 && !e.feared) {
       if (tryAttack(world, e, ai, t, d, los)) return;
     }
-    if (e.cast) { i = e.cast.inst.def.moveMult; if (i > 0) setChase(ai, t, Math.max(0.2, ai.engage * 0.6), 1); return; }
+    if (e.cast) { i = e.cast.inst.def.moveMult; if (i > 0) { var ct = e.cast.target && validTarget(e, e.cast.target) ? e.cast.target : t; setChase(ai, ct, Math.max(0.2, ai.engage * 0.6), 1); } return; }      // a run-in attack runs at its own target
     combatMove(world, e, ai, t, d, los);
   }
 
@@ -30977,8 +31062,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     // aim tracking during the first part of a wind-up, then the attack is committed
     var c = e.cast;
     if (c && c.state === 'windup') {
-      var t = c.target, cd = c.inst.def, tr = cd.track === undefined ? 0.6 : cd.track;
-      if (t && t !== e && !t.removed && !t.dead && !cd.lockAim && c.t < c.dur * tr && !(t.hidden || t.stealthed)) {
+      // (aim lock, 16_skills.js: only the cast's own target, never past K.AIM_LOCK of the wind-up)
+      var t = c.target, cd = c.inst.def, tr = Math.min(cd.track === undefined ? K.AIM_LOCK : cd.track, K.AIM_LOCK);
+      if (t && t !== e && !t.removed && !t.dead && !cd.lockAim && !c.lock && c.t < c.dur * tr && !(t.hidden || t.stealthed)) {
         c.aimYaw = U.wrapAngle(U.angToward(c.aimYaw, Math.atan2(t.x - e.x, t.z - e.z), (e.turnRate || T.enemyTurn) * dt));
         var fx0 = cd.effects[0];
         if (!(fx0 && fx0.lob) || c.t < c.dur * 0.35) { c.aimX = t.x; c.aimZ = t.z; }
@@ -31510,7 +31596,16 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    * lunges along the body) stays read from the body.
    */
   var St = Bs.strings = Bs.strings || {};
-  St.GLINT_LEAD = 0.4;           // a roll pressed 0.15 s (a reaction) after the glint has its 0.28 s of i-frames over the blow
+  St.GLINT_LEAD = 0.4;
+  /**
+   * A string keeps the target it opened on (aim lock, src/sim/16_skills.js; owner report v0.6.2: he turned round mid
+   * chain from a minion onto the hero). The AI holds it too (`ai.commit`: hits from others do not pull him away). Only
+   * when that target is gone (or a taunt pulls him) does the string take the AI's new target, between two attacks and
+   * after REORIENT seconds of a visible turn; a link whose target stands more than K.TURN_FIRST off his facing waits (up
+   * to TURN_WAIT s) until he has turned to it.
+   */
+  St.REORIENT = 0.55;
+  St.TURN_WAIT = 0.9;           // a roll pressed 0.15 s (a reaction) after the glint has its 0.28 s of i-frames over the blow
   St.GAP = 0.2;
 
   /** 'rend:0.9' in a string: the attack 'rend', waiting 0.9 s instead of its own `gap` (a late, delayed link). */
@@ -31556,9 +31651,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     for (i = 0; i < list.length; i++) { r -= list[i].w === undefined ? 1 : list[i].w; if (r < 0) return list[i]; }
     return list[list.length - 1];
   }
-  function begin(world, e, s, forced) {
+  function begin(world, e, s, forced, target) {
     var b = e.boss;
-    b.sc = { s: s, q: (forced ? [s.open] : []).concat(s.links || []), branched: false, wait: forced ? 0.25 : 0, steps: forced ? 0 : 1, links: [] };
+    b.sc = { s: s, q: (forced ? [s.open] : []).concat(s.links || []), branched: false, wait: forced ? 0.25 : 0, steps: forced ? 0 : 1, links: [], target: target || e.ai.target || null, turnT: 0 };
+    e.ai.commit = b.sc.target;
     world.events.emit('bossString', { e: e, id: s.id, name: s.name, phase: b.phase, x: e.x, z: e.z });
     return b.sc;
   }
@@ -31566,17 +31662,25 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   function end(world, e, why) {
     var b = e.boss, sc = b.sc; if (!sc) return;
     b.sc = null;
+    if (e.ai.commit === sc.target) e.ai.commit = null;
     if (why === 'done') e.ai.gcd = Math.max(e.ai.gcd, (b.gcd === undefined ? 0.8 : b.gcd) + (sc.s.punish || 0));
     world.events.emit('bossString', { e: e, id: sc.s.id, end: why, steps: sc.steps, x: e.x, z: e.z });
   }
   /** Starts the next link at the target. false: the string ends instead. */
   function startLink(world, e, id) {
-    var ai = e.ai, b = e.boss, a = attackOf(e, id), t = ai.target;
-    if (!a || !t || t.dead || t.removed || !ai.o) return false;
+    var ai = e.ai, b = e.boss, a = attackOf(e, id), t = b.sc.target;
+    if (!a || !t || !S.ai.validTarget(e, t) || !ai.o) return false;
     if (a.use === 'attack' && edge(e, t) > a.max + (b.sc.s.reach === undefined ? 3 : b.sc.s.reach)) return false;
+    // turn first: the link starts only once he nearly faces its target (steer turns him to it, ai.commit)
+    if (K.aimed(a.def) && Math.abs(U.wrapAngle(Math.atan2(t.x - e.x, t.z - e.z) - e.yaw)) > K.TURN_FIRST) {
+      if (b.sc.turnT > St.TURN_WAIT) return false;
+      e.faceYaw = Math.atan2(t.x - e.x, t.z - e.z);
+      return 'turn';
+    }
     if (e.cds[a.def.id]) delete e.cds[a.def.id];
     var r = K.use(world, e, a.def, { aimX: t.x, aimZ: t.z, target: t });
     if (!r.ok) return false;
+    b.sc.turnT = 0;
     ai.lastAtk = a; ai.casting = true; ai.arrived = false; ai.gcdNext = 0.1; ai.comboQ = null;
     e.wx = 0; e.wz = 0;
     b.scCast = r.cast; b.sc.steps++; b.sc.links.push(a.id);
@@ -31648,7 +31752,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
   St.update = function (world, e, dt) {
     var b = e.boss, ai = e.ai, c = e.cast, list = b.script.strings, sc, i;
-    if (b.scEngaged !== b.engagedAt) { b.scEngaged = b.engagedAt; b.sc = null; b.scCast = null; b.scPhase = b.phase; b.scPending = null; }
+    if (b.scEngaged !== b.engagedAt) { b.scEngaged = b.engagedAt; b.sc = null; b.scCast = null; b.scPhase = b.phase; b.scPending = null; ai.commit = null; }
     // a phase turned: whatever was running stops, the phase's own string (if any) waits for the invulnerability to end
     if (b.scPhase !== b.phase) {
       var first = b.scPhase === undefined || b.scPhase < 0;
@@ -31676,7 +31780,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
           if (full(e, s.open) === id && phaseOk(s, b.phase) && (!s.set || s.set === b.set)) cand.push(s);
         }
         var chosen = cand.length ? pick(world, cand) : null;
-        if (chosen) begin(world, e, chosen, false);
+        if (chosen) begin(world, e, chosen, false, c.target);
         St.onCast(world, e, c);
       }
       if (b.sc) ai.gcd = Math.max(ai.gcd, 0.3);      // the ordinary picker waits while a string runs
@@ -31684,8 +31788,13 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     }
     if (!sc) return;
     if (e.motion) { ai.gcd = Math.max(ai.gcd, 0.3); return; }
+    // the AI has a new target (the string's is gone, or a taunt pulls him): the string takes it, but only between attacks
+    // and after a visible turn (the re-orient beat)
+    var nt = ai.target;
+    if (nt && nt !== sc.target && S.ai.validTarget(e, nt)) { sc.target = nt; ai.commit = nt; sc.beat = St.REORIENT; }
+    else if (!sc.target || !S.ai.validTarget(e, sc.target)) { end(world, e, 'escaped'); return; }
     if (!sc.q.length) {
-      var t = ai.target, brs = [];
+      var t = sc.target, brs = [];
       if (!sc.branched && sc.s.branch) {
         sc.branched = true;
         for (i = 0; i < sc.s.branch.length; i++) if (branchOk(e, sc.s.branch[i], b.phase, t)) brs.push(sc.s.branch[i]);
@@ -31696,12 +31805,15 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     }
     if (sc.wait === undefined || sc.wait === null) sc.wait = gapOf(e, sc.q[0]);
     if (sc.armed !== sc.steps) { sc.armed = sc.steps; sc.wait = Math.max(sc.wait, gapOf(e, sc.q[0])); }
+    if (sc.beat) { sc.wait = Math.max(sc.wait, sc.beat); sc.beat = 0; }        // the re-orient beat before a link at a new target
     sc.wait -= dt;
     ai.gcd = Math.max(ai.gcd, sc.wait + 0.3);
     if (sc.wait > 0) return;
-    var next = sc.q.shift();
+    var go = startLink(world, e, sc.q[0]);
+    if (go === 'turn') { sc.turnT += dt; sc.wait = 0; ai.gcd = Math.max(ai.gcd, 0.3); return; }
+    sc.q.shift();
     sc.wait = null;
-    if (!startLink(world, e, next)) end(world, e, 'escaped');
+    if (!go) end(world, e, 'escaped');
   };
   function gapOf(e, id) {
     var i = id.indexOf(':'); if (i >= 0) return +id.slice(i + 1);
