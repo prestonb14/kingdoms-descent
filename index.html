@@ -2954,7 +2954,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.6.0';
+  KD.VERSION = '0.6.1';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -2981,7 +2981,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   // The online service (accounts, friends, invites, co-op rooms: the kd-online repository on Cloudflare Workers).
   // Fill in its address once it is deployed, e.g. 'https://kd-online.<your-subdomain>.workers.dev'. Empty = the game
   // says "Online play is not set up yet." (?online=<url> in the page address overrides it for testing.) docs/ONLINE.md.
-  if (KD.config.online === undefined) KD.config.online = { url: '' };
+  if (KD.config.online === undefined) KD.config.online = { url: 'https://kd-online.prestonbohio2014.workers.dev' };
   // Namespaces. Every file attaches to one of these and never replaces them.
   ['data', 'gen', 'sim', 'meta', 'gfx', 'audio', 'ui', 'debug'].forEach(function (k) { KD[k] = KD[k] || {}; });
 
