@@ -1631,6 +1631,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 .coop-choice:focus-visible { outline: calc(2 * var(--u)) solid var(--kd-brass-300); outline-offset: calc(2 * var(--u)); }
 .coop-choice-title { font-family: var(--kd-font-display); font-variant: small-caps; font-weight: 700; letter-spacing: .06em; font-size: calc(26 * var(--u)); line-height: 1.1; color: var(--kd-brass-200); text-shadow: var(--kd-text-shadow); }
 .coop-choice-sub { margin-top: calc(4 * var(--u)); font-size: calc(13.5 * var(--u)); line-height: 1.35; color: var(--kd-parch-200); max-width: calc(520 * var(--u)); }
+/* the PC host as the second way when the online service is set up (docs/ONLINE.md) */
+.coop-lan { display: flex; align-items: center; flex-wrap: wrap; gap: calc(8 * var(--u)); font-size: calc(12.5 * var(--u)); text-shadow: var(--kd-text-shadow); padding: 0 calc(6 * var(--u)); }
+.coop-lan-host, .coop-lan-join { flex: none; }
 .coop-rules { font-size: calc(12 * var(--u)); line-height: 1.4; text-shadow: var(--kd-text-shadow); padding: 0 calc(6 * var(--u)); }
 
 .coop-right { flex: 1 1 auto; min-width: 0; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: calc(9 * var(--u)); padding: calc(14 * var(--u)) calc(18 * var(--u)); color: var(--kd-ink); }
@@ -1731,6 +1734,100 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 .kd-compact .coop-road-guest .coop-road-head { font-size: calc(16 * var(--u)); }
 .kd-compact .coop-road-guest .coop-road-sub { font-size: calc(12 * var(--u)); }
 .kd-compact .coop-nopause { grid-column: 1 / -1; }
+
+/* Online screens (src/ui/26_online_*.js, docs/ONLINE.md). Prefix: ol-. Sizes in --u units, colours from the kit. */
+
+/* ---- Name#tag ---- */
+.ol-full { display: inline-flex; align-items: baseline; min-width: 0; white-space: nowrap; font-weight: 700; }
+.ol-name { overflow: hidden; text-overflow: ellipsis; }
+.ol-tag { font-weight: 400; color: var(--kd-ink-soft); font-variant-numeric: tabular-nums; margin-left: calc(1 * var(--u)); }
+.ol-dot { flex: none; display: inline-block; width: calc(10 * var(--u)); height: calc(10 * var(--u)); border-radius: 50%; box-shadow: 0 0 0 calc(1.5 * var(--u)) rgba(40, 25, 10, .45); }
+.ol-intro { font-size: calc(13 * var(--u)); line-height: 1.4; }
+.ol-msg { min-height: calc(18 * var(--u)); font-size: calc(12.5 * var(--u)); line-height: 1.35; font-weight: 700; color: var(--kd-ink-soft); }
+.ol-msg-bad { color: var(--kd-bad-ink); }
+.ol-msg-good { color: var(--kd-good-ink); }
+.ol-msg-warn { color: #6b2a10; }
+.ol-win .flow-input, .ol-namebox .flow-input { color: var(--kd-parch-100); }
+
+/* ---- choose your name ---- */
+.ol-namebox { display: flex; flex-direction: column; gap: calc(12 * var(--u)); }
+.ol-name-input.flow-input { height: calc(36 * var(--u)); font-size: calc(18 * var(--u)); font-weight: 700; }
+.ol-rules { margin-top: calc(5 * var(--u)); font-size: calc(11.5 * var(--u)); }
+.ol-done { display: flex; flex-direction: column; gap: calc(10 * var(--u)); align-items: flex-start; }
+.ol-bigname { display: flex; align-items: center; gap: calc(12 * var(--u)); font-family: var(--kd-font-display); font-size: calc(28 * var(--u)); color: var(--kd-ink); }
+.ol-bigname .ol-tag { color: var(--kd-brass-700); font-weight: 700; }
+
+/* ---- Friends window ---- */
+.ol-friendsbox { display: flex; flex-direction: column; gap: calc(10 * var(--u)); max-height: calc(470 * var(--u)); min-height: 0; overflow: hidden; }
+.ol-me { display: flex; align-items: center; gap: calc(9 * var(--u)); padding: calc(8 * var(--u)) calc(12 * var(--u)); border-radius: calc(4 * var(--u));
+  background: linear-gradient(90deg, rgba(150, 105, 30, .3), rgba(150, 105, 30, .08)); border: var(--u) solid var(--kd-brass-700); }
+.ol-me-label { font-size: calc(12.5 * var(--u)); color: var(--kd-ink-soft); }
+.ol-me-full { font-family: var(--kd-font-display); font-size: calc(20 * var(--u)); }
+.ol-presence { display: inline-flex; align-items: center; gap: calc(6 * var(--u)); font-size: calc(12.5 * var(--u)); color: var(--kd-ink-soft); }
+.ol-add { display: flex; gap: calc(8 * var(--u)); align-items: center; }
+.ol-add .flow-input { flex: 1 1 auto; min-width: 0; height: calc(32 * var(--u)); font-size: calc(15 * var(--u)); }
+.ol-section { display: flex; flex-direction: column; gap: calc(6 * var(--u)); min-height: 0; }
+.ol-grow { flex: 1 1 auto; }
+.ol-head { display: flex; align-items: baseline; gap: calc(9 * var(--u)); }
+.ol-count { color: var(--kd-ink-soft); font-size: calc(13 * var(--u)); }
+.ol-list { display: flex; flex-direction: column; gap: calc(5 * var(--u)); }
+.ol-friends { min-height: calc(90 * var(--u)); max-height: calc(250 * var(--u)); overflow-y: auto; padding-right: calc(4 * var(--u)); -webkit-overflow-scrolling: touch; touch-action: pan-y; }
+.ol-row { display: flex; align-items: center; gap: calc(10 * var(--u)); padding: calc(6 * var(--u)) calc(10 * var(--u)); background: rgba(80, 50, 15, .09); border: var(--u) solid rgba(90, 60, 20, .28); border-radius: calc(4 * var(--u)); }
+.ol-req-in { background: rgba(190, 140, 40, .16); border-color: rgba(150, 100, 20, .5); }
+.ol-row-id { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.ol-row-id .ol-full { font-size: calc(15 * var(--u)); }
+.ol-row-sub { font-size: calc(12 * var(--u)); color: var(--kd-ink-soft); }
+.ol-st-run .ol-row-sub, .ol-st-lobby .ol-row-sub { color: #7a4f08; font-weight: 700; }
+.ol-st-online .ol-row-sub { color: var(--kd-good-ink); font-weight: 700; }
+.ol-st-offline .ol-full { opacity: .7; }
+.ol-acts { flex: none; display: flex; gap: calc(6 * var(--u)); align-items: center; }
+.ol-empty { padding: calc(14 * var(--u)); text-align: center; font-style: italic; color: var(--kd-ink-soft); line-height: 1.4; }
+
+/* ---- invite toast ---- */
+.kd-toast.ol-invite-toast { pointer-events: auto; }
+.ol-toast { display: flex; flex-direction: column; gap: calc(6 * var(--u)); }
+.ol-toast-text { font-weight: 700; }
+.ol-toast-acts { display: flex; gap: calc(6 * var(--u)); }
+
+/* ---- link another device ---- */
+.ol-linkbox { display: flex; flex-direction: column; gap: calc(12 * var(--u)); }
+.ol-linkcols { display: flex; gap: calc(12 * var(--u)); }
+.ol-linkcol { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: calc(8 * var(--u)); padding: calc(12 * var(--u)) calc(14 * var(--u)); color: var(--kd-parch-100); }
+.ol-linkcol .ol-intro { color: var(--kd-parch-200); }
+.ol-linkcol .ol-msg { color: var(--kd-parch-200); }
+.ol-linkcol .ol-msg-bad { color: #ff9d8c; }
+.ol-linkcol .ol-msg-good { color: var(--kd-good); }
+.ol-code-wrap { margin-top: calc(8 * var(--u)); }
+.ol-code { font-family: var(--kd-font-mono, monospace); font-size: calc(34 * var(--u)); letter-spacing: .12em; color: #ffe7a3; user-select: all; -webkit-user-select: all; pointer-events: auto; }
+.ol-code-left { font-size: calc(12 * var(--u)); color: var(--kd-parch-300); }
+.ol-code-input.flow-input { text-transform: uppercase; letter-spacing: .1em; }
+.ol-linkcol .ol-add { flex-direction: column; align-items: stretch; }
+.ol-linkcol .ol-add .kd-btn { align-self: flex-start; }
+
+/* ---- Settings ---- */
+.ol-set-name { display: flex; align-items: center; gap: calc(6 * var(--u)); }
+.ol-set-name .ol-full { max-width: calc(150 * var(--u)); }
+.ol-set-note { margin-top: calc(2 * var(--u)); }
+
+/* ---- the online lobby (host) ---- */
+.ol-lobby-head { display: flex; align-items: center; gap: calc(8 * var(--u)); }
+.ol-lobby-list { display: flex; flex-direction: column; gap: calc(4 * var(--u)); }
+.ol-lobby-row { display: flex; align-items: center; gap: calc(8 * var(--u)); font-size: calc(14 * var(--u)); }
+
+/* ---- main menu: Play Together and Friends share a row on a phone ---- */
+.kd-compact .flow-menu-buttons:has(.ol-menu-btn) .coop-menu-btn.flow-menu-wide { grid-column: auto; min-height: calc(46 * var(--u)); font-size: calc(15 * var(--u)); padding-left: calc(12 * var(--u)); gap: calc(8 * var(--u)); }
+
+/* ---- phones and tablets (docs/MOBILE.md) ---- */
+.kd-touch .ol-row { min-height: calc(46 * var(--u)); }
+.kd-touch .ol-acts .kd-btn { min-height: calc(40 * var(--u)); min-width: calc(40 * var(--u)); }
+.kd-touch .ol-toast-acts .kd-btn { min-height: calc(40 * var(--u)); min-width: calc(72 * var(--u)); }
+.kd-compact .ol-friendsbox { max-height: calc(330 * var(--u)); overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
+.kd-compact .ol-friends { max-height: none; overflow: visible; }
+.kd-compact .ol-me { padding: calc(5 * var(--u)) calc(10 * var(--u)); }
+.kd-compact .ol-add .flow-input, .kd-compact .ol-name-input.flow-input { height: calc(42 * var(--u)); }
+.kd-compact .ol-linkcols { gap: calc(8 * var(--u)); }
+.kd-compact .ol-code { font-size: calc(30 * var(--u)); }
+.kd-compact .ol-intro, .kd-compact .ol-row-sub, .kd-compact .ol-msg { font-size: calc(12.5 * var(--u)); }
 
 /* Kingdom's Descent: character windows (src/ui/30_win_*.js). Built on the kit; every size is in --u units. docs/WINDOWS.md */
 
@@ -2857,7 +2954,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.5.7';
+  KD.VERSION = '0.6.0';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -2875,11 +2972,16 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    *                   have 1 tree unique to each character ... do this for one character only for the moment to test:
    *                   the one that summons"). Off (or no tree content registered) = the Crownweb, exactly as before.
    *                   Ask KD.web.isTree(heroOrClassId), never read the switch directly. docs/TREE.md.
+   *   online: { url } -> the online service (below).
    */
   KD.config = KD.config || { oaths: false, events: false, potions: false, trees: { gravecaller: true } };
   if (KD.config.events === undefined) KD.config.events = false;
   if (KD.config.potions === undefined) KD.config.potions = false;
   if (KD.config.trees === undefined) KD.config.trees = { gravecaller: true };
+  // The online service (accounts, friends, invites, co-op rooms: the kd-online repository on Cloudflare Workers).
+  // Fill in its address once it is deployed, e.g. 'https://kd-online.<your-subdomain>.workers.dev'. Empty = the game
+  // says "Online play is not set up yet." (?online=<url> in the page address overrides it for testing.) docs/ONLINE.md.
+  if (KD.config.online === undefined) KD.config.online = { url: '' };
   // Namespaces. Every file attaches to one of these and never replaces them.
   ['data', 'gen', 'sim', 'meta', 'gfx', 'audio', 'ui', 'debug'].forEach(function (k) { KD[k] = KD[k] || {}; });
 
@@ -47038,6 +47140,137 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/meta/49_names.js
+/*
+ * Kingdom's Descent: player name rules, shared by the game and the online service.
+ *
+ * ONE FILE, TWO PLACES. This exact file is src/meta/49_names.js in the game (a plain script that sets KD.names) and src/shared/kd_names.js in the service (kd-online, imported for its side effect, sets
+ * globalThis.KDNames). Keep the two copies byte for byte identical: both test suites check it when the other repo
+ * sits next to them.
+ *
+ * Rules: 3 to 16 characters after trimming; letters A-Z, digits, spaces inside (runs of spaces become one), and
+ * _ - . ; at least one letter; no rude words or slurs (case and leetspeak do not hide them). The number tag
+ * (Preston#4821) is given by the service and is not part of the name.
+ */
+(function (root) {
+  'use strict';
+  var N = {};
+  N.MIN = 3;
+  N.MAX = 16;
+  N.TAG_MIN = 1;
+  N.TAG_MAX = 9999;
+  N.RENAME_DAYS = 7;                 // after the first pick, one rename per 7 days
+  N.MESSAGES = {
+    empty: 'Choose a name first.',
+    short: 'A name needs at least 3 characters.',
+    long: 'A name can have at most 16 characters.',
+    chars: 'Use letters, numbers, spaces and _ - . only.',
+    letter: 'A name needs at least one letter.',
+    blocked: 'That name is not allowed. Please choose another one.'
+  };
+
+  // The word lists are ROT13 encoded so this file does not read as a list of insults. rot13() decodes them once.
+  // ANYWHERE: blocked even inside a longer word ("xXfuckXx"). TOKEN: blocked only as a whole word, so innocent names
+  // that contain them (Cassandra, Peacock, Dickens, Scrap) stay allowed.
+  var ANYWHERE = ['avttre', 'avttn', 'avttnu', 'snttbg', 'shpx', 'fuvg', 'phag', 'ergneq', 'juber', 'ovgpu', 'crqbcuvyr',
+    'cnrqbcuvyr', 'uvgyre', 'fyhg', 'cravf', 'intvan', 'cbea', 'gjng', 'nffubyr', 'onfgneq', 'wvmm', 'genaal', 'jrgonpx', 'zbyrfg',
+    'anmvf', 'qvpxurnq', 'pbpxfhpxre', 'zbgures', 'oybjwbo', 'unaqwbo', 'qvyqb', 'phzfubg', 'tnatonat', 'vaprfg',
+    'orfgvnyvgl', 'xvyywrjf', 'tnfgur', 'juvgrcbjre', 'fvrturvy'];
+  var TOKEN = ['nff', 'nefr', 'snt', 'sntf', 'phz', 'avt', 'avtf', 'xvxr', 'fcvp', 'puvax', 'tbbx', 'pbba', 'qlxr', 'ubzb', 'arteb',
+    'ornare', 'encr', 'encrq', 'encre', 'encvfg', 'encvfgf', 'crqb', 'cnrqb', 'anmv', 'xxx', 'pbpx', 'qvpx', 'chffl', 'jnax', 'gvgf', 'gvg', 'obbo', 'obbof',
+    'frk', 'nany', 'nahf', 'ubr', 'ubrf', 'snc', 'cvff', 'fynt', 'fxnax', 'cevpx', 'xabo', 'obyybpx', 'oryyraq', 'jbt', 'cnxv',
+    'enturnq', 'gbjryurnq', 'gneq', 'pyvg'];
+  function rot13(s) { return s.replace(/[a-z]/g, function (c) { return String.fromCharCode((c.charCodeAt(0) - 97 + 13) % 26 + 97); }); }
+  var LEET = { '0': 'o', '1': 'i', '2': 'z', '3': 'e', '4': 'a', '5': 's', '6': 'g', '7': 't', '8': 'b', '9': 'g', '@': 'a', '$': 's', '!': 'i', '|': 'i', '+': 't' };
+  function leet(s, one) { return s.replace(/[0-9@$!|+]/g, function (c) { return c === '1' ? one : LEET[c]; }); }
+  function collapse(s) { return s.replace(/(.)\1+/g, '$1'); }
+  function runs3(s) { return s.replace(/(.)\1{2,}/g, '$1'); }          // "fuuuck" -> "fuck"; doubles stay ("shiitake")
+  var anyWords = null, tokenWords = null;
+  function lists() {
+    if (anyWords) return;
+    anyWords = ANYWHERE.map(rot13).map(function (w) { var c = collapse(w); return { w: w, c: c !== w && c.length >= 4 ? c : null }; });
+    tokenWords = {};
+    TOKEN.map(rot13).forEach(function (w) { tokenWords[w] = 1; });
+  }
+
+  /** The name as it is stored: trimmed, runs of spaces made one. Never throws. */
+  N.clean = function (s) { return String(s === undefined || s === null ? '' : s).replace(/\s+/g, ' ').trim(); };
+
+  /** Spellings of the text a filter looks at: lower case, leetspeak read as letters (1 as i and as l), digits dropped. */
+  function variants(text) {
+    var low = text.toLowerCase(), out = [];
+    var word = low.replace(/(^|[^a-z0-9])[0-9]+(?=[^a-z0-9]|$)/g, '$1');      // a number on its own ("Fan 164") is a number, not leetspeak
+    [leet(word, 'i'), leet(word, 'l'), low.replace(/[0-9]/g, '')].forEach(function (v) { if (out.indexOf(v) < 0) out.push(v); });
+    return out;
+  }
+  /** Words of a name: split at spaces, _ - . and lower-to-upper case steps (BigWord -> big, word). */
+  function tokens(text) {
+    return text.replace(/([a-z])([A-Z])/g, '$1 $2').split(/[\s_.\-]+/).filter(Boolean);
+  }
+  function tokenHit(t) {
+    if (!t) return false;
+    return !!(tokenWords[t] || tokenWords[runs3(t)] || tokenWords[t.replace(/(.)\1{2,}/g, '$1$1')]);      // "diiick", "asssss"
+  }
+  /** True when the text holds a blocked word (any case, leetspeak, separators, repeated letters). */
+  N.blocked = function (text) {
+    lists();
+    text = N.clean(text);
+    if (!text) return false;
+    var vs = variants(text), i, j, k;
+    for (i = 0; i < vs.length; i++) {
+      var squash = vs[i].replace(/[^a-z]/g, ''), r3 = runs3(squash);
+      for (j = 0; j < anyWords.length; j++) {
+        var a = anyWords[j];
+        if (squash.indexOf(a.w) >= 0 || r3.indexOf(a.w) >= 0 || (a.c && r3.indexOf(a.c) >= 0)) return true;
+      }
+      if (tokenHit(squash)) return true;                                   // "a.s.s", "a s s"
+    }
+    var parts = tokens(text);
+    for (k = 0; k < parts.length; k++) {
+      var pv = variants(parts[k]);
+      for (i = 0; i < pv.length; i++) if (tokenHit(pv[i].replace(/[^a-z]/g, ''))) return true;
+    }
+    return false;
+  };
+
+  /**
+   * check(name) -> { ok, name, error, message }. `name` is the cleaned name to store; error is one of the keys of
+   * MESSAGES. The service runs the same check, so a name the game accepts is accepted there too.
+   */
+  N.check = function (raw) {
+    var name = N.clean(raw), err = null;
+    if (!name) err = 'empty';
+    else if (name.length < N.MIN) err = 'short';
+    else if (name.length > N.MAX) err = 'long';
+    else if (!/^[A-Za-z0-9 _.\-]+$/.test(name)) err = 'chars';
+    else if (!/[A-Za-z]/.test(name)) err = 'letter';
+    else if (N.blocked(name)) err = 'blocked';
+    return { ok: !err, name: name, error: err, message: err ? N.MESSAGES[err] : '' };
+  };
+
+  /** The number tag as shown: 7 -> '0007'. */
+  N.tagText = function (tag) { var s = String(Math.max(0, tag | 0)); while (s.length < 4) s = '0' + s; return s; };
+  /** 'Preston', 4821 -> 'Preston#4821'. */
+  N.full = function (name, tag) { return String(name || '') + '#' + N.tagText(tag); };
+  /** 'Preston#4821' (spaces around the # are fine) -> { name, tag } or null. */
+  N.parseFull = function (text) {
+    var s = N.clean(text), at = s.lastIndexOf('#');
+    if (at < 1) return null;
+    var name = N.clean(s.slice(0, at)), digits = s.slice(at + 1).trim();
+    if (!/^\d{1,4}$/.test(digits)) return null;
+    var tag = +digits;
+    if (tag < N.TAG_MIN || tag > N.TAG_MAX || name.length < 1 || name.length > N.MAX) return null;
+    return { name: name, tag: tag };
+  };
+  /** When the next rename is allowed (ms), from the time of the last one; 0 = the first pick is still free. */
+  N.renameAt = function (renamedAt) { return renamedAt ? renamedAt + N.RENAME_DAYS * 86400000 : 0; };
+
+  root.KDNames = N;
+  if (root.KD) root.KD.names = N;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/meta/50_coop.js
 (function (root) {
   'use strict';
@@ -47765,6 +47998,292 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   };
   /** Leave the session (the transport is closed by the caller). */
   SP.close = function (reason) { this.leaveWorld(); this.role = null; this.events.emit('closed', { reason: reason || 'left' }); };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/meta/52_online.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+
+  /**
+   * KD.online: the client of the online service (the kd-online repository: accounts, friends, invites, co-op rooms on
+   * Cloudflare). docs/ONLINE.md has the flows; this file has no DOM and does nothing until init() is called, so it loads
+   * in Node, where tests give it their own fetch, WebSocket, storage and clock.
+   *
+   *   KD.config.online.url        the service, e.g. 'https://kd-online.example.workers.dev' ('' = not set up yet)
+   *   ?online=<url> in the page address overrides it (testing)
+   *
+   *   O.init({ storage, fetch, WebSocket, search, now, setTimeout, clearTimeout })   browser: KD.online.init() is enough
+   *   O.configured() / O.url()     the service, or false / ''
+   *   O.account() / O.signedIn() / O.hasName() / O.full()   this device's account ({ id, name, tag, full, renameAt })
+   *   O.chooseName(name)           first pick (creates the account when there is none) or rename -> Promise<result>
+   *   O.friends() O.addFriend(tag) O.accept(id) O.decline(id) O.cancel(id) O.remove(id)
+   *   O.createRoom() O.invite(id, room) O.invites() O.answer(id, yes) O.joinFriend(id)    -> Promise<result>
+   *   O.linkStart() O.linkClaim(code)
+   *   O.connect() O.disconnect() O.setStatus(state, room)   the presence socket (reconnects with backoff)
+   *   O.roomLink(room)             what KD.game.coopOpen needs to connect to an online room
+   *   O.events: 'account' (account), 'friends' (state.friends), 'presence' ({ state }), 'invite' (invite),
+   *             'inviteAnswer' ({ id, by, accepted }), 'request' ({ from }), 'notice' ({ text, kind })
+   * Every call resolves to { ok, status, body, error, message } and never throws: `message` is plain words for the player.
+   */
+  var O = KD.online = KD.online || {};
+  O.KEY = 'kd.online';
+  O.STATES = { offline: 'Offline', online: 'Online', lobby: 'In a lobby', run: 'In a run' };
+  O.PING_MS = 45000;
+  O.BACKOFF = [1000, 2000, 4000, 8000, 15000, 30000];
+  O.NOT_SET_UP = 'Online play is not set up yet.';
+  var env = null, saved = null, sock = null, sockState = 'off', retry = 0, retryT = 0, pingT = 0, wanted = false;
+  O.state = { friends: [], incoming: [], outgoing: [], invites: [], status: { state: 'online', room: null }, presence: 'off', loaded: false };
+  O.events = O.events || (KD.Emitter ? new KD.Emitter() : { on: function () {}, off: function () {}, emit: function () {} });
+
+  // ------------------------------------------------------------------------------------------ pure helpers
+  /** The service address from the page query (?online=) or the config; '' when not set up. Trailing slashes go. */
+  O.resolveUrl = function (search, configUrl) {
+    var m = /[?&]online=([^&#]*)/.exec(search || ''), u = '';
+    if (m) { try { u = decodeURIComponent(m[1]); } catch (e) { u = m[1]; } }
+    if (!u) u = configUrl || '';
+    u = String(u).trim().replace(/\/+$/, '');
+    return /^https?:\/\/[^\s/]+/i.test(u) ? u : '';
+  };
+  /** http(s)://host -> ws(s)://host + path. */
+  O.wsUrl = function (base, path) { return base.replace(/^http/i, 'ws') + path; };
+  /** Wait before reconnect attempt n (0-based), with up to 20% random spread so phones do not all retry at once. */
+  O.backoff = function (n, rnd) {
+    var b = O.BACKOFF[Math.min(n, O.BACKOFF.length - 1)];
+    return Math.round(b * (1 + 0.2 * (rnd === undefined ? Math.random() : rnd)));
+  };
+  O.statusText = function (state) { return O.STATES[state] || O.STATES.offline; };
+  /** Plain words for a failed call. */
+  O.errorText = function (r) {
+    if (!r) return 'Something went wrong.';
+    if (r.error === 'network') return 'The online service did not answer. Check the internet connection and try again.';
+    if (r.error === 'not_set_up') return O.NOT_SET_UP;
+    return (r.body && r.body.message) || r.message || 'Something went wrong (' + (r.status || '?') + ').';
+  };
+  /** Sort friends for the list: in a game first, then online, then by name. */
+  O.sortFriends = function (list) {
+    var rank = { run: 0, lobby: 0, online: 1, offline: 2 };
+    return (list || []).slice().sort(function (a, b) {
+      var ra = rank[a.state] === undefined ? 2 : rank[a.state], rb = rank[b.state] === undefined ? 2 : rank[b.state];
+      return ra - rb || String(a.name).toLowerCase().localeCompare(String(b.name).toLowerCase()) || (a.tag - b.tag);
+    });
+  };
+
+  // ------------------------------------------------------------------------------------------ setup and storage
+  O.init = function (o) {
+    o = o || {};
+    var has = function (k) { return typeof root[k] === 'function' ? root[k] : null; };
+    env = {
+      storage: o.storage || safeStorage(),
+      fetch: o.fetch || (has('fetch') ? root.fetch.bind(root) : null),
+      WebSocket: o.WebSocket || has('WebSocket'),
+      search: o.search !== undefined ? o.search : (root.location && root.location.search) || '',
+      now: o.now || function () { return Date.now(); },
+      setTimeout: o.setTimeout || function (f, ms) { return setTimeout(f, ms); },
+      clearTimeout: o.clearTimeout || function (t) { clearTimeout(t); },
+      configUrl: o.url !== undefined ? o.url : (KD.config && KD.config.online && KD.config.online.url) || ''
+    };
+    saved = load();
+    return O;
+  };
+  function ready() { if (!env) O.init(); return env; }
+  function safeStorage() {
+    try { var ls = root.localStorage; ls.setItem('kd.test', '1'); ls.removeItem('kd.test'); return ls; } catch (e) { /* blocked: memory only */ }
+    var m = {};
+    return { getItem: function (k) { return Object.prototype.hasOwnProperty.call(m, k) ? m[k] : null; }, setItem: function (k, v) { m[k] = String(v); }, removeItem: function (k) { delete m[k]; } };
+  }
+  /** The stored record is per service address, so a test service never mixes with the real one. */
+  function load() {
+    try { var all = JSON.parse(env.storage.getItem(O.KEY) || '{}') || {}; return all[O.url() || '-'] || null; } catch (e) { return null; }
+  }
+  function store(rec) {
+    saved = rec;
+    try {
+      var all = {}; try { all = JSON.parse(env.storage.getItem(O.KEY) || '{}') || {}; } catch (e) { all = {}; }
+      if (rec) all[O.url() || '-'] = rec; else delete all[O.url() || '-'];
+      env.storage.setItem(O.KEY, JSON.stringify(all));
+    } catch (e) { /* storage full or blocked: the account lives until the page closes */ }
+  }
+  O.url = function () { var e = ready(); return O.resolveUrl(e.search, e.configUrl); };
+  O.configured = function () { return !!O.url(); };
+  O.token = function () { ready(); return saved && saved.token || null; };
+  O.account = function () { ready(); return saved && saved.account || null; };
+  O.signedIn = function () { return !!O.token(); };
+  O.hasName = function () { var a = O.account(); return !!(a && a.name); };
+  O.full = function () { var a = O.account(); return a && a.name ? KD.names.full(a.name, a.tag) : ''; };
+  function setAccount(acc, token) {
+    store({ token: token || O.token(), account: acc });
+    O.events.emit('account', acc);
+  }
+  /** Forget this device's account (after "the token was refused" or when another device's code was claimed). */
+  O.signOut = function () { O.disconnect(); store(null); O.state.friends = []; O.state.incoming = []; O.state.outgoing = []; O.events.emit('account', null); };
+
+  // ------------------------------------------------------------------------------------------ HTTP
+  O.call = function (method, path, body) {
+    var e = ready(), base = O.url();
+    if (!base) return Promise.resolve({ ok: false, status: 0, error: 'not_set_up', message: O.NOT_SET_UP });
+    if (!e.fetch) return Promise.resolve({ ok: false, status: 0, error: 'network', message: O.errorText({ error: 'network' }) });
+    var headers = {}, tok = O.token();
+    if (tok) headers.Authorization = 'Bearer ' + tok;
+    if (body !== undefined) headers['Content-Type'] = 'application/json';
+    var p;
+    try { p = e.fetch(base + path, { method: method, headers: headers, body: body !== undefined ? JSON.stringify(body) : undefined, cache: 'no-store' }); }
+    catch (err) { return Promise.resolve({ ok: false, status: 0, error: 'network', message: O.errorText({ error: 'network' }) }); }
+    return p.then(function (r) {
+      return r.text().then(function (t) {
+        var b = null; try { b = t ? JSON.parse(t) : null; } catch (x) { b = null; }
+        var out = { ok: r.ok, status: r.status, body: b, error: r.ok ? null : (b && b.error) || 'http_' + r.status };
+        out.message = r.ok ? '' : O.errorText(out);
+        if (r.status === 401 && tok && tok === O.token()) { store(null); O.events.emit('account', null); }       // the service does not know this device any more
+        return out;
+      });
+    }, function () { return { ok: false, status: 0, error: 'network', message: O.errorText({ error: 'network' }) }; });
+  };
+
+  // ------------------------------------------------------------------------------------------ account
+  /** First pick of a name (creates the account) or a rename. -> result with body.account. */
+  O.chooseName = function (raw) {
+    var c = KD.names.check(raw);
+    if (!c.ok) return Promise.resolve({ ok: false, status: 400, error: 'name_' + c.error, message: c.message });
+    if (!O.signedIn()) {
+      return O.call('POST', '/v1/accounts', { name: c.name }).then(function (r) {
+        if (r.ok) { setAccount(r.body.account, r.body.token); O.connect(); }
+        return r;
+      });
+    }
+    return O.call('POST', '/v1/me/name', { name: c.name }).then(function (r) { if (r.ok) setAccount(r.body.account); return r; });
+  };
+  O.refreshMe = function () { return O.call('GET', '/v1/me').then(function (r) { if (r.ok) setAccount(r.body.account); return r; }); };
+  /** When the next rename is allowed (ms; 0 = now). */
+  O.renameAt = function () { var a = O.account(); return a && a.renameAt && a.renameAt > ready().now() ? a.renameAt : 0; };
+
+  // ------------------------------------------------------------------------------------------ friends
+  O.friends = function () {
+    return O.call('GET', '/v1/friends').then(function (r) {
+      if (r.ok) {
+        O.state.friends = O.sortFriends(r.body.friends); O.state.incoming = r.body.incoming || []; O.state.outgoing = r.body.outgoing || [];
+        O.state.max = r.body.max || 200; O.state.loaded = true;
+        if (r.body.account && O.token()) setAccount(r.body.account);
+        O.events.emit('friends', O.state);
+      }
+      return r;
+    });
+  };
+  function then(p) { return p.then(function (r) { if (r.ok) O.friends(); return r; }); }
+  O.addFriend = function (tag) {
+    var p = KD.names.parseFull(tag);
+    if (!p) return Promise.resolve({ ok: false, status: 400, error: 'bad_tag', message: 'Type the name and number like this: Preston#4821.' });
+    return then(O.call('POST', '/v1/friends/add', { tag: KD.names.full(p.name, p.tag) }));
+  };
+  O.accept = function (id) { return then(O.call('POST', '/v1/friends/accept', { id: id })); };
+  O.decline = function (id) { return then(O.call('POST', '/v1/friends/decline', { id: id })); };
+  O.cancel = function (id) { return then(O.call('POST', '/v1/friends/cancel', { id: id })); };
+  O.remove = function (id) { return then(O.call('POST', '/v1/friends/remove', { id: id })); };
+  O.friend = function (id) { return O.state.friends.filter(function (f) { return f.id === id; })[0] || null; };
+
+  // ------------------------------------------------------------------------------------------ rooms and invites
+  O.createRoom = function () { return O.call('POST', '/v1/rooms', {}); };
+  O.invite = function (id, room) { return O.call('POST', '/v1/invites', { to: id, room: room }); };
+  O.invites = function () { return O.call('GET', '/v1/invites').then(function (r) { if (r.ok) O.state.invites = r.body.invites || []; return r; }); };
+  O.answer = function (id, yes) {
+    O.state.invites = O.state.invites.filter(function (i) { return i.id !== id; });
+    return O.call('POST', '/v1/invites/' + (yes ? 'accept' : 'decline'), { id: id });
+  };
+  O.joinFriend = function (id) { return O.call('POST', '/v1/friends/join', { id: id }); };
+  /** What KD.game.coopOpen(role, profile, link) needs for an online room. The token rides in the subprotocol list. */
+  O.roomLink = function (room) {
+    return { url: O.wsUrl(O.url(), '/v1/rooms/' + room + '/ws'), protocols: ['kd1', 'kdt.' + O.token()], batchMs: 33, room: room };
+  };
+
+  // ------------------------------------------------------------------------------------------ linking devices
+  O.linkStart = function () { return O.call('POST', '/v1/link/start', {}); };
+  /** Claim a code from the other device: this device then uses that account (its own is left behind). */
+  O.linkClaim = function (code) {
+    return O.call('POST', '/v1/link/claim', { code: String(code || '') }).then(function (r) {
+      if (r.ok) { O.disconnect(); setAccount(r.body.account, r.body.token); O.state.friends = []; O.connect(); O.friends(); }
+      return r;
+    });
+  };
+
+  // ------------------------------------------------------------------------------------------ presence socket
+  function setPresence(st) { if (O.state.presence !== st) { O.state.presence = st; O.events.emit('presence', { state: st }); } }
+  /** Keep a presence socket open (online status, live notifications). Safe to call again; reconnects with backoff. */
+  O.connect = function () {
+    var e = ready();
+    wanted = true;
+    if (!O.configured() || !O.signedIn() || !e.WebSocket) return false;
+    if (sock && (sockState === 'open' || sockState === 'connecting')) return true;
+    e.clearTimeout(retryT); retryT = 0;
+    var s;
+    try { s = sock = new e.WebSocket(O.wsUrl(O.url(), '/v1/presence'), ['kd1', 'kdt.' + O.token()]); } catch (err) { schedule(); return false; }
+    sockState = 'connecting'; setPresence('connecting');
+    s.onopen = function () {
+      if (sock !== s) return;
+      sockState = 'open'; retry = 0; setPresence('open');
+      sendStatus();
+      e.clearTimeout(pingT);
+      var ping = function () { if (sock !== s) return; try { s.send('{"t":"ping"}'); } catch (x) { /* closing */ } pingT = e.setTimeout(ping, O.PING_MS); };
+      pingT = e.setTimeout(ping, O.PING_MS);
+      O.friends(); O.invites().then(function (r) { if (r.ok) r.body.invites.forEach(function (i) { O.events.emit('invite', i); }); });
+    };
+    s.onmessage = function (ev) { if (sock === s) O.handle(ev.data); };
+    s.onclose = function (ev) {
+      if (sock !== s) return;
+      sock = null; sockState = 'off'; e.clearTimeout(pingT);
+      setPresence('closed');
+      if (ev && ev.code === 4000) return;                                 // replaced by a newer connection of this account
+      if (wanted) schedule();
+    };
+    s.onerror = function () { /* onclose follows */ };
+    return true;
+  };
+  function schedule() {
+    var e = ready();
+    if (!wanted || retryT) return;
+    var ms = O.backoff(retry++);
+    retryT = e.setTimeout(function () { retryT = 0; if (wanted && O.signedIn()) O.connect(); }, ms);
+  }
+  O.disconnect = function () {
+    var e = ready();
+    wanted = false; e.clearTimeout(retryT); retryT = 0; e.clearTimeout(pingT);
+    var s = sock; sock = null; sockState = 'off';
+    if (s) { try { s.close(1000); } catch (x) { /* closed */ } }
+    setPresence('off');
+  };
+  O.connected = function () { return sockState === 'open'; };
+  /** Tell friends what this player does: 'online' | 'lobby' | 'run', and the room they can join (or null). */
+  O.setStatus = function (state, room) {
+    state = O.STATES[state] && state !== 'offline' ? state : 'online';
+    room = room || null;
+    if (O.state.status.state === state && O.state.status.room === room) return;
+    O.state.status = { state: state, room: room };
+    sendStatus();
+  };
+  function sendStatus() { if (sock && sockState === 'open') { try { sock.send(JSON.stringify({ t: 'status', state: O.state.status.state, room: O.state.status.room })); } catch (e) { /* closing */ } } }
+
+  /** A message from the presence socket (also called by tests). */
+  O.handle = function (text) {
+    var d; try { d = JSON.parse(text); } catch (e) { return; }
+    if (!d || !d.t) return;
+    switch (d.t) {
+      case 'status': {
+        var f = O.friend(d.id);
+        if (f) { f.state = d.state; f.room = d.room || null; O.state.friends = O.sortFriends(O.state.friends); O.events.emit('friends', O.state); }
+        break;
+      }
+      case 'friend_request': O.events.emit('request', { from: d.from }); O.friends(); break;
+      case 'friend_added': O.events.emit('notice', { kind: 'good', text: KD.names.full(d.friend.name, d.friend.tag) + ' is now your friend.' }); O.friends(); break;
+      case 'friend_removed': case 'friend_request_gone': O.friends(); break;
+      case 'renamed': O.friends(); break;
+      case 'invite':
+        if (!O.state.invites.some(function (i) { return i.id === d.invite.id; })) O.state.invites.push(d.invite);
+        O.events.emit('invite', d.invite);
+        break;
+      case 'invite_answer': O.events.emit('inviteAnswer', { id: d.id, by: d.by, accepted: !!d.accepted }); break;
+    }
+  };
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -81099,7 +81618,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    * It only moves messages; the co-op rules live in KD.coop (src/meta/50_coop.js).
    *
    *   KD.net.available            true when the page was opened from the host server (http://...), not from a file
-   *   KD.net.connect(role)        role 'host' | 'guest'. Resolves nothing; listen to the events below.
+   *   KD.net.connect(role, link)  role 'host' | 'guest'. link (optional): the online service's room, { url, protocols,
+   *                               batchMs } (KD.online.roomLink); without it the host server of this page. Resolves
+   *                               nothing; listen to the events below.
+   *   Online rooms bundle what one player sends to one target within batchMs (default 33 ms) into one frame
+   *   { t: '_b', m: [msgs] }: the service is billed per message, and a host sends 60 ticks a second. Receivers unpack
+   *   it, so the co-op code sees the same messages in the same order.
    *   KD.net.send(to, obj)        to: 'h' the host, '*' every guest (host only), or a guest id (host only)
    *   KD.net.close()
    *   KD.net.events               'open' {id}, 'role' {role, host}, 'peer' {id, on}, 'host' {id}, 'msg' {from, data},
@@ -81117,14 +81641,21 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   var lagM = /[?&]lag=(\d+)/.exec(loc.search || '');
   N.lag = lagM ? Math.min(2000, +lagM[1]) : 0;
 
-  N.connect = function (role, url) {
-    if (url) N.url = url;
-    if (!N.url || typeof root.WebSocket !== 'function') { N.events.emit('error', { reason: 'unavailable' }); return false; }
+  N.link = null;              // the online room of the current connection (null: the host server)
+  var batchMs = 0, pending = null, flushT = 0;
+  N.connect = function (role, link) {
+    if (typeof link === 'string') { N.url = link; link = null; }
+    var url = link ? link.url : N.url;
+    if (!url || typeof root.WebSocket !== 'function') { N.events.emit('error', { reason: 'unavailable' }); return false; }
     wantRole = role === 'host' ? 'host' : 'guest';
-    if (ws && (N.state === 'open' || N.state === 'connecting')) { if (N.state === 'open') raw('s', { t: 'claim', role: wantRole }); return true; }
+    if (ws && (N.state === 'open' || N.state === 'connecting') && N.link === (link || null)) { if (N.state === 'open') raw('s', { t: 'claim', role: wantRole }); return true; }
+    if (ws) N.close();
+    N.link = link || null;
+    batchMs = link ? (link.batchMs === undefined ? 33 : Math.max(0, link.batchMs | 0)) : 0;
+    pending = null;
     N.state = 'connecting';
     var sock;
-    try { sock = ws = new root.WebSocket(N.url); } catch (e) { N.state = 'off'; N.events.emit('error', { reason: 'refused' }); return false; }
+    try { sock = ws = link && link.protocols ? new root.WebSocket(url, link.protocols) : new root.WebSocket(url); } catch (e) { N.state = 'off'; N.events.emit('error', { reason: 'refused' }); return false; }
     sock.onopen = function () { if (ws !== sock) return; N.state = 'open'; };
     sock.onmessage = function (ev) {
       if (ws !== sock || typeof ev.data !== 'string') return;
@@ -81133,13 +81664,15 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       try { data = JSON.parse(ev.data.slice(cut + 1)); } catch (e) { return; }
       N.received++;
       if (from === 0) return control(data);
-      if (N.lag > 0) setTimeout(function () { if (ws === sock) N.events.emit('msg', { from: from, data: data }); }, N.lag / 2);
-      else N.events.emit('msg', { from: from, data: data });
+      var list = data && data.t === '_b' && Array.isArray(data.m) ? data.m : [data];      // a bundle from an online room
+      var give = function () { for (var i = 0; i < list.length && ws === sock; i++) N.events.emit('msg', { from: from, data: list[i] }); };
+      if (N.lag > 0) setTimeout(give, N.lag / 2);
+      else give();
     };
-    sock.onclose = function () {
+    sock.onclose = function (ev) {
       if (ws !== sock) return;
-      var was = N.state; ws = null; N.state = 'off'; N.role = null; N.id = 0; N.hostId = 0;
-      N.events.emit('close', { was: was });
+      var was = N.state; ws = null; N.state = 'off'; N.role = null; N.id = 0; N.hostId = 0; pending = null;
+      N.events.emit('close', { was: was, code: ev && ev.code });
     };
     sock.onerror = function () { if (ws === sock) N.events.emit('error', { reason: 'socket' }); };
     return true;
@@ -81150,14 +81683,28 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     else if (d.t === 'peer') N.events.emit('peer', { id: d.id, on: !!d.on });
     else if (d.t === 'host') { N.hostId = d.id; N.events.emit('host', { id: d.id }); }
   }
+  function flush() {
+    flushT = 0;
+    var p = pending; pending = null;
+    if (!p || !ws || ws.readyState !== 1) return;
+    for (var k in p) { var m = p[k]; send1(k, m.length === 1 ? m[0] : { t: '_b', m: m }); }
+  }
+  function send1(to, obj) {
+    try { ws.send(to + '|' + JSON.stringify(obj)); N.sent++; return true; } catch (e) { return false; }
+  }
   function raw(to, obj) {
     if (!ws || ws.readyState !== 1) return false;
+    if (batchMs > 0 && to !== 's') {
+      if (!pending) { pending = {}; flushT = setTimeout(flush, batchMs); }
+      (pending[to] = pending[to] || []).push(obj);
+      return true;
+    }
     var text = to + '|' + JSON.stringify(obj), sock = ws;
     if (N.lag > 0 && to !== 's') { setTimeout(function () { if (ws === sock && sock.readyState === 1) { try { sock.send(text); } catch (e) { /* closed */ } } }, N.lag / 2); N.sent++; return true; }
     try { ws.send(text); N.sent++; return true; } catch (e) { return false; }
   }
   N.send = function (to, obj) { return raw(to === 'h' || to === '*' ? to : String(to), obj); };
-  N.close = function () { var s = ws; ws = null; var was = N.state; N.state = 'off'; N.role = null; N.id = 0; N.hostId = 0; if (s) { try { s.close(); } catch (e) { /* closed */ } } if (was !== 'off') N.events.emit('close', { was: was, self: true }); };
+  N.close = function () { var s = ws; if (s && pending) flush(); clearTimeout(flushT); pending = null; ws = null; var was = N.state; N.state = 'off'; N.role = null; N.id = 0; N.hostId = 0; N.link = null; if (s) { try { s.close(); } catch (e) { /* closed */ } } if (was !== 'off') N.events.emit('close', { was: was, self: true }); };
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -85233,6 +85780,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         continueButton(game),
         KD.ui.button('New Run', { icon: 'sword', className: 'flow-menu-btn flow-menu-wide', onClick: function () { M.openNewRun(game); } }),
         F.coop && F.coop.menuButton ? F.coop.menuButton(game) : null,      // "Play Together" (src/ui/25_coop_10_lobby.js)
+        F.online && F.online.menuButton ? F.online.menuButton(game) : null,      // "Friends" (src/ui/26_online_10_screens.js)
         btn('Account', 'crown', function () { F.account.open(game); }, 'Account level, prestige, perks and the Renown shop'),
         btn('Chronicle', 'book', function () { F.account.openChronicle(game); }, 'Every run you have finished'),
         btn('Settings', 'gear', function () { F.pause.openSettings(game); }),
@@ -86538,6 +87086,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         row('Loot name plates', onoff(ST.get('lootLabels'), function (on) { ST.set('lootLabels', on); }), 'Rare and better drops'),
         row('Low-health vignette', onoff(ST.get('vignette'), function (on) { ST.set('vignette', on); }), 'and the hit flash'),
         row('Interface motion', onoff(v.motion, function (on) { ST.set('motion', on); }), 'animations and transitions'),
+        F.online && F.online.settingsRows ? F.online.settingsRows(game, row) : null,      // name, Link another device (src/ui/26_online_10_screens.js)
         el('div.flow-set-note.kd-dim', { text: 'Settings are kept in this browser and apply at once.' })
       ])
     ]);
@@ -87002,6 +87551,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     opts = opts || {};
     var kept = opts.hasRun ? ' Your run is kept: you can continue it alone from the menu.' : '';
     if (type === 'refused') return { title: 'The game is full', text: 'A shared game holds up to ' + ((KD.coop && KD.coop.MAX_PLAYERS) || 4) + ' players. Ask the host to make room, then join again.' };
+    if (type === 'error' && opts.online) return { title: 'Could not connect', text: 'The online game did not answer. It may be over, or the internet connection is down. Try again from your Friends list.' };
+    if (type === 'closed' && reason === 'disconnected' && opts.online) return { title: 'Connection lost', text: 'The connection to the online game was lost.' + kept + (opts.hasRun ? '' : ' You can join again from your Friends list.') };
     if (type === 'error') return { title: 'Could not connect', text: 'The host server did not answer. Check that the \'Host for Friends\' window is still open on the host\'s PC and that you opened the address it shows, then try again.' };
     if (type === 'closed') {
       if (reason === 'host_left') return { title: 'The host left the game', text: 'The shared game is over.' + kept };
@@ -87053,9 +87604,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     else if (role === 'host') m.status = m.started ? 'The run is under way.' : (m.players.length > 1 ? 'Everyone here starts together when you press Start.' : 'You can start alone: friends who join later come in at the next gate.');
     else m.status = m.started ? 'The last run is over. Waiting for ' + m.hostName + ' to come back to the lobby.' : 'Waiting for ' + m.hostName + ' to start.';
     if (m.hostTaken) m.notices.push({ kind: 'warn', text: 'Someone is already hosting on this address (' + m.hostName + '). You joined their game instead.' });
-    if (m.noHost) m.notices.push({ kind: 'warn', text: 'Ask whoever runs \'Host for Friends.bat\' to choose Play Together, then Host a Game.' });
+    m.online = !!session.online;
+    if (m.noHost) m.notices.push({ kind: 'warn', text: m.online ? 'The host is not in this game right now. It goes on when they come back.' : 'Ask whoever runs \'Host for Friends.bat\' to choose Play Together, then Host a Game.' });
     if (opts.savedRun) m.notices.push({ kind: 'warn', text: 'Your run in progress (' + opts.savedRun + ') ends when the shared run starts. It is written into the Chronicle and still earns its account experience.' });
-    if (role === 'host') {
+    if (role === 'host' && m.online) {                // an online game: friends join through the service, no address to pass on
+      m.hostNote = 'Keep this tab open and visible while you play: the host\'s game is the clock of the shared world.';
+    } else if (role === 'host') {
       // the addresses come from the host server's /info ({ lan: [urls], tunnel, tunnelState: off | starting | up | failed }, docs/COOP.md section 1)
       var ad = CU.address(opts.location), info = opts.info || null, lan = info && info.lan && info.lan.length ? info.lan[0] : '', ts = info ? info.tunnelState || 'off' : '';
       var far = !info ? '' : ts === 'starting' ? ' The link for friends anywhere else is being set up and appears here in a moment.'
@@ -87189,7 +87743,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   CU.open = function (game) {
     game = game || ST.game || KD.game;
     if (!game.coopAvailable || !game.coopAvailable()) {
-      F.confirm({ title: 'Play Together', text: CU.unavailableText(F.isTouch()), yes: 'Understood', no: false, pauses: false, width: F.isTouch() ? 520 : 430 });
+      F.confirm({ title: 'Play Together', text: CU.unavailableText(F.isTouch()) + (F.online && F.online.TEXT ? ' ' + F.online.TEXT.notSetUp : ''), yes: 'Understood', no: false, pauses: false, width: F.isTouch() ? 520 : 430 });
       return false;
     }
     if (session()) CU.showLobby(game); else CU.showEntry(game);
@@ -87260,14 +87814,23 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       if (ok === false && !session() && ST.view === 'entry') say(CU.messageFor('error', 'unavailable'));      // (a socket error has already said so and left)
     };
     s.appendChild(F.heading('Play Together', 'Two to four heroes, one world. Every hero keeps a run of their own.'));
-    s.appendChild(el('div.coop-body', [
-      profilePanel(game),
-      el('div.coop-choices', [
-        bigChoice('host', 'crown', 'Host a Game', 'Your friends open the address of this page and join you. You choose the road for the party. Keep this tab open while you play.', function () { go('host'); }),
-        bigChoice('guest', 'gate', 'Join a Game', 'Someone on this address is hosting. You come into their lobby and pick your class there.', function () { go('guest'); }),
-        el('div.coop-rules.kd-dim', { text: 'Shared: the area, its enemies and the boss. Experience goes to everyone, coin and Ash too. Items belong to whoever picks them up. A fallen hero stands up again at the next gate.' })
-      ])
-    ]));
+    var OU = F.online, online = !!(OU && OU.configured && OU.configured() && game.coopOnline && game.coopOnline()), lan = !!(KD.net && KD.net.available);
+    var rules = el('div.coop-rules.kd-dim', { text: 'Shared: the area, its enemies and the boss. Experience goes to everyone, coin and Ash too. Items belong to whoever picks them up. A fallen hero stands up again at the next gate.' });
+    var choices = online ? [      // the online service (docs/ONLINE.md): friends anywhere, no PC hosting; the PC host stays as the other way
+      bigChoice('online', 'crown', 'Play with Friends', 'Start a game your friends join from anywhere, on a phone or a PC. Invite them from your Friends list. You choose the road for the party.', function () {
+        clearTimeout(ST.nameT); saveProfile(); F.sound('ui_confirm'); OU.hostOnline(game);
+      }),
+      bigChoice('friends', 'gate', 'Join a Friend', 'Open your Friends list: join a friend who is playing, or accept their invite.', function () { clearTimeout(ST.nameT); saveProfile(); OU.openFriends(game); }),
+      lan ? el('div.coop-lan', [el('span.kd-dim', { text: 'On this network instead:' }),
+        KD.ui.button('Host on this PC', { small: true, className: 'coop-lan-host', onClick: function () { go('host'); } }),
+        KD.ui.button('Join on this network', { small: true, className: 'coop-lan-join', onClick: function () { go('guest'); } })]) : null,
+      rules
+    ] : [
+      bigChoice('host', 'crown', 'Host a Game', 'Your friends open the address of this page and join you. You choose the road for the party. Keep this tab open while you play.', function () { go('host'); }),
+      bigChoice('guest', 'gate', 'Join a Game', 'Someone on this address is hosting. You come into their lobby and pick your class there.', function () { go('guest'); }),
+      rules
+    ];
+    s.appendChild(el('div.coop-body', [profilePanel(game), el('div.coop-choices', choices)]));
     s.appendChild(el('div.flow-foot', [KD.ui.button('Back', { icon: 'arrow_left', onClick: function () { clearTimeout(ST.nameT); saveProfile(); F.menu.show(game); } }), el('div.flow-grow')]));
     F.show('coop'); F.music('menu');
     return s;
@@ -87315,6 +87878,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       F.confirm({ title: 'Close the lobby?', text: lm.text, yes: 'Close it', no: 'Stay', pauses: false }).then(function (ok) { if (ok) go(); });
     } else go();
   }
+  function modeRow() {
+    var el = KD.ui.el;
+    return el('div.coop-mode', [el('span.coop-mode-label', { text: 'Mode' }),
+      F.segmented(CU.MODES.map(function (id) { var d = KD.data.modes[id]; return { id: id, label: d.name, tip: { title: d.name, lines: [{ text: d.text, kind: 'base' }, { text: 'It applies to every hero of the shared run.', kind: 'dim' }] } }; }),
+        ST.profile.mode, function (id) { ST.profile.mode = id; saveProfile(); })]);
+  }
   function fillLobby(game) {
     var el = KD.ui.el, N = ST.nodes, m = model(game);
     if (!N || !m) return;
@@ -87325,7 +87894,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     N.right.appendChild(el('div.coop-list', m.players.length ? m.players.map(playerRow)
       : el('div.coop-empty', { text: m.connecting ? 'Connecting to the host server...' : 'Nobody is here yet.' })));
     m.notices.forEach(function (n) { N.right.appendChild(notice(n)); });
-    if (m.role === 'host') {
+    if (m.role === 'host' && m.online && F.online && F.online.lobbyHost) {
+      var box = F.online.lobbyHost(game);
+      if (m.canStart) box.appendChild(modeRow());
+      N.right.appendChild(box);
+    } else if (m.role === 'host') {
       var addr = el('b.coop-addr', { text: m.address });
       var copy = KD.ui.button('Copy', { small: true, className: 'coop-copy', tip: F.isTouch() ? null : 'Copy the address', onClick: function () {
         CU.copyText(m.address, addr).then(function (how) { KD.ui.toast(CU.copyMessage(how, F.isTouch()), { kind: 'info', icon: how === 'copied' ? 'check' : 'info', ms: how === 'copied' ? undefined : 7000 }); });
@@ -87334,9 +87907,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         el('div.coop-addr-line', [el('span', { text: 'Your friends open this address: ' }), addr, copy]),
         el('div.coop-addr-note', { text: m.addressNote }),
         el('div.coop-addr-note', { text: m.hostNote }),
-        m.canStart ? el('div.coop-mode', [el('span.coop-mode-label', { text: 'Mode' }),
-          F.segmented(CU.MODES.map(function (id) { var d = KD.data.modes[id]; return { id: id, label: d.name, tip: { title: d.name, lines: [{ text: d.text, kind: 'base' }, { text: 'It applies to every hero of the shared run.', kind: 'dim' }] } }; }),
-            ST.profile.mode, function (id) { ST.profile.mode = id; saveProfile(); })]) : null
+        m.canStart ? modeRow() : null
       ]));
     }
     KD.ui.clear(N.foot);
@@ -87405,12 +87976,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   /** A session that failed before or while it ran: leave it and say why on the main menu. */
   function fail(game, type, reason) {
     var inRun = game.state !== 'menu';
-    ST.msg = inRun ? CU.messageFor('closed', 'disconnected', { hasRun: true }) : CU.messageFor(type, reason);
+    ST.msg = inRun ? CU.messageFor('closed', 'disconnected', { hasRun: true, online: ST.online }) : CU.messageFor(type, reason, { online: ST.online });
     if (session()) { try { game.coopLeave(); } catch (e) { console.error(e); } }       // emits 'closed', which shows the message
     else onClosed(game, 'left');
   }
   function onClosed(game, reason) {
-    var msg = ST.msg || CU.messageFor('closed', reason, { hasRun: !!game.savedRun });
+    var msg = ST.msg || CU.messageFor('closed', reason, { hasRun: !!game.savedRun, online: ST.online });
     ST.msg = null; ST.prev = null; ST.nodes = null; ST.view = null;
     try { if (KD.ui.windows.isOpen('flow-pause')) KD.ui.windows.close('flow-pause'); } catch (e) { /* no window */ }
     if (CU.overClosed) CU.overClosed();
@@ -87445,7 +88016,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     game.events.on('coop', safe('event', function (e) {
       var s = e.session;
       switch (e.type) {
-        case 'open': ST.prev = null; ST.msg = null; ST.old = game.savedRun || null; if (game.state === 'menu') CU.showLobby(game); break;
+        case 'open': ST.prev = null; ST.msg = null; ST.old = game.savedRun || null; ST.online = !!(e.data && e.data.online); if (game.state === 'menu') CU.showLobby(game); break;
         case 'lobby':
           if (s) lobbyToasts(s);
           CU.refreshLobby(game);
@@ -87711,6 +88282,489 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     return P;
   });
   CU.hud = P;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/ui/26_online_00_core.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  /**
+   * KD.onlineui (also KD.flow.online): the screens of online play (docs/ONLINE.md): the first-run name, the Friends
+   * window, invite toasts, "Link another device" and the name in Settings, and the online parts of the co-op lobby.
+   * This file holds the pure helpers (tested in Node by tests/online.test.js); the screens are in 26_online_10_screens.js.
+   * The service client is KD.online (src/meta/52_online.js); the co-op session is KD.game's (coopOpen with a room link).
+   */
+  var OU = KD.onlineui = KD.onlineui || {};
+  if (KD.flow) KD.flow.online = OU;
+
+  OU.TEXT = {
+    notSetUp: 'Online play is not set up yet.',
+    notSetUpMore: 'Online play is not set up yet. When it is, you can add friends by name and play together from anywhere, phone or PC.',
+    nameIntro: 'This is how friends find you. A number is added to it, like Preston#4821, so names can be shared. No email and no password: this device keeps you signed in.',
+    nameRules: '3 to 16 characters: letters, numbers, spaces, _ - and .',
+    emptyFriends: 'No friends yet. Ask a friend for their name and number (it is at the top of their Friends window) and add it above.',
+    linkIntro: 'Use the same account on another phone or PC. Show a code here and type it there within 10 minutes, or type a code from your other device here.',
+    linkWarn: 'This device then uses that account. The account it uses now (',
+    hostNote: 'Friends join from anywhere, phone or PC. Invite them here, or they choose Join next to your name in their Friends list.'
+  };
+
+  /** Status of a friend in plain words, and the colour of its dot. */
+  OU.statusText = function (state) { return KD.online && KD.online.statusText ? KD.online.statusText(state) : 'Offline'; };
+  OU.dotColor = function (state) { return state === 'run' || state === 'lobby' ? '#e2b34a' : state === 'online' ? '#7fcf5a' : '#8a8378'; };
+
+  /**
+   * The rows of the friends list. ctx: { room: the online room this player is in (or null), hosting: bool }.
+   * -> [{ id, full, name, tag, state, text, room, canJoin, canInvite, here }]
+   */
+  OU.friendRows = function (friends, ctx) {
+    ctx = ctx || {};
+    return (friends || []).map(function (f) {
+      var here = !!(ctx.room && f.room === ctx.room);
+      var on = f.state && f.state !== 'offline';
+      return { id: f.id, name: f.name, tag: f.tag, full: f.full || (KD.names ? KD.names.full(f.name, f.tag) : f.name), state: f.state || 'offline',
+        text: here ? 'In your game' : OU.statusText(f.state), room: f.room || null,
+        canJoin: !!(f.room && on && !here), canInvite: !!(on && !here && (!f.room || ctx.hosting)), here: here };
+    });
+  };
+  /** Friend requests -> [{ id, full, dir: 'in' | 'out', text }]. */
+  OU.requestRows = function (incoming, outgoing) {
+    var row = function (r, dir) { return { id: r.id, full: r.full || (KD.names ? KD.names.full(r.name, r.tag) : r.name), dir: dir, text: dir === 'in' ? 'wants to be your friend' : 'has not answered yet' }; };
+    return (incoming || []).map(function (r) { return row(r, 'in'); }).concat((outgoing || []).map(function (r) { return row(r, 'out'); }));
+  };
+  /** "Kaya#0042 invites you to play." */
+  OU.inviteText = function (inv) { var f = inv && inv.from; return (f ? (f.full || KD.names.full(f.name, f.tag)) : 'A friend') + ' invites you to play.'; };
+  /** When the next rename is allowed, in words ('' = now). */
+  OU.renameText = function (renameAt, now) {
+    if (!renameAt || renameAt <= now) return '';
+    var h = Math.ceil((renameAt - now) / 3600000);
+    if (h <= 24) return 'You can change your name again in ' + h + (h === 1 ? ' hour.' : ' hours.');
+    var d = Math.ceil(h / 24);
+    return 'You can change your name again in ' + d + (d === 1 ? ' day.' : ' days.');
+  };
+  /** Minutes and seconds left: 9:41. */
+  OU.clock = function (ms) { ms = Math.max(0, ms); var s = Math.ceil(ms / 1000), m = Math.floor(s / 60); s -= m * 60; return m + ':' + (s < 10 ? '0' : '') + s; };
+  /**
+   * What friends should see for this player. game: KD.game (state, run); session: KD.coop.session or null.
+   * -> { state: 'online' | 'lobby' | 'run', room }
+   */
+  OU.statusFor = function (game, session) {
+    var room = session && session.online ? session.online.room : null;
+    var inRun = !!(game && game.run && (game.state === 'play' || game.state === 'route' || game.state === 'setup' || game.state === 'over'));
+    if (inRun) return { state: 'run', room: room };
+    if (session) return { state: 'lobby', room: room };
+    return { state: 'online', room: null };
+  };
+  /** The friends to offer in the online lobby: online ones first, the ones already here left out. */
+  OU.lobbyFriends = function (friends, room) {
+    return OU.friendRows(friends, { room: room, hosting: true }).filter(function (r) { return r.state !== 'offline' && !r.here; });
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/ui/26_online_10_screens.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  if (typeof document === 'undefined' || !KD.flow || !KD.onlineui) return;       // browser only
+  var F = KD.flow, OU = KD.onlineui, CU = KD.coopui;
+
+  /**
+   * Online screens (docs/ONLINE.md): "Choose your name", the Friends window, invite and request toasts, "Link another
+   * device", the Online rows of Settings, and the online host's part of the co-op lobby. Nothing here touches a shared
+   * world: games start through KD.game.coopOpen(role, profile, KD.online.roomLink(room)).
+   */
+  var O = function () { return KD.online; };
+  var ST = OU.state = { game: null, shown: {}, toasts: {}, busy: false };
+  function safe(name, fn) { return function (a, b) { try { return fn(a, b); } catch (e) { console.error('KD.onlineui: ' + name, e); } }; }
+  function session() { return KD.coop ? KD.coop.session || null : null; }
+  function toast(text, kind, icon, ms) { try { return KD.ui.toast(text, { kind: kind || 'info', icon: icon || 'info', ms: ms }); } catch (e) { return null; } }
+  OU.configured = function () { return !!(O() && O().configured()); };
+  function notSetUp() { F.confirm({ title: 'Friends', text: OU.TEXT.notSetUpMore, yes: 'Understood', no: false, pauses: false, width: F.isTouch() ? 520 : 430 }); }
+  function el() { return KD.ui.el.apply(null, arguments); }
+  function copyFull(node) {
+    var full = O().full();
+    if (!full || !CU || !CU.copyText) return;
+    CU.copyText(full, node).then(function (how) { toast(how === 'copied' ? full + ' copied.' : CU.copyMessage(how, F.isTouch()), 'info', how === 'copied' ? 'check' : 'info', how === 'copied' ? undefined : 7000); });
+  }
+  function nameTag(full, cls) {
+    var at = full.lastIndexOf('#');
+    return el('span.ol-full' + (cls ? '.' + cls : ''), [el('span.ol-name', { text: full.slice(0, at) }), el('span.ol-tag', { text: full.slice(at) })]);
+  }
+
+  // ------------------------------------------------------------------------------------------ choose your name
+  /**
+   * openName(game, { rename, then }) -> the "Choose your name" window. First pick: creates the account. Rename: one change
+   * per 7 days after the first pick. then(account) runs after a successful first pick, once the player closes the window.
+   */
+  OU.openName = function (game, opts) {
+    opts = opts || {};
+    if (!OU.configured()) { notSetUp(); return null; }
+    var rename = !!opts.rename && O().hasName(), acc = O().account();
+    var wait = rename ? OU.renameText(O().renameAt(), Date.now()) : '';
+    var input = F.input({ value: rename ? acc.name : '', max: 16, placeholder: 'Your name', label: 'Your name', caps: 'words' });
+    input.classList.add('ol-name-input');
+    var msg = el('div.ol-msg', { attrs: { role: 'alert' } });
+    var go = KD.ui.button(rename ? 'Change it' : 'Continue', { kind: 'primary', icon: 'arrow_right', className: 'ol-name-go', onClick: function () { submit(); } });
+    var body = el('div.ol-namebox', [
+      el('div.ol-intro', { text: rename ? 'Your friends see the new name at once. The number after the # stays the same when it can.' : OU.TEXT.nameIntro }),
+      F.field('Your name', [input, el('div.ol-rules.kd-dim', { text: OU.TEXT.nameRules })]),
+      msg
+    ]);
+    function show(text, kind) { msg.textContent = text || ''; msg.className = 'ol-msg' + (kind ? ' ol-msg-' + kind : ''); }
+    var check = function () { var c = KD.names.check(input.value); show(input.value && !c.ok ? c.message : '', 'bad'); return c; };
+    input.addEventListener('input', check);
+    input.addEventListener('keydown', function (e) { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); submit(); } });
+    if (wait) { input.disabled = true; go.setDisabled(true); show(wait, 'warn'); }
+    function done(account) {
+      KD.ui.clear(body);
+      var full = KD.names.full(account.name, account.tag), copy;
+      body.appendChild(el('div.ol-done', [
+        el('div.ol-intro', { text: rename ? 'Your name is now' : 'Welcome. You are' }),
+        el('div.ol-bigname', [nameTag(full), copy = KD.ui.button('Copy', { small: true, icon: 'check', className: 'ol-copy', onClick: function () { copyFull(copy); } })]),
+        el('div.ol-intro.kd-dim', { text: 'Friends add you with this name and number. You find it again at the top of the Friends window.' })
+      ]));
+      if (later && later.parentNode) later.parentNode.removeChild(later);
+      go.replaceWith(go = KD.ui.button('Done', { kind: 'primary', icon: 'check', className: 'ol-name-done', autofocus: true, onClick: function () { KD.ui.windows.close('ol-name'); } }));
+    }
+    function submit() {
+      if (ST.busy || input.disabled) return;
+      var c = check();
+      if (!c.ok) { show(c.message, 'bad'); return; }
+      ST.busy = true; go.setDisabled(true); show('One moment...', '');
+      O().chooseName(c.name).then(function (r) {
+        ST.busy = false; go.setDisabled(false);
+        if (!r.ok) { show(r.message, 'bad'); return; }
+        F.sound('ui_confirm');
+        done(r.body.account);
+        ST.after = opts.then || null;
+      });
+    }
+    ST.after = null;
+    var later = KD.ui.button(rename ? 'Cancel' : 'Not now', { className: 'ol-name-later', onClick: function () { KD.ui.windows.close('ol-name'); } });
+    var w = F.window('ol-name', { title: rename ? 'Change your name' : 'Choose your name', icon: 'quill', width: F.isCompact() ? 640 : 470, pauses: false, content: body,
+      footer: [later, go],
+      onClose: function () { var f = ST.after; ST.after = null; ST.busy = false; if (f && O().hasName()) setTimeout(function () { f(O().account()); }, 0); } });
+    setTimeout(function () { try { if (!input.disabled && !F.isTouch()) input.focus(); } catch (e) { /* gone */ } }, 60);
+    return w;
+  };
+  /** Runs fn(account) when this device has a named account, asking for the name first when needed. */
+  OU.withName = function (game, fn) {
+    if (!OU.configured()) { notSetUp(); return false; }
+    if (O().hasName()) { fn(O().account()); return true; }
+    OU.openName(game, { then: fn });
+    return false;
+  };
+
+  // ------------------------------------------------------------------------------------------ the Friends window
+  var FW = { add: '', msg: null, kind: '' };
+  function myRoom() { var s = session(); return s && s.online ? s.online.room : null; }
+  function hosting() { var s = session(); return !!(s && s.online && (s.role === 'host' || s.wanted === 'host')); }
+  function friendsBody(game) {
+    var o = O(), st = o.state, full = o.full();
+    var copy = KD.ui.button('Copy', { small: true, className: 'ol-copy', onClick: function () { copyFull(copy); } });
+    var me = el('div.ol-me', [
+      el('div.ol-me-label', { text: 'You are' }), nameTag(full, 'ol-me-full'), copy,
+      el('div.flow-grow'),
+      el('span.ol-presence', [el('span.ol-dot', { style: { background: o.connected() ? OU.dotColor('online') : OU.dotColor('offline') } }), el('span', { text: o.connected() ? 'Online' : (st.presence === 'connecting' ? 'Connecting...' : 'Offline') })])
+    ]);
+    var input = F.input({ value: FW.add, max: 24, placeholder: 'Name#1234', label: 'Friend name and number', caps: 'off' });
+    input.classList.add('ol-add-input');
+    input.addEventListener('input', function () { FW.add = input.value; });
+    var add = KD.ui.button('Add friend', { kind: 'primary', icon: 'plus', className: 'ol-add-go', onClick: function () { doAdd(); } });
+    input.addEventListener('keydown', function (e) { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); doAdd(); } });
+    function doAdd() {
+      var t = input.value.trim();
+      if (!t) { FW.msg = 'Type a name and number, like Preston#4821.'; FW.kind = 'bad'; refresh(); return; }
+      add.setDisabled(true);
+      o.addFriend(t).then(function (r) {
+        add.setDisabled(false);
+        if (r.ok) {
+          FW.add = '';
+          var who = r.body.friend ? r.body.friend.full : t;
+          FW.msg = r.body.result === 'friends' ? who + ' is now your friend.' : r.body.result === 'already' ? who + ' is already your friend.' : 'Friend request sent to ' + who + '.';
+          FW.kind = 'good';
+        } else { FW.msg = r.message; FW.kind = 'bad'; }
+        refresh();
+      });
+    }
+    var addRow = el('div.ol-add', [input, add]);
+    var msg = FW.msg ? el('div.ol-msg.ol-msg-' + FW.kind, { text: FW.msg, attrs: { role: 'status' } }) : null;
+
+    var reqs = OU.requestRows(st.incoming, st.outgoing);
+    var reqBox = reqs.length ? el('div.ol-section', [el('div.ol-head', [el('span.kd-h3', { text: 'Requests' }), el('span.ol-count.kd-num', { text: String(reqs.length) })]),
+      el('div.ol-list', reqs.map(function (r) {
+        return el('div.ol-row.ol-req.ol-req-' + r.dir, { data: { id: r.id } }, [
+          el('div.ol-row-id', [nameTag(r.full), el('div.ol-row-sub', { text: r.text })]),
+          r.dir === 'in' ? el('div.ol-acts', [
+            KD.ui.button('Accept', { small: !F.isTouch(), kind: 'primary', icon: 'check', className: 'ol-accept', onClick: function () { act(o.accept(r.id)); } }),
+            KD.ui.button('Decline', { small: !F.isTouch(), className: 'ol-decline', onClick: function () { act(o.decline(r.id)); } })
+          ]) : el('div.ol-acts', [KD.ui.button('Cancel', { small: !F.isTouch(), className: 'ol-cancel', onClick: function () { act(o.cancel(r.id)); } })])
+        ]);
+      }))]) : null;
+
+    var rows = OU.friendRows(st.friends, { room: myRoom(), hosting: hosting() });
+    var list = el('div.ol-list.ol-friends', rows.length ? rows.map(function (r) {
+      return el('div.ol-row.ol-friend.ol-st-' + r.state, { data: { id: r.id } }, [
+        el('span.ol-dot', { style: { background: OU.dotColor(r.state) } }),
+        el('div.ol-row-id', [nameTag(r.full), el('div.ol-row-sub', { text: r.text })]),
+        el('div.ol-acts', [
+          r.canJoin ? KD.ui.button('Join', { small: !F.isTouch(), kind: 'primary', icon: 'gate', className: 'ol-join', onClick: function () { OU.joinFriend(game, r); } }) : null,
+          r.canInvite ? KD.ui.button('Invite', { small: !F.isTouch(), icon: 'horn', className: 'ol-invite', onClick: function (e, b) { OU.inviteFriend(game, r, b); } }) : null,
+          KD.ui.button(F.isTouch() ? 'Remove' : '', { small: true, icon: 'cross', className: 'ol-remove', aria: 'Remove ' + r.full, tip: F.isTouch() ? null : 'Remove from friends', onClick: function () {
+            F.confirm({ title: 'Remove ' + r.full + '?', text: 'You stop seeing each other in your Friends lists. You can add each other again later.', yes: 'Remove', no: 'Keep', danger: true, pauses: false })
+              .then(function (ok) { if (ok) act(o.remove(r.id)); });
+          } })
+        ])
+      ]);
+    }) : el('div.ol-empty', { text: st.loaded ? OU.TEXT.emptyFriends : 'Loading your friends...' }));
+    var friendsBox = el('div.ol-section.ol-grow', [el('div.ol-head', [el('span.kd-h3', { text: 'Friends' }), el('span.ol-count.kd-num', { text: rows.length + ' of ' + (st.max || 200) })]), list]);
+    return el('div.ol-friendsbox' + (F.isTouch() ? '.kd-scroll' : ''), [me, addRow, msg, reqBox, friendsBox]);
+  }
+  function act(p) { p.then(function (r) { if (!r.ok) { FW.msg = r.message; FW.kind = 'bad'; refresh(); } }); }
+  function refresh() {
+    var w = KD.ui.windows.get && KD.ui.windows.get('ol-friends');
+    if (!w || !ST.game) return;
+    var sc = w.node.querySelector('.ol-friends'), top = sc ? sc.scrollTop : 0;
+    w.setContent(friendsBody(ST.game));
+    var sc2 = w.node.querySelector('.ol-friends'); if (sc2) sc2.scrollTop = top;
+  }
+  OU.refreshFriends = refresh;
+  OU.openFriends = function (game) {
+    game = game || ST.game;
+    return OU.withName(game, function () {
+      FW.msg = null;
+      O().connect();
+      O().friends();
+      F.window('ol-friends', { title: 'Friends', icon: 'horn', width: F.isCompact() ? 860 : 640, pauses: false, content: friendsBody(game), className: 'ol-win',
+        footer: [KD.ui.button('Close', { kind: 'primary', onClick: function () { KD.ui.windows.close('ol-friends'); } })] });
+    });
+  };
+  OU.menuButton = function (game) {
+    return KD.ui.button('Friends', { icon: 'horn', className: 'flow-menu-btn ol-menu-btn', tip: F.isTouch() ? null : 'Add friends by name and play together from anywhere', onClick: function () {
+      if (!OU.configured()) return notSetUp();
+      OU.openFriends(game);
+    } });
+  };
+
+  // ------------------------------------------------------------------------------------------ hosting and joining online games
+  function profileFor(acc) {
+    var p = CU && CU.profile ? CU.profile() : null;
+    if (p && acc && acc.name) p.name = acc.name;
+    return { name: acc && acc.name ? acc.name : (p ? p.name : 'Player'), classId: p ? p.classId : 'ironbound' };
+  }
+  /** Leaves a solo run (saved) or another shared game first, when the player agrees. */
+  function leaveFirst(game, what) {
+    var s = session();
+    if (s) {
+      var lm = CU.leaveModel(s, { over: game.state === 'menu' });
+      return F.confirm({ title: lm.title, text: lm.text + ' ' + what, yes: lm.yes, no: 'Stay', pauses: false }).then(function (ok) { if (ok) game.coopLeave(); return ok; });
+    }
+    if (game.state !== 'menu') {
+      return F.confirm({ title: 'Leave your run?', text: 'Your run is saved: you can continue it from the menu. ' + what, yes: 'Go', no: 'Stay', pauses: false })
+        .then(function (ok) { if (ok) { try { game.toMenu(); } catch (e) { console.error(e); } } return ok; });
+    }
+    return Promise.resolve(true);
+  }
+  /** Start an online game as its host: a room on the service, then the co-op lobby. -> Promise<bool> */
+  OU.hostOnline = function (game) {
+    game = game || ST.game;
+    return new Promise(function (resolve) {
+      OU.withName(game, function (acc) {
+        leaveFirst(game, '').then(function (ok) {
+          if (!ok) return resolve(false);
+          O().createRoom().then(function (r) {
+            if (!r.ok) { F.confirm({ title: 'Could not start the game', text: r.message, yes: 'Understood', no: false, pauses: false }); return resolve(false); }
+            O().connect();
+            var started = game.coopOpen('host', profileFor(acc), O().roomLink(r.body.room));
+            resolve(started !== false);
+          });
+        });
+      });
+    });
+  };
+  /** Join an online room (an accepted invite or a friend's game). */
+  OU.joinRoom = function (game, room, who) {
+    game = game || ST.game;
+    var s = session();
+    if (s && s.online && s.online.room === room) { if (game.state === 'menu' && CU) CU.showLobby(game); return Promise.resolve(true); }
+    return new Promise(function (resolve) {
+      OU.withName(game, function (acc) {
+        leaveFirst(game, who ? 'You join ' + who + '.' : '').then(function (ok) {
+          if (!ok) return resolve(false);
+          KD.ui.windows.close('ol-friends');
+          resolve(game.coopOpen('guest', profileFor(acc), O().roomLink(room)) !== false);
+        });
+      });
+    });
+  };
+  OU.joinFriend = function (game, row) {
+    O().joinFriend(row.id).then(function (r) {
+      if (!r.ok) { toast(r.message, 'warn', 'warning', 6000); return; }
+      OU.joinRoom(game, r.body.room, row.full);
+    });
+  };
+  /** Invite a friend to this player's online game (starting one as the host when there is none). */
+  OU.inviteFriend = function (game, row, btn) {
+    var send = function (room) {
+      O().invite(row.id, room).then(function (r) {
+        if (r.ok) { toast('Invite sent to ' + row.full + '.', 'good', 'horn'); if (btn) { btn.setLabel('Invited'); btn.setDisabled(true); } }
+        else toast(r.message, 'warn', 'warning', 6000);
+      });
+    };
+    var room = myRoom();
+    if (room) return send(room);
+    OU.hostOnline(game).then(function (ok) { var r = myRoom(); if (ok && r) send(r); });
+  };
+
+  // ------------------------------------------------------------------------------------------ toasts: invites, requests, answers
+  OU.inviteToast = function (game, inv) {
+    if (!inv || ST.shown[inv.id] || (inv.expires && inv.expires < Date.now())) return null;
+    var s = session(); if (s && s.online && s.online.room === inv.room) return null;           // already there
+    ST.shown[inv.id] = true;
+    var t;
+    var gone = function () { delete ST.toasts[inv.id]; if (t) t.dismiss(); };
+    var node = el('div.ol-toast', [
+      el('div.ol-toast-text', { text: OU.inviteText(inv) }),
+      el('div.ol-toast-acts', [
+        KD.ui.button('Accept', { small: !F.isTouch(), kind: 'primary', icon: 'check', className: 'ol-inv-accept', onClick: function () {
+          gone();
+          O().answer(inv.id, true).then(function (r) {
+            if (!r.ok) { toast(r.message, 'warn', 'warning', 6000); return; }
+            OU.joinRoom(game, r.body.room, inv.from && inv.from.full);
+          });
+        } }),
+        KD.ui.button('Decline', { small: !F.isTouch(), className: 'ol-inv-decline', onClick: function () { gone(); O().answer(inv.id, false); } })
+      ])
+    ]);
+    t = KD.ui.toast(node, { kind: 'fate', icon: 'horn', ms: 0 });
+    t.classList.add('ol-invite-toast');
+    ST.toasts[inv.id] = t;
+    if (inv.expires) setTimeout(gone, Math.max(1000, inv.expires - Date.now()));
+    F.sound('ui_open');
+    return t;
+  };
+
+  // ------------------------------------------------------------------------------------------ link another device
+  var LK = { code: null, expires: 0, timer: 0 };
+  function linkBody(game) {
+    var o = O(), acc = o.account(), body = el('div.ol-linkbox');
+    var show = el('div.kd-plate.ol-linkcol', [el('div.kd-h3', { text: 'On this device' }), el('div.ol-intro', { text: 'Show a code, then type it on your other device.' })]);
+    var codeBox = el('div.ol-code-wrap');
+    var showBtn = KD.ui.button(LK.code ? 'New code' : 'Show a code', { kind: 'primary', icon: 'key', className: 'ol-link-show', disabled: !o.hasName(), onClick: function () {
+      showBtn.setDisabled(true);
+      o.linkStart().then(function (r) {
+        showBtn.setDisabled(false);
+        if (!r.ok) { codeBox.textContent = r.message; return; }
+        LK.code = r.body.code; LK.expires = r.body.expires; paint();
+      });
+    } });
+    function paint() {
+      KD.ui.clear(codeBox);
+      clearInterval(LK.timer);
+      if (!LK.code) return;
+      var left = el('div.ol-code-left');
+      codeBox.appendChild(el('div.ol-code.kd-num', { text: LK.code }));
+      codeBox.appendChild(left);
+      var tick = function () {
+        var ms = LK.expires - Date.now();
+        if (ms <= 0 || !document.body.contains(left)) { clearInterval(LK.timer); if (ms <= 0) { LK.code = null; KD.ui.clear(codeBox); codeBox.appendChild(el('div.kd-dim', { text: 'The code expired. Show a new one.' })); } return; }
+        left.textContent = 'Works once, for ' + OU.clock(ms) + ' more.';
+      };
+      tick(); LK.timer = setInterval(tick, 1000);
+    }
+    show.appendChild(o.hasName() ? el('div', [showBtn, codeBox]) : el('div.kd-dim', { text: 'Choose your name first.' }));
+    var input = F.input({ value: '', max: 12, placeholder: 'ABCD-1234', label: 'Code from the other device', caps: 'characters' });
+    input.classList.add('ol-code-input');
+    var msg = el('div.ol-msg' + (LK.done ? '.ol-msg-good' : ''), { text: LK.done || '' });
+    LK.done = null;
+    var claim = KD.ui.button('Link this device', { icon: 'chain', className: 'ol-link-claim', onClick: function () { doClaim(); } });
+    input.addEventListener('keydown', function (e) { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); doClaim(); } });
+    function doClaim() {
+      var code = input.value.trim();
+      if (!code) { msg.textContent = 'Type the code shown on the other device.'; msg.className = 'ol-msg ol-msg-bad'; return; }
+      var go = function () {
+        claim.setDisabled(true);
+        o.linkClaim(code).then(function (r) {
+          claim.setDisabled(false);
+          if (!r.ok) { msg.textContent = r.message; msg.className = 'ol-msg ol-msg-bad'; return; }
+          LK.done = 'Linked. This device is now ' + r.body.account.full + '.';
+          F.sound('ui_confirm');
+          var w = KD.ui.windows.get && KD.ui.windows.get('ol-link');
+          if (w) w.setContent(linkBody(game));
+          toast('This device is now ' + r.body.account.full + '.', 'good', 'check');
+        });
+      };
+      if (acc && acc.name) F.confirm({ title: 'Use the other account here?', text: OU.TEXT.linkWarn + KD.names.full(acc.name, acc.tag) + ') is no longer used on this device; link it again from a device that still has it.', yes: 'Link', no: 'Cancel', pauses: false }).then(function (ok) { if (ok) go(); });
+      else go();
+    }
+    var enter = el('div.kd-plate.ol-linkcol', [el('div.kd-h3', { text: 'From another device' }), el('div.ol-intro', { text: 'Type the code your other device shows.' }), el('div.ol-add', [input, claim]), msg]);
+    body.appendChild(el('div.ol-intro', { text: OU.TEXT.linkIntro }));
+    body.appendChild(el('div.ol-linkcols', [show, enter]));
+    if (LK.code && LK.expires > Date.now()) setTimeout(paint, 0); else LK.code = null;
+    return body;
+  }
+  OU.openLink = function (game) {
+    if (!OU.configured()) { notSetUp(); return null; }
+    O().connect();
+    return F.window('ol-link', { title: 'Link another device', icon: 'chain', width: F.isCompact() ? 860 : 640, pauses: false, content: linkBody(game || ST.game), className: 'ol-win',
+      onClose: function () { clearInterval(LK.timer); },
+      footer: [KD.ui.button('Done', { kind: 'primary', onClick: function () { KD.ui.windows.close('ol-link'); } })] });
+  };
+
+  // ------------------------------------------------------------------------------------------ Settings rows
+  /** The "Online" part of Settings (src/ui/20_flow_50_pause.js asks for it). row(label, control, hint) is the settings row builder. */
+  OU.settingsRows = function (game, row) {
+    var head = el('div.kd-h3', { text: 'Online' });
+    if (!OU.configured()) return [head, el('div.flow-set-note.kd-dim.ol-set-note', { text: OU.TEXT.notSetUp })];
+    var o = O(), full = o.full(), copy;
+    var nameCtl = full ? el('div.ol-set-name', [nameTag(full), copy = KD.ui.button('Copy', { small: true, className: 'ol-copy', onClick: function () { copyFull(copy); } }),
+      KD.ui.button('Change', { small: true, icon: 'quill', className: 'ol-rename', onClick: function () { OU.openName(game, { rename: true }); } })])
+      : KD.ui.button('Choose your name', { small: true, icon: 'quill', className: 'ol-choose', onClick: function () { OU.openName(game); } });
+    var wait = full ? OU.renameText(o.renameAt(), Date.now()) : '';
+    return [head,
+      row('Your name', nameCtl, wait || 'how friends find you'),
+      row('Other devices', KD.ui.button('Link another device', { small: true, icon: 'chain', className: 'ol-link', onClick: function () { OU.openLink(game); } }), 'one account on phone and PC'),
+      row('Friends', KD.ui.button('Open Friends', { small: true, icon: 'horn', className: 'ol-friends-btn', onClick: function () { OU.openFriends(game); } }))];
+  };
+
+  // ------------------------------------------------------------------------------------------ the online lobby (host)
+  /** What the host of an online game sees instead of the address line: friends to invite. */
+  OU.lobbyHost = function (game) {
+    var o = O(), room = myRoom(), rows = OU.lobbyFriends(o.state.friends, room);
+    var list = rows.length ? el('div.ol-lobby-list', rows.slice(0, 8).map(function (r) {
+      return el('div.ol-lobby-row', { data: { id: r.id } }, [el('span.ol-dot', { style: { background: OU.dotColor(r.state) } }), nameTag(r.full), el('span.ol-row-sub', { text: r.text }), el('div.flow-grow'),
+        KD.ui.button('Invite', { small: true, icon: 'horn', className: 'ol-invite', onClick: function (e, b) { OU.inviteFriend(game, r, b); } })]);
+    })) : el('div.ol-row-sub', { text: o.state.loaded ? 'None of your friends is online right now.' : 'Loading your friends...' });
+    return el('div.coop-host.ol-lobby', [
+      el('div.ol-lobby-head', [el('span.coop-mode-label', { text: 'Invite friends' }), el('div.flow-grow'), KD.ui.button('Friends', { small: true, icon: 'horn', className: 'ol-lobby-friends', onClick: function () { OU.openFriends(game); } })]),
+      list,
+      el('div.coop-addr-note', { text: OU.TEXT.hostNote })
+    ]);
+  };
+
+  // ------------------------------------------------------------------------------------------ start-up and status
+  function pushStatus(game) { if (!OU.configured() || !O().signedIn()) return; var st = OU.statusFor(game, session()); O().setStatus(st.state, st.room); }
+  KD.screens.register('online', function (game) {
+    ST.game = game;
+    if (!O()) return OU;
+    O().init();
+    if (!O().configured()) return OU;
+    var E = O().events;
+    E.on('friends', safe('friends', function () { refresh(); if (CU && CU.refreshLobby) CU.refreshLobby(game); }));
+    E.on('presence', safe('presence', function () { refresh(); }));
+    E.on('invite', safe('invite', function (inv) { OU.inviteToast(game, inv); }));
+    E.on('request', safe('request', function (d) { if (d && d.from && !KD.ui.windows.isOpen('ol-friends')) toast((d.from.full || d.from.name) + ' wants to be your friend. Open Friends to answer.', 'info', 'horn', 6000); }));
+    E.on('notice', safe('notice', function (d) { toast(d.text, d.kind || 'info', 'horn'); }));
+    E.on('inviteAnswer', safe('answer', function (d) { var who = d.by ? d.by.full || d.by.name : 'Your friend'; toast(d.accepted ? who + ' is on the way.' : who + ' cannot come right now.', d.accepted ? 'good' : 'info', 'horn'); }));
+    E.on('account', safe('account', function () { refresh(); pushStatus(game); }));
+    game.events.on('state', safe('state', function () { pushStatus(game); }));
+    game.events.on('coop', safe('coop', function () { pushStatus(game); }));
+    if (O().signedIn()) { pushStatus(game); O().connect(); O().refreshMe(); }
+    return OU;
+  });
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -94572,8 +95626,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (!quiet) { try { root.localStorage.setItem('kd.view', G.view); } catch (e) { /* storage blocked */ } }
     return G.view;
   };
-  /** True when this page can host or join a shared game: it was opened from the host server, not from a file. */
-  G.coopAvailable = function () { return !!(KD.coop && KD.coop.Session && KD.net && KD.net.available); };
+  /** True when this page can host or join a shared game: through the online service (KD.online) or the host server it was opened from. */
+  G.coopAvailable = function () { return !!(KD.coop && KD.coop.Session && KD.net && (KD.net.available || G.coopOnline())); };
+  /** True when the online service is set up (KD.config.online.url or ?online=): rooms instead of a PC host. */
+  G.coopOnline = function () { return !!(KD.online && KD.online.configured && KD.online.configured() && typeof root.WebSocket === 'function'); };
   function sampleInput(world, idx) {
     var p = world.players[idx];
     if (!p || p.dead || G.state !== 'play') return null;
@@ -94630,8 +95686,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    * G.events 'coop' { type, data, session }: open, lobby, start, world, worldEnd, end, waiting, down, allyDown,
    * desync, resync, status, refused, error, closed.
    */
-  G.coopOpen = function (role, profile) {
-    if (!G.coopAvailable()) return false;
+  G.coopOpen = function (role, profile, link) {
+    // link: an online room (KD.online.roomLink(room)); without it, the host server this page was opened from
+    if (!G.coopAvailable() || (!link && !KD.net.available)) return false;
     if (coS()) endSession('left');
     bindNet();
     profile = profile || {};
@@ -94640,6 +95697,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       hooks: { newRun: coopNewRun, request: coopRequest, now: now, phase: function (run) { return !run ? 'lobby' : (G.state === 'setup' ? 'setup' : run.phase); } } });
     KD.coop.session = s;
     s.wanted = role === 'host' ? 'host' : 'guest';
+    s.online = link ? { room: link.room || null } : null;
     s.events.on('world', onCoopWorld);
     s.events.on('end', onCoopEnd);
     s.events.on('runEvent', function (e) { G.events.emit('runEvent', e); });
@@ -94655,8 +95713,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     ['lobby', 'start', 'world', 'worldEnd', 'end', 'desync', 'resync', 'waiting', 'status', 'refused'].forEach(function (k) {
       s.events.on(k, function (e) { G.events.emit('coop', { type: k, data: e, session: s }); });
     });
-    G.events.emit('coop', { type: 'open', data: { role: s.wanted }, session: s });
-    return KD.net.connect(s.wanted);
+    G.events.emit('coop', { type: 'open', data: { role: s.wanted, online: s.online }, session: s });
+    return KD.net.connect(s.wanted, link || null);
   };
   function endSession(reason) {
     var s = coS();
