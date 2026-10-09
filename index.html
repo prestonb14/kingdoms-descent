@@ -2954,7 +2954,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.2';
+  KD.VERSION = '0.7.3';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -50751,6 +50751,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     this._pickLights();
     st.drawCalls = 0; st.triangles = 0; st.instances = 0; st.shadowDrawCalls = 0; st.shadowTriangles = 0; st.staticBatches = 0;
     this._uploadInstances();
+    if (this._extPass) this._extPass('prepare');          // [art skins] choose CPU / GPU skinning (CPU unless ?skin=gpu), CPU-skin + upload
     var batches = this.scene.batches;
 
     gl.disable(gl.BLEND); gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LESS); gl.depthMask(true); gl.colorMask(true, true, true, true);
@@ -52454,10 +52455,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    * The skin follows everything the game does to an Actor: position / yaw / scale, actor.tint (status tints),
    * actor.flash (hit flash), actor.alpha (death fade: transparent pass; below 0.5 no shadow), actor.emissive,
    * actor.outline, actor.visible and culling. Texels whose green clearly beats red and blue glow (sm.glow, from the
-   * asset: the eyes). GPU skinning, at most 32 bones, one draw call per character and pass.
+   * asset: the eyes). CPU skinning on every device (v0.7.3: see "skinning path" below; GPU skinning only behind ?skin=gpu), at most
+   * 32 bones, one draw call per character and pass.
    *
    * Renderer side: Renderer.prototype.skin(mesh, bones, nBones, params) queues one draw; the renderer calls
-   * renderer._extPass(pass) at the points marked "[art skins]" in 12_renderer.js (shadow, opaque, transparent, end).
+   * renderer._extPass(pass) at the points marked "[art skins]" in 12_renderer.js (prepare, shadow, opaque, transparent, end).
    */
   var MAX_BONES = 32, SVTX = 28;   // bytes per vertex: pos f32x3, normal i8x4, uv u16x2, joints u8x4, weights u8x4
 
@@ -52578,6 +52580,68 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     }
     return out;
   };
+  /** usedVertices(level) -> Uint16Array | Uint32Array: the vertices a detail level (0 = full, 1.. = lods) draws, once. */
+  SkinnedMesh.prototype.usedVertices = function (level) {
+    var U = this._used || (this._used = []);
+    if (U[level]) return U[level];
+    var ix = level ? this.lods[level - 1] : this.index, seen = new Uint8Array(this.nv), n = 0, i;
+    if (!ix) return this.usedVertices(0);
+    for (i = 0; i < ix.length; i++) if (!seen[ix[i]]) { seen[ix[i]] = 1; n++; }
+    var out = this.nv <= 65535 ? new Uint16Array(n) : new Uint32Array(n), k = 0;
+    for (i = 0; i < this.nv; i++) if (seen[i]) out[k++] = i;
+    return (U[level] = out);
+  };
+  /**
+   * The vertex data unpacked once for CPU skinning (exactly what the shader reads): bind position + normal interleaved
+   * (pn, 6 floats per vertex) and a compact influence list per vertex (only non-zero weights, already renormalised):
+   * the influences of vertex i are entries is[i] .. is[i + 1] - 1 of ij (joint index) and iw (weight).
+   */
+  SkinnedMesh.prototype._cpuData = function () {
+    if (this._cpu) return this._cpu;
+    var d = this.data, nv = this.nv, f32 = new Float32Array(d.buffer, d.byteOffset, (d.length / 4) | 0), i8 = new Int8Array(d.buffer, d.byteOffset, d.length);
+    var pos = new Float32Array(nv * 3), nrm = new Float32Array(nv * 3), pn = new Float32Array(nv * 6), is = new Uint32Array(nv + 1), i, k, n = 0;
+    for (i = 0; i < nv; i++) for (k = 0; k < 4; k++) if (d[i * SVTX + 24 + k]) n++;
+    var ij = new Uint8Array(n), iw = new Float32Array(n);
+    n = 0;
+    for (i = 0; i < nv; i++) {
+      var b = i * SVTX, s = 0;
+      for (k = 0; k < 3; k++) { pos[i * 3 + k] = pn[i * 6 + k] = f32[b / 4 + k]; nrm[i * 3 + k] = pn[i * 6 + 3 + k] = Math.max(i8[b + 12 + k] / 127, -1); }
+      for (k = 0; k < 4; k++) s += d[b + 24 + k];
+      s = Math.max(s, 0.0255);
+      is[i] = n;
+      for (k = 0; k < 4; k++) if (d[b + 24 + k]) { ij[n] = d[b + 20 + k]; iw[n] = d[b + 24 + k] / s; n++; }
+    }
+    is[nv] = n;
+    return (this._cpu = { pos: pos, nrm: nrm, pn: pn, is: is, ij: ij, iw: iw });
+  };
+  /**
+   * skinInto(bones, nb, out, verts?) -> out: CPU skinning of positions AND normals, the same maths as the skinning
+   * shader (weights renormalised, joint index clamped to nb - 1, normal normalised, a zero normal becomes up), into
+   * out = Float32Array(nv * 6): x, y, z, nx, ny, nz per vertex. verts: only these vertices (usedVertices(level));
+   * the others are left as they were. Allocates nothing. Used by the renderer's CPU skinning path (every device).
+   */
+  SkinnedMesh.prototype.skinInto = function (bones, nb, out, verts) {
+    var C = this._cpuData(), PN = C.pn, IS = C.is, IJ = C.ij, IW = C.iw, last = Math.max(0, nb - 1);
+    var n = verts ? verts.length : this.nv;
+    for (var q = 0; q < n; q++) {
+      var i = verts ? verts[q] : q, o = i * 6;
+      var px = PN[o], py = PN[o + 1], pz = PN[o + 2], lx = PN[o + 3], ly = PN[o + 4], lz = PN[o + 5];
+      var ox = 0, oy = 0, oz = 0, nx = 0, ny = 0, nz = 0;
+      for (var e = IS[i], end = IS[i + 1]; e < end; e++) {
+        var w = IW[e], j = IJ[e]; if (j > last) j = last;
+        j *= 12;
+        var a0 = bones[j], a1 = bones[j + 1], a2 = bones[j + 2];
+        var b0 = bones[j + 4], b1 = bones[j + 5], b2 = bones[j + 6];
+        var c0 = bones[j + 8], c1 = bones[j + 9], c2 = bones[j + 10];
+        ox += w * (a0 * px + a1 * py + a2 * pz + bones[j + 3]); oy += w * (b0 * px + b1 * py + b2 * pz + bones[j + 7]); oz += w * (c0 * px + c1 * py + c2 * pz + bones[j + 11]);
+        nx += w * (a0 * lx + a1 * ly + a2 * lz); ny += w * (b0 * lx + b1 * ly + b2 * lz); nz += w * (c0 * lx + c1 * ly + c2 * lz);
+      }
+      var nl = nx * nx + ny * ny + nz * nz;
+      out[o] = ox; out[o + 1] = oy; out[o + 2] = oz;
+      if (nl > 1e-12) { nl = 1 / Math.sqrt(nl); out[o + 3] = nx * nl; out[o + 4] = ny * nl; out[o + 5] = nz * nl; } else { out[o + 3] = 0; out[o + 4] = 1; out[o + 5] = 0; }
+    }
+    return out;
+  };
   /** Start decoding the texture (browser). Safe to call every frame. */
   SkinnedMesh.prototype.decode = function () {
     if (this.decodeState || !this.image || !G.gltf || !G.gltf.decodeImage) return;
@@ -52682,8 +52746,23 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     '  float nl = length(n); n = nl > 1e-6 ? n / nl : vec3(0.0, 1.0, 0.0);',
     '}'
   ].join('\n');
-  var VS_SKIN_LIT = [
-    VS_SKIN_HEAD,
+  /**
+   * The CPU-skinned head (v0.7.3, every device): positions and normals were skinned in JavaScript (SkinnedMesh.skinInto) and
+   * arrive as plain float attributes, so the vertex shader is an ordinary unskinned one (no bone uniforms, no integer
+   * attributes). The bodies below are shared, so both paths light, shade, outline and cast shadows identically.
+   */
+  var VS_CPU_HEAD = [
+    'precision highp float;',
+    'precision highp int;',
+    'layout(location=0) in highp vec3 aPos;',
+    'layout(location=1) in highp vec3 aNrm;',
+    'layout(location=2) in highp vec2 aUV;',
+    'uniform highp mat4 uViewProj;',
+    'void skin(out highp vec3 p, out highp vec3 n) {',
+    '  p = aPos; float nl = length(aNrm); n = nl > 1e-6 ? aNrm / nl : vec3(0.0, 1.0, 0.0);',
+    '}'
+  ].join('\n');
+  var VS_BODY_LIT = [
     'uniform mat4 uShadowMat;',
     'uniform vec4 uShadowP;',
     'uniform vec3 uSunDirV;',
@@ -52700,9 +52779,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     '  gl_Position = uViewProj * vec4(p, 1.0);',
     '}'
   ].join('\n');
-  var VS_SKIN_DEPTH = [VS_SKIN_HEAD, 'void main() { vec3 p; vec3 n; skin(p, n); gl_Position = uViewProj * vec4(p, 1.0); }'].join('\n');
-  var VS_SKIN_OUTLINE = [
-    VS_SKIN_HEAD,
+  var VS_BODY_DEPTH = 'void main() { vec3 p; vec3 n; skin(p, n); gl_Position = uViewProj * vec4(p, 1.0); }';
+  var VS_BODY_OUTLINE = [
     'uniform vec3 uCamV;',
     'uniform vec4 uOutline;',   // rgb, width
     'out vec3 vCol; out vec3 vPos;',
@@ -52714,8 +52792,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     '  gl_Position = uViewProj * vec4(p, 1.0);',
     '}'
   ].join('\n');
+  var VS_SKIN_LIT = VS_SKIN_HEAD + '\n' + VS_BODY_LIT, VS_SKIN_DEPTH = VS_SKIN_HEAD + '\n' + VS_BODY_DEPTH, VS_SKIN_OUTLINE = VS_SKIN_HEAD + '\n' + VS_BODY_OUTLINE;
   /** The skinned vertex shaders (tests check what phones need: highp, integer joints, no dynamic indexing). */
-  G.skinShaders = { head: VS_SKIN_HEAD, lit: VS_SKIN_LIT, depth: VS_SKIN_DEPTH, outline: VS_SKIN_OUTLINE };
+  G.skinShaders = { head: VS_SKIN_HEAD, lit: VS_SKIN_LIT, depth: VS_SKIN_DEPTH, outline: VS_SKIN_OUTLINE,
+    cpu: { head: VS_CPU_HEAD, lit: VS_CPU_HEAD + '\n' + VS_BODY_LIT, depth: VS_CPU_HEAD + '\n' + VS_BODY_DEPTH, outline: VS_CPU_HEAD + '\n' + VS_BODY_OUTLINE } };
   /**
    * The lit fragment shader of the renderer (so the hero gets exactly the same light, fog, shadows, rim, flash and
    * painted-surface noise as every other character), with two lines changed: the albedo is multiplied by the texture,
@@ -52730,10 +52810,47 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       .replace(E, '  col += alb * (vMat.x * 2.4) + vCol * kdAlb * (kdGlow * 2.0);');
   };
 
+  // ------------------------------------------------------------------ skinning path: CPU everywhere (v0.7.3)
+  /**
+   * Where skinned characters are skinned. v0.7.1 / v0.7.2: on an Android phone the Gravecaller's hem and legs became a
+   * long streak along the ground while SwiftShader (every headless test), Mesa llvmpipe, PCs and a tablet were right,
+   * whatever the skinning shader looked like. So no device depends on GPU vertex skinning any more:
+   *
+   *   'cpu'  (production, every device, every renderer string) SkinnedMesh.skinInto skins positions and normals in
+   *          JavaScript once per hero and frame, into a preallocated array uploaded with bufferSubData, and plain
+   *          unskinned vertex shaders draw it in every pass (shadow, lit, outline, fading). About 0.1-0.3 ms per hero.
+   *   'gpu'  the skinning vertex shaders: a developer switch only, ?skin=gpu in the page address (not saved, no
+   *          Settings row). Nothing chooses it on its own: not the device, not the GPU or its renderer string.
+   *
+   * KD.gfx.skinChoose(o) is the pure decision; renderer.skinInfo() tells what a renderer uses and why (also logged).
+   */
+  var SKIN_MODES = ['cpu', 'gpu'];
+  KD.config = KD.config || {};
+  KD.config.skin = 'cpu';
+  try { var qs = root.location && /[?&]skin=(cpu|gpu)\b/.exec(root.location.search || ''); if (qs) KD.config.skin = qs[1]; } catch (e2) { /* no location */ }
+  /**
+   * skinChoose({ want, gpuOk }) -> { path: 'cpu' | 'gpu', reason }. Pure. want: KD.config.skin ('gpu' only from
+   * ?skin=gpu); gpuOk: false when the GPU skinning shaders did not build. Every other input (device, renderer string,
+   * software rasteriser or not) is deliberately ignored.
+   */
+  G.skinChoose = function (o) {
+    o = o || {};
+    if (o.want !== 'gpu') return { path: 'cpu', reason: 'CPU skinning on every device' };
+    if (o.gpuOk === false) return { path: 'cpu', reason: '?skin=gpu, but the GPU skinning shaders did not build' };
+    return { path: 'gpu', reason: 'developer switch ?skin=gpu' };
+  };
+  G.skinMode = function () { return KD.config.skin; };
+  /** setSkinMode('cpu' | 'gpu'): this page only (tests, the console); renderers switch on their next frame. Not saved. */
+  G.setSkinMode = function (m) {
+    if (SKIN_MODES.indexOf(m) < 0) return false;
+    KD.config.skin = m;
+    return true;
+  };
+
   // ------------------------------------------------------------------ renderer integration
   var Renderer = G.Renderer;
   if (Renderer && !Renderer.prototype.skin) {
-    function Draw() { this.lod = 0; this.mesh = null; this.bones = new Float32Array(MAX_BONES * 12); this.nb = 0; this.tint = new Float32Array(4); this.par = new Float32Array(4); this.outline = new Float32Array(4); this.hasOutline = false; }
+    function Draw() { this.lod = 0; this.mesh = null; this.bones = new Float32Array(MAX_BONES * 12); this.nb = 0; this.tint = new Float32Array(4); this.par = new Float32Array(4); this.outline = new Float32Array(4); this.hasOutline = false; this.src = null; this.slot = null; }
     /**
      * Queue a skinned mesh for this frame: bones = 12 floats per joint (rows of world * inverse bind), r,g,b tint
      * (sRGB, multiplies the texture), a alpha, flash 0..1, emissive, outline [r,g,b] or null with its width.
@@ -52745,6 +52862,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       var d = Q.list[Q.n] || (Q.list[Q.n] = new Draw());
       Q.n++;
       d.mesh = mesh; d.nb = Math.min(nb, MAX_BONES); d.bones.set(nb * 12 <= bones.length ? bones.subarray(0, d.nb * 12) : bones);
+      d.src = bones; d.slot = null;
       d.tint[0] = r; d.tint[1] = g; d.tint[2] = b; d.tint[3] = a;
       d.par[0] = flash || 0; d.par[1] = emissive || 0; d.par[2] = 0; d.par[3] = 0;
       d.hasOutline = !!outline;
@@ -52780,7 +52898,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       gl.enableVertexAttribArray(4); gl.vertexAttribPointer(4, 4, gl.UNSIGNED_BYTE, true, SVTX, 24);
       for (i = 5; i < 10; i++) gl.disableVertexAttribArray(i);
       gl.bindVertexArray(null);
-      g.levels.push({ vao: g.vao, count: g.count, type: g.type });
+      g.levels.push({ vao: g.vao, ibo: g.ibo, count: g.count, type: g.type });
       for (var li = 0; li < mesh.lods.length; li++) {        // a VAO per detail level: the same vertex buffer, its own indices
         var ix = mesh.lods[li], lv = { vao: gl.createVertexArray(), ibo: gl.createBuffer(), count: ix.length, type: ix instanceof Uint16Array ? gl.UNSIGNED_SHORT : gl.UNSIGNED_INT };
         gl.bindVertexArray(lv.vao);
@@ -52793,16 +52911,21 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         gl.bindVertexArray(null);
         g.levels.push(lv);
       }
+      // v0.7.3: texture unit 1, never 0. This used to run on the active unit 0 in the middle of a pass and replaced the
+      // shadow map there for the rest of that frame (a sampler2DShadow reading a colour texture: draws rejected).
+      gl.activeTexture(gl.TEXTURE1);
       gl.bindTexture(gl.TEXTURE_2D, g.tex);
       var c = mesh.placeholder, px = new Uint8Array([Math.round(c[0] * 255), Math.round(c[1] * 255), Math.round(c[2] * 255), 255]);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, px);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.activeTexture(gl.TEXTURE0);
       if (mesh.decoded) this._skinTexture(g, mesh);
       this._skinBytes = (this._skinBytes || 0) + mesh.data.length + mesh.index.byteLength;
       return g;
     };
     Renderer.prototype._skinTexture = function (g, mesh) {
       var gl = this.gl;
+      gl.activeTexture(gl.TEXTURE1);                   // not unit 0: that holds the shadow map during the passes
       gl.bindTexture(gl.TEXTURE_2D, g.tex);
       gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
       try {
@@ -52811,88 +52934,195 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
       } catch (e) { if (typeof console !== 'undefined') console.warn('KD.gfx skin texture upload failed', e); }
+      gl.activeTexture(gl.TEXTURE0);
       g.texVersion = mesh.version;
     };
-    Renderer.prototype._skinProg = function (kind) {
-      var S = G._shaders, key = 'skin_' + kind + (kind === 'lit' ? this._key : '');
+    /** The program of a pass: kind 'lit' | 'depth' | 'outline'; cpu: the unskinned variant fed by the CPU path. */
+    Renderer.prototype._skinProg = function (kind, cpu) {
+      var S = G._shaders, key = 'skin_' + (cpu ? 'cpu_' : '') + kind + (kind === 'lit' ? this._key : '');
       var p = this._progs[key];
       if (p !== undefined) return p;
       p = null;
       try {
         if (!S) throw new Error('renderer shader sources are not exposed (G._shaders)');
-        var maxVU = this.gl.getParameter(this.gl.MAX_VERTEX_UNIFORM_VECTORS) || 0;
-        if (maxVU && maxVU < G.SkinnedMesh.UNIFORM_VECTORS) throw new Error('the GPU has ' + maxVU + ' vertex uniform vectors, skinning needs ' + G.SkinnedMesh.UNIFORM_VECTORS);
+        if (!cpu) {
+          var maxVU = this.gl.getParameter(this.gl.MAX_VERTEX_UNIFORM_VECTORS) || 0;
+          if (maxVU && maxVU < G.SkinnedMesh.UNIFORM_VECTORS) throw new Error('the GPU has ' + maxVU + ' vertex uniform vectors, skinning needs ' + G.SkinnedMesh.UNIFORM_VECTORS);
+        }
+        var V = cpu ? G.skinShaders.cpu : G.skinShaders;
         var taps = this.shadows === 'high' ? 9 : (this.shadows === 'low' ? 4 : 0), st = 'SHADOW_TAPS ' + taps;
         if (kind === 'lit') {
           var fs = G.skinFragmentShader(S.FS_LIT);
           if (!fs) throw new Error('the lit fragment shader changed: textures cannot be added');
-          p = new S.Program(this.gl, VS_SKIN_LIT, fs, this.level.paint === false ? [st, 'INSTANCED'] : [st, 'PAINT', 'INSTANCED']);
-        } else if (kind === 'depth') p = new S.Program(this.gl, VS_SKIN_DEPTH, S.FS_DEPTH, []);
-        else p = new S.Program(this.gl, VS_SKIN_OUTLINE, S.FS_OUTLINE, []);
-      } catch (e) { if (typeof console !== 'undefined') console.error('KD.gfx skinned ' + kind + ' shader', e); p = null; }
+          p = new S.Program(this.gl, V.lit, fs, this.level.paint === false ? [st, 'INSTANCED'] : [st, 'PAINT', 'INSTANCED']);
+        } else if (kind === 'depth') p = new S.Program(this.gl, V.depth, S.FS_DEPTH, []);
+        else p = new S.Program(this.gl, V.outline, S.FS_OUTLINE, []);
+      } catch (e) { if (typeof console !== 'undefined') console.error('KD.gfx skinned ' + (cpu ? 'CPU ' : '') + kind + ' shader', e); p = null; }
       this._progs[key] = p;
       return p;
     };
-    function bind(r, d, prog, texUnit) {
+
+    // ---- CPU path: dynamic vertex buffers (position + normal, float) per queued draw, UVs from the static buffer.
+    // Two buffers used in turn (frame N writes one while the GPU may still read the other from frame N - 1), so the
+    // upload never waits for the GPU; each has its own VAO per detail level. slot.levels = the VAOs of the current one.
+    var CPU_STRIDE = 24, CPU_RING = 2;
+    function makeCpuSlot(r, mesh, g) {
+      var gl = r.gl, s = { mesh: mesh, token: r._progs, ring: [], cur: 0, vbo: null, arr: new Float32Array(mesh.nv * 6), levels: null, uploads: 0, skins: 0 };
+      for (var k = 0; k < CPU_RING; k++) {
+        var e = { vbo: gl.createBuffer(), levels: [] };
+        gl.bindBuffer(gl.ARRAY_BUFFER, e.vbo); gl.bufferData(gl.ARRAY_BUFFER, s.arr.byteLength, gl.DYNAMIC_DRAW);
+        for (var l = 0; l < g.levels.length; l++) {
+          var vao = gl.createVertexArray();
+          gl.bindVertexArray(vao);
+          gl.bindBuffer(gl.ARRAY_BUFFER, e.vbo);
+          gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, CPU_STRIDE, 0);
+          gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 3, gl.FLOAT, false, CPU_STRIDE, 12);
+          gl.bindBuffer(gl.ARRAY_BUFFER, g.vbo);
+          gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 2, gl.UNSIGNED_SHORT, true, SVTX, 16);
+          for (var a = 3; a < 10; a++) gl.disableVertexAttribArray(a);
+          gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, g.levels[l].ibo);
+          gl.bindVertexArray(null);
+          e.levels.push(vao);
+        }
+        s.ring.push(e);
+      }
+      s.vbo = s.ring[0].vbo; s.levels = s.ring[0].levels;
+      return s;
+    }
+    /** Upload slot.arr into the next buffer of the ring; slot.vbo / slot.levels then point at it. */
+    function uploadCpuSlot(gl, s) {
+      s.cur = (s.cur + 1) % s.ring.length;
+      var e = s.ring[s.cur];
+      s.vbo = e.vbo; s.levels = e.levels;
+      gl.bindBuffer(gl.ARRAY_BUFFER, e.vbo);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, s.arr);
+      s.uploads++;
+    }
+    function freeCpuSlot(r, s) {
+      if (!s || r.lost || s.token !== r._progs) return;
+      var gl = r.gl;
+      for (var k = 0; k < s.ring.length; k++) {
+        for (var l = 0; l < s.ring[k].levels.length; l++) gl.deleteVertexArray(s.ring[k].levels[l]);
+        gl.deleteBuffer(s.ring[k].vbo);
+      }
+    }
+    Renderer.prototype._skinCpuSlot = function (i, mesh) {
+      var S = this._skinSlots || (this._skinSlots = []), s = S[i];
+      if (s && s.mesh === mesh && s.token === this._progs) return s;
+      freeCpuSlot(this, s);
+      return (S[i] = makeCpuSlot(this, mesh, this._skinGpu(mesh)));
+    };
+    function sameBones(a, b) {
+      if (a.src !== b.src || a.mesh !== b.mesh || a.lod !== b.lod || a.nb !== b.nb) return false;
+      for (var k = a.nb * 12 - 1; k >= 0; k--) if (a.bones[k] !== b.bones[k]) return false;
+      return true;
+    }
+    /** Skin every queued draw on the CPU (a draw of the same hero and pose queued twice is skinned once) and upload. */
+    Renderer.prototype._skinCpuFrame = function (Q) {
+      var gl = this.gl, st = this.stats, t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(), n = 0, i, j;
+      for (i = 0; i < Q.n; i++) {
+        var d = Q.list[i], dup = null;
+        for (j = 0; j < i; j++) if (Q.list[j].slot && sameBones(Q.list[j], d)) { dup = Q.list[j].slot; break; }
+        if (dup) { d.slot = dup; continue; }
+        var s = this._skinCpuSlot(i, d.mesh), g = this._skinGpu(d.mesh), li = Math.min(d.lod, g.levels.length - 1);
+        d.mesh.skinInto(d.bones, d.nb, s.arr, d.mesh.usedVertices(li));
+        uploadCpuSlot(gl, s);
+        s.skins++; n++;
+        d.slot = s;
+      }
+      var t1 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+      if (st) { st.skinCpu = n; st.skinCpuMs = t1 - t0; }
+    };
+
+    /** Decide (and log) this renderer's skinning path. -> 'cpu' | 'gpu'. CPU unless ?skin=gpu (see skinChoose). */
+    Renderer.prototype._skinResolve = function () {
+      var want = KD.config.skin, sel = this._skinSel;
+      if (sel && sel.want === want && sel.token === this._progs) return sel.path;
+      var o = { want: want, gpuOk: null };
+      if (want === 'gpu') o.gpuOk = !!(this._skinProg('lit') && this._skinProg('depth') && this._skinProg('outline'));
+      var c = G.skinChoose(o);
+      var changed = !sel || sel.path !== c.path || sel.reason !== c.reason;
+      this._skinSel = { want: want, path: c.path, reason: c.reason, token: this._progs };
+      if (changed && typeof console !== 'undefined') console.info('KD.gfx: skinned characters use ' + c.path.toUpperCase() + ' skinning (' + c.reason + ')');
+      if (this.stats) this.stats.skinPath = c.path;
+      return c.path;
+    };
+    /** What this renderer skins with: { want, path, reason, test } (null before the first skinned character). */
+    Renderer.prototype.skinInfo = function () {
+      var s = this._skinSel;
+      return s ? { want: s.want, path: s.path, reason: s.reason } : null;
+    };
+
+    function bind(r, d, prog, cpu) {
       var gl = r.gl, u = prog.u, g = r._skinGpu(d.mesh);
-      gl.uniform4fv(u.uBones, d.bones, 0, d.nb * 12);
-      if (u.uBoneMax) gl.uniform1i(u.uBoneMax, Math.max(0, d.nb - 1));
+      if (!cpu) {
+        gl.uniform4fv(u.uBones, d.bones, 0, d.nb * 12);
+        if (u.uBoneMax) gl.uniform1i(u.uBoneMax, Math.max(0, d.nb - 1));
+      }
       if (u.uTint) gl.uniform4fv(u.uTint, d.tint);
       if (u.uPar) gl.uniform4fv(u.uPar, d.par);
       if (u.uGlow) gl.uniform4f(u.uGlow, d.mesh.glow.min, 0, 0, d.mesh.glow.strength);
       if (u.uOutline) gl.uniform4fv(u.uOutline, d.outline);
       if (u.uTex) { gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, g.tex); gl.uniform1i(u.uTex, 1); gl.activeTexture(gl.TEXTURE0); }
-      var lv = g.levels[Math.min(d.lod, g.levels.length - 1)];
-      gl.bindVertexArray(lv.vao);
+      var li = Math.min(d.lod, g.levels.length - 1), lv = g.levels[li];
+      gl.bindVertexArray(cpu ? d.slot.levels[li] : lv.vao);
       return lv;
     }
-    /** Called by Renderer.render at its "[art skins]" points: 'begin' | 'shadow' | 'opaque' | 'transp' | 'end'. */
+    /** Called by Renderer.render at its "[art skins]" points: 'begin' | 'prepare' | 'shadow' | 'opaque' | 'transp' | 'end'. */
     Renderer.prototype._extPass = function (pass) {
       var Q = this._skinQ;
-      if (pass === 'end' || pass === 'begin') { if (Q) Q.n = 0; return; }
+      if (pass === 'end' || pass === 'begin') { if (Q) { for (var e = 0; e < Q.n; e++) Q.list[e].slot = null; Q.n = 0; } return; }
       if (!Q || !Q.n) return;
       var gl = this.gl, F = this._f, st = this.stats, i, d, g, prog;
+      if (pass === 'prepare') {          // before any pass: the path (CPU unless ?skin=gpu), CPU-skin and upload
+        this._skinCpu = this._skinResolve() === 'cpu';
+        if (this._skinCpu) this._skinCpuFrame(Q); else if (st) { st.skinCpu = 0; st.skinCpuMs = 0; }
+        gl.bindVertexArray(null);
+        return;
+      }
+      var cpu = !!this._skinCpu;
+      function ok(dd) { return !cpu || !!dd.slot; }
       if (pass === 'shadow') {
-        prog = this._skinProg('depth'); if (!prog) return;
+        prog = this._skinProg('depth', cpu); if (!prog) return;
         this._common(prog, F.shadowClip);
         gl.enable(gl.CULL_FACE); gl.cullFace(gl.FRONT); gl.frontFace(gl.CCW);
         for (i = 0; i < Q.n; i++) {
-          d = Q.list[i]; if (d.tint[3] < 0.5) continue;
-          g = bind(this, d, prog); gl.drawElements(gl.TRIANGLES, g.count, g.type, 0);
+          d = Q.list[i]; if (d.tint[3] < 0.5 || !ok(d)) continue;
+          g = bind(this, d, prog, cpu); gl.drawElements(gl.TRIANGLES, g.count, g.type, 0);
           st.shadowDrawCalls++; st.shadowTriangles += g.count / 3;
         }
         gl.cullFace(gl.BACK);
       } else if (pass === 'opaque') {
-        prog = this._skinProg('lit'); if (!prog) return;
+        prog = this._skinProg('lit', cpu); if (!prog) return;
         this._common(prog);
         gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK); gl.frontFace(gl.CCW);
         var outl = false; st.skinned = 0;
         for (i = 0; i < Q.n; i++) {
           d = Q.list[i]; if (d.hasOutline) outl = true;
-          if (d.tint[3] < 0.999) continue;
-          g = bind(this, d, prog); gl.drawElements(gl.TRIANGLES, g.count, g.type, 0);
+          if (d.tint[3] < 0.999 || !ok(d)) continue;
+          g = bind(this, d, prog, cpu); gl.drawElements(gl.TRIANGLES, g.count, g.type, 0);
           st.drawCalls++; st.triangles += g.count / 3; st.skinned = (st.skinned || 0) + 1;
         }
         if (outl) {
-          prog = this._skinProg('outline');
+          prog = this._skinProg('outline', cpu);
           if (prog) {
             this._common(prog); gl.frontFace(gl.CW);
-            for (i = 0; i < Q.n; i++) { d = Q.list[i]; if (!d.hasOutline || d.tint[3] < 0.999) continue; g = bind(this, d, prog); gl.drawElements(gl.TRIANGLES, g.count, g.type, 0); st.drawCalls++; }
+            for (i = 0; i < Q.n; i++) { d = Q.list[i]; if (!d.hasOutline || d.tint[3] < 0.999 || !ok(d)) continue; g = bind(this, d, prog, cpu); gl.drawElements(gl.TRIANGLES, g.count, g.type, 0); st.drawCalls++; }
             gl.frontFace(gl.CCW);
           }
         }
       } else if (pass === 'transp') {
-        prog = this._skinProg('lit'); if (!prog) return;
+        prog = this._skinProg('lit', cpu); if (!prog) return;
         var any = false;
-        for (i = 0; i < Q.n; i++) if (Q.list[i].tint[3] < 0.999) { any = true; break; }
+        for (i = 0; i < Q.n; i++) if (Q.list[i].tint[3] < 0.999 && ok(Q.list[i])) { any = true; break; }
         if (!any) return;
         this._common(prog);
         gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK); gl.frontFace(gl.CCW);
         // the same two steps as transparent instances: depth only, then one clean blended layer
         gl.disable(gl.BLEND); gl.colorMask(false, false, false, false); gl.depthMask(true); gl.depthFunc(gl.LESS);
-        for (i = 0; i < Q.n; i++) { d = Q.list[i]; if (d.tint[3] >= 0.999) continue; g = bind(this, d, prog); gl.drawElements(gl.TRIANGLES, g.count, g.type, 0); }
+        for (i = 0; i < Q.n; i++) { d = Q.list[i]; if (d.tint[3] >= 0.999 || !ok(d)) continue; g = bind(this, d, prog, cpu); gl.drawElements(gl.TRIANGLES, g.count, g.type, 0); }
         gl.colorMask(true, true, true, true); gl.depthMask(false); gl.depthFunc(gl.LEQUAL); gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-        for (i = 0; i < Q.n; i++) { d = Q.list[i]; if (d.tint[3] >= 0.999) continue; g = bind(this, d, prog); gl.drawElements(gl.TRIANGLES, g.count, g.type, 0); st.drawCalls++; st.triangles += g.count / 3; }
+        for (i = 0; i < Q.n; i++) { d = Q.list[i]; if (d.tint[3] >= 0.999 || !ok(d)) continue; g = bind(this, d, prog, cpu); gl.drawElements(gl.TRIANGLES, g.count, g.type, 0); st.drawCalls++; st.triangles += g.count / 3; }
         gl.depthMask(true); gl.depthFunc(gl.LESS); gl.disable(gl.BLEND);
       }
       gl.bindVertexArray(null);
