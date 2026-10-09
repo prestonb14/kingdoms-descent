@@ -2954,7 +2954,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.0';
+  KD.VERSION = '0.7.2';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -52514,6 +52514,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     for (i = 0; i < kl.length; i++) {
       var lm = doc.meshes[kl[i].mesh], lp = lm && lm.primitives[0];
       if (!lp || !lp.indices || lp.count !== nv) continue;
+      var bad = false;
+      for (var li = 0; li < lp.indices.length; li++) if (lp.indices[li] >= nv) { bad = true; break; }
+      if (bad || lp.indices.length % 3) { if (typeof console !== 'undefined') console.warn('SkinnedMesh: detail level ' + (i + 1) + ' has indices outside the mesh: left out'); continue; }
       this.lods.push(nv <= 65535 && !(lp.indices instanceof Uint16Array) ? new Uint16Array(lp.indices) : lp.indices);
     }
     /** Distance (m) beyond which the first lower detail level is drawn; at the quality level 'low' (phones) it always is. */
@@ -52529,6 +52532,52 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     this.decoded = null; this.decodeState = 0;                   // 0 not started, 1 decoding, 2 ready, 3 failed
     this.version = 1;
   }
+  /**
+   * check() -> { ok, issues: [..], weightSum, jointMax, lods }: every vertex has weights summing to 1 (8-bit) and joint
+   * indices inside the skeleton, every detail level's indices are inside the vertex list. Pure (tests, tools).
+   */
+  SkinnedMesh.prototype.check = function () {
+    var d = this.data, nv = this.nv, nj = this.jointNames.length, issues = [], worst = 0, jmax = 0, i, k;
+    for (i = 0; i < nv; i++) {
+      var s = 0;
+      for (k = 0; k < 4; k++) { s += d[i * SVTX + 24 + k]; var j = d[i * SVTX + 20 + k]; if (j > jmax) jmax = j; if (j >= nj) { issues.push('vertex ' + i + ' joint ' + j); break; } }
+      if (Math.abs(s - 255) > worst) worst = Math.abs(s - 255);
+    }
+    if (worst) issues.push('weights do not sum to 1 (worst ' + worst + '/255)');
+    var levels = [this.index].concat(this.lods);
+    for (var l = 0; l < levels.length; l++) {
+      var ix = levels[l];
+      if (ix.length % 3) issues.push('level ' + l + ': index count');
+      for (i = 0; i < ix.length; i++) if (ix[i] >= nv) { issues.push('level ' + l + ': index ' + ix[i] + ' >= ' + nv); break; }
+    }
+    return { ok: !issues.length, issues: issues, weightSum: worst / 255, jointMax: jmax, lods: this.lods.length };
+  };
+  /**
+   * skinCPU(bones, nb, out?, opts?) -> Float32Array(nv * 3): the vertex positions exactly as the skinning shader computes
+   * them (weights renormalised, joint indices clamped to nb - 1). bones: 12 floats per joint as Actor.skinBones gives.
+   * opts.round(x): applied to every bone value and product (tests use it to emulate 16-bit float GPU maths).
+   */
+  SkinnedMesh.prototype.skinCPU = function (bones, nb, out, opts) {
+    var d = this.data, f32 = new Float32Array(d.buffer, d.byteOffset, (d.length / 4) | 0), nv = this.nv, R = opts && opts.round, i, k, r;
+    out = out || new Float32Array(nv * 3);
+    for (i = 0; i < nv; i++) {
+      var b = i * SVTX, px = f32[b / 4], py = f32[b / 4 + 1], pz = f32[b / 4 + 2], s = 0, ox = 0, oy = 0, oz = 0;
+      for (k = 0; k < 4; k++) s += d[b + 24 + k];
+      s = Math.max(s, 0.0255);                 // the shader: max(sum, 1e-4) on weights in 0..1
+      for (k = 0; k < 4; k++) {
+        var w = d[b + 24 + k] / s; if (!w) continue;
+        var j = Math.min(Math.max(d[b + 20 + k], 0), nb - 1) * 12, o = [0, 0, 0];
+        for (r = 0; r < 3; r++) {
+          var m0 = bones[j + r * 4], m1 = bones[j + r * 4 + 1], m2 = bones[j + r * 4 + 2], m3 = bones[j + r * 4 + 3];
+          o[r] = R ? R(R(m0) * px + R(m1) * py + R(m2) * pz + R(m3)) : m0 * px + m1 * py + m2 * pz + m3;
+        }
+        ox += w * o[0]; oy += w * o[1]; oz += w * o[2];
+        if (R) { ox = R(ox); oy = R(oy); oz = R(oz); }
+      }
+      out[i * 3] = ox; out[i * 3 + 1] = oy; out[i * 3 + 2] = oz;
+    }
+    return out;
+  };
   /** Start decoding the texture (browser). Safe to call every frame. */
   SkinnedMesh.prototype.decode = function () {
     if (this.decodeState || !this.image || !G.gltf || !G.gltf.decodeImage) return;
@@ -52541,6 +52590,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   };
   G.SkinnedMesh = SkinnedMesh;
   G.SkinnedMesh.MAX_BONES = MAX_BONES;
+  /**
+   * Vertex uniform vectors the skinned shaders use at most (bones + matrices + parameters). OpenGL ES 3.0 guarantees
+   * 256 (MAX_VERTEX_UNIFORM_VECTORS), and many phones report exactly that: the renderer checks it before building them.
+   */
+  G.SkinnedMesh.UNIFORM_VECTORS = MAX_BONES * 3 + 1 + 4 + 4 + 1 + 1 + 1 + 1 + 1 + 1 + 8;
 
   // ------------------------------------------------------------------ Actor integration
   var Actor = G.Actor;
@@ -52591,23 +52645,41 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   }
 
   // ------------------------------------------------------------------ shaders
+  /**
+   * The skinning vertex shader head. Written for phone GPUs (v0.7.1: on an Android phone the hem and legs, the only
+   * vertices with four influences, exploded into a streak metres long towards the world origin, while SwiftShader, PCs
+   * and a tablet were right): everything skinning reads is explicitly highp; joint indices are a true integer attribute
+   * (uvec4 from vertexAttribIPointer, no float conversion and no USCALED vertex format, which Vulkan does not require and
+   * ANGLE emulates); the four influences are unrolled (no loop, no `continue`, no dynamic indexing of a vector
+   * component, all known mobile driver trouble spots); every joint index is clamped to the bones actually uploaded, so
+   * a bad index reads a real bone of the same character instead of an unset (zero) row that pulls the vertex to the
+   * world origin; and a degenerate normal does not become NaN.
+   */
   var VS_SKIN_HEAD = [
     'precision highp float;',
-    'layout(location=0) in vec3 aPos;',
-    'layout(location=1) in vec4 aNrm;',
-    'layout(location=2) in vec2 aUV;',
-    'layout(location=3) in vec4 aJnt;',
-    'layout(location=4) in vec4 aWgt;',
-    'uniform vec4 uBones[' + (MAX_BONES * 3) + '];',
-    'uniform mat4 uViewProj;',
-    'void skin(out vec3 p, out vec3 n) {',
-    '  vec4 lp = vec4(aPos, 1.0); vec3 ln = aNrm.xyz; p = vec3(0.0); n = vec3(0.0);',
-    '  for (int k = 0; k < 4; k++) {',
-    '    float w = aWgt[k]; if (w <= 0.0) continue;',
-    '    int j = int(aJnt[k] + 0.5) * 3; vec4 r0 = uBones[j], r1 = uBones[j + 1], r2 = uBones[j + 2];',
-    '    p += w * vec3(dot(r0, lp), dot(r1, lp), dot(r2, lp));',
-    '    n += w * vec3(dot(r0.xyz, ln), dot(r1.xyz, ln), dot(r2.xyz, ln));',
-    '  }',
+    'precision highp int;',
+    'layout(location=0) in highp vec3 aPos;',
+    'layout(location=1) in highp vec4 aNrm;',
+    'layout(location=2) in highp vec2 aUV;',
+    'layout(location=3) in highp uvec4 aJnt;',
+    'layout(location=4) in highp vec4 aWgt;',
+    'uniform highp vec4 uBones[' + (MAX_BONES * 3) + '];',
+    'uniform highp int uBoneMax;',     // index of the last uploaded joint
+    'uniform highp mat4 uViewProj;',
+    'void skinOne(highp uint jt, highp float w, highp vec4 lp, highp vec3 ln, inout highp vec3 p, inout highp vec3 n) {',
+    '  highp int j = clamp(int(jt), 0, uBoneMax) * 3;',
+    '  highp vec4 r0 = uBones[j], r1 = uBones[j + 1], r2 = uBones[j + 2];',
+    '  p += w * vec3(dot(r0, lp), dot(r1, lp), dot(r2, lp));',
+    '  n += w * vec3(dot(r0.xyz, ln), dot(r1.xyz, ln), dot(r2.xyz, ln));',
+    '}',
+    'void skin(out highp vec3 p, out highp vec3 n) {',
+    '  highp vec4 lp = vec4(aPos, 1.0); highp vec3 ln = aNrm.xyz; p = vec3(0.0); n = vec3(0.0);',
+    '  highp vec4 w = aWgt / max(aWgt.x + aWgt.y + aWgt.z + aWgt.w, 1e-4);',   // exactly 1 even after 8-bit rounding
+    '  skinOne(aJnt.x, w.x, lp, ln, p, n);',
+    '  skinOne(aJnt.y, w.y, lp, ln, p, n);',
+    '  skinOne(aJnt.z, w.z, lp, ln, p, n);',
+    '  skinOne(aJnt.w, w.w, lp, ln, p, n);',
+    '  float nl = length(n); n = nl > 1e-6 ? n / nl : vec3(0.0, 1.0, 0.0);',
     '}'
   ].join('\n');
   var VS_SKIN_LIT = [
@@ -52619,7 +52691,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     'uniform vec4 uPar;',       // flash, emissive, metal, unused
     'out vec3 vPos; out vec3 vNrm; out vec3 vCol; out vec4 vMat; out vec3 vShadow; out vec2 vUV;',
     'void main() {',
-    '  vec3 p; vec3 n; skin(p, n); n = normalize(n);',
+    '  vec3 p; vec3 n; skin(p, n);',
     '  vPos = p; vNrm = n; vUV = aUV;',
     '  vCol = pow(max(uTint.rgb, 0.0), vec3(2.2));',
     '  vMat = vec4(uPar.y, uPar.z, uPar.x, uTint.a);',
@@ -52635,13 +52707,15 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     'uniform vec4 uOutline;',   // rgb, width
     'out vec3 vCol; out vec3 vPos;',
     'void main() {',
-    '  vec3 p; vec3 n; skin(p, n); n = normalize(n);',
+    '  vec3 p; vec3 n; skin(p, n);',
     '  float dist = length(uCamV - p);',
     '  p += n * (uOutline.w * clamp(dist * 0.1, 0.35, 4.0));',
     '  vCol = uOutline.rgb; vPos = p;',
     '  gl_Position = uViewProj * vec4(p, 1.0);',
     '}'
   ].join('\n');
+  /** The skinned vertex shaders (tests check what phones need: highp, integer joints, no dynamic indexing). */
+  G.skinShaders = { head: VS_SKIN_HEAD, lit: VS_SKIN_LIT, depth: VS_SKIN_DEPTH, outline: VS_SKIN_OUTLINE };
   /**
    * The lit fragment shader of the renderer (so the hero gets exactly the same light, fog, shadows, rim, flash and
    * painted-surface noise as every other character), with two lines changed: the albedo is multiplied by the texture,
@@ -52702,7 +52776,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, SVTX, 0);
       gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 4, gl.BYTE, true, SVTX, 12);
       gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 2, gl.UNSIGNED_SHORT, true, SVTX, 16);
-      gl.enableVertexAttribArray(3); gl.vertexAttribPointer(3, 4, gl.UNSIGNED_BYTE, false, SVTX, 20);
+      gl.enableVertexAttribArray(3); gl.vertexAttribIPointer(3, 4, gl.UNSIGNED_BYTE, SVTX, 20);
       gl.enableVertexAttribArray(4); gl.vertexAttribPointer(4, 4, gl.UNSIGNED_BYTE, true, SVTX, 24);
       for (i = 5; i < 10; i++) gl.disableVertexAttribArray(i);
       gl.bindVertexArray(null);
@@ -52714,7 +52788,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, SVTX, 0);
         gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 4, gl.BYTE, true, SVTX, 12);
         gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 2, gl.UNSIGNED_SHORT, true, SVTX, 16);
-        gl.enableVertexAttribArray(3); gl.vertexAttribPointer(3, 4, gl.UNSIGNED_BYTE, false, SVTX, 20);
+        gl.enableVertexAttribArray(3); gl.vertexAttribIPointer(3, 4, gl.UNSIGNED_BYTE, SVTX, 20);
         gl.enableVertexAttribArray(4); gl.vertexAttribPointer(4, 4, gl.UNSIGNED_BYTE, true, SVTX, 24);
         gl.bindVertexArray(null);
         g.levels.push(lv);
@@ -52746,6 +52820,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       p = null;
       try {
         if (!S) throw new Error('renderer shader sources are not exposed (G._shaders)');
+        var maxVU = this.gl.getParameter(this.gl.MAX_VERTEX_UNIFORM_VECTORS) || 0;
+        if (maxVU && maxVU < G.SkinnedMesh.UNIFORM_VECTORS) throw new Error('the GPU has ' + maxVU + ' vertex uniform vectors, skinning needs ' + G.SkinnedMesh.UNIFORM_VECTORS);
         var taps = this.shadows === 'high' ? 9 : (this.shadows === 'low' ? 4 : 0), st = 'SHADOW_TAPS ' + taps;
         if (kind === 'lit') {
           var fs = G.skinFragmentShader(S.FS_LIT);
@@ -52760,6 +52836,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     function bind(r, d, prog, texUnit) {
       var gl = r.gl, u = prog.u, g = r._skinGpu(d.mesh);
       gl.uniform4fv(u.uBones, d.bones, 0, d.nb * 12);
+      if (u.uBoneMax) gl.uniform1i(u.uBoneMax, Math.max(0, d.nb - 1));
       if (u.uTint) gl.uniform4fv(u.uTint, d.tint);
       if (u.uPar) gl.uniform4fv(u.uPar, d.par);
       if (u.uGlow) gl.uniform4f(u.uGlow, d.mesh.glow.min, 0, 0, d.mesh.glow.strength);
@@ -60339,13 +60416,13 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     vendor: [['cyl12', 0.5, 0.07, 0.5, '#f2c84a', 0, 0, 0, HALF, 0, 0.35, 1], ['cyl12', 0.3, 0.09, 0.3, '@', 0, 0, 0, HALF, 0, 0.5, 0]],
     board: [['box', 0.46, 0.56, 0.05, '#e8dcc0', 0, 0, 0, 0, 0, 0.25, 0], ['box', 0.3, 0.04, 0.07, '#5a4028', 0, 0.12, 0, 0, 0, 0, 0], ['box', 0.3, 0.04, 0.07, '#5a4028', 0, 0, 0, 0, 0, 0, 0], ['box', 0.2, 0.04, 0.07, '#5a4028', -0.05, -0.12, 0, 0, 0, 0, 0]],
     shrine: [['octa', 0.4, 0.6, 0.4, '@', 0, 0, 0, 0, 0, 0.9, 0], ['torus_thin', 0.7, 0.7, 0.7, '@', 0, 0, 0, 0.35, 0, 0.6, 0]],
-    camp: [['cone', 0.4, 0.6, 0.4, '#ff8a3d', 0, 0.05, 0, 0, 0, 0.9, 0], ['cone', 0.22, 0.36, 0.22, '#ffe08a', 0, -0.04, 0, 0, 0, 1, 0], ['box', 0.5, 0.07, 0.1, '#5a4028', 0, -0.3, 0, 0, 0.25, 0, 0], ['box', 0.5, 0.07, 0.1, '#5a4028', 0, -0.3, 0, 0, -0.25, 0, 0]],
+    camp: [['spike', 0.5, 0.5, 0.5, '#9fc4ec', 0, 0.08, 0, 0, 0, 0.75, 0], ['box', 0.12, 0.2, 0.05, '#2a2f44', 0, -0.06, 0.2, 0, 0, 0, 0], ['box', 0.62, 0.05, 0.62, '#5a4028', 0, -0.2, 0, 0, 0, 0, 0]],   // a small tent ("rest here"): never a flame shape, it floats above the real fire
     bossgate: [['octa', 0.46, 0.5, 0.46, '#c02a1e', 0, 0, 0, 0, 0, 0.7, 0], ['spike', 0.14, 0.34, 0.14, '#2a1c1c', -0.2, 0.26, 0, 0, 0.5, 0, 0], ['spike', 0.14, 0.34, 0.14, '#2a1c1c', 0.2, 0.26, 0, 0, -0.5, 0, 0], ['spike', 0.14, 0.3, 0.14, '#2a1c1c', 0, 0.34, 0, 0, 0, 0, 0]],
     hireling: [['box', 0.09, 0.6, 0.03, '#dfe3ea', 0, 0.08, 0, 0, 0, 0.2, 1], ['box', 0.3, 0.05, 0.06, '@', 0, -0.22, 0, 0, 0, 0.3, 1], ['box', 0.06, 0.16, 0.06, '#5a4028', 0, -0.32, 0, 0, 0, 0, 0]],
     exit: [['cone', 0.4, 0.44, 0.4, '#86e090', 0, 0.1, 0, 0, 0, 0.8, 0], ['box', 0.16, 0.3, 0.16, '#86e090', 0, -0.24, 0, 0, 0, 0.8, 0]]
   };
   var PROMPT_R = { chest: 1.05, cache: 1.0, shrine: 1.3, vendor: 1.0, board: 1.1, hireling: 1.0, camp: 1.7, bossgate: 2.4, exit: 2.4, barrel: 0.75, crystal: 0.9, lore: 0.9 };
-  var ICON_Y = { vendor: 2.9, board: 3.0, shrine: 3.9, camp: 2.6, bossgate: 5.2, hireling: 2.9, exit: 5.2 };
+  var ICON_Y = { vendor: 2.9, board: 3.0, shrine: 3.9, camp: 2.3, bossgate: 5.2, hireling: 2.9, exit: 5.2 };
 
   // ------------------------------------------------------------------ bind
   FX.parts.entities = {
