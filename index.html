@@ -3379,7 +3379,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.20';
+  KD.VERSION = '0.7.21';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -96430,6 +96430,51 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       // forget word throttles of characters that are long gone
       if (W.words.size > 200) W.words.clear();
     }
+  });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/ui/11_hud_paint.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var H = KD.hud = KD.hud || {};
+  if (typeof document === 'undefined') return;
+
+  /**
+   * The health orb (task w8 painted UI, docs/HUD.md section 2): the round medal of the player frame fills with
+   * painted red liquid up to the hero's Health, with a moving surface wave and a glass highlight; the class glyph
+   * stays on top. The level drains smoothly (a CSS transition on one transform) and throbs below 35%. Read only:
+   * it touches the DOM only when the Health fraction changes by 1%. Off with the painted look (KD.ui.paint.on).
+   */
+  var O = { node: null, liq: null, medal: null, q: -1, low: null };
+
+  (H.parts = H.parts || []).push({
+    name: 'paint',
+    build: function (ctx) {
+      var medal = ctx.left && ctx.left.querySelector('.hud-medal'), inner = medal && medal.querySelector('.kd-frame-inner');
+      if (!inner || !(KD.ui.paint && KD.ui.paint.on)) return;
+      var el = KD.ui.el;
+      O.liq = el('div.pt-orb-liq', [el('div.pt-orb-wave')]);
+      O.node = el('div.pt-orb', [O.liq]);
+      inner.insertBefore(O.node, inner.firstChild);
+      inner.appendChild(el('div.pt-orb-glass'));
+      medal.classList.add('pt-orb-on');
+      O.medal = medal;
+    },
+    frame: function (ctx) {
+      var p = ctx.player; if (!O.liq || !p) return;
+      var f = p.hpMax > 0 ? Math.max(0, Math.min(1, p.hp / p.hpMax)) : 0, q = Math.round(f * 100);
+      if (q !== O.q) {
+        O.q = q;
+        // the liquid sits a little below the rim when full and leaves a thin film when nearly empty
+        O.liq.style.setProperty('--pt-empty', (0.1 + (1 - q / 100) * 0.86).toFixed(3));
+        var low = q > 0 && q < 35;
+        if (low !== O.low) { O.low = low; O.node.classList.toggle('pt-orb-low', low); }
+      }
+    },
+    world: function () { O.q = -1; }
   });
 })(typeof window !== 'undefined' ? window : globalThis);
 
