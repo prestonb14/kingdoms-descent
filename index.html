@@ -1329,6 +1329,45 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 .flow-cd-topmain { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: calc(9 * var(--u)); }
 
 
+/* ------------------------------------------------------------------------------------- recent runs (src/ui/20_flow_15_runs.js) */
+.flow-runs-body { flex: 1 1 auto; min-height: 0; display: flex; align-items: center; justify-content: center; overflow: auto; }
+.flow-runs-grid { display: grid; grid-template-columns: repeat(3, minmax(0, calc(316 * var(--u)))); gap: calc(18 * var(--u)); width: 100%; justify-content: center; align-items: stretch; }
+.flow-runs-card { display: flex; flex-direction: column; gap: calc(7 * var(--u)); padding: calc(14 * var(--u)) calc(14 * var(--u)) calc(12 * var(--u)); min-height: calc(236 * var(--u)); min-width: 0; }
+.flow-runs-shared { box-shadow: inset 0 0 0 calc(2 * var(--u)) rgba(150, 110, 220, .45), 0 calc(3 * var(--u)) calc(10 * var(--u)) rgba(0, 0, 0, .5); }
+.flow-runs-empty { border: calc(2 * var(--u)) dashed rgba(216, 178, 90, .35); border-radius: calc(8 * var(--u)); align-items: center; justify-content: center; text-align: center; color: var(--kd-text-dim); background: rgba(20, 13, 6, .45); }
+.flow-runs-emptytext { font-family: var(--kd-font-display); font-variant: small-caps; font-size: calc(19 * var(--u)); color: var(--kd-parch-200); margin-top: calc(30 * var(--u)); }
+.flow-runs-empty .flow-runs-meta { justify-content: center; }
+.flow-runs-top { display: flex; align-items: center; gap: calc(10 * var(--u)); }
+.flow-runs-id { flex: 1 1 auto; min-width: 0; }
+.flow-runs-name { font-family: var(--kd-font-display); font-weight: 700; font-size: calc(17 * var(--u)); line-height: 1.15; overflow-wrap: anywhere; }
+.flow-runs-lvl { font-size: calc(12.5 * var(--u)); opacity: .85; line-height: 1.3; }
+.flow-runs-where, .flow-runs-who, .flow-runs-meta { display: flex; align-items: center; gap: calc(6 * var(--u)); flex-wrap: wrap; font-size: calc(13 * var(--u)); line-height: 1.3; }
+.flow-runs-where { font-weight: 700; }
+.flow-runs-meta { font-size: calc(12 * var(--u)); opacity: .85; }
+.flow-runs-partner { display: inline-flex; align-items: center; gap: calc(5 * var(--u)); font-weight: 700; }
+.flow-runs-dot { flex: none; display: inline-block; width: calc(10 * var(--u)); height: calc(10 * var(--u)); border-radius: 50%; box-shadow: 0 0 0 calc(1.5 * var(--u)) rgba(0, 0, 0, .35); }
+.flow-runs-pstate { font-weight: 400; font-size: calc(12 * var(--u)); opacity: .75; }
+.flow-runs-role { margin-left: auto; font-family: var(--kd-font-display); font-variant: small-caps; font-size: calc(12 * var(--u)); letter-spacing: .04em; padding: 0 calc(7 * var(--u)); border-radius: calc(9 * var(--u)); background: rgba(110, 70, 170, .18); color: #4a2a78; }
+.flow-runs-go.kd-btn { width: 100%; min-height: calc(42 * var(--u)); justify-content: center; }
+.flow-runs-new.kd-btn { min-height: calc(40 * var(--u)); margin-bottom: calc(4 * var(--u)); }
+.flow-runs-del.kd-btn { flex: none; min-width: calc(32 * var(--u)); min-height: calc(32 * var(--u)); padding: 0; justify-content: center; align-self: flex-start; }
+.flow-runs-foot { font-size: calc(12.5 * var(--u)); }
+.flow-runs-dlghead { display: flex; align-items: center; gap: calc(10 * var(--u)); }
+.flow-runs-note { margin: calc(10 * var(--u)) 0; line-height: 1.45; font-size: calc(14 * var(--u)); }
+.flow-runs-acts { display: flex; flex-direction: column; gap: calc(8 * var(--u)); }
+.flow-runs-act.kd-btn { width: 100%; min-height: calc(42 * var(--u)); justify-content: center; }
+.flow-runs-droplist { display: flex; flex-direction: column; gap: calc(6 * var(--u)); }
+.flow-runs-droprow { display: flex; align-items: center; gap: calc(10 * var(--u)); padding: calc(7 * var(--u)) calc(10 * var(--u)); min-height: calc(48 * var(--u)); border-radius: calc(6 * var(--u));
+  border: calc(1.5 * var(--u)) solid rgba(216, 178, 90, .25); background: rgba(0, 0, 0, .18); }
+.flow-runs-win .kd-window-body { overflow-wrap: anywhere; }
+.flow-runs-drop .flow-runs-note { margin-top: 0; }
+.flow-runs-dropyes.kd-btn { min-width: calc(150 * var(--u)); }
+.flow-runs-droprow.flow-sel { border-color: var(--kd-wax-300); background: rgba(190, 70, 50, .2); box-shadow: inset 0 0 0 var(--u) var(--kd-wax-300); }
+/* a menu with Continue: the smaller buttons two to a row, so that the column fits a 16:9 screen (the phone has its own grid) */
+.flow-menu-buttons.flow-menu-has-continue { display: grid; grid-template-columns: 1fr 1fr; width: calc(310 * var(--u)); gap: calc(8 * var(--u)); margin-top: calc(20 * var(--u)); }
+.flow-menu-has-continue .flow-menu-wide.kd-btn, .flow-menu-has-continue .flow-host-note { grid-column: 1 / -1; width: auto; }
+.flow-menu-has-continue .flow-menu-btn.kd-btn:not(.flow-menu-wide) { width: auto; font-size: calc(15 * var(--u)); padding-left: calc(12 * var(--u)); padding-right: calc(6 * var(--u)); gap: calc(8 * var(--u)); }
+
 /* =====================================================================================================
    PHONES AND TABLETS (docs/MOBILE.md, docs/FLOW.md section 6).
    .kd-touch    played with fingers (phones and tablets): no hover, bigger hit areas, no key names.
@@ -1618,6 +1657,18 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 .kd-compact .flow-help-foot { font-size: calc(11.5 * var(--u)); }
 .kd-compact .flow-kh-cols { grid-template-columns: 1fr 1fr; gap: calc(14 * var(--u)); }
 .kd-compact .flow-kh-col:last-child { grid-column: 1 / -1; }
+/* recent runs and the menu with Continue on a phone */
+.kd-compact .flow-runs-grid { gap: calc(10 * var(--u)); grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.kd-compact .flow-runs-body { align-items: stretch; }
+.kd-compact .flow-runs-card { min-height: 0; padding: calc(9 * var(--u)) calc(10 * var(--u)) calc(9 * var(--u)); gap: calc(5 * var(--u)); }
+.kd-compact .flow-runs-name { font-size: calc(15 * var(--u)); }
+.kd-compact .flow-runs-lvl, .kd-compact .flow-runs-meta, .kd-compact .flow-runs-pstate, .kd-compact .flow-runs-role { font-size: calc(12 * var(--u)); }
+.kd-compact .flow-runs-where, .kd-compact .flow-runs-who { font-size: calc(12.5 * var(--u)); }
+.kd-compact .flow-runs-del.kd-btn { min-width: calc(40 * var(--u)); min-height: calc(40 * var(--u)); }
+.kd-compact .flow-runs-go.kd-btn, .kd-compact .flow-runs-act.kd-btn, .kd-compact .flow-runs-new.kd-btn { min-height: calc(44 * var(--u)); }
+.kd-compact .flow-runs-emptytext { margin-top: 0; }
+.kd-compact .flow-runs-foot { display: none; }
+.kd-compact .flow-menu-buttons.flow-menu-has-continue { width: auto; margin-top: 0; gap: calc(7 * var(--u)); }
 
 /* Co-op screens (src/ui/25_coop_*.js, docs/COOP.md section 6). Prefix: coop-. Sizes in --u units, colours from the kit. */
 
@@ -3148,7 +3199,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.4';
+  KD.VERSION = '0.7.5';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -29890,7 +29941,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var list = K.targetsIn(ctx, fx, { shape: 'circle', x: P.x, z: P.z, r: (fx.radius || 8) * areaMul(ctx) });
     for (var i = 0; i < list.length; i++) {
       var o = list[i];
-      if (S.applyStatus(world, o, 'taunted', { src: src, dur: fx.dur || 4 }) || S.bossRank(o.tier) === 2) S.ai.forceTarget(world, o, src, fx.dur || 4);
+      if (!S.ai.shrugsTaunt(world, o, src) && (S.applyStatus(world, o, 'taunted', { src: src, dur: fx.dur || 4 }) || S.bossRank(o.tier) === 2)) S.ai.forceTarget(world, o, src, fx.dur || 4);      // boss-class: capped, then shrugged off a while (24_ai.js ATTN)
       if (fx.status) K.applyStatuses(ctx, fx.status, o);
     }
     emitFx(ctx, fx.fx || 'taunt', { x: P.x, z: P.z, r: fx.radius || 8 });
@@ -31055,8 +31106,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (tgt.kind === 'ally') { if (!validTarget(tgt, ai.target)) ai.target = src; return; }
     if (ai.state === 'return') { if (U.dist(tgt.x, tgt.z, ai.home.x, ai.home.z) < ai.o.leash * 0.6) A.aggro(world, tgt, src); return; }
     if (ai.state !== 'combat') { A.aggro(world, tgt, src); return; }
-    var cur = ai.target;
+    var cur = ai.target, att = ATTN.on && S.bossRank(tgt.tier) > 0;
+    if (att) A.attnHurt(world, tgt, src, amount);
     if (!validTarget(tgt, cur)) ai.target = src;
+    else if (att && ai.attn && ai.attn.n > 0) { /* allies about: the attention picks weigh who hurt him (attnThink) */ }
     else if (cur !== src && validTarget(tgt, src) && !tgt.taunter && !(ai.forced && world.time < ai.forcedUntil) && !(ai.commit && validTarget(tgt, ai.commit))) {
       // switch to an attacker that is clearly closer, or to a player ignoring a minion now and then
       var dc = U.dist2(tgt.x, tgt.z, cur.x, cur.z), ds = U.dist2(tgt.x, tgt.z, src.x, src.z);
@@ -31070,6 +31123,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   };
   A.forceTarget = function (world, e, src, dur) {
     if (!e.ai || e.dead) return;
+    if (A.shrugsTaunt(world, e, src)) return;
+    if (ATTN.on && src && src.kind === 'ally' && S.bossRank(e.tier) > 0) {
+      // an ally's taunt holds a boss-class enemy for at most ATTN.tauntMax, then it shrugs off allies' taunts for a while
+      var at = attnOf(e); dur = Math.min(dur || 4, ATTN.tauntMax);
+      at.guard = world.time + dur + ATTN.tauntGuard; at.until = world.time + dur;
+    }
     e.ai.forced = src; e.ai.forcedUntil = world.time + (dur || 4);
     if (e.ai.state !== 'combat') A.aggro(world, e, src); else e.ai.target = src;
   };
@@ -31079,6 +31138,92 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     for (var i = 0; i < n; i++) if (QA[i].kind === 'enemy' && QA[i].ai && QA[i].ai.state === 'combat') return true;
     return false;
   };
+
+  // ---------------------------------------------------------------------------------------------
+  // Boss attention (owner request: "make bosses still target players when minions are around but minions pull more of
+  // the bosses more often than not but enough that the player has to be careful still"). docs/SIM.md "Boss attention".
+  // Boss-class enemies (mini-bosses, Nemeses, bosses) with the hero's allies (summons, hirelings, patrols) within
+  // `range` pick whom to fight at decision points, not on every hit: each pick turns on a player with chance pHero
+  // (fewer and weaker allies, a hero who deals most of the damage or stands close: higher), else on an ally (tanks and
+  // close allies first). A pick holds a few seconds; a running string (ai.commit) and a wind-up (aim lock) keep their
+  // target; a swap between the hero and an ally gives a short turning beat before the next wind-up. Without allies near
+  // the old rules run unchanged (and draw no random numbers, so solo fights are as before).
+  // ---------------------------------------------------------------------------------------------
+  var ATTN = A.ATTN = {
+    on: true,
+    range: 14,                         // metres (edge to edge) within which allies pull on him
+    base: 0.9, per: 0.9,             // pHero = base / (1 + per * pull), pull = sum of the allies' pulls
+    heroMin: 0.25, heroMax: 0.72,      // ... clamped (a player in reach always keeps at least a quarter of the picks)
+    dmgBias: 0.08,                     // + (the players' share of the damage he took lately - 0.5) * 2 * dmgBias
+    closeBias: 0.06, close: 3,         // + closeBias while a player stands within `close` m of him
+    heavy: 0.04,                       // a player's hit of 4%+ of his Health makes him pick again at once
+    holdHero: [2, 1.6], holdAlly: [2.2, 1.6],       // seconds a pick holds: [min, + random extra]
+    beat: 0.35,                        // seconds he turns before winding up after a swap between a player and an ally
+    heatTau: 4,                        // seconds of memory for who hurt him
+    tauntMax: 2, tauntGuard: 7,        // an ally's taunt holds him at most 2 s; then allies' taunts are shrugged off for 7 s
+    hazardHero: 0.5                    // a boss hazard aimed at "the target" goes for a player instead when the target is an ally
+  };
+  var ALLY = [];
+  function attnOf(e) { return e.ai.attn || (e.ai.attn = { until: 0, n: 0, fresh: false, seen: 0, hH: 0, hA: 0, hT: 0, guard: 0, swaps: 0, picks: 0, heroPicks: 0 }); }
+  function cool(world, at) { var dt = world.time - at.hT; if (dt > 0) { var k = Math.exp(-dt / ATTN.heatTau); at.hH *= k; at.hA *= k; at.hT = world.time; } }
+  /** How hard an ally pulls on a boss: hirelings 1 (tanks 1.25), summons by their Health against the hero's (0.5..1). */
+  A.attnPull = function (q, hero) {
+    if (q.hireling) return q.role === 'tank' ? 1.1 : 1;
+    var f = hero && hero.hpMax > 0 ? q.hpMax / hero.hpMax : 0.5;
+    return Math.max(0.5, Math.min(1, 0.5 + 0.8 * f));
+  };
+  /** Damage memory (no random numbers): who hurt him lately; a heavy hit from a player makes him pick again at once. */
+  A.attnHurt = function (world, e, src, amount) {
+    if (!(amount > 0)) return;
+    var at = attnOf(e); cool(world, at);
+    if (src.kind === 'player') { at.hH += amount; if (amount >= e.hpMax * ATTN.heavy && at.n > 0 && at.until > world.time && e.ai.target && e.ai.target.kind !== 'player') at.until = world.time; }
+    else at.hA += amount;
+  };
+  /** True when a boss-class enemy ignores this taunt (an ally taunted it less than ATTN.tauntGuard seconds after the last hold). */
+  A.shrugsTaunt = function (world, e, src) {
+    return !!(ATTN.on && src && src.kind === 'ally' && e.ai && e.ai.attn && S.bossRank(e.tier) > 0 && world.time < e.ai.attn.guard);
+  };
+  /** The chance that the next pick turns on a player (exposed for tests and tools). */
+  A.attnHeroChance = function (world, e, hero, pull) {
+    var at = attnOf(e), p = ATTN.base / (1 + ATTN.per * pull);
+    cool(world, at);
+    var tot = at.hH + at.hA;
+    if (tot > 0) p += (at.hH / tot - 0.5) * 2 * ATTN.dmgBias;
+    if (hero && U.dist(e.x, e.z, hero.x, hero.z) - e.r - hero.r < ATTN.close) p += ATTN.closeBias;
+    return Math.max(ATTN.heroMin, Math.min(ATTN.heroMax, p));
+  };
+  /** The target of a boss-class enemy with allies about, or undefined (no allies near: the ordinary rules decide). */
+  function attnThink(world, e, ai, t) {
+    var at = attnOf(e), n = S.qCircle(world, e.x, e.z, ATTN.range + e.r + 1.5, QA), i, q, d2;
+    ALLY.length = 0;
+    for (i = 0; i < n; i++) { q = QA[i]; if (q.kind === 'ally' && validTarget(e, q) && U.dist(e.x, e.z, q.x, q.z) - e.r - q.r <= ATTN.range) ALLY.push(q); }
+    // a new ally (one he has not seen yet: a summon rising, a hireling running in) coming near while none was draws his eye
+    var newest = 0; for (i = 0; i < ALLY.length; i++) if (ALLY[i].id > newest) newest = ALLY[i].id;
+    if (at.n === 0 && newest > at.seen) at.fresh = true;
+    if (newest > at.seen) at.seen = newest;
+    at.n = ALLY.length;
+    if (!ALLY.length) { at.until = 0; at.fresh = false; return undefined; }
+    var hero = null, hd = (ai.o.aggro * 1.7 + 8) * (ai.o.aggro * 1.7 + 8);
+    for (i = 0; i < world.players.length; i++) { q = world.players[i]; if (!validTarget(e, q)) continue; d2 = U.dist2(e.x, e.z, q.x, q.z); if (d2 < hd) { hd = d2; hero = q; } }
+    if (!validTarget(e, t)) t = null;
+    if (t && (e.cast || (ai.comboQ && ai.comboQ.length) || (world.time < at.until && !at.fresh)) && !(t.kind === 'ally' && ALLY.indexOf(t) < 0)) return t;
+    var pull = 0;
+    for (i = 0; i < ALLY.length; i++) pull += A.attnPull(ALLY[i], hero);
+    var pick = null;
+    if (hero && !at.fresh && world.rng.next() < A.attnHeroChance(world, e, hero, pull)) pick = t && t.kind === 'player' ? t : hero;
+    else {
+      var tot = 0, w;
+      for (i = 0; i < ALLY.length; i++) { q = ALLY[i]; w = A.attnPull(q, hero) / (1 + (U.dist(e.x, e.z, q.x, q.z) - e.r - q.r) / 6) * (q === t ? 1.4 : 1); tot += w; }
+      var r = world.rng.next() * tot;
+      for (i = 0; i < ALLY.length && !pick; i++) { q = ALLY[i]; r -= A.attnPull(q, hero) / (1 + (U.dist(e.x, e.z, q.x, q.z) - e.r - q.r) / 6) * (q === t ? 1.4 : 1); if (r < 0) pick = q; }
+      if (!pick) pick = ALLY[ALLY.length - 1];
+    }
+    var h = pick.kind === 'player' ? ATTN.holdHero : ATTN.holdAlly;
+    at.until = world.time + h[0] + world.rng.next() * h[1];
+    at.picks++; at.fresh = false; if (pick.kind === 'player') at.heroPicks++;
+    if (t && pick !== t && (t.kind === 'player') !== (pick.kind === 'player')) { ai.gcd = Math.max(ai.gcd, ATTN.beat); at.swaps++; }
+    return pick;
+  }
 
   // ---------------------------------------------------------------------------------------------
   // Movement goals and navigation
@@ -31411,6 +31556,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (e.taunter && !e.taunter.dead && !e.taunter.removed) t = e.taunter;
     else if (ai.forced && world.time < ai.forcedUntil && validTarget(e, ai.forced)) t = ai.forced;
     else if (ai.commit && validTarget(e, ai.commit)) t = ai.commit;          // a running chain (27_boss_strings.js) keeps its target
+    else if (ATTN.on && S.bossRank(e.tier) > 0 && (i = attnThink(world, e, ai, t)) !== undefined) t = i;      // boss attention: allies about
     else {
       if (!validTarget(e, t)) t = null;
       ai.retT -= T.thinkEvery;
@@ -31847,7 +31993,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   function gateTaunts(world, e, ai, m) {
     for (var i = 0; i < m.taunts.length; i++) {
       var tt = m.taunts[i], n = S.qCircle(world, e.x, e.z, tt.r, QA), need = false;
-      for (var k = 0; k < n && !need; k++) { var q = QA[k]; if (S.hostile(e, q) && q.ai && q.ai.state === 'combat' && q.ai.target && q.ai.target !== e && q.taunter !== e) need = true; }
+      for (var k = 0; k < n && !need; k++) { var q = QA[k]; if (S.hostile(e, q) && q.ai && q.ai.state === 'combat' && q.ai.target && q.ai.target !== e && q.taunter !== e && !S.ai.shrugsTaunt(world, q, e)) need = true; }      // a boss that shrugs taunts off for now (24_ai.js ATTN) is not worth one
       if (need) delete m.skip[tt.a.id]; else m.skip[tt.a.id] = true;
     }
   }
@@ -32251,6 +32397,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       return;
     }
     var count = rec.count || 1;
+    // boss attention (24_ai.js ATTN): while he fights an ally, a hazard aimed at "the target" goes for a player half the time
+    if ((rec.at || 'target') === 'target' && t && t.kind === 'ally' && S.ai.ATTN.on) {
+      var hp = null, hd = 30 * 30;
+      for (i = 0; i < world.players.length; i++) { var pl = world.players[i]; if (S.ai.validTarget(e, pl) && U.dist2(e.x, e.z, pl.x, pl.z) < hd) { hd = U.dist2(e.x, e.z, pl.x, pl.z); hp = pl; } }
+      if (hp && world.rng.next() < S.ai.ATTN.hazardHero) t = hp;
+    }
     for (i = 0; i < count; i++) {
       var x = e.x, z = e.z, at = rec.at || 'target';
       if (at === 'target' && t && !t.dead) { x = t.x; z = t.z; if (i > 0) { var rp = S.nav.randomPoint(world, world.rng, t.x, t.z, 1.5, rec.spread || 4, 0.3, false); x = rp.x; z = rp.z; } }
@@ -37464,7 +37616,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       }
       if (!best) return;
       best.chHonourT = world.time;
-      if (S.applyStatus(world, att, 'taunted', { src: best, dur: T.honourTaunt }) || S.bossRank(att.tier) === 2) S.ai.forceTarget(world, att, best, T.honourTaunt);
+      if (!S.ai.shrugsTaunt(world, att, best) && (S.applyStatus(world, att, 'taunted', { src: best, dur: T.honourTaunt }) || S.bossRank(att.tier) === 2)) S.ai.forceTarget(world, att, best, T.honourTaunt);
     }
   });
 
@@ -48129,22 +48281,32 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   var S = KD.save = KD.save || {};
 
   /**
-   * KD.save: persistence for { account, run } through an injected storage object (owner: run).
+   * KD.save: persistence for { account, runs } through an injected storage object (owner: run).
    *   KD.save.init(storage)  storage = { getItem(key) -> string|null, setItem(key, string), removeItem(key) }
    *                          (window.localStorage in the browser, a Map-backed object in tests)
-   * Keys: kd.account.v1 (+ .bak rotation, + .corrupt stash), kd.run.v1, kd.run.v1.checkpoint (Relaxed mode).
+   * Keys: kd.account.v1 (+ .bak rotation, + .corrupt stash); up to three run slots (KD.save.SLOTS): slot 1 is
+   * kd.run.v1 (the key of the single run save of older builds, so an old save simply is slot 1), slots 2 and 3 are
+   * kd.run.v1.s2 / kd.run.v1.s3; each slot may have a Relaxed checkpoint under <slot key>.checkpoint.
    * Every value is one JSON envelope: { kd: 'account' | 'run', v: schemaVersion, at: timestamp, data: {...} }.
    * No clock in here: callers pass `now` (milliseconds). Typed arrays and functions never reach a save.
-   * No save-scumming: the run save is overwritten in place and deleted when the run ends.
+   * No save-scumming: a run lives in exactly one slot (found by run.id), that slot is overwritten in place and
+   * deleted when the run ends. A save never takes a slot that holds another live run: when all three are used the
+   * save is refused (reason 'slots_full') until the player chooses a run to end (dropRun).
    */
+  S.SLOTS = 3;
   S.KEYS = { account: 'kd.account.v1', accountBak: 'kd.account.v1.bak', accountCorrupt: 'kd.account.v1.corrupt', run: 'kd.run.v1', checkpoint: 'kd.run.v1.checkpoint' };
+  /** The storage keys of run slot n (1..SLOTS): { run, checkpoint }. */
+  S.slotKeys = function (n) {
+    var run = n === 1 ? S.KEYS.run : S.KEYS.run + '.s' + n;
+    return { run: run, checkpoint: run + '.checkpoint' };
+  };
   S.VERSIONS = { account: 1, run: 1 };
   S.WARN_BYTES = 1.5 * 1024 * 1024;
   S.minInterval = 2000;
   S.migrations = { account: {}, run: {} };
   S.warnings = [];
   S.lastLoad = null;
-  var st = { storage: null, lastRunSave: -Infinity, dirty: true, savedPlayTime: null, onWarn: null };
+  var st = { storage: null, lastRunSave: -Infinity, dirty: true, savedPlayTime: null, onWarn: null, cur: 1, ids: {}, lastId: null, fullWarned: null };
 
   /** A storage object that keeps everything in memory (tests, or when localStorage is unavailable). */
   S.memoryStorage = function () {
@@ -48160,7 +48322,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   S.init = function (storage, opts) {
     opts = opts || {};
     st.storage = storage && storage.getItem && storage.setItem && storage.removeItem ? storage : S.memoryStorage();
-    st.lastRunSave = -Infinity; st.dirty = true; st.savedPlayTime = null;
+    st.lastRunSave = -Infinity; st.dirty = true; st.savedPlayTime = null; st.cur = 1; st.ids = {}; st.lastId = null; st.fullWarned = null;
     st.onWarn = opts.onWarn || null;
     if (opts.minInterval !== undefined) S.minInterval = opts.minInterval;
     S.warnings = []; S.lastLoad = null;
@@ -48251,6 +48413,57 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     return A.create(now);
   };
 
+  // ------------------------------------------------------------------ run slots
+  function validRun(r) { return !!r && typeof r === 'object' && !!r.hero && typeof r.phase === 'string' && typeof r.slot === 'number' && !!r.fate && !!r.stats; }
+  function slotOk(n) { return typeof n === 'number' && n >= 1 && n <= S.SLOTS && Math.floor(n) === n; }
+  /**
+   * peek(n, discard) -> { slot, at, run } | null: what slot n holds. An unreadable save (corrupt, wrong kind, a newer
+   * build) counts as empty; with `discard` it is removed and a warning says so (as loading always did).
+   */
+  function peek(n, discard) {
+    var key = S.slotKeys(n).run, raw = read(key);
+    if (raw === null || raw === undefined) return null;
+    var env = null; try { env = JSON.parse(raw); } catch (e) { env = null; }
+    var run = open('run', raw);
+    if (!validRun(run)) {
+      if (discard) { warn('run save' + (n > 1 ? ' in slot ' + n : '') + ' was unreadable and has been discarded'); remove(key); }
+      return null;
+    }
+    if (run.id) st.ids[run.id] = n;
+    return { slot: n, at: env && typeof env.at === 'number' ? env.at : 0, run: run };
+  }
+  /** slotOf(run | runId) -> the slot (1..SLOTS) that holds this run, or 0. */
+  S.slotOf = function (x) {
+    var id = x && typeof x === 'object' ? x.id : x;
+    if (!id) return 0;
+    var n = st.ids[id];
+    if (n) {                                                // cheap check of the remembered slot (no parse on every autosave)
+      var raw = read(S.slotKeys(n).run);
+      if (typeof raw === 'string' && raw.indexOf('"id":' + JSON.stringify(String(id))) >= 0) return n;
+      delete st.ids[id];
+    }
+    for (n = 1; n <= S.SLOTS; n++) { var q = peek(n, false); if (q && q.run.id === id) return n; }
+    return 0;
+  };
+  /** freeSlot() -> the first slot that holds no live run (an unreadable save counts as empty), or 0 when all are used. */
+  S.freeSlot = function () { for (var n = 1; n <= S.SLOTS; n++) if (!peek(n, false)) return n; return 0; };
+  S.slotsFull = function () { return S.freeSlot() === 0; };
+  /**
+   * listRuns() -> [{ slot, at, run }] for every slot with a readable run, the most recently saved first. The runs are
+   * fresh copies (loading one through here does not change the slot). Unreadable saves are discarded with a warning.
+   */
+  S.listRuns = function () {
+    var out = [];
+    for (var n = 1; n <= S.SLOTS; n++) { var p = peek(n, true); if (p) { noOaths(p.run); out.push(p); } }
+    out.sort(function (a, b) { return b.at - a.at || a.slot - b.slot; });
+    return out;
+  };
+  /** The slot the next save of this run goes to: the one that already holds it, else the first free one (0: none). */
+  function slotFor(run, opts) {
+    if (opts && slotOk(opts.slot)) return opts.slot;
+    return S.slotOf(run) || S.freeSlot();
+  }
+
   // ------------------------------------------------------------------ run
   /**
    * markDirty(): the run changed since the last save. The run counts as dirty when this was called or when
@@ -48259,24 +48472,33 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   S.markDirty = function () { st.dirty = true; };
   S.isDirty = function () { return st.dirty; };
   /**
-   * saveRun(run, { force, now, minInterval }) -> { ok, saved, skipped, bytes, warn }. Throttled autosave: writes
-   * only when the run is dirty and at least minInterval ms (default KD.save.minInterval; measured on the caller's
+   * saveRun(run, { force, now, minInterval, slot }) -> { ok, saved, skipped, bytes, warn, slot }. Throttled autosave:
+   * writes only when the run is dirty and at least minInterval ms (default KD.save.minInterval; measured on the caller's
    * clock `now`) have passed since the last write. force: true writes immediately (area change, camp, death, quitting).
+   * The run goes to the slot that already holds run.id, else to the first free slot. When every slot holds another
+   * live run nothing is written: { ok: false, reason: 'slots_full' } (a run is never overwritten by another).
    */
   S.saveRun = function (run, opts) {
     opts = opts || {};
     var now = opts.now || 0;
     if (!run) return { ok: false, saved: false, reason: 'no_run' };
-    if (!opts.force) {
+    var other = run.id !== st.lastId;                       // another run than the last one saved: no throttle
+    if (!opts.force && !other) {
       if (!st.dirty && run.playTime === st.savedPlayTime) return { ok: true, saved: false, skipped: 'clean' };
       var gap = opts.minInterval !== undefined ? opts.minInterval : S.minInterval;
       if (now - st.lastRunSave < gap) return { ok: true, saved: false, skipped: 'throttled' };
     }
+    var n = slotFor(run, opts);
+    if (!n) {
+      if (st.fullWarned !== run.id) { st.fullWarned = run.id; warn('every run slot holds another run: this run is not saved until one is ended'); }
+      st.dirty = true; st.lastId = run.id; st.lastRunSave = now;      // throttled like a save: the slots are looked at again in minInterval
+      return { ok: false, saved: false, reason: 'slots_full' };
+    }
     var str = S.serialize('run', run, now);
-    var ok = write(S.KEYS.run, str);
-    if (ok) { st.dirty = false; st.lastRunSave = now; st.savedPlayTime = run.playTime; }
+    var ok = write(S.slotKeys(n).run, str);
+    if (ok) { st.dirty = false; st.lastRunSave = now; st.savedPlayTime = run.playTime; st.lastId = run.id; st.cur = n; if (run.id) st.ids[run.id] = n; }
     else st.dirty = true;                     // try again on the next autosave
-    return { ok: ok, saved: ok, bytes: str.length, warn: sizeCheck('run', str) };
+    return { ok: ok, saved: ok, bytes: str.length, warn: sizeCheck('run', str), slot: n };
   };
   /** Saves from before the owner removed Oaths: drop the Oaths, move phase 'oath' on to 'route' (KD.run.dropOaths). */
   function noOaths(run) {
@@ -48286,80 +48508,116 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (run && KD.run && KD.run.normHirelings) { try { KD.run.normHirelings(run); } catch (e) { warn('could not update the hirelings: ' + e); } }      // [mercs] rarity, level and gear for hirelings from older saves
     return run;
   }
-  function validRun(r) { return !!r && typeof r === 'object' && !!r.hero && typeof r.phase === 'string' && typeof r.slot === 'number' && !!r.fate && !!r.stats; }
-  /** loadRun() -> run | null (none saved, or unreadable: an unreadable run save is removed). */
-  S.loadRun = function () {
-    var raw = read(S.KEYS.run);
-    if (raw === null || raw === undefined) return null;
-    var run = open('run', raw);
-    if (!validRun(run)) { warn('run save was unreadable and has been discarded'); remove(S.KEYS.run); return null; }
-    st.dirty = false; st.savedPlayTime = run.playTime;
-    return noOaths(run);
+  /**
+   * loadRun(slot?) -> run | null. With a slot: that slot. Without: the most recently saved run (an older build's single
+   * save is slot 1). An unreadable run save is removed. The loaded run becomes the current one (clearRun, checkpoints).
+   */
+  S.loadRun = function (slot) {
+    var p;
+    if (slotOk(slot)) p = peek(slot, true);
+    else { var all = S.listRuns(); p = all.length ? all[0] : null; }
+    if (!p) return null;
+    st.cur = p.slot; st.lastId = p.run.id; st.dirty = false; st.savedPlayTime = p.run.playTime;
+    return noOaths(p.run);
   };
-  /** clearRun({ keepCheckpoint }): delete the run save (death, victory, abandon). */
+  /** clearRun({ keepCheckpoint, slot, id }): delete a run save (death, victory, abandon). Default: the current slot. */
   S.clearRun = function (opts) {
-    remove(S.KEYS.run);
-    if (!(opts && opts.keepCheckpoint)) remove(S.KEYS.checkpoint);
-    st.dirty = false; st.lastRunSave = -Infinity;
+    opts = opts || {};
+    var n = slotOk(opts.slot) ? opts.slot : (opts.id ? S.slotOf(opts.id) : st.cur);
+    if (!n) return;
+    var k = S.slotKeys(n);
+    var p = peek(n, false); if (p && p.run.id) delete st.ids[p.run.id];
+    remove(k.run);
+    if (!opts.keepCheckpoint) remove(k.checkpoint);
+    if (n === st.cur) { st.dirty = false; st.lastRunSave = -Infinity; st.lastId = null; }
   };
 
   // ------------------------------------------------------------------ Relaxed checkpoint
-  /** saveCheckpoint(run, now): Relaxed mode only, at a camp. One checkpoint exists at a time. */
+  /** saveCheckpoint(run, now): Relaxed mode only, at a camp. One checkpoint exists per run (in the run's slot). */
   S.saveCheckpoint = function (run, now) {
     if (!KD.run.canCheckpoint(run)) return { ok: false, reason: run.mode !== 'relaxed' ? 'mode' : 'not_at_camp' };
+    var n = slotFor(run);
+    if (!n) return { ok: false, reason: 'slots_full' };
     run.flags.checkpoint = { slot: run.slot, areaId: run.area ? run.area.areaId : null, at: now || 0, loads: (run.flags.checkpoint && run.flags.checkpoint.loads) || 0 };
     var str = S.serialize('run', run, now);
-    var ok = write(S.KEYS.checkpoint, str);
-    if (ok) S.saveRun(run, { force: true, now: now });
+    var ok = write(S.slotKeys(n).checkpoint, str);
+    if (ok) S.saveRun(run, { force: true, now: now, slot: n });
     return { ok: ok, bytes: str.length };
   };
-  S.hasCheckpoint = function () { return validRun(open('run', read(S.KEYS.checkpoint))); };
+  /** hasCheckpoint(slot?): a readable checkpoint in that slot (default: the current one). */
+  S.hasCheckpoint = function (slot) { return validRun(open('run', read(S.slotKeys(slotOk(slot) ? slot : st.cur).checkpoint))); };
   /**
-   * loadCheckpoint(now) -> run | null. Replaces the current run save with the checkpoint (the checkpoint
-   * itself is kept). Each load is counted in run.flags.checkpoint.loads.
+   * loadCheckpoint(now, slot?) -> run | null. Replaces the run save of that slot (default: the current one) with its
+   * checkpoint (the checkpoint itself is kept). Each load is counted in run.flags.checkpoint.loads.
    */
-  S.loadCheckpoint = function (now) {
-    var run = open('run', read(S.KEYS.checkpoint));
+  S.loadCheckpoint = function (now, slot) {
+    var n = slotOk(slot) ? slot : st.cur, k = S.slotKeys(n);
+    var run = open('run', read(k.checkpoint));
     if (!validRun(run) || run.mode !== 'relaxed') return null;
     noOaths(run);
     run.flags.checkpoint = run.flags.checkpoint || { loads: 0 };
     run.flags.checkpoint.loads = (run.flags.checkpoint.loads || 0) + 1;
-    write(S.KEYS.checkpoint, S.serialize('run', run, now));
-    S.saveRun(run, { force: true, now: now });
+    write(k.checkpoint, S.serialize('run', run, now));
+    S.saveRun(run, { force: true, now: now, slot: n });
     return run;
   };
 
   // ------------------------------------------------------------------ ending a run
   /**
    * endRun(account, run, now) -> { ok, summary, breakdown }. For a run in phase 'dead' or 'won': writes the
-   * ended run first (so the death is on disk), awards account XP, saves the account, then deletes the run
-   * save and any checkpoint. Safe to call again after a crash: a run id is only ever awarded once.
+   * ended run first (so the death is on disk), awards account XP, saves the account, then deletes the run's slot
+   * and its checkpoint. Safe to call again after a crash: a run id is only ever awarded once.
    */
   S.endRun = function (account, run, now) {
     var summary = KD.run.summary(run);
     if (summary.result === 'active') return { ok: false, reason: 'run_active' };
-    S.saveRun(run, { force: true, now: now });
+    var n = S.slotOf(run);
+    if (n) S.saveRun(run, { force: true, now: now, slot: n });
     var breakdown = KD.account.awardRun(account, summary, now);
     var saved = S.saveAccount(account, now);
-    S.clearRun();
+    if (n) S.clearRun({ slot: n });
     return { ok: true, summary: summary, breakdown: breakdown, saved: saved.ok };
   };
   /**
-   * boot(now) -> { account, run, ended }. Loads both saves. A run that had already ended (the game was closed
-   * on the death screen) is finished here: `ended` holds its endRun result and `run` is null. In Relaxed
-   * mode a dead run with a checkpoint is returned as it is so the player can still choose the checkpoint.
+   * dropRun(account, slot, now) -> endRun result | { ok: false, reason: 'empty' }. The player chose to end the run
+   * in that slot (to make room, or "Delete" on the Continue list): it is abandoned, written into the Chronicle and
+   * still earns its account experience, exactly like ending it from the pause menu.
+   */
+  S.dropRun = function (account, slot, now) {
+    var p = slotOk(slot) ? peek(slot, true) : null;
+    if (!p) return { ok: false, reason: 'empty' };
+    var run = noOaths(p.run);
+    if (run.phase !== 'dead' && run.phase !== 'won') KD.run.abandon(run, { now: now });
+    var res = S.endRun(account, run, now);
+    if (S.slotOf(run.id) === slot) S.clearRun({ slot: slot });
+    res.run = run; res.slot = slot;
+    return res;
+  };
+  /**
+   * boot(now) -> { account, run, runs, ended, endedAll }. Loads the account and every run slot. A run that had already
+   * ended (the game was closed on the death screen) is finished here: its endRun result is in `endedAll` (`ended` is
+   * the first one) and it leaves the list. In Relaxed mode a dead run with a checkpoint is kept so the player can still
+   * choose the checkpoint. `runs` = [{ slot, at, run }] (newest first); `run` = the newest run or null.
    */
   S.boot = function (now) {
-    var account = S.loadAccount(now), run = S.loadRun(), ended = null;
-    if (run && (run.phase === 'dead' || run.phase === 'won')) {
-      if (!(run.phase === 'dead' && run.mode === 'relaxed' && S.hasCheckpoint())) { ended = S.endRun(account, run, now); run = null; }
-    }
-    return { account: account, run: run, ended: ended };
+    var account = S.loadAccount(now), endedAll = [], runs = [];
+    S.listRuns().forEach(function (p) {
+      var run = p.run;
+      if ((run.phase === 'dead' || run.phase === 'won') && !(run.phase === 'dead' && run.mode === 'relaxed' && S.hasCheckpoint(p.slot))) {
+        endedAll.push(S.endRun(account, run, now));
+        return;
+      }
+      runs.push(p);
+    });
+    var top = runs[0] || null;
+    if (top) { st.cur = top.slot; st.lastId = top.run.id; st.dirty = false; st.savedPlayTime = top.run.playTime; }
+    return { account: account, run: top ? top.run : null, runs: runs, ended: endedAll[0] || null, endedAll: endedAll };
   };
   /** Sizes of what is stored, for a debug panel. */
   S.sizes = function () {
     var out = {};
     Object.keys(S.KEYS).forEach(function (k) { var r = read(S.KEYS[k]); out[k] = r ? r.length : 0; });
+    for (var n = 2; n <= S.SLOTS; n++) { var r = read(S.slotKeys(n).run); out['run' + n] = r ? r.length : 0; }
     return out;
   };
 })(typeof window !== 'undefined' ? window : globalThis);
@@ -48551,6 +48809,190 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     });
     res.moved = moved; res.replaced = old.name;
     return res;
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/meta/45_run_slots.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var U = KD.util;
+
+  /**
+   * KD.runs: the recent-runs list (up to KD.save.SLOTS = 3 runs in progress, solo and shared mixed) and the rules of a
+   * shared (co-op) run's copies. Pure: no DOM, no clock (callers pass `now`). Storage is KD.save (src/meta/43_save.js);
+   * the screens are src/ui/20_flow_15_runs.js; docs/RUN.md section 10 has the whole design.
+   *
+   * A SHARED RUN is one run played by 2 to 4 players. Every player keeps a copy in one of their own slots: their own
+   * complete run (their hero, bag, web, gold) whose world part (road, areas, cleared rooms) follows the host's. All
+   * copies carry the same shared run id:
+   *   run.coop = { seed, rid, host: true | false (this copy is the host's), rev, partners: [{ name, full, oid, host }], at }
+   *   rid: the shared run id (made by the host when the run starts); rev: shared worlds entered (the host's count; the
+   *   newest copy has the highest); partners: everyone else who played it (oid = their online account id, full = Name#tag).
+   * Older saves have run.coop = { seed } only: they are treated as solo runs (nothing to resume them with).
+   *
+   * THE RULE for continuing a shared run (continueModel):
+   * - The host's copy is the run's world. Its owner may invite the partners back (they come in with their own copy and
+   *   hero; the world is the host's) or play on alone: the run stays shared and the partners join at the host's point
+   *   next time, like a friend who joins late. Nothing in a partner's copy is lost: their hero is theirs.
+   * - A partner's (guest) copy follows the host. It continues only together with the host (ask the host to host it, or
+   *   join the host's game). Playing it alone would make its world part drift from the host's, so that is offered only
+   *   as "split it off": after a confirm the copy becomes an ordinary solo run (fork); the host's copy is not touched,
+   *   and the host can still play on with others.
+   */
+  var RS = KD.runs = KD.runs || {};
+
+  RS.slots = function () { return KD.save && KD.save.SLOTS ? KD.save.SLOTS : 3; };
+  /** True for a copy of a shared run that can be resumed (it has a shared run id). */
+  RS.isShared = function (run) { return !!(run && run.coop && run.coop.rid); };
+  /** True when this copy is the host's (the one whose world the others follow). */
+  RS.isHost = function (run) { return RS.isShared(run) && !!run.coop.host; };
+  /** A shared run id from anything unique the caller has (seed, clock, a random number): 'co_' + base 36. */
+  RS.makeRid = function () {
+    var s = Array.prototype.slice.call(arguments).map(String).join('|');
+    return 'co_' + (U.hash(s) >>> 0).toString(36) + (U.hash(s + '#') >>> 0).toString(36);
+  };
+  /**
+   * share(run, { rid, seed, host, now }): mark a run as this player's copy of a shared run (at its start). Keeps the
+   * partners and the count when the run is the same shared run already.
+   */
+  RS.share = function (run, o) {
+    o = o || {};
+    var old = run.coop && run.coop.rid === o.rid ? run.coop : null;
+    run.coop = { seed: o.seed !== undefined ? o.seed : run.seed, rid: o.rid || null, host: !!o.host, rev: old ? old.rev || 0 : 0,
+      partners: old ? old.partners || [] : [], at: old ? old.at : (o.now || 0) };
+    return run.coop;
+  };
+  function keyOf(p) { return p.oid ? 'o:' + p.oid : 'n:' + String(p.name || '').toLowerCase(); }
+  /**
+   * notePlayers(run, players, meId): remember who plays this shared run with us (lobby players: { id, name, oid, full,
+   * host }). Partners are merged by online account (or by name when there is none); everyone who ever played stays
+   * listed (at most 3, the newest kept), so "continue with the same person" works after someone left.
+   */
+  RS.notePlayers = function (run, players, meId) {
+    if (!RS.isShared(run)) return false;
+    var list = (run.coop.partners || []).slice(), changed = false, mine = null;
+    (players || []).forEach(function (p) { if (p.id === meId) mine = p; });
+    (players || []).forEach(function (p) {
+      if (!p || p.id === meId) return;
+      if (mine && mine.oid && p.oid && mine.oid === p.oid) return;           // the same account on another device
+      var rec = { name: String(p.name || 'Player').slice(0, 18), full: p.full ? String(p.full).slice(0, 24) : '', oid: p.oid ? String(p.oid).slice(0, 40) : '', host: !!p.host };
+      var k = keyOf(rec), at = -1;
+      for (var i = 0; i < list.length; i++) if (keyOf(list[i]) === k || (rec.oid && !list[i].oid && list[i].name.toLowerCase() === rec.name.toLowerCase())) { at = i; break; }
+      if (at >= 0) {
+        var o = list[at];
+        if (o.name !== rec.name || o.full !== (rec.full || o.full) || o.oid !== (rec.oid || o.oid) || o.host !== rec.host) changed = true;
+        list[at] = { name: rec.name, full: rec.full || o.full || '', oid: rec.oid || o.oid || '', host: rec.host };
+      } else { list.push(rec); changed = true; }
+    });
+    if (list.length > 3) { list = list.slice(list.length - 3); changed = true; }
+    run.coop.partners = list;
+    return changed;
+  };
+  /** The partner who hosts this run (for a guest copy), or null. */
+  RS.hostPartner = function (run) {
+    if (!RS.isShared(run) || run.coop.host) return null;
+    var ps = run.coop.partners || [];
+    return ps.filter(function (p) { return p.host; })[0] || ps[0] || null;
+  };
+  RS.partnerName = function (p) { return p ? (p.full || p.name || 'your friend') : 'your friend'; };
+  /** "Solo" | "With Kaya#0042" | "With Kaya#0042 and Bo#1234". */
+  RS.partnerText = function (run) {
+    if (!RS.isShared(run)) return 'Solo';
+    var names = (run.coop.partners || []).map(RS.partnerName);
+    if (!names.length) return 'Shared run';
+    return 'With ' + (names.length === 1 ? names[0] : names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1]);
+  };
+  /**
+   * fork(run, now): turn this copy of a shared run into an ordinary solo run (the player chose "Play it alone" on a
+   * copy that follows someone else's). Nothing else changes; the run's log says what happened.
+   */
+  RS.fork = function (run, now) {
+    if (!RS.isShared(run)) return { ok: false, reason: 'not_shared' };
+    var host = RS.hostPartner(run);
+    run.forked = { rid: run.coop.rid, from: host ? RS.partnerName(host) : null, at: now || 0 };
+    run.coop = null;
+    if (KD.run && KD.run.log) { try { KD.run.log(run, 'Split off from the shared run' + (host ? ' with ' + RS.partnerName(host) : '') + ' to go on alone.'); } catch (e) { /* the log is optional */ } }
+    return { ok: true };
+  };
+  /** "just now", "5 minutes ago", "3 hours ago", "yesterday", "4 days ago". */
+  RS.ago = function (at, now) {
+    if (!at || !now) return '';
+    var s = Math.max(0, (now - at) / 1000);
+    if (s < 90) return 'just now';
+    var m = Math.round(s / 60); if (m < 60) return m + ' minutes ago';
+    var h = Math.round(m / 60); if (h < 24) return h === 1 ? '1 hour ago' : h + ' hours ago';
+    var d = Math.round(h / 24); return d <= 1 ? 'yesterday' : d + ' days ago';
+  };
+  /** The slot to suggest when one must be freed: the run saved longest ago. list = KD.save.listRuns(). */
+  RS.oldest = function (list) {
+    var best = null;
+    (list || []).forEach(function (e) { if (!best || e.at < best.at || (e.at === best.at && e.slot > best.slot)) best = e; });
+    return best;
+  };
+  /** A friend's presence state for a partner: 'online' | 'lobby' | 'run' | 'offline', or '' when unknown (no account). */
+  RS.partnerState = function (p, friends) {
+    if (!p || !p.oid) return '';
+    var f = (friends || []).filter(function (x) { return x.id === p.oid; })[0];
+    return f ? (f.state || 'offline') : '';
+  };
+  /**
+   * continueModel(run, ctx) -> what the Continue list offers for one run.
+   *   ctx: { friends: KD.online.state.friends, online: the player can use the online service, together: co-op is
+   *          available at all (online or the PC host server) }
+   *   -> { kind: 'solo' | 'host' | 'guest', partners: [{ name, full, oid, host, state, on }], anyOn, hostOn,
+   *        actions: [{ id, label }], note }
+   *   action ids: continue (solo), invite (host copy, a partner online: open a game for this run and invite them),
+   *   host (host copy: open a game for this run, anyone may join), alone (host copy: play on alone, the run stays
+   *   shared), ask (guest copy, the host online: ask them to host it), fork (guest copy: split off as a solo run).
+   */
+  RS.continueModel = function (run, ctx) {
+    ctx = ctx || {};
+    var friends = ctx.friends || [];
+    if (!RS.isShared(run)) return { kind: 'solo', partners: [], anyOn: false, hostOn: false, actions: [{ id: 'continue', label: 'Continue' }], note: '' };
+    var partners = (run.coop.partners || []).map(function (p) {
+      var state = RS.partnerState(p, friends);
+      return { name: p.name, full: p.full, oid: p.oid, host: !!p.host, state: state, on: !!state && state !== 'offline' };
+    });
+    var on = partners.filter(function (p) { return p.on && ctx.online; });
+    var first = partners[0] || null, firstName = first ? RS.partnerName(first) : 'your friend';
+    if (run.coop.host) {
+      var acts = [];
+      if (on.length && ctx.together) acts.push({ id: 'invite', label: 'Invite ' + RS.partnerName(on[0]) });
+      if (ctx.together) acts.push({ id: 'host', label: on.length ? 'Open the game' : 'Host it' });
+      acts.push({ id: 'alone', label: 'Play alone' });
+      var note = on.length
+        ? RS.partnerName(on[0]) + ' is online. Invite them to continue together, or play on alone: the run stays shared and they join you where you are next time.'
+        : (first && first.oid && ctx.online
+          ? firstName + ' is offline. You can play on alone: the run stays shared, and next time you play together they join you where you are.'
+          : 'You host this run. Host it and ' + firstName + ' continues with their own hero when they join, or play on alone: they join you where you are next time.');
+      return { kind: 'host', partners: partners, anyOn: on.length > 0, hostOn: true, actions: acts, note: note };
+    }
+    var host = RS.hostPartner(run), hp = null;
+    partners.forEach(function (p) { if (host && p.name === host.name && p.oid === host.oid) hp = p; });
+    var hostName = RS.partnerName(host), hostOn = !!(hp && hp.on && ctx.online);
+    var gacts = [];
+    if (hostOn) gacts.push({ id: 'ask', label: 'Ask ' + hostName + ' to host' });
+    gacts.push({ id: 'fork', label: 'Play it alone' });
+    var gnote = hostOn
+      ? hostName + ' hosts this run and is online. Ask them to host it: you join with this hero.'
+      : (hp && hp.oid && ctx.online
+        ? hostName + ' hosts this run and is offline. Wait for them, or play it alone: that splits your copy off as a solo run (' + hostName + '\'s copy is not changed).'
+        : hostName + ' hosts this run. When they host it and you join their game, you continue with this hero. Playing it alone splits your copy off as a solo run.');
+    return { kind: 'guest', partners: partners, anyOn: on.length > 0, hostOn: hostOn, actions: gacts, note: gnote };
+  };
+  /** Text for the host when a partner's copy has gone further than the host's (it should not happen; a crash can do it). */
+  RS.newerText = function (name, ahead) {
+    return name + '\'s copy of this run is ' + ahead + (ahead === 1 ? ' area' : ' areas') + ' further along than yours. The run goes on from your copy: ' + name + '\'s hero keeps everything, and their road follows yours.';
+  };
+  /** A short label of a run for an invite: "Ironbound 12, Act II". */
+  RS.label = function (run) {
+    if (!run || !run.hero) return '';
+    var cls = KD.has && KD.has('classes', run.hero.classId) ? KD.get('classes', run.hero.classId).name : run.hero.classId;
+    var act = KD.run && KD.run.act ? KD.run.act(run) : 1;
+    return cls + ' ' + run.hero.level + ', Act ' + (['', 'I', 'II', 'III', 'IV'][act] || act);
   };
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -49052,7 +49494,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     this.hooks = o.hooks || {};
     this.events = new KD.Emitter();
     this.role = null; this.id = 0; this.hostId = 0;
-    this.profile = { name: o.name || 'Player', classId: o.classId || 'ironbound', ready: false };
+    this.profile = { name: o.name || 'Player', classId: o.classId || 'ironbound', ready: false, oid: o.oid ? String(o.oid).slice(0, 40) : '', full: o.full ? String(o.full).slice(0, 24) : '' };
+    this.resume = null;       // host: { rid, rev, phase } of the shared run this lobby continues (setResume)
+    this.copySent = null;     // guest: the shared run id whose copy was reported to the host
     this.profile.cos = cosOf(o.cos !== undefined ? o.cos : (KD.cosmetics && KD.cosmetics.localWire ? KD.cosmetics.localWire() : null));     // [cosmetics] render only (docs/COSMETICS.md)
     this.lobby = { players: [], started: false, seed: 0, mode: 'standard', hostId: 0 };
     this.world = null; this.layout = null; this.cmd = null; this.replicas = []; this.roster = []; this.localIdx = -1;
@@ -49078,8 +49522,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   SP.idxOf = function (id) { for (var i = 0; i < this.roster.length; i++) if (this.roster[i].id === id) return i; return -1; };
   SP.localPlayer = function () { return this.world && this.localIdx >= 0 ? this.world.players[this.localIdx] || null : null; };
   function publicLobby(L) {
-    return { started: L.started, seed: L.seed, mode: L.mode, hostId: L.hostId, where: L.where || null,
-      players: L.players.map(function (p) { return { id: p.id, name: p.name, classId: p.classId, ready: !!p.ready, host: !!p.host, phase: p.phase || 'lobby', inWorld: !!p.inWorld, level: p.level || 1, ua: p.ua || '', cos: p.cos || {} }; }) };
+    return { started: L.started, seed: L.seed, mode: L.mode, hostId: L.hostId, where: L.where || null, rid: L.rid || null, rev: L.rev || 0,
+      players: L.players.map(function (p) { return { id: p.id, name: p.name, classId: p.classId, ready: !!p.ready, host: !!p.host, phase: p.phase || 'lobby', inWorld: !!p.inWorld, level: p.level || 1, ua: p.ua || '', cos: p.cos || {},
+        oid: p.oid || '', full: p.full || '', has: p.has === undefined ? null : !!p.has }; }) };
   }
   SP.pushLobby = function () {
     if (this.role !== 'host') return;
@@ -49092,15 +49537,39 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   // ---- roles
   SP.becomeHost = function (id) {
     this.role = 'host'; this.id = id; this.hostId = id;
-    this.lobby = { players: [{ id: id, name: this.profile.name, classId: this.profile.classId, ready: true, host: true, phase: 'lobby', blob: null, ua: C.ua(), cos: this.profile.cos || {} }], started: false, seed: 0, mode: 'standard', hostId: id };
+    this.lobby = { players: [{ id: id, name: this.profile.name, classId: this.profile.classId, ready: true, host: true, phase: 'lobby', blob: null, ua: C.ua(), cos: this.profile.cos || {}, oid: this.profile.oid, full: this.profile.full, has: true }], started: false, seed: 0, mode: 'standard', hostId: id };
+    if (this.resume) { this.lobby.rid = this.resume.rid; this.lobby.rev = this.resume.rev || 0; }
     this.events.emit('lobby', this.lobby);
+  };
+  /**
+   * Host: this lobby continues a shared run (KD.runs): info { rid, rev, phase } of the host's copy, or null for a new
+   * run. Guests are told the run id in the lobby; each answers whether it holds a copy and how far it got ('copy').
+   */
+  SP.setResume = function (info) {
+    this.resume = info && info.rid ? { rid: String(info.rid), rev: info.rev || 0, phase: info.phase || null } : null;
+    if (this.role !== 'host') return;
+    this.lobby.rid = this.resume ? this.resume.rid : null; this.lobby.rev = this.resume ? this.resume.rev : 0;
+    var self = this;
+    this.lobby.players.forEach(function (p) { if (p.id !== self.id) delete p.has; });
+    this.pushLobby();
   };
   SP.becomeGuest = function (id, hostId) {
     this.role = 'guest'; this.id = id; this.hostId = hostId || 0;
     if (this.hostId) this.hello();
     this.events.emit('lobby', this.lobby);
   };
-  SP.hello = function () { this.send('h', { t: 'hi', name: this.profile.name, classId: this.profile.classId, v: KD.VERSION, ua: C.ua(), cos: this.profile.cos || {} }); this.reportPhase(true); };
+  SP.hello = function () { this.copySent = null; this.send('h', { t: 'hi', name: this.profile.name, classId: this.profile.classId, v: KD.VERSION, ua: C.ua(), cos: this.profile.cos || {}, oid: this.profile.oid || '', full: this.profile.full || '' }); this.reportPhase(true); };
+  /**
+   * Guest: the lobby names a shared run (lobby.rid): tell the host whether this player holds a copy and how far it got
+   * (hooks.copyOf(rid) -> { rev } | null). Sent once per run id.
+   */
+  SP.reportCopy = function () {
+    var rid = this.lobby && this.lobby.rid;
+    if (this.role !== 'guest' || !this.hostId || !rid || this.copySent === rid) return;
+    this.copySent = rid;
+    var c = null; try { c = this.hooks.copyOf ? this.hooks.copyOf(rid) : null; } catch (e) { c = null; }
+    this.send('h', { t: 'copy', rid: rid, has: !!c, rev: c ? c.rev || 0 : 0 });
+  };
   /** The relay says who the host is now (0: the host left). */
   SP.onHost = function (hostId) {
     if (this.role !== 'guest') return;
@@ -49145,8 +49614,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         p.name = String(d.name || 'Player').slice(0, 18); if (KD.has('classes', d.classId)) p.classId = d.classId;
         p.ua = String(d.ua || '').slice(0, 24);
         p.cos = cosOf(d.cos);                                   // [cosmetics] render only
+        p.oid = d.oid ? String(d.oid).slice(0, 40) : ''; p.full = d.full ? String(d.full).slice(0, 24) : '';      // online identity (shared-run partners)
         this.pushLobby();
-        if (this.lobby.started) this.send(from, { t: 'start', seed: this.lobby.seed, mode: this.lobby.mode, late: true, level: this.partyLevel() });
+        if (this.lobby.started) { var lr = this.live(); this.send(from, { t: 'start', seed: this.lobby.seed, mode: this.lobby.mode, late: true, level: this.partyLevel(), rid: this.lobby.rid || null, phase: lr ? lr.phase : null, resume: !!this.lobby.resume }); }
         if (this.cmd) this.send(from, { t: 'where', kind: this.cmd.kind, areaId: this.cmd.areaId });
         break;
       case 'set':
@@ -49171,6 +49641,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       case 'hash':
         if (this.cmd && d.w === this.cmd.n && this.hashes[d.n] !== undefined && this.hashes[d.n] !== d.h) { this.send(from, { t: 'why', n: d.n, w: d.w }); this.onDesync(d.n, from); }
         break;
+      case 'copy':
+        if (!p || !this.lobby.rid || d.rid !== this.lobby.rid) return;
+        p.has = !!d.has; p.rev = d.rev || 0;
+        if (p.has && p.rev > (this.lobby.rev || 0)) this.events.emit('newerCopy', { id: from, name: p.name, full: p.full || '', ahead: p.rev - (this.lobby.rev || 0) });
+        this.pushLobby();
+        break;
       case 'detail': this.onDetail(from, d); break;
       case 'req': if (this.hooks.request && this.idxOf(from) >= 0) this.hooks.request(d.w, from); break;
       case 'ping': this.send(from, { t: 'pong', ts: d.ts }); break;
@@ -49178,7 +49654,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   };
   SP.guestMessage = function (d) {
     switch (d.t) {
-      case 'lobby': this.lobby = d.L; this.events.emit('lobby', this.lobby); break;
+      case 'lobby': this.lobby = d.L; this.events.emit('lobby', this.lobby); this.reportCopy(); break;
       case 'start': this.onStart(d); break;
       case 'world': this.onWorldCmd(d.cmd); break;
       case 'where': this.where = { kind: d.kind, areaId: d.areaId }; this.events.emit('waiting', { cmd: this.where }); break;
@@ -49202,17 +49678,20 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     this.lobby.started = true;
     this.lobby.seed = opts.seed !== undefined ? opts.seed >>> 0 : 1;
     this.lobby.mode = opts.mode || 'standard';
+    this.lobby.rid = opts.rid || (this.resume ? this.resume.rid : null) || null;      // the shared run id (KD.runs): the same for every copy
+    this.lobby.resume = !!(opts.resume || (this.resume && this.resume.rid === this.lobby.rid));
     this.lobby.players.forEach(function (p) { p.phase = 'setup'; p.blob = null; });
     this.pushLobby();
-    var msg = { t: 'start', seed: this.lobby.seed, mode: this.lobby.mode };
+    var msg = { t: 'start', seed: this.lobby.seed, mode: this.lobby.mode, rid: this.lobby.rid, resume: this.lobby.resume, phase: opts.phase || (this.resume ? this.resume.phase : null) || null };
     this.send('*', msg);
     this.onStart(msg);
     return true;
   };
   SP.onStart = function (d) {
     this.leaveWorld();
-    this.started = { seed: d.seed, mode: d.mode, late: !!d.late, level: d.level || 1 };
-    if (this.hooks.newRun) this.hooks.newRun({ seed: d.seed, mode: d.mode, classId: this.profile.classId, name: this.profile.name, late: !!d.late, level: d.level || 1 });
+    this.started = { seed: d.seed, mode: d.mode, late: !!d.late, level: d.level || 1, rid: d.rid || null, resume: !!d.resume, phase: d.phase || null };
+    if (this.hooks.newRun) this.hooks.newRun({ seed: d.seed, mode: d.mode, classId: this.profile.classId, name: this.profile.name, late: !!d.late, level: d.level || 1,
+      rid: d.rid || null, resume: !!d.resume, phase: d.phase || null, host: this.role === 'host' });
     this.events.emit('start', this.started);
     this.reportPhase(true);
   };
@@ -49254,6 +49733,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   SP.makeWorldCmd = function (kind, info, keep) {
     var self = this, run = this.live(), a = run.area, roster = this.makeRoster();
     var cmd = { n: ++this.seq, kind: kind, areaId: a.areaId, slot: a.slot, rules: KD.run.rules(run) };
+    if (run.coop && run.coop.rid) cmd.rev = (run.coop.rev || 0) + (keep ? 0 : 1);      // shared worlds entered: how far each copy got
     if (kind === 'arena') {
       cmd.bossId = info.bossId; cmd.variant = info.variant; cmd.seed = (a.seed ^ 0x0A7E7A) >>> 0;
       cmd.areaState = info.areaState || { areaId: a.areaId, seed: cmd.seed, slot: a.slot, inArena: true, cleared: { spawns: {}, interact: {} }, pos: null, minibossDead: true, bossDead: false, events: {} };
@@ -49334,6 +49814,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var b = C.buildWorld(cmd);
     this.world = b.world; this.layout = b.layout; this.replicas = b.replicas;
     var lr = this.live();
+    if (lr && lr.coop && lr.coop.rid && cmd.rev && cmd.rev > (lr.coop.rev || 0)) lr.coop.rev = cmd.rev;
     if (lr && lr.area && cmd.kind === 'area' && KD.run.setAreaFeatures && KD.run.featuresFromLayout) { try { KD.run.setAreaFeatures(lr, KD.run.featuresFromLayout(b.layout)); } catch (e) { /* features are optional */ } }
     var w = this.world;
     w.viewIndex = Math.max(0, this.localIdx);
@@ -49658,12 +50139,14 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    *   O.account() / O.signedIn() / O.hasName() / O.full()   this device's account ({ id, name, tag, full, renameAt })
    *   O.chooseName(name)           first pick (creates the account when there is none) or rename -> Promise<result>
    *   O.friends() O.addFriend(tag) O.accept(id) O.decline(id) O.cancel(id) O.remove(id)
-   *   O.createRoom() O.invite(id, room) O.invites() O.answer(id, yes) O.joinFriend(id)    -> Promise<result>
+   *   O.createRoom() O.invite(id, room, run?) O.invites() O.answer(id, yes) O.joinFriend(id)    -> Promise<result>
+   *   O.resumeAsk(id, run)        ask a friend to host the shared run you both play (run = { id, label }, KD.runs)
    *   O.linkStart() O.linkClaim(code)
    *   O.connect() O.disconnect() O.setStatus(state, room)   the presence socket (reconnects with backoff)
    *   O.roomLink(room)             what KD.game.coopOpen needs to connect to an online room
    *   O.events: 'account' (account), 'friends' (state.friends), 'presence' ({ state }), 'invite' (invite),
-   *             'inviteAnswer' ({ id, by, accepted }), 'request' ({ from }), 'notice' ({ text, kind })
+   *             'inviteAnswer' ({ id, by, accepted }), 'request' ({ from }), 'notice' ({ text, kind }),
+   *             'resume' ({ from, run: { id, label } }: a friend asks this player to host your shared run)
    * Every call resolves to { ok, status, body, error, message } and never throws: `message` is plain words for the player.
    */
   var O = KD.online = KD.online || {};
@@ -49823,7 +50306,22 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
   // ------------------------------------------------------------------------------------------ rooms and invites
   O.createRoom = function () { return O.call('POST', '/v1/rooms', {}); };
-  O.invite = function (id, room) { return O.call('POST', '/v1/invites', { to: id, room: room }); };
+  /** run (optional): { id, label } of a shared run this game continues (KD.runs): the friend's toast says so. Older services ignore it. */
+  O.cleanRun = function (run) {
+    if (!run || !run.id) return null;
+    var id = String(run.id).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 40);
+    return id ? { id: id, label: String(run.label || '').replace(/[\u0000-\u001f]/g, ' ').slice(0, 60) } : null;
+  };
+  O.invite = function (id, room, run) { var r = O.cleanRun(run), b = { to: id, room: room }; if (r) b.run = r; return O.call('POST', '/v1/invites', b); };
+  /**
+   * Ask a friend to host a shared run you both have a copy of (you are not its host). They get a live 'resume' message;
+   * when they host it, the normal invite follows. An older service answers 404 (not_found); an offline friend 409 (offline).
+   */
+  O.resumeAsk = function (id, run) {
+    var r = O.cleanRun(run);
+    if (!r) return Promise.resolve({ ok: false, status: 400, error: 'bad_request', message: 'That run cannot be shared.' });
+    return O.call('POST', '/v1/resume', { to: id, run: r });
+  };
   O.invites = function () { return O.call('GET', '/v1/invites').then(function (r) { if (r.ok) O.state.invites = r.body.invites || []; return r; }); };
   O.answer = function (id, yes) {
     O.state.invites = O.state.invites.filter(function (i) { return i.id !== id; });
@@ -49920,6 +50418,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         O.events.emit('invite', d.invite);
         break;
       case 'invite_answer': O.events.emit('inviteAnswer', { id: d.id, by: d.by, accepted: !!d.accepted }); break;
+      case 'resume': if (d.from && d.run && d.run.id) O.events.emit('resume', { from: d.from, run: O.cleanRun(d.run) }); break;
     }
   };
 })(typeof window !== 'undefined' ? window : globalThis);
@@ -91419,6 +91918,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     ]);
   }
   function continueButton(game) {
+    if (F.runs && F.runs.menuButton && game.recentRuns) return F.runs.menuButton(game);      // up to three runs (src/ui/20_flow_15_runs.js)
     var el = KD.ui.el, info = F.savedRunInfo(game.savedRun);
     if (!info) return null;
     var label = el('span.flow-continue', [
@@ -91436,6 +91936,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var el = KD.ui.el, s = F.screenRoot('menu');
     KD.ui.clear(s);
     // (touch: no tooltips on the menu's own buttons. A tooltip there opens on press-and-hold, and a slow tap must still open the screen.)
+    var cont = continueButton(game);      // with Continue the PC column pairs the smaller buttons so that all of it fits (20_flow.css)
     var btn = function (label, icon, fn, tip) { return KD.ui.button(label, { icon: icon, className: 'flow-menu-btn', onClick: fn, tip: F.isTouch() ? null : tip }); };
     s.appendChild(el('div.flow-menu-shade'));
     s.appendChild(el('div.flow-menu-left', [
@@ -91446,8 +91947,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         el('div.flow-title-rule', [el('span.flow-title-wing'), el('span.flow-title-blade'), el('span.flow-title-wing.flow-flip')]),
         el('div.flow-title-tag', { text: 'One life. One road. One throne.' })
       ]),
-      el('div.flow-menu-buttons', [
-        continueButton(game),
+      el('div.flow-menu-buttons' + (cont ? '.flow-menu-has-continue' : ''), [
+        cont,
         KD.ui.button('New Run', { icon: 'sword', className: 'flow-menu-btn flow-menu-wide', onClick: function () { M.openNewRun(game); } }),
         F.coop && F.coop.menuButton ? F.coop.menuButton(game) : null,      // "Play Together" (src/ui/25_coop_10_lobby.js)
         F.online && F.online.menuButton ? F.online.menuButton(game) : null,      // "Friends" (src/ui/26_online_10_screens.js)
@@ -91539,7 +92040,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       KD.ui.clear(note);
       note.appendChild(el('span.kd-dim', { text: 'Account experience from this run: ' }));
       note.appendChild(el('b', { class: mult > 100 ? 'kd-up' : (mult < 100 ? 'kd-down' : null), text: mult + '%' }));
-      if (game.savedRun) note.appendChild(el('span.flow-nr-warn', { text: '  Starting ends your run in progress.' }));
+      if (game.freeSlot ? !game.freeSlot() : game.savedRun) note.appendChild(el('span.flow-nr-warn', { text: game.freeSlot ? '  All run slots are in use: you choose one to end.' : '  Starting ends your run in progress.' }));
     }
     function select(id) {
       NR.classId = id;
@@ -91628,7 +92129,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       var muts = Object.keys(NR.mutators).filter(function (id) { return NR.mutators[id]; });
       var name = String(NR.name || '').replace(/\s+/g, ' ').trim().slice(0, 18);
       try {
-        var res = game.savedRun ? M.endSavedRun(game) : null;
+        var res = game.savedRun && !game.freeSlot ? M.endSavedRun(game) : null;     // an older game object keeps one run: it ends
         game.newRun({ classId: NR.classId, mode: NR.mode, name: name || undefined, seed: String(NR.seed || '').trim(), mutators: muts });
         if (res && res.breakdown) KD.ui.toast('The old run is written into the Chronicle: +' + F.num(res.breakdown.total) + ' account xp', { kind: 'info', icon: 'book' });
         NR.name = ''; NR.seed = '';
@@ -91636,12 +92137,250 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       } catch (e) { console.error(e); KD.ui.toast('That run could not be started.', { kind: 'bad', icon: 'warning' }); }
     };
     if (!KD.account.hasClass(game.account, NR.classId)) return;
+    if (game.freeSlot && F.runs && F.runs.makeRoom) {
+      // up to three runs are kept: a new one only needs a free slot; when all are used the player picks the run to end
+      if (game.freeSlot()) return go();
+      F.runs.makeRoom(game, { title: 'Every run slot is in use', yes: 'End it and begin', no: 'Keep them' }).then(function (ok) { if (ok) go(); });
+      return;
+    }
     if (game.savedRun) {
       var info = F.savedRunInfo(game.savedRun);
       F.confirm({ title: 'End the run in progress?', text: info.line + '\n\nOnly one run can be in progress. It ends here, is written into the Chronicle as abandoned, and still earns its account experience.',
         yes: 'End it and begin', no: 'Keep it', danger: true, width: 440 }).then(function (ok) { if (ok) go(); });
     } else go();
   };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/ui/20_flow_15_runs.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  if (typeof document === 'undefined') return;       // browser only
+  var F = KD.flow;
+
+  /**
+   * Recent runs (owner request: "3 recent runs ... we dont lose runs and can continue them with the same person"):
+   * the main menu's Continue button, the Continue screen (flow screen 'runs': one card per run slot), the dialog of a
+   * shared run (invite the partner, ask the host, play alone, split off), Delete, and the "every slot is in use" picker.
+   * Pure rules are KD.runs (src/meta/45_run_slots.js); saving is KD.save; docs/RUN.md section 10 and docs/FLOW.md.
+   */
+  var RU = F.runs = F.runs || {};
+  function now() { return Date.now(); }
+  function O() { return KD.online || null; }
+  function onlineReady() { var o = O(); try { return !!(o && o.configured() && o.hasName()); } catch (e) { return false; } }
+  function friends() { var o = O(); return o && o.state ? o.state.friends || [] : []; }
+  function toast(text, kind, icon, ms) { try { return KD.ui.toast(text, { kind: kind || 'info', icon: icon || 'info', ms: ms }); } catch (e) { return null; } }
+  function ctxFor(game) { return { friends: friends(), online: onlineReady(), together: !!(game.coopAvailable && game.coopAvailable()) }; }
+  /** One run of the list in words: { info (F.savedRunInfo), who, ago, model, title }. */
+  RU.describe = function (game, entry) {
+    var run = entry.run, info = F.savedRunInfo(run), model = KD.runs.continueModel(run, ctxFor(game));
+    return { info: info, model: model, who: KD.runs.partnerText(run), ago: KD.runs.ago(entry.at, now()),
+      title: info.name && info.name !== info.className ? info.name + ' the ' + info.className : info.className };
+  };
+  function dot(state) { return KD.ui.el('span.flow-runs-dot', { style: { background: F.online && F.online.dotColor ? F.online.dotColor(state) : (state && state !== 'offline' ? '#7fcf5a' : '#8a8378') }, attrs: { 'aria-hidden': 'true' } }); }
+
+  // ------------------------------------------------------------------------------------------ main menu button
+  /** "Continue": the newest run. One solo run continues at once; otherwise the Continue screen opens. */
+  RU.menuButton = function (game) {
+    var el = KD.ui.el, list = game.recentRuns ? game.recentRuns() : [];
+    if (!list.length) return null;
+    var d = RU.describe(game, list[0]), info = d.info;
+    var more = list.length > 1 ? (list.length - 1) + ' more ' + (list.length === 2 ? 'run' : 'runs') : '';
+    var label = el('span.flow-continue', [
+      F.medallion(F.classGlyph(info.classId), 34, info.color),
+      el('span.flow-continue-text', [el('span.flow-continue-top', { text: 'Continue' }),
+        el('span.flow-continue-sub', { text: (info.name !== info.className ? info.name + ', ' : '') + info.className + ' ' + info.level + ' · ' + info.where }),
+        el('span.flow-continue-sub', { text: [info.actName, d.who === 'Solo' ? info.mode : d.who, more].filter(Boolean).join(' · ') })])
+    ]);
+    return KD.ui.button(label, { kind: 'primary', className: 'flow-menu-btn flow-menu-continue flow-menu-wide', aria: 'Continue a run', onClick: function () {
+      var cur = game.recentRuns();
+      if (cur.length === 1 && !KD.runs.isShared(cur[0].run)) RU.go(game, cur[0].slot);
+      else RU.open(game);
+    } });
+  };
+  /** Continue the run in a slot (solo, or a shared run alone). */
+  RU.go = function (game, slot) {
+    try { if (game.continueRun(slot) === false) toast('That run could not be found any more.', 'bad', 'warning'); }
+    catch (e) { console.error(e); toast('The saved run could not be resumed.', 'bad', 'warning'); }
+  };
+
+  // ------------------------------------------------------------------------------------------ the Continue screen
+  function card(game, entry) {
+    var el = KD.ui.el, d = RU.describe(game, entry), info = d.info, m = d.model, run = entry.run;
+    var who = m.kind === 'solo' ? [KD.ui.icon('sword', 13, 'currentColor'), el('span', { text: 'Solo' })]
+      : m.partners.map(function (p) {
+        return el('span.flow-runs-partner', [dot(p.state || 'offline'), el('span', { text: KD.runs.partnerName(p) }),
+          el('span.flow-runs-pstate', { text: p.state ? (p.on ? 'online' : 'offline') : (p.host ? 'host' : '') })]);
+      });
+    var role = m.kind === 'host' ? 'You host' : (m.kind === 'guest' ? 'Their run' : '');
+    var del = KD.ui.button('', { icon: 'cross', small: true, className: 'flow-runs-del', aria: 'End this run', tip: F.isTouch() ? null : 'End this run', onClick: function () { RU.remove(game, entry); } });
+    var go = KD.ui.button(m.kind === 'solo' ? 'Continue' : (m.kind === 'host' ? (m.anyOn ? 'Continue together' : 'Continue') : (m.hostOn ? 'Continue together' : 'Continue')),
+      { kind: 'primary', icon: 'arrow_right', className: 'flow-runs-go', onClick: function () { RU.choose(game, entry); } });
+    return el('div.kd-parchment.flow-runs-card' + (m.kind !== 'solo' ? '.flow-runs-shared' : ''), { data: { slot: String(entry.slot) } }, [
+      el('div.flow-runs-top', [
+        F.medallion(F.classGlyph(info.classId), F.isCompact() ? 34 : 44, info.color),
+        el('div.flow-runs-id', [el('div.flow-runs-name', { text: d.title }), el('div.flow-runs-lvl', { text: 'Level ' + info.level + ' · ' + info.actName })]),
+        del
+      ]),
+      el('div.flow-runs-where', [KD.ui.icon(run.phase === 'route' ? 'compass' : 'camp', 13, 'currentColor'), el('span', { text: info.where })]),
+      el('div.flow-runs-who', who.concat(role ? [el('span.flow-runs-role', { text: role })] : [])),
+      el('div.flow-runs-meta', { text: info.mode + ' · ' + info.time + (d.ago ? ' · ' + d.ago : '') }),
+      el('div.flow-grow'),
+      go
+    ]);
+  }
+  function emptyCard(game, n) {
+    var el = KD.ui.el;
+    return el('div.flow-runs-card.flow-runs-empty', { data: { slot: 'empty' } }, [
+      el('div.flow-runs-emptytext', { text: 'Empty slot' }),
+      el('div.flow-runs-meta', { text: 'Room for ' + (n === 1 ? 'one more run' : n + ' more runs') + ', solo or together.' }),
+      el('div.flow-grow'),
+      KD.ui.button('New Run', { icon: 'sword', className: 'flow-runs-new', onClick: function () { F.menu.openNewRun(game); } })
+    ]);
+  }
+  RU.build = function (game) {
+    var el = KD.ui.el, s = F.screenRoot('runs', 'flow-solid'), list = game.recentRuns(), max = KD.runs.slots();
+    KD.ui.clear(s);
+    s.appendChild(F.heading('Continue', 'Up to ' + max + ' runs in progress, solo or together. One life each: a run that ends goes into the Chronicle.'));
+    var cards = list.map(function (e) { return card(game, e); });
+    if (list.length < max) cards.push(emptyCard(game, max - list.length));
+    s.appendChild(el('div.flow-runs-body', [el('div.flow-runs-grid', cards)]));
+    s.appendChild(el('div.flow-foot', [KD.ui.button('Back', { icon: 'arrow_left', onClick: function () { F.menu.show(game); } }), el('div.flow-grow'),
+      el('span.flow-runs-foot.kd-dim', { text: list.length + ' of ' + max + ' slots used' })]));
+    return s;
+  };
+  RU.open = function (game) {
+    var o = O();
+    try { if (o && onlineReady() && o.signedIn()) { o.connect(); if (!o.state.loaded) o.friends(); } } catch (e) { /* offline */ }
+    RU.build(game); F.show('runs'); F.music('menu');
+  };
+  RU.refresh = function (game) { if (F.current === 'runs') RU.build(game || F.game); };
+
+  // ------------------------------------------------------------------------------------------ choosing what to do with a run
+  /** Continue on a card: a solo run goes at once; a shared run opens its dialog (KD.runs.continueModel). */
+  RU.choose = function (game, entry) {
+    var m = KD.runs.continueModel(entry.run, ctxFor(game));
+    if (m.kind === 'solo') return RU.go(game, entry.slot);
+    var el = KD.ui.el, d = RU.describe(game, entry), id = 'flow-runs-go';
+    var close = function () { KD.ui.windows.close(id); };
+    var buttons = m.actions.map(function (a, i) {
+      return KD.ui.button(a.label, { kind: i === 0 ? 'primary' : null, icon: { invite: 'horn', host: 'crown', alone: 'sword', ask: 'horn', fork: 'sword' }[a.id], className: 'flow-runs-act flow-runs-act-' + a.id,
+        onClick: function () { close(); RU.act(game, entry, a.id, m); } });
+    });
+    F.window(id, { title: m.kind === 'host' ? 'Your shared run' : 'A shared run', icon: 'horn', width: F.isCompact() ? 620 : 470, pauses: false, className: 'flow-runs-win',
+      content: [
+        el('div.flow-runs-dlghead', [F.medallion(F.classGlyph(d.info.classId), 40, d.info.color), el('div', [el('div.flow-runs-name', { text: d.title }), el('div.flow-runs-lvl', { text: 'Level ' + d.info.level + ' · ' + d.info.where + ' · ' + d.who })])]),
+        el('div.flow-runs-note', { text: m.note }),
+        el('div.flow-runs-acts', buttons)
+      ],
+      footer: [KD.ui.button('Not now', { onClick: close })] });
+  };
+  /** Carry out one action of the shared-run dialog. */
+  RU.act = function (game, entry, what, m) {
+    var run = entry.run, OU = F.online;
+    if (what === 'alone') return RU.go(game, entry.slot);
+    if (what === 'invite' || what === 'host') {
+      var on = m.partners.filter(function (p) { return p.on && p.oid; });
+      if (onlineReady() && OU && OU.resumeHost) return OU.resumeHost(game, entry.slot, what === 'invite' ? on.map(function (p) { return p.oid; }) : []);
+      var prof = F.coop && F.coop.profile ? F.coop.profile() : null;
+      if (game.coopOpen('host', { name: prof ? prof.name : run.hero.name, classId: run.hero.classId }, null, { resume: entry.slot }) === false)
+        F.confirm({ title: 'Play Together', text: F.coop && F.coop.unavailableText ? F.coop.unavailableText(F.isTouch()) : 'Playing together needs the host server or the online service.', yes: 'Understood', no: false, pauses: false });
+      return;
+    }
+    if (what === 'ask') {
+      var host = KD.runs.hostPartner(run);
+      if (!host || !host.oid || !O() || !O().resumeAsk) return;
+      O().resumeAsk(host.oid, { id: run.coop.rid, label: KD.runs.label(run) }).then(function (r) {
+        if (r.ok) toast('Asked ' + KD.runs.partnerName(host) + '. When they host it, their invite appears here.', 'good', 'horn', 7000);
+        else if (r.status === 404 && r.error !== 'offline') toast(KD.runs.partnerName(host) + ' needs to host it: ask them to choose Continue on their side.', 'info', 'horn', 8000);
+        else toast(r.message || 'That did not work.', 'warn', 'warning', 6000);
+      });
+      return;
+    }
+    if (what === 'fork') {
+      var hp = KD.runs.hostPartner(run), name = KD.runs.partnerName(hp);
+      F.confirm({ title: 'Play it alone?', text: 'This copy follows ' + name + '\'s run. Playing it alone splits it off as your own solo run: you keep your hero and everything it has, but ' + name + ' can no longer bring you back into this run. ' + name + '\'s copy is not changed.',
+        yes: 'Split it off and play', no: 'Wait for ' + name, pauses: false, width: 470 }).then(function (ok) {
+        if (!ok) return;
+        if (!game.forkRun(entry.slot)) { toast('That run could not be changed.', 'bad', 'warning'); return; }
+        RU.go(game, entry.slot);
+      });
+    }
+  };
+  /** Delete on a card: end the run (Chronicle, account experience), after a confirm. */
+  RU.remove = function (game, entry) {
+    var d = RU.describe(game, entry);
+    F.confirm({ title: 'End this run?', text: d.info.line + '\n\nIt ends here, is written into the Chronicle as abandoned, and still earns its account experience. This cannot be undone.' +
+      (KD.runs.isShared(entry.run) ? ' Your friends keep their own copies of the shared run.' : ''), yes: 'End the run', no: 'Keep it', danger: true, pauses: false, width: 460 }).then(function (ok) {
+      if (!ok) return;
+      var res = game.dropRun(entry.slot);
+      if (res && res.ok && res.breakdown) toast('The run is written into the Chronicle: +' + F.num(res.breakdown.total) + ' account xp', 'info', 'book');
+      if (F.current === 'runs') { if (game.recentRuns().length) RU.build(game); else F.menu.show(game); }
+      else if (F.current === 'menu') F.menu.build(game);
+    });
+  };
+
+  // ------------------------------------------------------------------------------------------ every slot in use
+  /**
+   * pickDrop(game, { title, text, yes, no }) -> Promise<slot | 0>. Every run slot holds a run: the player picks the one
+   * to end (the run saved longest ago is picked to begin with). Nothing ends until the player confirms.
+   */
+  RU.pickDrop = function (game, o) {
+    o = o || {};
+    var el = KD.ui.el, list = game.recentRuns(), id = 'flow-runs-drop';
+    if (!list.length) return Promise.resolve(0);
+    var pick = (KD.runs.oldest(list) || list[0]).slot, rows = {};
+    return new Promise(function (resolve) {
+      var done = false;
+      function finish(v) { if (done) return; done = true; resolve(v); KD.ui.windows.close(id); }
+      var yes = KD.ui.button(o.yes || 'End it', { kind: 'danger', className: 'flow-runs-dropyes', onClick: function () { finish(pick); } });
+      function paint() { for (var k in rows) { rows[k].classList.toggle('flow-sel', +k === pick); rows[k].setAttribute('aria-pressed', +k === pick ? 'true' : 'false'); } }
+      var body = el('div.flow-runs-droplist', list.map(function (e) {
+        var d = RU.describe(game, e);
+        var r = el('div.flow-runs-droprow.flow-click', { tabIndex: 0, data: { slot: String(e.slot) }, attrs: { role: 'button' },
+          onClick: function () { pick = e.slot; paint(); }, onKeydown: function (ev) { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); pick = e.slot; paint(); } } }, [
+          F.medallion(F.classGlyph(d.info.classId), 32, d.info.color),
+          el('div.flow-runs-id', [el('div.flow-runs-name', { text: d.title + ' · Level ' + d.info.level }), el('div.flow-runs-lvl', { text: d.info.where + ' · ' + d.who + (d.ago ? ' · ' + d.ago : '') })])
+        ]);
+        rows[e.slot] = r;
+        return r;
+      }));
+      paint();
+      F.window(id, { title: o.title || 'Every run slot is in use', icon: 'warning', width: F.isCompact() ? 640 : 480, pauses: false, className: 'flow-runs-win.flow-runs-drop',
+        content: [el('div.flow-runs-note', { text: o.text || 'You can keep ' + KD.runs.slots() + ' runs in progress. Choose the one to end: it is written into the Chronicle as abandoned and still earns its account experience.' }), body],
+        footer: [KD.ui.button(o.no || 'Cancel', { onClick: function () { finish(0); } }), yes],
+        onClose: function () { if (!done) { done = true; resolve(0); } } });
+    });
+  };
+  /** Ends the chosen run to make room. -> true when a slot is free afterwards. */
+  RU.makeRoom = function (game, o) {
+    if (game.freeSlot()) return Promise.resolve(true);
+    return RU.pickDrop(game, o).then(function (slot) {
+      if (!slot) return false;
+      var res = game.dropRun(slot);
+      if (res && res.ok && res.breakdown) toast('The run is written into the Chronicle: +' + F.num(res.breakdown.total) + ' account xp', 'info', 'book');
+      return !!game.freeSlot();
+    });
+  };
+
+  KD.screens.register('runs', function (game) {
+    // a run that started (a shared run joined while every slot was in use) and found no slot to save into
+    game.events.on('slotsFull', function (e) {
+      setTimeout(function () {
+        if (!game.run || !e || game.run !== e.run) return;
+        RU.makeRoom(game, { title: 'This run is not being saved', text: 'All ' + KD.runs.slots() + ' run slots are in use, so this run cannot be saved yet. Choose a run to end and this one takes its slot. Until then, nothing of this run is kept if the game closes.', yes: 'End it and save this run', no: 'Not now' })
+          .then(function (ok) { if (ok) { game.saveNow(); toast('This run is saved now.', 'good', 'check'); } });
+      }, 400);
+    });
+    game.events.on('coop', function (e) {
+      if (e.type === 'newerCopy' && e.data) toast(KD.runs.newerText(e.data.full || e.data.name, e.data.ahead), 'warn', 'warning', 12000);
+    });
+    var o = O();
+    if (o && o.events) o.events.on('friends', function () { RU.refresh(game); });
+    return RU;
+  });
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -93077,6 +93816,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (!game || !c) return;
     if (c === 'menu') F.menu.build(game);
     else if (c === 'newrun') F.menu.buildNewRun(game);
+    else if (c === 'runs' && F.runs) F.runs.build(game);
     else if (c === 'setup') F.setup.build(game);
     else if (c === 'route') F.route.build(game);
     else if (c === 'over' && F.over._args) F.over.build(game, F.over._args.result, { boot: !!F.over._args.opts.boot, instant: true });
@@ -93116,7 +93856,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
     if (KD.input && KD.input.on) KD.input.on('pause', safe('pause', function () {
       var st = game.state;
-      if (st === 'menu') { if (F.current === 'newrun') F.menu.show(game); return; }
+      if (st === 'menu') { if (F.current === 'newrun' || F.current === 'runs') F.menu.show(game); return; }
       if (st === 'over' || st === 'boot') return;
       F.pause.open(game);
     }));
@@ -93224,7 +93964,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   /** Text for a failed or ended session. type: 'refused' | 'error' | 'closed'; reason from the event. null = say nothing. */
   CU.messageFor = function (type, reason, opts) {
     opts = opts || {};
-    var kept = opts.hasRun ? ' Your run is kept: you can continue it alone from the menu.' : '';
+    var kept = opts.hasRun ? ' Your run is kept: continue it from the menu, together later or alone.' : '';
     if (type === 'refused') return { title: 'The game is full', text: 'A shared game holds up to ' + ((KD.coop && KD.coop.MAX_PLAYERS) || 4) + ' players. Ask the host to make room, then join again.' };
     if (type === 'error' && opts.online) return { title: 'Could not connect', text: 'The online game did not answer. It may be over, or the internet connection is down. Try again from your Friends list.' };
     if (type === 'closed' && reason === 'disconnected' && opts.online) return { title: 'Connection lost', text: 'The connection to the online game was lost.' + kept + (opts.hasRun ? '' : ' You can join again from your Friends list.') };
@@ -93258,7 +93998,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   };
   /**
    * Everything the lobby screen shows, from the session.
-   * opts { savedRun: text of the run in progress (it ends when a shared run starts), location }.
+   * opts { location, info, resume: (host) the line of the saved shared run this lobby continues, copy: (guest) the line of
+   *        this player's copy of the shared run the host continues ('' = none), slotsFull: every run slot is in use }.
+   * Runs in progress are kept (up to three, docs/RUN.md section 10): a shared run never ends a solo run any more.
    */
   CU.lobbyModel = function (session, opts) {
     opts = opts || {};
@@ -93266,22 +94008,30 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var L = session.lobby || { players: [], started: false, mode: 'standard' }, role = session.role || null, area = CU.partyArea(session);
     var m = { role: role, wanted: session.wanted || null, connecting: !role, hostTaken: session.wanted === 'host' && role === 'guest',
       noHost: role === 'guest' && !session.hostId, started: !!L.started, mode: L.mode || 'standard', canStart: role === 'host' && !L.started,
-      classLocked: !!L.started, players: [], hostName: '', notices: [], title: 'The Lobby', status: '' };
+      classLocked: !!L.started || !!opts.resume || !!(opts.copy && role === 'guest' && L.rid), players: [], hostName: '', notices: [], title: 'The Lobby', status: '', resume: !!(L.rid && (opts.resume || role === 'host')) };
     m.players = (L.players || []).map(function (p) {
       return { id: p.id, name: p.name, classId: p.classId, className: CU.className(p.classId), color: CU.classColor(p.classId), glyph: CU.classGlyph(p.classId),
-        host: !!p.host, me: p.id === session.id, phase: p.phase || 'lobby', text: CU.phaseText(p.phase, area, p.classId), level: p.level || 1 };
+        host: !!p.host, me: p.id === session.id, phase: p.phase || 'lobby', text: CU.phaseText(p.phase, area, p.classId), level: p.level || 1, has: p.has === undefined ? null : p.has };
     });
     var host = m.players.filter(function (p) { return p.host; })[0];
     m.hostName = host ? host.name : 'the host';
     m.max = (KD.coop && KD.coop.MAX_PLAYERS) || 4;
     if (m.connecting) m.status = 'Connecting...';
     else if (m.noHost) m.status = 'Nobody is hosting yet. This screen fills in by itself when a host opens the game.';
-    else if (role === 'host') m.status = m.started ? 'The run is under way.' : (m.players.length > 1 ? 'Everyone here starts together when you press Start.' : 'You can start alone: friends who join later come in at the next gate.');
+    else if (role === 'host') m.status = m.started ? 'The run is under way.' : (m.resume ? (m.players.length > 1 ? 'Everyone here goes on together when you press Continue together.' : 'You can go on alone: friends who join later come in at the next gate.')
+      : (m.players.length > 1 ? 'Everyone here starts together when you press Start.' : 'You can start alone: friends who join later come in at the next gate.'));
     else m.status = m.started ? 'The last run is over. Waiting for ' + m.hostName + ' to come back to the lobby.' : 'Waiting for ' + m.hostName + ' to start.';
     if (m.hostTaken) m.notices.push({ kind: 'warn', text: 'Someone is already hosting on this address (' + m.hostName + '). You joined their game instead.' });
     m.online = !!session.online;
     if (m.noHost) m.notices.push({ kind: 'warn', text: m.online ? 'The host is not in this game right now. It goes on when they come back.' : 'Ask whoever runs \'Host for Friends.bat\' to choose Play Together, then Host a Game.' });
-    if (opts.savedRun) m.notices.push({ kind: 'warn', text: 'Your run in progress (' + opts.savedRun + ') ends when the shared run starts. It is written into the Chronicle and still earns its account experience.' });
+    if (role === 'host' && opts.resume) {
+      m.notices.push({ kind: 'info', text: 'You continue your shared run: ' + opts.resume + '. Friends who played it come back with their own heroes; anyone new starts a new hero near your level.' });
+      var newbies = m.players.filter(function (p) { return !p.me && p.has === false; }).map(function (p) { return p.name; });
+      if (newbies.length) m.notices.push({ kind: 'info', text: newbies.join(', ') + (newbies.length === 1 ? ' has' : ' have') + ' no copy of this run and ' + (newbies.length === 1 ? 'starts' : 'start') + ' a new hero.' });
+    } else if (role === 'guest' && L.rid && !L.started) {
+      m.notices.push({ kind: 'info', text: opts.copy ? m.hostName + ' continues your shared run: you come back with ' + opts.copy + '.' : m.hostName + ' continues a run you were not part of: you start a new hero near the party\'s level.' });
+    }
+    if (opts.slotsFull && !opts.copy && !(role === 'host' && opts.resume)) m.notices.push({ kind: 'warn', text: 'All your run slots are in use. When the run starts you choose a run to end, so that this one can be saved.' });
     if (role === 'host' && m.online) {                // an online game: friends join through the service, no address to pass on
       m.hostNote = 'Keep this tab open and visible while you play: the host\'s game is the clock of the shared world.';
     } else if (role === 'host') {
@@ -93367,8 +94117,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var host = !!session && session.role === 'host', over = !!opts.over;
     return { label: 'Leave the game', title: host ? 'End the shared game?' : 'Leave the shared game?',
       text: over ? (host ? 'You are the host: leaving closes the lobby for everyone.' : 'You leave the lobby.')
-        : (host ? 'You are the host: when you leave, the shared game ends for everyone. Each player keeps their own run and can continue it alone from the menu.'
-          : 'The others play on without you. Your run is kept: you can continue it alone from the menu.'),
+        : (host ? 'You are the host: when you leave, the shared game ends for everyone. Each player keeps their copy of the run and can continue it from the menu, together later or alone.'
+          : 'The others play on without you. Your run is kept: continue it from the menu, together later or alone.'),
       yes: host ? 'End it for everyone' : 'Leave', no: 'Stay' };
   };
 })(typeof window !== 'undefined' ? window : globalThis);
@@ -93512,10 +94262,13 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   };
 
   // ------------------------------------------------------------------------------------------ the lobby
-  function savedRunLine(game) {
-    try { var info = game.savedRun ? F.savedRunInfo(game.savedRun) : null; return info ? (info.name !== info.className ? info.name + ', ' : '') + info.className + ' ' + info.level : ''; } catch (e) { return ''; }
+  function runLine(run) { try { var info = run ? F.savedRunInfo(run) : null; return info ? (info.name !== info.className ? info.name + ', ' : '') + info.className + ' ' + info.level + ', ' + info.where : ''; } catch (e) { return ''; } }
+  function model(game) {
+    pollInfo(game);
+    var s = session(), rid = s && s.lobby ? s.lobby.rid : null, copy = rid && game.findShared ? game.findShared(rid) : null;
+    var full = game.freeSlot ? !game.freeSlot() : false;
+    return CU.lobbyModel(s, { location: root.location, info: ST.info || null, resume: game.coopRun ? runLine(game.coopRun) : '', copy: copy ? runLine(copy.run) : '', slotsFull: full });
   }
-  function model(game) { pollInfo(game); return CU.lobbyModel(session(), { savedRun: savedRunLine(game), location: root.location, info: ST.info || null }); }
   /** The host server knows the addresses friends can use (/info): asked every few seconds while the host looks at the lobby. */
   function pollInfo(game) {
     var s = session(), now = Date.now();
@@ -93590,7 +94343,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     N.foot.appendChild(el('div.flow-grow'));
     if (m.role === 'host') {
       N.foot.appendChild(el('span.coop-foot-note', { text: m.players.length > 1 ? m.players.length + ' heroes set out together' : 'Nobody else is here yet' }));
-      N.foot.appendChild(KD.ui.button(m.players.length > 1 ? 'Start' : 'Start alone', { kind: 'primary', icon: 'arrow_right', className: 'flow-big-btn coop-start', disabled: !m.canStart, onClick: function () {
+      N.foot.appendChild(KD.ui.button(m.resume ? (m.players.length > 1 ? 'Continue together' : 'Continue alone') : (m.players.length > 1 ? 'Start' : 'Start alone'), { kind: 'primary', icon: 'arrow_right', className: 'flow-big-btn coop-start', disabled: !m.canStart, onClick: function () {
         clearTimeout(ST.nameT); pushProfile(game);
         F.sound('ui_confirm');
         try { if (game.coopStart({ mode: ST.profile.mode }) === false) KD.ui.toast('Only the host can start.', { kind: 'bad' }); } catch (e) { console.error(e); KD.ui.toast('The run could not be started.', { kind: 'bad', icon: 'warning' }); }
@@ -93663,17 +94416,6 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (game.state === 'menu' && !(game.ended && game.ended.summary)) F.menu.show(game);
     say(msg);
   }
-  /** The run that was in progress before the shared run started is ended properly, as "New Run" does it. */
-  function endOldRun(game) {
-    var old = ST.old; ST.old = null;
-    if (!old || old === game.run || game.savedRun === old || old.phase === 'dead' || old.phase === 'won') return;
-    try {
-      KD.run.abandon(old, { now: Date.now() });
-      var res = KD.save.endRun(game.account, old, Date.now());
-      game.saveNow();                                         // endRun cleared the run save: write the new run back
-      if (res && res.breakdown) KD.ui.toast('The old run is written into the Chronicle: +' + F.num(res.breakdown.total) + ' account xp', { kind: 'info', icon: 'book' });
-    } catch (e) { console.error(e); }
-  }
   function lobbyToasts(s) {
     var cur = (s.lobby.players || []).map(function (p) { return { id: p.id, name: p.name }; });
     var wasIn = ST.prev && ST.prev.some(function (p) { return p.id === s.id; });
@@ -93697,7 +94439,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
           CU.refreshLobby(game);
           if (CU.roadRefresh) CU.roadRefresh(game);
           break;
-        case 'start': endOldRun(game); break;
+        case 'start': break;                     // runs in progress are kept (up to three): nothing ends when a shared run starts
         case 'waiting': case 'end': if (CU.roadRefresh) CU.roadRefresh(game); break;
         case 'refused': fail(game, 'refused', e.data && e.data.reason); break;
         case 'error': fail(game, 'error', e.data && e.data.reason); break;
@@ -93744,7 +94486,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   /** The setup and road screens' way out in co-op ("Save and quit" alone). null in single player. */
   CU.quitButton = function (game) {
     if (!session()) return null;
-    return KD.ui.button('Leave the game', { icon: 'arrow_left', className: 'coop-quit', tip: 'Leave the shared game. Your run is kept and can be continued alone from the menu.', onClick: function () { CU.confirmLeave(game); } });
+    return KD.ui.button('Leave the game', { icon: 'arrow_left', className: 'coop-quit', tip: 'Leave the shared game. Your run is kept: continue it from the menu, together later or alone.', onClick: function () { CU.confirmLeave(game); } });
   };
 
   // ------------------------------------------------------------------------------------------ the road
@@ -94010,7 +94752,16 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     return (incoming || []).map(function (r) { return row(r, 'in'); }).concat((outgoing || []).map(function (r) { return row(r, 'out'); }));
   };
   /** "Kaya#0042 invites you to play." */
-  OU.inviteText = function (inv) { var f = inv && inv.from; return (f ? (f.full || KD.names.full(f.name, f.tag)) : 'A friend') + ' invites you to play.'; };
+  OU.inviteText = function (inv, hasCopy) {
+    var f = inv && inv.from, who = f ? (f.full || KD.names.full(f.name, f.tag)) : 'A friend';
+    if (inv && inv.run && hasCopy) return who + ' invites you to continue your shared run' + (inv.run.label ? ' (' + inv.run.label + ')' : '') + '.';
+    return who + ' invites you to play.';
+  };
+  /** "Kaya#0042 wants to continue your shared run (Ironbound 12, Act II). Host it now?" (a 'resume' request). */
+  OU.resumeText = function (req) {
+    var f = req && req.from, who = f ? (f.full || (KD.names ? KD.names.full(f.name, f.tag) : f.name)) : 'A friend';
+    return who + ' wants to continue your shared run' + (req && req.run && req.run.label ? ' (' + req.run.label + ')' : '') + '. Host it now?';
+  };
   /** When the next rename is allowed, in words ('' = now). */
   OU.renameText = function (renameAt, now) {
     if (!renameAt || renameAt <= now) return '';
@@ -94261,6 +95012,63 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       });
     });
   };
+  /**
+   * Continue a shared run as its host (KD.runs; the Continue screen, or a friend asked): a room on the service, the
+   * lobby with that run, and an invite (carrying the run) to each friend in `oids`. -> Promise<bool>
+   */
+  OU.resumeHost = function (game, slot, oids) {
+    game = game || ST.game;
+    return new Promise(function (resolve) {
+      OU.withName(game, function (acc) {
+        leaveFirst(game, '').then(function (ok) {
+          if (!ok) return resolve(false);
+          O().createRoom().then(function (r) {
+            if (!r.ok) { F.confirm({ title: 'Could not start the game', text: r.message, yes: 'Understood', no: false, pauses: false }); return resolve(false); }
+            O().connect();
+            var started = game.coopOpen('host', profileFor(acc), O().roomLink(r.body.room), { resume: slot });
+            if (started === false) { toast('That run could not be continued.', 'bad', 'warning'); return resolve(false); }
+            var run = runInfo(game);
+            (oids || []).forEach(function (id) {
+              var f = O().friend(id), full = f ? f.full || KD.names.full(f.name, f.tag) : 'your friend';
+              O().invite(id, r.body.room, run).then(function (res) { if (res.ok) toast('Invite sent to ' + full + '.', 'good', 'horn'); else toast(res.message, 'warn', 'warning', 6000); });
+            });
+            resolve(true);
+          });
+        });
+      });
+    });
+  };
+  /** The shared run this player's online game is for ({ id, label } for an invite), or null. */
+  function runInfo(game) {
+    var s = session(), rid = s ? (s.lobby && s.lobby.rid) || (s.resume && s.resume.rid) || null : null;      // (right after hosting the lobby is not filled in yet)
+    if (!rid || !KD.runs) return null;
+    var run = game.coopRun && game.coopRun.coop && game.coopRun.coop.rid === rid ? game.coopRun : (game.run && game.run.coop && game.run.coop.rid === rid ? game.run : null);
+    return { id: rid, label: run ? KD.runs.label(run) : '' };
+  }
+  OU.runInfo = runInfo;
+  /** A friend asks this player to host the shared run they both play: a toast with Host it / Not now. */
+  OU.resumeToast = function (game, req) {
+    if (!req || !req.run) return null;
+    var hit = game.findShared ? game.findShared(req.run.id) : null;
+    if (!hit || !KD.runs.isHost(hit.run)) return null;                // not this player's to host (or not kept any more)
+    var s = session(); if (s && s.lobby && s.lobby.rid === req.run.id) return null;       // already hosting it
+    var key = 'r:' + req.run.id + ':' + (req.from && req.from.id);
+    if (ST.toasts[key]) return null;
+    var t, gone = function () { delete ST.toasts[key]; if (t) t.dismiss(); };
+    var node = el('div.ol-toast', [
+      el('div.ol-toast-text', { text: OU.resumeText(req) }),
+      el('div.ol-toast-acts', [
+        KD.ui.button('Host it', { small: !F.isTouch(), kind: 'primary', icon: 'crown', className: 'ol-resume-host', onClick: function () { gone(); var h = game.findShared(req.run.id); if (h && h.slot) OU.resumeHost(game, h.slot, req.from && req.from.id ? [req.from.id] : []); } }),
+        KD.ui.button('Not now', { small: !F.isTouch(), className: 'ol-resume-later', onClick: function () { gone(); } })
+      ])
+    ]);
+    t = KD.ui.toast(node, { kind: 'fate', icon: 'horn', ms: 0 });
+    t.classList.add('ol-invite-toast');
+    ST.toasts[key] = t;
+    setTimeout(gone, 10 * 60 * 1000);
+    F.sound('ui_open');
+    return t;
+  };
   /** Join an online room (an accepted invite or a friend's game). */
   OU.joinRoom = function (game, room, who) {
     game = game || ST.game;
@@ -94285,7 +95093,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   /** Invite a friend to this player's online game (starting one as the host when there is none). */
   OU.inviteFriend = function (game, row, btn) {
     var send = function (room) {
-      O().invite(row.id, room).then(function (r) {
+      O().invite(row.id, room, runInfo(game)).then(function (r) {
         if (r.ok) { toast('Invite sent to ' + row.full + '.', 'good', 'horn'); if (btn) { btn.setLabel('Invited'); btn.setDisabled(true); } }
         else toast(r.message, 'warn', 'warning', 6000);
       });
@@ -94303,7 +95111,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var t;
     var gone = function () { delete ST.toasts[inv.id]; if (t) t.dismiss(); };
     var node = el('div.ol-toast', [
-      el('div.ol-toast-text', { text: OU.inviteText(inv) }),
+      el('div.ol-toast-text', { text: OU.inviteText(inv, !!(inv.run && game.findShared && game.findShared(inv.run.id))) }),
       el('div.ol-toast-acts', [
         KD.ui.button('Accept', { small: !F.isTouch(), kind: 'primary', icon: 'check', className: 'ol-inv-accept', onClick: function () {
           gone();
@@ -94432,6 +95240,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     E.on('friends', safe('friends', function () { refresh(); if (CU && CU.refreshLobby) CU.refreshLobby(game); }));
     E.on('presence', safe('presence', function () { refresh(); }));
     E.on('invite', safe('invite', function (inv) { OU.inviteToast(game, inv); }));
+    E.on('resume', safe('resume', function (req) { OU.resumeToast(game, req); }));
     E.on('request', safe('request', function (d) { if (d && d.from && !KD.ui.windows.isOpen('ol-friends')) toast((d.from.full || d.from.name) + ' wants to be your friend. Open Friends to answer.', 'info', 'horn', 6000); }));
     E.on('notice', safe('notice', function (d) { toast(d.text, d.kind || 'info', 'horn'); }));
     E.on('inviteAnswer', safe('answer', function (d) { var who = d.by ? d.by.full || d.by.name : 'Your friend'; toast(d.accepted ? who + ' is on the way.' : who + ' cannot come right now.', d.accepted ? 'good' : 'info', 'horn'); }));
@@ -101800,7 +102609,7 @@ P['gravecaller_tripo'] = 'Z2xURgIAAACoBQYAaBkAAEpTT057ImFzc2V0Ijp7InZlcnNpb24iOi
     try { if (root.localStorage.getItem('kd.view') === 'top') G.setView('top', true); } catch (e) { /* storage blocked */ }
     KD.save.init(st);
     var b = KD.save.boot(now());
-    G.account = b.account; G.savedRun = b.run || null; G.ended = b.ended || null;
+    G.account = b.account; G.savedRun = b.run || null; G.ended = b.ended || null; G.endedAll = b.endedAll || [];
     var wake = function () { if (KD.audio && KD.audio.init) KD.audio.init(); root.removeEventListener('pointerdown', wake); root.removeEventListener('keydown', wake); };
     root.addEventListener('pointerdown', wake); root.addEventListener('keydown', wake);
     root.addEventListener('beforeunload', function () { G.saveNow(); });
@@ -101813,7 +102622,72 @@ P['gravecaller_tripo'] = 'Z2xURgIAAACoBQYAaBkAAEpTT057ImFzc2V0Ijp7InZlcnNpb24iOi
     last = performance.now() / 1000;
     requestAnimationFrame(frame);
   };
-  G.saveNow = function () { try { if (G.run && KD.run.inPlay && (KD.run.inPlay(G.run) || G.run.phase === 'route' || G.run.phase === 'oath')) KD.save.saveRun(G.run, { force: true, now: now() }); if (G.account) KD.save.saveAccount(G.account, now()); } catch (e) { /* storage full or blocked */ } };
+  G.saveNow = function () {
+    try {
+      if (G.run && KD.run.inPlay && (KD.run.inPlay(G.run) || G.run.phase === 'route' || G.run.phase === 'oath')) {
+        var r = KD.save.saveRun(G.run, { force: true, now: now() });
+        // every run slot holds another run: the screens ask which one to end (src/ui/20_flow_15_runs.js), once per run
+        if (r && r.reason === 'slots_full' && G._fullAsked !== G.run.id) { G._fullAsked = G.run.id; G.events.emit('slotsFull', { run: G.run }); }
+      }
+      if (G.account) KD.save.saveAccount(G.account, now());
+    } catch (e) { /* storage full or blocked */ }
+  };
+
+  // ------------------------------------------------------------------ recent runs (up to KD.save.SLOTS; KD.runs)
+  function live(r) { return r && r.phase !== 'dead' && r.phase !== 'won'; }
+  /**
+   * The runs in progress, newest first: [{ slot, at, run }] (KD.save.listRuns). The run on screen and the menu's saved
+   * run are the same objects as in the list when their ids match, so nothing is read twice. A dead Relaxed run with a
+   * checkpoint is listed (the player can still load the checkpoint); other ended runs are not.
+   */
+  G.recentRuns = function () {
+    var out = [];
+    try {
+      KD.save.listRuns().forEach(function (e) {
+        var r = e.run;
+        if (G.run && G.run.id === r.id) r = G.run; else if (G.savedRun && G.savedRun.id === r.id) r = G.savedRun;
+        if (!live(r) && !(r.phase === 'dead' && r.mode === 'relaxed' && KD.save.hasCheckpoint(e.slot))) return;
+        out.push({ slot: e.slot, at: e.at, run: r });
+      });
+    } catch (err) { console.error('recent runs', err); }
+    return out;
+  };
+  /** After a slot changed: the menu's "saved run" is the newest one left. */
+  G.refreshSaved = function () {
+    var list = G.recentRuns().filter(function (e) { return !G.run || e.run.id !== G.run.id; });
+    G.savedRun = list.length ? list[0].run : null;
+    return G.savedRun;
+  };
+  /** A free slot for a new run (0: all are used and the player must end one first). */
+  G.freeSlot = function () { try { return KD.save.freeSlot(); } catch (e) { return 1; } };
+  /**
+   * End the run in a slot by the player's choice (to make room, or Delete on the Continue list): abandoned, written into
+   * the Chronicle, account experience paid. -> KD.save.dropRun result.
+   */
+  G.dropRun = function (slot) {
+    var res = KD.save.dropRun(G.account, slot, now());
+    if (res && res.run && G.run && G.run.id === res.run.id) G.run = null;
+    G.refreshSaved();
+    if (G._fullAsked && G.run && G._fullAsked === G.run.id && res && res.ok) { G._fullAsked = null; G.saveNow(); }      // the run waiting for a slot gets the freed one
+    return res;
+  };
+  /** Split a copy of a shared run off as a solo run (KD.runs.fork) and save it. -> the run or null. */
+  G.forkRun = function (slot) {
+    var e = KD.save.loadRun(slot);
+    if (!e) return null;
+    var run = G.savedRun && G.savedRun.id === e.id ? G.savedRun : e;
+    if (!KD.runs.fork(run, now()).ok) return null;
+    KD.save.saveRun(run, { force: true, now: now(), slot: slot });
+    return run;
+  };
+  /** The saved copy of a shared run (KD.runs) by its shared run id: { slot, run } or null. */
+  G.findShared = function (rid) {
+    if (!rid) return null;
+    if (G.run && G.run.coop && G.run.coop.rid === rid && live(G.run)) return { slot: KD.save.slotOf(G.run), run: G.run };
+    var hit = null;
+    G.recentRuns().forEach(function (e) { if (!hit && e.run.coop && e.run.coop.rid === rid && live(e.run)) hit = e; });
+    return hit;
+  };
 
   // ------------------------------------------------------------------ run flow
   /** opts: { classId, mode, name, seed, mutators } -> run in phase 'oath' (state 'setup'). */
@@ -101861,8 +102735,14 @@ P['gravecaller_tripo'] = 'Z2xURgIAAACoBQYAaBkAAEpTT057ImFzc2V0Ijp7InZlcnNpb24iOi
     loadArea();
     return r;
   };
-  G.continueRun = function () {
-    var run = G.savedRun || G.run;
+  /** Continue a saved run: the one in `slot` (1..KD.save.SLOTS), or the newest. */
+  G.continueRun = function (slot) {
+    var run = null;
+    if (slot) {
+      var e = KD.save.loadRun(slot);
+      if (!e) return false;
+      run = G.savedRun && G.savedRun.id === e.id ? G.savedRun : (G.run && G.run.id === e.id ? G.run : e);
+    } else run = G.savedRun || G.run;
     if (!run) return false;
     G.run = run; G.savedRun = null;
     G.events.emit('run', { run: run });
@@ -102135,16 +103015,29 @@ P['gravecaller_tripo'] = 'Z2xURgIAAACoBQYAaBkAAEpTT057ImFzc2V0Ijp7InZlcnNpb24iOi
    * G.events 'coop' { type, data, session }: open, lobby, start, world, worldEnd, end, waiting, down, allyDown,
    * desync, resync, status, refused, error, closed.
    */
-  G.coopOpen = function (role, profile, link) {
+  G.coopOpen = function (role, profile, link, opts) {
     // link: an online room (KD.online.roomLink(room)); without it, the host server this page was opened from
+    // opts.resume: (host) the slot of a saved shared run this game continues (KD.runs; docs/RUN.md section 10)
+    opts = opts || {};
     if (!G.coopAvailable() || (!link && !KD.net.available)) return false;
+    var resume = null;
+    if (opts.resume && role === 'host') {
+      resume = KD.save.loadRun(opts.resume);
+      if (resume && G.savedRun && G.savedRun.id === resume.id) resume = G.savedRun;
+      if (!resume || !KD.runs.isHost(resume) || !live(resume)) return false;
+    }
     if (coS()) endSession('left');
     bindNet();
     profile = profile || {};
-    var s = new KD.coop.Session({ name: profile.name || 'Player', classId: profile.classId || 'ironbound',
+    var me = null; try { me = KD.online && KD.online.configured() && KD.online.hasName() ? KD.online.account() : null; } catch (e) { me = null; }
+    var s = new KD.coop.Session({ name: profile.name || 'Player', classId: resume ? resume.hero.classId : (profile.classId || 'ironbound'),
+      oid: me ? me.id : '', full: me ? (me.full || KD.names.full(me.name, me.tag)) : '',
       send: function (to, obj) { KD.net.send(to, obj); }, live: function () { return G.run; }, input: sampleInput,
-      hooks: { newRun: coopNewRun, request: coopRequest, now: now, phase: function (run) { return !run ? 'lobby' : (G.state === 'setup' ? 'setup' : run.phase); } } });
+      hooks: { newRun: coopNewRun, request: coopRequest, now: now, phase: function (run) { return !run ? 'lobby' : (G.state === 'setup' ? 'setup' : run.phase); },
+        copyOf: function (rid) { var c = G.findShared(rid); return c ? { rev: c.run.coop.rev || 0 } : null; } } });
     KD.coop.session = s;
+    G.coopRun = resume;
+    if (resume) s.setResume({ rid: resume.coop.rid, rev: resume.coop.rev || 0, phase: resume.phase });
     s.wanted = role === 'host' ? 'host' : 'guest';
     s.online = link ? { room: link.room || null } : null;
     s.events.on('world', onCoopWorld);
@@ -102159,7 +103052,9 @@ P['gravecaller_tripo'] = 'Z2xURgIAAACoBQYAaBkAAEpTT057ImFzc2V0Ijp7InZlcnNpb24iOi
       try { if (KD.ui && KD.ui.toast && info.diffs && info.diffs.length) KD.ui.toast('What drifted: ' + info.diffs[0].what + ' ' + info.diffs[0].field + (info.guestBrowser && info.guestBrowser.split(' ')[0] !== info.hostBrowser.split(' ')[0] ? ' (' + info.guest + ' plays in ' + info.guestBrowser + ')' : ''), { kind: 'info', ms: 9000 }); } catch (e) { /* no toast */ }
       G.events.emit('coop', { type: 'desyncInfo', data: info, session: s });
     });
-    ['lobby', 'start', 'world', 'worldEnd', 'end', 'desync', 'resync', 'waiting', 'status', 'refused'].forEach(function (k) {
+    s.events.on('lobby', function () { notePartners(s); });
+    s.events.on('start', function () { notePartners(s); });
+    ['lobby', 'start', 'world', 'worldEnd', 'end', 'desync', 'resync', 'waiting', 'status', 'refused', 'newerCopy'].forEach(function (k) {
       s.events.on(k, function (e) { G.events.emit('coop', { type: k, data: e, session: s }); });
     });
     G.events.emit('coop', { type: 'open', data: { role: s.wanted, online: s.online }, session: s });
@@ -102169,6 +103064,7 @@ P['gravecaller_tripo'] = 'Z2xURgIAAACoBQYAaBkAAEpTT057ImFzc2V0Ijp7InZlcnNpb24iOi
     var s = coS();
     if (!s) return;
     KD.coop.session = null;
+    G.coopRun = null; G._resumeWait = null;
     try { s.leaveWorld(); } catch (e) { /* already gone */ }
     if (KD.net) KD.net.close();
     // the shared world is gone; the local run is a complete run of its own and can be continued alone from the menu
@@ -102178,7 +103074,7 @@ P['gravecaller_tripo'] = 'Z2xURgIAAACoBQYAaBkAAEpTT057ImFzc2V0Ijp7InZlcnNpb24iOi
       if (G.run && G.run.phase !== 'dead' && G.run.phase !== 'won') { G.savedRun = G.run; G.run = null; }
       setState('menu');
       G.loadBackdrop();
-    }
+    } else if (live(G.run)) { G.saveNow(); G.savedRun = G.run; G.run = null; }      // a continued copy that never left the lobby
     G.events.emit('coop', { type: 'closed', data: { reason: reason }, session: null });
   }
   /** Text of the last re-syncs this browser hosted (what differed, which browsers): for bug reports. */
@@ -102194,15 +103090,77 @@ P['gravecaller_tripo'] = 'Z2xURgIAAACoBQYAaBkAAEpTT057ImFzc2V0Ijp7InZlcnNpb24iOi
     var s = coS();
     if (!s || s.role !== 'host') return false;
     opts = opts || {};
+    var res = G.coopRun;
+    if (res && s.resume && res.coop && res.coop.rid === s.resume.rid && live(res)) return s.start({ seed: res.seed, mode: res.mode, rid: res.coop.rid, phase: res.phase, resume: true });   // continuing a shared run
     var seed = opts.seed !== undefined && opts.seed !== null && opts.seed !== '' ? (isNaN(+opts.seed) ? U.hash(String(opts.seed)) : (+opts.seed >>> 0)) : ((Date.now() ^ Math.floor(Math.random() * 4294967296)) >>> 0);
-    return s.start({ seed: seed, mode: opts.mode || 'standard' });
+    return s.start({ seed: seed, mode: opts.mode || 'standard', rid: KD.runs.makeRid(seed, Date.now(), Math.random(), s.id) });
   };
+  /** Everyone in the lobby of the shared run this player is in is remembered in the run (KD.runs.notePlayers). */
+  function notePartners(s) {
+    // a guest who holds a copy of the shared run the host continues comes back with that hero: the lobby shows its class
+    if (s && s.role === 'guest' && s.lobby && s.lobby.rid && s._classFor !== s.lobby.rid) {
+      var c = G.findShared(s.lobby.rid);
+      s._classFor = s.lobby.rid;
+      if (c && c.run.hero.classId !== s.profile.classId) s.setProfile({ classId: c.run.hero.classId });
+    }
+    var run = G.run;
+    if (!run || !s || !s.lobby || !KD.runs.isShared(run) || run.coop.rid !== s.lobby.rid) return;
+    if (KD.runs.notePlayers(run, s.lobby.players, s.id)) KD.save.markDirty();
+  }
+  /**
+   * The session started (or this player joined a started one): the local run for it. A copy of this shared run (same
+   * shared run id: the one on screen, the host's resumed copy, or one in a slot) is continued; otherwise a new run.
+   */
   function coopNewRun(info) {
-    var keep = G.run && G.run.coop && G.run.coop.seed === info.seed && G.run.phase !== 'dead' && G.run.phase !== 'won';
-    if (keep) { if (G.state !== 'route' && G.state !== 'play') setState(G.run.phase === 'oath' ? 'setup' : 'route'); return; }     // rejoining with the run of this session
+    var cur = null;
+    if (live(G.run) && G.run.coop && (info.rid ? G.run.coop.rid === info.rid : (G.run.coop.seed === info.seed && !G.run.coop.rid))) cur = G.run;     // rejoining with the run of this session
+    if (!cur && info.rid && G.coopRun && G.coopRun.coop && G.coopRun.coop.rid === info.rid) cur = G.coopRun;
+    if (!cur && info.rid) { var hit = G.findShared(info.rid); if (hit) cur = hit.run; }
+    G.coopRun = null;
+    if (cur) {
+      if (cur !== G.run) { teardownWorld(); G.run = cur; if (G.savedRun === cur) G.refreshSaved(); G.events.emit('run', { run: cur }); }
+      if (KD.save.slotOf(cur)) KD.save.loadRun(KD.save.slotOf(cur));          // its slot is the current one (autosaves, checkpoints)
+      cur.coop.host = !!info.host;
+      return coopResumeState(cur, info);
+    }
     G.newRun({ classId: info.classId, mode: info.mode, seed: info.seed, name: info.name, dev: true });
-    G.run.coop = { seed: info.seed };
+    KD.runs.share(G.run, { seed: info.seed, rid: info.rid || null, host: !!info.host, now: now() });
     if (info.late && info.level > 1) coopCatchUp(info.level);
+    G.saveNow();
+  }
+  /**
+   * Where a continued copy goes. Skills still to pick: the setup screen. The host's copy on the road: the road. The
+   * host's copy inside an area or arena: the lobby stays up until every player has reported (or 8 s), then the host
+   * builds that world for everyone (coopResumeTick). A guest whose host is on the road comes back to the road too;
+   * otherwise the guest waits for the host's world (its road follows the host's, docs/RUN.md section 10).
+   */
+  function coopResumeState(run, info) {
+    if (G.state === 'route' || G.state === 'play') return;
+    if (run.phase === 'oath') { setState('setup'); return; }
+    if (info.host) {
+      if (run.phase === 'route') { setState('route'); return; }
+      if (run.phase === 'camp' || run.phase === 'area' || run.phase === 'arena') { G._resumeWait = { t: 0 }; return; }
+      return;
+    }
+    var hostOnRoad = !info.phase || info.phase === 'route' || info.phase === 'oath';
+    if (hostOnRoad || run.phase === 'route') {
+      if (run.phase !== 'route') { run.phase = 'route'; if (KD.run.routeOffer) run.offer = KD.run.routeOffer(run); }
+      setState('route');
+      G.saveNow();
+    }
+  }
+  /** Host of a continued shared run that stopped inside a world: build it once everyone is ready (or after 8 s). */
+  function coopResumeTick(dt) {
+    var w = G._resumeWait, s = coS();
+    if (!w) return;
+    if (!s || s.role !== 'host' || !G.run || !live(G.run)) { G._resumeWait = null; return; }
+    w.t += dt;
+    var ready = s.lobby.players.every(function (p) { return p.id === s.id || (p.blob && ({ route: 1, camp: 1, area: 1, arena: 1 })[p.phase]); });
+    if (!ready && w.t < 8) return;
+    G._resumeWait = null;
+    var run = G.run;
+    if (run.phase === 'arena') { var boss = KD.get('areas', run.area.areaId).boss.id; buildArena(boss, KD.run.bossVariant(run, boss)); }
+    else if (run.phase === 'camp' || run.phase === 'area') loadArea();
   }
   /** Someone who joins a run under way starts near the party's level, with on-level gear and skills. */
   function coopCatchUp(level) {
@@ -102288,7 +103246,7 @@ P['gravecaller_tripo'] = 'Z2xURgIAAACoBQYAaBkAAEpTT057ImFzc2V0Ijp7InZlcnNpb24iOi
     var cam = G.camera, r = G.renderer;
     // co-op: the session advances the shared world (and talks to the host) every frame, also outside of worlds
     var cs = coS(), coSteps = 0;
-    if (cs) { try { coopAuto(dt); coSteps = cs.frame(dt) || 0; } catch (cerr) { if (!G._coopErr) { G._coopErr = true; console.error('coop frame error', cerr); } G.lastError = cerr; } }
+    if (cs) { try { coopAuto(dt); coopResumeTick(dt); coSteps = cs.frame(dt) || 0; } catch (cerr) { if (!G._coopErr) { G._coopErr = true; console.error('coop frame error', cerr); } G.lastError = cerr; } }
     var world = G.world, co = coWorld();
     var playing = (G.state === 'play' || G.state === 'over') && world;
     try {
