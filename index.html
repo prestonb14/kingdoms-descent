@@ -533,6 +533,66 @@ html.kd-pad-on .hud-reticle { display: none; }      /* the cursor ring means not
 .kd-pad-row .kd-btn { flex: 0 0 calc(76 * var(--u)); }
 .kd-compact .kd-pad-cols { gap: calc(14 * var(--u)); }
 
+/* Controller menus (task w8 pad-ui, src/ui/05_pad_nav.js, docs/CONTROLLER.md): the painted focus ring, the glyph hint bar
+   and the on-screen letter picker. Only visible while html.kd-pad-nav is set (the pad is the device in use). */
+
+/* the ring: a brass double rim with a soft lantern glow and a small wax gem on top, matching src/ui/90_paint.css */
+.pad-ring { position: fixed; left: 0; top: 0; width: 0; height: 0; pointer-events: none; display: none; z-index: 5; box-sizing: border-box;
+  border: calc(2 * var(--u)) solid #e9c873; border-radius: 4px;
+  box-shadow: 0 0 0 calc(1 * var(--u)) #1a1004, 0 0 0 calc(3 * var(--u)) rgba(200, 154, 66, .55), 0 0 calc(14 * var(--u)) calc(2 * var(--u)) rgba(255, 196, 90, .55), inset 0 0 0 calc(1 * var(--u)) #1a1004, inset 0 0 calc(10 * var(--u)) rgba(255, 210, 120, .28);
+  transition: transform .09s ease-out, width .09s ease-out, height .09s ease-out; animation: pad-ring-glow 1.6s ease-in-out infinite; }
+html.kd-pad-nav .pad-ring.pad-on { display: block; }
+.pad-ring-gem { position: absolute; left: 50%; top: calc(-6 * var(--u)); width: calc(9 * var(--u)); height: calc(9 * var(--u)); margin-left: calc(-4.5 * var(--u));
+  transform: rotate(45deg); background: radial-gradient(circle at 35% 30%, #ffd2c0, #e0402c 40%, #3a0806); border: calc(1 * var(--u)) solid #c89a42; box-shadow: 0 0 0 calc(1 * var(--u)) #1a1004, 0 0 calc(6 * var(--u)) rgba(255, 120, 80, .6); }
+@keyframes pad-ring-glow { 0%, 100% { border-color: #e9c873; } 50% { border-color: #fff0bd; } }
+.kd-no-motion .pad-ring, .kd-reduce-motion .pad-ring { animation: none; transition: none; }
+@media (prefers-reduced-motion: reduce) { .pad-ring { animation: none; transition: none; } }
+/* the browser's own focus outline is replaced by the ring while the pad drives */
+html.kd-pad-nav #kd-ui :focus, html.kd-pad-nav #kd-ui :focus-visible { outline: none; }
+
+/* the hint bar: bottom centre, small glyph + word pairs */
+.pad-hints { position: fixed; left: 50%; bottom: calc(10 * var(--u)); transform: translateX(-50%); display: none; gap: calc(14 * var(--u)); align-items: center;
+  padding: calc(5 * var(--u)) calc(14 * var(--u)); border-radius: calc(16 * var(--u)); pointer-events: none; white-space: nowrap; z-index: 4;
+  font-family: var(--kd-font-body); font-size: var(--kd-fs-sm); color: var(--kd-text); text-shadow: var(--kd-text-shadow); max-width: calc(100vw - 16px); overflow: hidden; }
+html.kd-pad-nav .pad-hints.pad-on { display: flex; }
+.pad-hint { display: inline-flex; align-items: center; gap: calc(5 * var(--u)); }
+.pad-hint-t { color: #f3e3bb; }
+
+/* glyphs: face buttons are round (PS shapes or Xbox letters in their colours), the rest are small pills */
+.pad-g { display: inline-flex; align-items: center; justify-content: center; min-width: calc(18 * var(--u)); height: calc(18 * var(--u)); padding: 0 calc(4 * var(--u)); box-sizing: border-box;
+  border-radius: calc(9 * var(--u)); background: linear-gradient(180deg, #3b3f46, #17191c); border: calc(1 * var(--u)) solid #0a0b0c; box-shadow: inset 0 calc(1 * var(--u)) 0 rgba(255, 255, 255, .18), 0 0 0 calc(1 * var(--u)) rgba(200, 154, 66, .5);
+  color: #f2ead8; font: 700 calc(10 * var(--u)) / 1 var(--kd-font-body); letter-spacing: 0; text-shadow: none; }
+.pad-g + .pad-g { margin-left: calc(-2 * var(--u)); }
+.pad-g-face { width: calc(18 * var(--u)); padding: 0; border-radius: 50%; font-size: calc(11 * var(--u)); }
+.pad-g-ps.pad-g0 { color: #8fc0f2; } .pad-g-ps.pad-g1 { color: #ff7b72; } .pad-g-ps.pad-g2 { color: #f0a5e2; } .pad-g-ps.pad-g3 { color: #5fe0b0; }
+.pad-g-xbox.pad-g0 { background: radial-gradient(circle at 40% 35%, #8be26a, #3c8c22); color: #08200a; }
+.pad-g-xbox.pad-g1 { background: radial-gradient(circle at 40% 35%, #ff8a7a, #b8281c); color: #2a0503; }
+.pad-g-xbox.pad-g2 { background: radial-gradient(circle at 40% 35%, #8ac4ff, #2462b8); color: #04122a; }
+.pad-g-xbox.pad-g3 { background: radial-gradient(circle at 40% 35%, #ffe27a, #c49a14); color: #2a1e02; }
+.pad-g-rs, .pad-g-ls { border-radius: 50%; width: calc(18 * var(--u)); padding: 0; background: radial-gradient(circle at 50% 50%, #17191c 45%, #4a4f57 47%, #24272b 70%); }
+.pad-g-dpad { width: calc(18 * var(--u)); padding: 0; border-radius: calc(3 * var(--u)); background:
+  linear-gradient(#f2ead8, #f2ead8) center / 32% 80% no-repeat, linear-gradient(#f2ead8, #f2ead8) center / 80% 32% no-repeat, linear-gradient(180deg, #3b3f46, #17191c); }
+
+/* the letter picker */
+.pad-kb .kd-window-body { display: flex; flex-direction: column; gap: calc(6 * var(--u)); }
+.pad-kb-text { min-height: calc(30 * var(--u)); padding: calc(5 * var(--u)) calc(10 * var(--u)); background: rgba(0, 0, 0, .45); border: calc(1 * var(--u)) solid rgba(216, 178, 90, .45); border-radius: calc(4 * var(--u));
+  color: #fff3d0; font-size: var(--kd-fs-xl); letter-spacing: .04em; white-space: pre; overflow: hidden; }
+.pad-kb-grid { display: flex; flex-direction: column; gap: calc(4 * var(--u)); }
+.pad-kb-row { display: flex; gap: calc(4 * var(--u)); justify-content: center; }
+.pad-kb-key { min-width: calc(42 * var(--u)); justify-content: center; }
+.pad-kb-wide { min-width: calc(84 * var(--u)); justify-content: center; }
+.pad-kb-space { flex: 1; justify-content: center; }
+
+/* hints inside a window's footer row: plain, left of the buttons, never pushing them */
+.pad-hints.pad-in-foot { position: static; transform: none; left: auto; bottom: auto; margin-right: auto; padding: 0; background: none; border: 0; box-shadow: none;
+  flex: 0 1 auto; min-width: 0; gap: calc(10 * var(--u)); font-size: var(--kd-fs-xs); }
+.kd-window-foot > .kd-btn { flex-shrink: 0; }
+.pad-ring.pad-jump { transition: none; }
+.pad-kb-note { text-align: center; font-size: var(--kd-fs-xs); }
+/* the bag's mouse-key line (right click, Alt, Ctrl) means nothing on a pad: the card and the hint bar name the pad buttons */
+html.kd-pad-nav .win-hints > :not(.kd-badge) { display: none; }
+.kd-tooltip .pad-g { vertical-align: middle; }
+
 /* =====================================================================================================
    Kingdom's Descent HUD.   Owner: hud.   Documented in docs/HUD.md.
    Built from the kit (00_theme.css): plates, bars, slots, badges, frames. Everything here is layout and
@@ -3467,7 +3527,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.44';
+  KD.VERSION = '0.7.45';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -22509,6 +22569,13 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.45', date: '2026-10-10', title: 'Menus on a controller', notes: [
+      'Every menu now works with a PlayStation or Xbox controller: move with the D-pad or stick, Cross or A to pick, Circle or B to go back',
+      'A glowing brass ring shows where you are, with button hints at the bottom',
+      'L1 and R1 flip tabs, and step between your bag, hero sheet, skills and talent tree',
+      'Walk the talent tree node to node with the D-pad, pan with the right stick and zoom with the triggers',
+      'Type names with an on-screen keyboard (a real keyboard works too)'
+    ] },
     { version: '0.7.44', date: '2026-10-10', title: 'Controller polish', notes: [
       'New controller option: Confirm with Circle (or B / A) for menus, Japanese style',
       'Phones and tablets: the on-screen controls step aside more cleanly while a controller plays',
@@ -104465,6 +104532,751 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/ui/05_pad_nav.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  /**
+   * KD.padNav: every menu, window and screen driven by a game controller, like a console game (task w8 pad-ui).
+   * Documented in docs/CONTROLLER.md ("Menus with a controller") and docs/UIKIT.md section 12.
+   *
+   * It is a layer on top of the DOM: it never changes a screen. Whatever can be clicked in the top window (or the flow
+   * screen that is up when no window is open) can be reached with the D-pad or the left stick and pressed with Cross / A.
+   *   D-pad / left stick   move the focus (spatial: the nearest thing in that direction), repeats while held
+   *   Cross / A            press it (a text field opens the letter picker)       Circle / B   back (Esc: closes the top window)
+   *   Square / X           quick use (what a right click does: equip, buy, sell)  Triangle / Y (hold)  item details; R3 (hold) compare
+   *   L1 / R1              previous / next tab                                     L2 / R2      sub tabs, else page the list
+   *   right stick          scroll the panel under the focus (tree, map: pan; wardrobe: turn the hero)
+   * Sliders and drop-downs change with left / right. The focus is remembered per window and screen; a window that opens
+   * starts on its autofocus button (a confirmation on its safe button). In play (no window, no screen) it does nothing:
+   * the pad then plays the game (src/ui/04_pad.js, pad-play). The ring and the glyph hints only show while the pad is
+   * the device in use; any mouse, touch or key hides them, and mouse, keyboard and touch behave exactly as before.
+   *
+   * Pure helpers (Node): padType(id), pick(from, rects, dir), Repeat, LABELS.
+   */
+  var PN = KD.padNav = KD.padNav || {};
+
+  // ------------------------------------------------------------------------------------------ pure helpers
+  /** padType(gamepad.id) -> 'ps' | 'xbox' | 'switch' | 'generic'. */
+  PN.padType = function (id) {
+    if (KD.pad && KD.pad.detectType) return KD.pad.detectType(id);      // the pad-play layer's full rules when it is loaded
+    id = String(id || '');
+    if (/xbox|xinput|045e|microsoft/i.test(id)) return 'xbox';
+    if (/054c|playstation|dualshock|dualsense|^\s*wireless controller|\bps[345]\b/i.test(id)) return 'ps';
+    if (/nintendo|057e|switch|pro controller|joy-con/i.test(id)) return 'switch';
+    return 'generic';
+  };
+  /** Button names by standard-mapping index, per pad type (generic pads use the Xbox names). */
+  PN.LABELS = {
+    ps: ['Cross', 'Circle', 'Square', 'Triangle', 'L1', 'R1', 'L2', 'R2', 'Share', 'Options', 'L3', 'R3', 'Up', 'Down', 'Left', 'Right', 'PS'],
+    xbox: ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'View', 'Menu', 'LS', 'RS', 'Up', 'Down', 'Left', 'Right', 'Xbox'],
+    'switch': ['B', 'A', 'Y', 'X', 'L', 'R', 'ZL', 'ZR', '-', '+', 'LS', 'RS', 'Up', 'Down', 'Left', 'Right', 'Home']
+  };
+  PN.label = function (type, i) { return (PN.LABELS[type] || PN.LABELS.xbox)[i] || ''; };
+  PN.B = { confirm: 0, back: 1, use: 2, details: 3, l1: 4, r1: 5, l2: 6, r2: 7, select: 8, start: 9, l3: 10, r3: 11, up: 12, down: 13, left: 14, right: 15 };
+  var OPP = { up: 'down', down: 'up', left: 'right', right: 'left' };
+  var DIRV = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+  /**
+   * pick(from, rects, dir) -> index of the best rect to move to from `from` in direction dir ('up'|'down'|'left'|'right'),
+   * or -1. Rects are { left, top, right, bottom } (screen pixels). Only rects whose centre lies ahead count; the score is
+   * the gap along the direction plus the sideways miss (doubled), plus a little of the centre offset, so a neighbour in
+   * the same row / column wins over a nearer one beside it.
+   */
+  PN.pick = function (from, rects, dir) {
+    var d = DIRV[dir]; if (!d || !from) return -1;
+    var fcx = (from.left + from.right) / 2, fcy = (from.top + from.bottom) / 2, best = -1, bestS = Infinity;
+    for (var i = 0; i < rects.length; i++) {
+      var r = rects[i]; if (!r) continue;
+      var cx = (r.left + r.right) / 2, cy = (r.top + r.bottom) / 2, gap, miss, off;
+      if (d[0]) {
+        if ((cx - fcx) * d[0] <= 1) continue;
+        if (d[0] > 0 ? r.right <= from.right : r.left >= from.left) continue;
+        gap = Math.max(0, d[0] > 0 ? r.left - from.right : from.left - r.right);
+        miss = Math.max(0, Math.max(r.top, from.top) - Math.min(r.bottom, from.bottom));
+        off = Math.abs(cy - fcy);
+      } else {
+        if ((cy - fcy) * d[1] <= 1) continue;
+        if (d[1] > 0 ? r.bottom <= from.bottom : r.top >= from.top) continue;
+        gap = Math.max(0, d[1] > 0 ? r.top - from.bottom : from.top - r.bottom);
+        miss = Math.max(0, Math.max(r.left, from.left) - Math.min(r.right, from.right));
+        off = Math.abs(cx - fcx);
+      }
+      var s = gap + miss * 2 + off * 0.25 + (miss > 0 ? 30 : 0);
+      if (s < bestS) { bestS = s; best = i; }
+    }
+    return best;
+  };
+  /** nearest(point, rects) -> index of the rect whose centre is nearest (focus lost after a rebuild). */
+  PN.nearest = function (p, rects) {
+    var best = -1, bd = Infinity;
+    for (var i = 0; i < rects.length; i++) {
+      var r = rects[i]; if (!r) continue;
+      var dx = Math.max(r.left - p.x, 0, p.x - r.right), dy = Math.max(r.top - p.y, 0, p.y - r.bottom), d = dx * dx + dy * dy;
+      if (d < bd) { bd = d; best = i; }
+    }
+    return best;
+  };
+  /** Repeat(delay, rate): fire(held, now) -> true on the press and then every `rate` ms after `delay` ms held. */
+  // (a slow frame never turns one tap into two: the first repeat also waits for a few frames held)
+  PN.Repeat = function (delay, rate) { this.delay = delay || 380; this.rate = rate || 95; this.on = null; this.next = 0; this.n = 0; this.f = 0; };
+  PN.Repeat.prototype.fire = function (key, now) {
+    if (!key) { this.on = null; return false; }
+    if (key !== this.on) { this.on = key; this.next = now + this.delay; this.n = 0; this.f = 0; return true; }
+    this.f++;
+    if (now >= this.next && this.f >= (this.n ? 2 : 6)) { this.n++; this.f = 0; this.next = now + (this.n > 8 ? this.rate * 0.6 : this.rate); return true; }
+    return false;
+  };
+  /** stickDir(x, y, dead) -> 'up' | 'down' | 'left' | 'right' | null (y down is positive, as the Gamepad API reports). */
+  PN.stickDir = function (x, y, dead) {
+    dead = dead || 0.5;
+    if (Math.abs(x) < dead && Math.abs(y) < dead) return null;
+    return Math.abs(x) > Math.abs(y) ? (x > 0 ? 'right' : 'left') : (y > 0 ? 'down' : 'up');
+  };
+
+  if (typeof document === 'undefined' || typeof window === 'undefined') return;       // the rest is browser only
+
+  // ------------------------------------------------------------------------------------------ pad reading
+  // Reads navigator.getGamepads() itself (raw buttons and axes by standard index), so it works with or without the
+  // pad-play layer; the device type comes from KD.input.pad.type when that layer is live.
+  var P = { connected: false, id: '', type: 'generic', b: [], prev: [], ax: [0, 0, 0, 0], index: -1 };
+  var normCal = {}, normOut = { v: [], ax: [0, 0, 0, 0] };
+  function readPad() {
+    P.prev = P.b; P.b = []; P.connected = false; P.ax = [0, 0, 0, 0];
+    var pads; try { pads = navigator.getGamepads ? navigator.getGamepads() : null; } catch (e) { pads = null; }
+    if (!pads) return;
+    var want = KD.input && KD.input.pad && typeof KD.input.pad.index === 'number' ? KD.input.pad.index : -1, g = null;
+    if (want >= 0 && pads[want] && pads[want].connected) g = pads[want];
+    for (var i = 0; !g && pads && i < pads.length; i++) if (pads[i] && pads[i].connected && pads[i].buttons && pads[i].buttons.length >= 4) g = pads[i];
+    if (!g) return;
+    P.connected = true; P.id = g.id; P.index = g.index;
+    var IP = KD.input && KD.input.pad, k;
+    P.type = IP && IP.type && IP.type !== 'generic' ? IP.type : PN.padType(g.id);
+    if (IP && IP.capturing && !S.hush) return;          // Settings > Controller layout is waiting for a button to remap: hands off
+    var KP = KD.pad;
+    if (KP && KP.normalize) {
+      // the pad-play layer's normaliser (src/ui/04_pad.js: odd pads, hats, trigger axes), run on this frame's read so the
+      // menus never see a stale button from the game loop's own poll
+      if (normCal.id !== g.id) { normCal = { type: P.type }; normCal.id = g.id; }
+      var nv = KP.normalize(g, normCal, normOut);
+      for (k = 0; k < 17; k++) P.b[k] = k === 6 || k === 7 ? (nv.v[k] || 0) > 0.3 : (nv.v[k] || 0) > 0.5;
+      for (k = 0; k < 4; k++) { var w = nv.ax[k] || 0; P.ax[k] = Math.abs(w) < 0.18 ? 0 : w; }
+      return;
+    }
+    for (k = 0; k < 17; k++) { var bt = g.buttons[k]; P.b[k] = !!(bt && (bt.pressed || bt.value > 0.5)); }
+    for (k = 0; k < 4; k++) { var v = (g.axes && g.axes[k]) || 0; P.ax[k] = Math.abs(v) < 0.18 ? 0 : v; }
+  }
+  function down(i) { return !!P.b[i]; }
+  function winCount() { var W = KD.ui && KD.ui.windows; return W && W.list ? W.list().length : 0; }
+  function anyHeld() { for (var i = 0; i < 17; i++) if (P.b[i]) return true; return Math.abs(P.ax[0]) > 0.5 || Math.abs(P.ax[1]) > 0.5; }
+  /** Confirm on Circle / B and back on Cross / A when the player swapped them (Settings > Controller, pad-play). */
+  function swapped() { var ip = KD.input && KD.input.pad; if (ip && typeof ip.confirmIndex === 'number') return ip.confirmIndex === 1; var s = KD.pad && KD.pad.settings; return !!(s && s.swapConfirm); }
+  PN.swapped = swapped;
+  function pressed(i) { return !!P.b[i] && !P.prev[i]; }
+  function released(i) { return !P.b[i] && !!P.prev[i]; }
+  PN.pad = P;
+
+  // ------------------------------------------------------------------------------------------ state
+  var S = PN.S = { active: false, el: null, key: null, mem: {}, last: null, ring: null, hints: null, hintSig: '', rep: new PN.Repeat(380, 95), srep: new PN.Repeat(300, 55),
+    tipAt: 0, tipEl: null, tipMine: false, view: null, mode: null, node: -1, raf: 0, t: 0, picker: null, lastMoveAt: 0, wake: false };
+  PN.isActive = function () { return S.active; };
+  function emit(name, data) { try { if (KD.input && KD.input.events) KD.input.events.emit(name, data); } catch (e) { /* listeners are optional */ } }
+  function setActive(on) {
+    on = !!on;
+    if (on === S.active) return;
+    S.active = on;
+    document.documentElement.classList.toggle('kd-pad-nav', on);
+    if (!on) { tipKeys(false, false); if (S.tipMine && KD.ui.tooltip) { KD.ui.tooltip.hide(); S.tipMine = false; } }
+    paint();
+    emit('padNav', { active: on });
+  }
+  // any real mouse, touch or key use hands the screen back (synthetic events from this file are not trusted)
+  var lastMouse = null;
+  function off(e) { if (e && e.isTrusted === false) return; if (S.active) setActive(false); }
+  window.addEventListener('pointerdown', off, true);
+  window.addEventListener('wheel', off, { capture: true, passive: true });
+  window.addEventListener('keydown', off, true);
+  window.addEventListener('touchstart', off, { capture: true, passive: true });
+  window.addEventListener('mousemove', function (e) {
+    if (!e.isTrusted) return;
+    if (lastMouse && Math.abs(e.clientX - lastMouse.x) + Math.abs(e.clientY - lastMouse.y) > 6) off(e);
+    lastMouse = { x: e.clientX, y: e.clientY };
+  }, true);
+
+  // ------------------------------------------------------------------------------------------ scope and focusables
+  /** scope() -> { key, node, win } : the top window, else the flow screen that is up, else null (in play). */
+  function scope() {
+    var W = KD.ui && KD.ui.windows, top = W && W.top ? W.top() : null;
+    if (top && top.node && top.node.isConnected) return { key: 'w:' + top.id, node: top.node, win: top };
+    var F = KD.flow;
+    if (F && F.current && F.screens && F.screens[F.current] && !F.screens[F.current].classList.contains('kd-hidden')) return { key: 's:' + F.current, node: F.screens[F.current] };
+    var s = document.querySelector('.flow-screen:not(.kd-hidden)');
+    if (s) return { key: 's:' + s.className, node: s };
+    return null;
+  }
+  PN.scope = scope;
+  var SEL = 'button, [tabindex], input, select, textarea, a[href], [role=button], [role=tab], .kd-card-click, .kd-row-click, .flow-click, .win-click';
+  function visible(n) {
+    if (!n || !n.isConnected) return false;
+    var r = n.getBoundingClientRect();
+    if (r.width < 2 || r.height < 2) return false;
+    if (n.closest('.kd-hidden, [aria-hidden="true"]')) return false;
+    var cs = getComputedStyle(n);
+    return cs.visibility !== 'hidden' && cs.display !== 'none' && +cs.opacity > 0.05;
+  }
+  function usable(n) {
+    if (n.disabled || n.getAttribute('aria-disabled') === 'true') return false;
+    if (n.tagName === 'INPUT' && n.type === 'hidden') return false;
+    var ti = n.getAttribute('tabindex');
+    if (ti === '-1' && !/^(BUTTON|INPUT|SELECT|TEXTAREA|A)$/.test(n.tagName) && n.getAttribute('role') !== 'tab') return false;
+    if (n.classList.contains('kd-window') || n.classList.contains('pad-skip')) return false;
+    return true;
+  }
+  /** focusables(scope) -> the elements the focus can go to, in document order. */
+  function focusables(sc) {
+    if (!sc) return [];
+    var out = [], all = sc.node.querySelectorAll(SEL);
+    for (var i = 0; i < all.length; i++) { var n = all[i]; if (usable(n) && visible(n)) out.push(n); }
+    // toasts that ask something (an invite, the update banner) can be answered from any screen or window but a confirmation
+    if (!(sc.win && sc.win.modal)) {
+      var ts = document.querySelectorAll('.kd-toasts button, .flow-pn-banner button');
+      for (var j = 0; j < ts.length; j++) if (usable(ts[j]) && visible(ts[j]) && !sc.node.contains(ts[j])) out.push(ts[j]);
+    }
+    // a clickable inside a clickable (a button on a card): both stay, they are separate targets
+    return out;
+  }
+  PN.focusables = function () { return focusables(scope()); };
+  function rectOf(n) { var r = n.getBoundingClientRect(); return { left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.width, height: r.height }; }
+  function centre(r) { return { x: (r.left + r.right) / 2, y: (r.top + r.bottom) / 2 }; }
+  function isText(n) { return n && ((n.tagName === 'INPUT' && /^(text|search|email|password|number|)$/.test(n.type || '')) || n.tagName === 'TEXTAREA'); }
+  function isRange(n) { return n && n.tagName === 'INPUT' && n.type === 'range'; }
+
+  /** The button a window or screen starts on. A confirmation starts on its safe button. */
+  function defaultFocus(sc, list) {
+    if (!list.length) return null;
+    var safe = sc.win && (/^kd-confirm-/.test(sc.win.id) || sc.node.classList.contains('win-confirm'));
+    if (safe) {
+      var foot = sc.node.querySelector('.kd-window-foot');
+      var bs = list.filter(function (n) { return foot && foot.contains(n) && !n.classList.contains('kd-btn-danger') && !n.classList.contains('kd-btn-primary'); });
+      if (bs.length) return bs[0];
+    }
+    var pref = sc.node.querySelector('[data-pad-default]');
+    if (pref && list.indexOf(pref) >= 0) return pref;
+    var auto = sc.node.querySelector('[autofocus], [data-autofocus]');
+    if (auto && list.indexOf(auto) >= 0) return auto;
+    // the chosen tab's content before the tab bar and the close button: first thing in reading order that is not chrome
+    var body = list.filter(function (n) { return !n.classList.contains('kd-window-close') && !n.closest('[role=tablist]'); });
+    var pool = body.length ? body : list;
+    if (sc.key.indexOf('s:') === 0) { var nt = pool.filter(function (n) { return !isText(n); }); if (nt.length) pool = nt; }   // a screen starts on a choice, not its name field
+    var primary = pool.filter(function (n) { return n.classList.contains('kd-btn-primary') && !n.closest('.flow-seg, .win-seg, .flow-vtabs'); });
+    if (primary.length && sc.key.indexOf('s:') === 0) return primary[0];
+    pool = pool.slice().sort(function (a, b) { var ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect(); return Math.abs(ra.top - rb.top) > 8 ? ra.top - rb.top : ra.left - rb.left; });
+    return pool[0];
+  }
+
+  // ------------------------------------------------------------------------------------------ focus
+  function scrollIntoView(n) {
+    var r = n.getBoundingClientRect(), p = n.parentElement;
+    while (p && p !== document.body) {
+      var cs = getComputedStyle(p);
+      if (/(auto|scroll)/.test(cs.overflowY + cs.overflowX) && (p.scrollHeight > p.clientHeight + 1 || p.scrollWidth > p.clientWidth + 1)) {
+        var pr = p.getBoundingClientRect(), m = 10;
+        if (r.top < pr.top + m) p.scrollTop -= pr.top + m - r.top;
+        else if (r.bottom > pr.bottom - m) p.scrollTop += Math.min(r.bottom - pr.bottom + m, r.top - pr.top - m);
+        if (r.left < pr.left + m) p.scrollLeft -= pr.left + m - r.left;
+        else if (r.right > pr.right - m) p.scrollLeft += Math.min(r.right - pr.right + m, r.left - pr.left - m);
+        r = n.getBoundingClientRect();
+      }
+      p = p.parentElement;
+    }
+  }
+  var LOG = PN.log = [];
+  function trace(what) { LOG.push(Math.round(performance.now()) + ' ' + what); if (LOG.length > 40) LOG.shift(); }
+  function setFocus(n, quiet) {
+    if (S.el === n && n) return;
+    trace('focus ' + (n ? (n.textContent || n.getAttribute('aria-label') || n.tagName).trim().slice(0, 24) : '-') + (quiet ? ' (q)' : ''));
+    S.el = n; S.tipAt = (performance.now ? performance.now() : Date.now()) + 160; S.tipEl = null;
+    if (!n) { paint(); return; }
+    scrollIntoView(n);
+    S.last = rectOf(n);
+    // real focus for buttons (keyboard Enter then agrees); never for a text field (a phone would pop its keyboard)
+    if (!isText(n) && n.focus) { try { n.focus({ preventScroll: true }); } catch (e) { /* not focusable */ } }
+    if (S.tipMine && KD.ui.tooltip && KD.ui.tooltip.owner !== n) { KD.ui.tooltip.hide(); S.tipMine = false; }
+    if (!quiet) sound('ui_hover');
+    paint();
+  }
+  PN.focus = function (n) { setFocus(n, true); return S.el; };
+  PN.current = function () { return S.el; };
+  function sound(name) { try { if (KD.audio && KD.audio.play && KD.audio.has && KD.audio.has(name)) KD.audio.play(name); } catch (e) { /* audio is optional */ } }
+
+  /** Puts the focus back where it belongs after the scope changed or the focused element was rebuilt away. */
+  function ensureFocus(sc, list) {
+    if (S.el && S.el.isConnected && sc.node.contains(S.el) && list.indexOf(S.el) >= 0) { S.last = rectOf(S.el); return; }
+    var mem = S.mem[sc.key], n = null;
+    if (S.el && S.last && S.key === sc.key) {             // rebuilt in place (a click redrew the window): the nearest thing
+      var i = PN.nearest(centre(S.last), list.map(rectOf)); n = i >= 0 ? list[i] : null;
+    } else if (mem) {
+      if (mem.el && mem.el.isConnected && list.indexOf(mem.el) >= 0) n = mem.el;
+      else if (mem.rect) { var j = PN.nearest(centre(mem.rect), list.map(rectOf)); n = j >= 0 ? list[j] : null; }
+    }
+    if (!n) n = defaultFocus(sc, list);
+    S.el = null; setFocus(n, true);
+  }
+
+  // ------------------------------------------------------------------------------------------ actions
+  function key(name, code) {
+    var t = document.activeElement && document.activeElement !== document.body ? document.activeElement : document.body;
+    var o = { key: name, code: code || name, bubbles: true, cancelable: true };
+    try { t.dispatchEvent(new KeyboardEvent('keydown', o)); t.dispatchEvent(new KeyboardEvent('keyup', o)); } catch (e) { /* old browser */ }
+    if (KD.pad && KD.pad.setActive && P.connected) KD.pad.setActive(true);       // (a made-up key is still the pad)
+  }
+  function sig() { var W = KD.ui.windows; return (W ? W.list().join(',') : '') + '|' + (KD.flow ? KD.flow.current : '') + '|' + (KD.game ? KD.game.state : ''); }
+  var BACK_TEXT = /^(back|close|cancel|resume|not now|keep it|no)$/i;
+  /**
+   * hush(): a press closed the last window and play goes on while the button is still down. The pad-play layer is told to
+   * ignore the pad (its `capturing` flag) until every button is let go, so Circle does not also dodge and Cross does not cast.
+   */
+  function hush() {
+    var IP = KD.input && KD.input.pad; if (!IP || IP.capturing) return;
+    S.hush = true; IP.capturing = true;
+    for (var k in IP.buttons) IP.buttons[k] = false;
+  }
+  PN.hush = hush;
+  /** Back: what Esc does (closes the top window, leaves a sub screen); when Esc changed nothing, a Back / Close button. */
+  function back(sc) {
+    if (KD.ui.dnd && KD.ui.dnd.active) { key('Escape'); return; }
+    var before = sig();
+    key('Escape');
+    if (sig() !== before) { sound('ui_close'); return; }
+    var list = focusables(sc), hit = null;
+    for (var i = list.length - 1; i >= 0 && !hit; i--) {
+      var n = list[i], t = (n.textContent || '').trim(), al = n.getAttribute('aria-label') || '';
+      if (n.classList.contains('kd-window-close') || /(^|[-_ ])(back|close)([-_ ]|$)/.test(n.className) || BACK_TEXT.test(t) || /^(back|close)/i.test(al)) hit = n;
+    }
+    if (hit) hit.click();
+  }
+  function activate(n) {
+    if (!n) return;
+    if (isText(n)) { openPicker(n); return; }
+    if (isRange(n)) { step(n, 1); return; }
+    if (n.tagName === 'SELECT') { cycle(n, 1); return; }
+    if (n.tagName === 'INPUT' && (n.type === 'checkbox' || n.type === 'radio')) { n.click(); return; }
+    n.click();
+  }
+  function contextUse(n) {
+    if (!n) return false;
+    var r = n.getBoundingClientRect();
+    var ev = new MouseEvent('contextmenu', { bubbles: true, cancelable: true, button: 2, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 });
+    n.dispatchEvent(ev);
+    return true;
+  }
+  function step(n, dir) {
+    var min = +n.min || 0, max = n.max === '' ? 100 : +n.max, st = n.step === 'any' || !n.step ? (max - min) / 20 : +n.step;
+    var v = Math.max(min, Math.min(max, +n.value + dir * st));
+    if (v === +n.value) return;
+    n.value = String(v);
+    n.dispatchEvent(new Event('input', { bubbles: true })); n.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+  function cycle(n, dir) {
+    var len = n.options.length; if (!len) return;
+    n.selectedIndex = (n.selectedIndex + dir + len) % len;
+    n.dispatchEvent(new Event('input', { bubbles: true })); n.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+  /** Moves the focus one step in a direction. A slider or a drop-down takes left / right for itself. */
+  function move(sc, dir) {
+    var n = S.el;
+    if (n && (dir === 'left' || dir === 'right')) {
+      if (isRange(n)) { step(n, dir === 'right' ? 1 : -1); return; }
+      if (n.tagName === 'SELECT') { cycle(n, dir === 'right' ? 1 : -1); return; }
+    }
+    var list = focusables(sc).filter(function (x) { return x !== n; });
+    if (!n) { ensureFocus(sc, list); return; }
+    // straight back the way it came (down then up returns to the same button, even in an uneven grid)
+    if (S.came && S.came.to === n && S.came.back === dir && list.indexOf(S.came.el) >= 0 && S.came.el.isConnected) { var b = S.came.el; S.came = { el: n, to: b, back: OPP[dir] }; setFocus(b); return; }
+    var i = PN.pick(rectOf(n), list.map(rectOf), dir);
+    if (i >= 0) { S.came = { el: n, to: list[i], back: OPP[dir] }; setFocus(list[i]); return; }
+    // nothing further that way: a list that scrolls shows its next part, so the next press finds it
+    var sp = scroller(n, sc); if (sp) { var d = DIRV[dir]; sp.scrollTop += d[1] * sp.clientHeight * 0.5; sp.scrollLeft += d[0] * sp.clientWidth * 0.5; }
+  }
+  PN.move = function (dir) { var sc = scope(); if (sc) move(sc, dir); return S.el; };
+  function scrollable(p) {
+    var cs = getComputedStyle(p);
+    return (/(auto|scroll)/.test(cs.overflowY) && p.scrollHeight > p.clientHeight + 2) || (/(auto|scroll)/.test(cs.overflowX) && p.scrollWidth > p.clientWidth + 2);
+  }
+  /** The panel the right stick scrolls: the nearest scrolling box around the focus, else the biggest one in the window. */
+  function scroller(n, sc) {
+    for (var p = n ? n.parentElement : null; p && p !== sc.node.parentElement; p = p.parentElement) if (scrollable(p)) return p;
+    var best = null, ba = 0, all = sc.node.querySelectorAll('*');
+    for (var i = 0; i < all.length && i < 4000; i++) { var q = all[i]; if (q.clientHeight > 40 && scrollable(q)) { var a = q.clientWidth * q.clientHeight; if (a > ba) { ba = a; best = q; } } }
+    if (!best && scrollable(sc.node)) best = sc.node;
+    return best;
+  }
+  // ---- tabs: L1 / R1 the first tab row of the window or screen, L2 / R2 the second one (sub tabs)
+  var TABLIST = '[role=tablist], .kd-tabs-bar, .flow-vtabs, .pad-tabs';
+  function tabRows(sc) {
+    var rows = Array.prototype.filter.call(sc.node.querySelectorAll(TABLIST), function (r) { return visible(r) && !r.parentElement.closest(TABLIST); });
+    return rows.map(function (r) { return Array.prototype.filter.call(r.querySelectorAll('button, [role=tab]'), function (b) { return visible(b) && !b.disabled && (b.parentElement === r || b.getAttribute('role') === 'tab'); }); }).filter(function (b) { return b.length > 1; });
+  }
+  function isOn(b) { return b.getAttribute('aria-selected') === 'true' || b.classList.contains('kd-tab-active') || b.getAttribute('aria-pressed') === 'true' || b.classList.contains('kd-btn-primary'); }
+  function switchTab(sc, row, dir) {
+    var at = -1; for (var i = 0; i < row.length; i++) if (isOn(row[i])) { at = i; break; }
+    var nx = row[(at + dir + row.length) % row.length];
+    var focusWasTab = S.el && row.indexOf(S.el) >= 0;
+    var wasRect = S.el ? rectOf(S.el) : null;
+    nx.click(); sound('ui_tab');
+    // the focus goes into the new tab's content (where it was, or its first thing), unless it was on the tab row
+    if (focusWasTab) { S.el = null; setFocus(nx, true); return; }
+    S.el = null; S.last = wasRect;
+  }
+  // ---- item cards: Triangle / Y held = details, R3 held = compare (the kit's Shift / Shift+Alt views)
+  function tipKeys(det, cmp) {
+    var T = KD.ui && KD.ui.tooltip; if (!T || !T.keys) return;
+    var s = !!(det || cmp), a = !!cmp;
+    if (T.keys.shift === s && T.keys.alt === a) return;
+    T.keys.shift = s; T.keys.alt = a;
+    if (T.visible && !T.byTouch && T.owner) T.refresh();
+  }
+  function tipFor(n) {
+    var T = KD.ui && KD.ui.tooltip; if (!T || !n) return;
+    var t = n; while (t && !t._kdTipBound && t !== document.body) t = t.parentElement;
+    if (!t || !t._kdTipBound) return;
+    var r = n.getBoundingClientRect();
+    if (T.openFor(t, r.right, r.top + Math.min(r.height / 2, 30), false)) S.tipMine = true;
+  }
+  /**
+   * cardFoot(hints, view, canCompare) -> the item card's key line for the pad (Square: the card's quick use, Triangle held:
+   * details, R3 held: compare), or null while the pad is not in use. The item cards of src/ui/30_win_05_shared.js call it.
+   */
+  PN.cardFoot = function (hints, view, canCmp) {
+    if (!S.active || !KD.ui || !KD.ui.el) return null;
+    var el = KD.ui.el, out = [], add = function (b, t) { if (out.length) out.push(el('span.win-hint-gap')); out.push(glyphEl(b)); out.push(el('span', { text: ' ' + t })); };
+    var q = (hints || []).filter(function (h) { return h && h[0] === 'RMB'; })[0];
+    if (q) add(2, q[1]);
+    if (view !== 'details' && view !== 'compare') add(3, 'details');
+    if (canCmp && view !== 'compare') add(11, 'compare');
+    return out;
+  };
+  // ---- L1 / R1 in the bag, the hero sheet and the skills window (no tabs of their own): the next of the three
+  // (the talent tree / Crownweb has no pad button in play: it is the fourth of the ring)
+  var RING = ['inventory', 'character', 'skills', 'web'];
+  function ringOpen(id) {
+    if (id === 'web') { var WB = KD.screens && KD.screens.get && KD.screens.get('web'); if (WB && WB.open) WB.open(); return; }
+    KD.win.open(id);
+  }
+  function inRingNow(sc) { return !!(sc && sc.win && RING.indexOf(sc.win.id) >= 0 && KD.game && KD.game.state === 'play' && KD.win); }
+  function ringWindow(sc, dir) {
+    var id = sc.win && sc.win.id, i = RING.indexOf(id), W = KD.win;
+    if (i < 0 || !W || !W.open || !W.close) return false;
+    if (KD.game && KD.game.state !== 'play') return false;
+    var nx = RING[(i + dir + RING.length) % RING.length];
+    try { if (id === 'web') KD.ui.windows.close('web'); else W.close(id); ringOpen(nx); } catch (e) { return false; }
+    sound('ui_tab'); S.el = null;
+    return true;
+  }
+  function hasViews(n) { return !!(n && (n.classList.contains('kd-slot') || n.closest('.kd-slot, .win-irow')) && n.closest('[data-window], .flow-screen')); }
+
+  // ------------------------------------------------------------------------------------------ text: the letter picker
+  var ROWS = ['1234567890', 'QWERTYUIOP', 'ASDFGHJKL\'', 'ZXCVBNM-_.'];
+  function openPicker(input) {
+    var UI = KD.ui, el = UI.el, caps = true, max = +input.getAttribute('maxlength') || 24;
+    var out = el('div.pad-kb-text.kd-num', { text: input.value || '' });
+    function put(v) {
+      v = v.slice(0, max); input.value = v; out.textContent = v || ' ';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    function type(ch) { put((input.value || '') + (caps ? ch : ch.toLowerCase())); if (caps && /[A-Z]/.test(ch) && (input.value || '').length === 1) setCaps(false); }
+    var keys = [];
+    function setCaps(on) { caps = on; keys.forEach(function (k) { if (/^[A-Z]$/.test(k.ch)) k.b.setLabel(on ? k.ch : k.ch.toLowerCase()); }); }
+    var grid = el('div.pad-kb-grid', ROWS.map(function (row) {
+      return el('div.pad-kb-row', row.split('').map(function (ch) { var b = UI.button(ch, { small: true, className: 'pad-kb-key', onClick: function () { type(ch); } }); keys.push({ ch: ch, b: b }); return b; }));
+    }));
+    var tools = el('div.pad-kb-row', [
+      UI.button('Shift', { small: true, className: 'pad-kb-wide', onClick: function () { setCaps(!caps); } }),
+      UI.button('Space', { small: true, className: 'pad-kb-space', onClick: function () { put((input.value || '') + ' '); } }),
+      UI.button('Delete', { small: true, className: 'pad-kb-wide', onClick: function () { put((input.value || '').slice(0, -1)); } }),
+      UI.button('Done', { small: true, kind: 'primary', className: 'pad-kb-wide pad-kb-done', onClick: function () { done(); } })
+    ]);
+    function done() { input.dispatchEvent(new Event('change', { bubbles: true })); UI.windows.close('pad-keys'); }
+    S.picker = { input: input, del: function () { put((input.value || '').slice(0, -1)); }, space: function () { put((input.value || '') + ' '); }, done: done, caps: function () { setCaps(!caps); } };
+    // a keyboard works too (a PC or a tablet with keys): typed letters land in the same field
+    function onKey(e) {
+      if (!S.picker || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); done(); return; }
+      if (e.key === 'Backspace') { e.preventDefault(); e.stopPropagation(); put((input.value || '').slice(0, -1)); return; }
+      if (e.key && e.key.length === 1) { e.preventDefault(); e.stopPropagation(); put((input.value || '') + e.key); }
+    }
+    window.addEventListener('keydown', onKey, true);
+    var note = el('div.kd-dim.pad-kb-note', { text: 'Or just type on a keyboard.' });
+    var w = UI.windows.open('pad-keys', { title: input.getAttribute('aria-label') && input.getAttribute('aria-label') !== 'text' ? input.getAttribute('aria-label') : 'Type a name', modal: true, pauses: false, width: 560, className: 'pad-kb', surface: 'panel',
+      content: [out, grid, tools, note], onClose: function () { S.picker = null; window.removeEventListener('keydown', onKey, true); } });
+    if (w && w.node) { var first = keys[10] && keys[10].b; if (first) first.setAttribute('data-pad-default', ''); }
+    setCaps(!(input.value || '').length);
+    out.textContent = input.value || ' ';
+  }
+  PN.openPicker = openPicker;
+
+  // ------------------------------------------------------------------------------------------ special screens
+  /**
+   * Handlers for windows whose content is drawn on a canvas: the talent tree / Crownweb ('web'), the map ('map') and the
+   * wardrobe ('wardrobe', the preview turns with the right stick). A handler may take the directions, Cross, Square,
+   * the triggers and the right stick; whatever it does not take falls through to the normal navigation.
+   * handler = { dir(sc, d) -> bool, confirm(sc) -> bool, use(sc) -> bool, details(sc) -> bool, stick(sc, x, y, dt) -> bool,
+   *             trig(sc, l, r, dt) -> bool, ring() -> { x, y, r } | null, hints(sc) -> [[button, text]] | null }
+   */
+  PN.handlers = PN.handlers || {};
+  var webH = PN.handlers.web = {
+    mode: 'nodes', node: -1, hoverAt: 0,
+    api: function () { return KD.webui && KD.webui.api && KD.webui.api.isOpen && KD.webui.api.isOpen() ? KD.webui.api : null; },
+    nodes: function () { var s = KD.webui && KD.webui.state; return s && s.web ? s.web.nodes : null; },
+    onNodes: function () { return this.mode === 'nodes' && !(S.el && S.el.tagName === 'INPUT'); },
+    start: function () {
+      var A = this.api(), N = this.nodes(); if (!A || !N) return -1;
+      var st = KD.webui.state, vw = A.view(), best = -1, bd = Infinity, cv = st.canvas.getBoundingClientRect(), cx = cv.left + vw.w / 2, cy = cv.top + vw.h / 2;
+      // a node that can be taken now first (nearest the middle), else one already taken, else any on screen
+      var near = function (ids) { ids.forEach(function (id) { var p = A.nodePos(id); if (!p.inside) return; var d = (p.x - cx) * (p.x - cx) + (p.y - cy) * (p.y - cy); if (d < bd) { bd = d; best = id; } }); };
+      if (st.st) { near(Array.from(st.st.can)); if (best < 0) near(Array.from(st.st.alloc)); }
+      if (best < 0) N.forEach(function (n, id) { var p = A.nodePos(id); if (!p.inside) return; var d = (p.x - cx) * (p.x - cx) + (p.y - cy) * (p.y - cy); if (d < bd) { bd = d; best = id; } });
+      return best;
+    },
+    hover: function () {
+      var A = this.api(); if (!A || this.node < 0) return;
+      var p = A.nodePos(this.node), cv = KD.webui.state.canvas;
+      try { cv.dispatchEvent(new PointerEvent('pointermove', { clientX: p.x, clientY: p.y, pointerType: 'mouse', bubbles: true, pointerId: 1 })); } catch (e) { /* old browser */ }
+      this.hoverAt = performance.now();
+    },
+    go: function (id) {
+      var A = this.api(); if (!A || id < 0) return;
+      this.node = id;
+      var p = A.nodePos(id), st = KD.webui.state, cv = st.canvas.getBoundingClientRect(), m = 70;
+      if (p.x < cv.left + m || p.x > cv.right - m || p.y < cv.top + m || p.y > cv.bottom - m) { var n = this.nodes()[id], vw = A.view(); A.centerOn({ x: n.x, y: n.y, zoom: vw.zoom }); }
+      this.hover(); sound('ui_hover'); paint();
+    },
+    dir: function (sc, d) {
+      if (!this.onNodes()) return false;
+      var A = this.api(), N = this.nodes(); if (!A || !N) return false;
+      if (this.node < 0 || !N[this.node] || !A.nodePos(this.node).inside) { this.go(this.start()); return true; }
+      var p0 = A.nodePos(this.node), from = { left: p0.x - 4, right: p0.x + 4, top: p0.y - 4, bottom: p0.y + 4 };
+      var pt = function (id) { var p = A.nodePos(id); return { left: p.x - 1, right: p.x + 1, top: p.y - 1, bottom: p.y + 1 }; };
+      // along a link first, then the nearest node on screen that way
+      var links = N[this.node].links || [], i = PN.pick(from, links.map(pt), d), id = i >= 0 ? links[i] : -1;
+      if (id < 0) {
+        var ids = [], rs = [];
+        N.forEach(function (n, k) { var p = A.nodePos(k); if (p.inside && k !== webH.node) { ids.push(k); rs.push({ left: p.x - 1, right: p.x + 1, top: p.y - 1, bottom: p.y + 1 }); } });
+        var j = PN.pick(from, rs, d); id = j >= 0 ? ids[j] : -1;
+      }
+      if (id >= 0) this.go(id);
+      return true;
+    },
+    confirm: function () { if (!this.onNodes() || this.node < 0) return false; var A = this.api(); if (A) { A.click(this.node); setTimeout(function () { webH.hover(); }, 60); } return true; },
+    use: function () { if (!this.onNodes() || this.node < 0) return false; var A = this.api(); if (A) { A.refund(this.node); setTimeout(function () { webH.hover(); }, 60); } return true; },
+    details: function () {        // Triangle: between the tree and the buttons around it (toolbar, builds, details)
+      this.mode = this.mode === 'nodes' ? 'ui' : 'nodes';
+      if (this.mode === 'ui') { KD.ui.tooltip.hide(); S.el = null; var sc = scope(); if (sc) ensureFocus(sc, focusables(sc)); }
+      else { S.el = null; if (this.node < 0) this.go(this.start()); else this.hover(); }
+      paint(); return true;
+    },
+    stick: function (sc, x, y, dt) {
+      var A = this.api(); if (!A || (!x && !y)) return false;
+      var v = A.view(), sp = 900 * dt / v.zoom; A.centerOn({ x: v.x + x * sp, y: v.y + y * sp, zoom: v.zoom }, true);
+      return true;
+    },
+    trig: function (sc, l, r) { var A = this.api(); if (!A || (!l && !r)) return false; A.zoomBy(r ? 1.035 : 1 / 1.035); return true; },
+    tick: function () { if (this.onNodes() && this.node >= 0 && performance.now() - this.hoverAt > 450) { var st = KD.webui.state; if (st.hover !== this.node && !st.fly && !st.zoomTo) this.hover(); } },
+    ring: function () {
+      if (!this.onNodes() || this.node < 0) return null;
+      var A = this.api(); if (!A) return null;
+      var p = A.nodePos(this.node), z = A.view().zoom; if (!p.inside) return null;
+      var r = Math.max(14, Math.min(34, 26 * z / ((KD.ui.scale && KD.ui.scale.value) || 1) + 8));
+      return { x: p.x, y: p.y, r: r };
+    },
+    enter: function () { this.mode = 'nodes'; var st = KD.webui && KD.webui.state; this.node = st && st.sel >= 0 ? st.sel : -1; S.el = null; var self = this; setTimeout(function () { if (self.node < 0) self.go(self.start()); }, 120); },
+    hints: function () {
+      return this.onNodes() ? [[0, 'Take'], [2, 'Refund'], [3, 'Buttons'], ['rs', 'Pan'], ['lr2', 'Zoom'], [1, 'Close']]
+        : [[0, 'Select'], [3, 'Tree'], [1, 'Close']];
+    }
+  };
+  PN.handlers.map = {
+    api: function () { return KD.mapui && KD.mapui.api && KD.mapui.api.isOpen() ? KD.mapui.api : null; },
+    stick: function (sc, x, y, dt) { var A = this.api(); if (!A || (!x && !y)) return false; var v = A.view(), sp = 700 * dt / v.zoom; A.centerOn({ x: v.x + x * sp, z: v.z + y * sp }); return true; },
+    trig: function (sc, l, r) { var A = this.api(); if (!A || (!l && !r)) return false; A.zoomBy(r ? 1.04 : 1 / 1.04); return true; },
+    hints: function () { return [[0, 'Select'], ['rs', 'Pan'], ['lr2', 'Zoom'], [1, 'Close']]; }
+  };
+  PN.handlers.wardrobe = {
+    stick: function (sc, x, y, dt) { if (!x || !KD.wardrobe || !KD.wardrobe.view) return false; KD.wardrobe.view.yaw += x * 3.2 * dt; return true; }
+  };
+
+  // ------------------------------------------------------------------------------------------ painting: ring and hints
+  function glyphEl(b) {
+    if (b === 'rs' || b === 'ls' || b === 'dpad' || b === 'lr2' || b === 'lr1') {
+      var txt = { rs: 'R', ls: 'L', dpad: '', lr1: null, lr2: null }[b];
+      if (b === 'lr1' || b === 'lr2') { var i0 = b === 'lr1' ? 4 : 6; return [glyphEl(i0), glyphEl(i0 + 1)]; }
+      return KD.ui.el('span.pad-g.pad-g-' + b, { text: txt });
+    }
+    if (KD.ui.glyph && typeof b === 'number') {       // the shared glyphs of the pad-play layer when it is live
+      try { var gn = KD.ui.glyph(b, { type: P.type }); if (gn && gn.classList && gn.classList.contains('kd-glyph')) return gn; } catch (e) { /* fall back to ours */ }
+    }
+    var t = P.type === 'generic' ? 'xbox' : P.type, lab = PN.label(t, b);
+    var face = b <= 3, shape = t === 'ps' && face ? ['✕', '○', '□', '△'][b] : lab;
+    return KD.ui.el('span.pad-g.pad-g-' + t + '.pad-g' + b + (face ? '.pad-g-face' : '.pad-g-pill'), { text: shape, attrs: { 'aria-label': lab } });
+  }
+  PN.glyph = function (i) { return glyphEl(i); };
+  function hintList(sc) {
+    var h = sc && sc.win && PN.handlers[sc.win.id] && PN.handlers[sc.win.id].hints ? PN.handlers[sc.win.id].hints(sc) : null;
+    if (h) return h;
+    if (S.picker) return [[0, 'Type'], [2, 'Delete'], [3, 'Space'], [9, 'Done'], [1, 'Close']];
+    var n = S.el, out = [[0, isText(n) ? 'Type' : 'Select']];
+    if (isRange(n) || (n && n.tagName === 'SELECT')) out.push(['dpad', 'Adjust']);
+    if (hasViews(n)) { out.push([3, 'Details']); out.push([11, 'Compare']); out.push([2, 'Quick use']); }
+    out.push([1, sc && sc.win ? (sc.win.closable ? 'Close' : 'Back') : 'Back']);
+    var rows = sc ? tabRows(sc) : [], ring = inRingNow(sc);
+    if (ring) { out.push(['lr1', 'Bag, hero, skills, tree']); if (rows.length) out.push(['lr2', 'Tabs']); }
+    else { if (rows.length) out.push(['lr1', 'Tabs']); if (rows.length > 1) out.push(['lr2', 'More tabs']); }
+    if (sc && n && scroller(n, sc)) out.push(['rs', 'Scroll']);
+    return out;
+  }
+  function ensureNodes() {
+    if (S.ring) return;
+    var UI = KD.ui; if (!UI || !UI.el || !UI.layer) return;
+    S.ring = UI.el('div.pad-ring', { attrs: { 'aria-hidden': 'true' } }, [UI.el('span.pad-ring-gem')]);
+    S.hints = UI.el('div.pad-hints.kd-plate', { attrs: { 'aria-hidden': 'true' } });
+    try { UI.layer('tooltip').appendChild(S.ring); UI.layer('tooltip').appendChild(S.hints); } catch (e) { S.ring = null; }
+  }
+  /**
+   * place(sc): the bar goes to the first free spot along the bottom: the centre, the left corner, the right corner, then just
+   * above the screen's own button row. Free = over no button, card or field of the screen (it never hides what it explains).
+   */
+  var SPOTS = [{ left: '50%', right: 'auto', tx: '-50%' }, { left: '16px', right: 'auto', tx: '0' }, { left: 'auto', right: '16px', tx: '0' }];
+  function place(sc) {
+    var H = S.hints, st = H.style, list = focusables(sc).map(rectOf);
+    var ff = sc.node.querySelector('.flow-foot, .kd-choice-foot'), fr = ff && visible(ff) ? ff.getBoundingClientRect() : null;
+    var hits = function () { var r = H.getBoundingClientRect(); for (var i = 0; i < list.length; i++) { var q = list[i]; if (q.left < r.right && q.right > r.left && q.top < r.bottom && q.bottom > r.top) return true; } return false; };
+    for (var i = 0; i < SPOTS.length; i++) {
+      st.left = SPOTS[i].left; st.right = SPOTS[i].right; st.transform = 'translateX(' + SPOTS[i].tx + ')'; st.bottom = '';
+      if (!hits()) return;
+    }
+    st.left = '50%'; st.right = 'auto'; st.transform = 'translateX(-50%)';
+    st.bottom = fr && fr.top > innerHeight * 0.5 ? Math.round(innerHeight - fr.top + 6) + 'px' : '';
+  }
+  /** shown(n): false while the window around it is still fading in (the ring waits for it). */
+  function shown(n) { var o = 1; for (var p = n; p && p !== document.body && o > 0.4; p = p.parentElement) o *= +getComputedStyle(p).opacity; return o > 0.4; }
+  function footOf(node) {
+    var f = node.querySelector('.kd-window-foot');
+    if (!f || f.closest('.kd-window') !== node || !f.children.length) return null;
+    var r = f.getBoundingClientRect(); return r.width > 360 ? f : null;
+  }
+  function paint() {
+    ensureNodes(); if (!S.ring) return;
+    var sc = S.active ? scope() : null, h = sc && sc.win ? PN.handlers[sc.win.id] : null, rr = h && h.ring ? h.ring() : null;
+    var show = !!(sc && (rr || (S.el && S.el.isConnected && shown(S.el))));
+    S.ring.classList.toggle('pad-on', show);
+    // a new window or screen: the ring jumps there (it only glides between neighbours)
+    S.ring.classList.toggle('pad-jump', !show || !S.ringOn || S.ringKey !== (sc && sc.key) + (rr ? '#' : ''));
+    S.ringOn = show; S.ringKey = (sc && sc.key) + (rr ? '#' : '');
+    if (show) {
+      var x, y, w, hh, rad;
+      if (rr) { x = rr.x - rr.r; y = rr.y - rr.r; w = hh = rr.r * 2; rad = '50%'; }
+      else { var r = S.el.getBoundingClientRect(), g = 3; x = r.left - g; y = r.top - g; w = r.width + g * 2; hh = r.height + g * 2; var br = getComputedStyle(S.el).borderTopLeftRadius; rad = br && br !== '0px' ? 'calc(' + br + ' + ' + g + 'px)' : '4px'; }
+      var st = S.ring.style; st.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(y) + 'px)'; st.width = Math.round(w) + 'px'; st.height = Math.round(hh) + 'px'; st.borderRadius = rad;
+    }
+    var hs = sc ? hintList(sc) : null, key = hs ? P.type + swapped() + JSON.stringify(hs) : '';
+    // the hints sit in the window's footer row (left of its buttons) when it has one, else in a small bar at the bottom
+    var foot = hs && sc.win ? footOf(sc.node) : null, host = foot || KD.ui.layer('tooltip');
+    if (S.hints.parentNode !== host) { if (foot) foot.insertBefore(S.hints, foot.firstChild); else host.appendChild(S.hints); }
+    S.hints.classList.toggle('pad-in-foot', !!foot); S.hints.classList.toggle('kd-plate', !foot);
+    S.hints.classList.toggle('pad-on', !!hs);
+    if (key !== S.hintSig) {
+      S.hintSig = key; KD.ui.clear(S.hints);
+      if (hs) hs.forEach(function (x) { var gb = swapped() && (x[0] === 0 || x[0] === 1) ? 1 - x[0] : x[0]; S.hints.appendChild(KD.ui.el('span.pad-hint', [glyphEl(gb), KD.ui.el('span.pad-hint-t', { text: x[1] })])); });
+    }
+    if (foot) { if (S.hints.style.left) { S.hints.style.left = S.hints.style.right = S.hints.style.bottom = S.hints.style.transform = ''; } S.placeKey = null; }
+    else if (hs && (S.placeKey !== key + sc.key || ++S.placeN > 40)) { S.placeKey = key + sc.key; S.placeN = 0; place(sc); }
+  }
+  PN.hints = function () { var sc = scope(); return sc ? hintList(sc).map(function (x) { return x[1]; }) : []; };
+
+  // ------------------------------------------------------------------------------------------ the loop
+  function frame(ts) {
+    S.raf = requestAnimationFrame(frame);
+    var dt = S.t ? Math.min(0.1, (ts - S.t) / 1000) : 0.016; S.t = ts; PN.frameNo = (PN.frameNo || 0) + 1;
+    readPad();
+    if (!P.connected) { if (S.active) setActive(false); return; }
+    var anyPress = false, i;
+    for (i = 0; i < 17; i++) if (pressed(i)) anyPress = true;
+    var stickMoved = Math.abs(P.ax[0]) > 0.5 || Math.abs(P.ax[1]) > 0.5 || Math.abs(P.ax[2]) > 0.5 || Math.abs(P.ax[3]) > 0.5;
+    var sc = scope();
+    if (S.hush) {                   // the buttons that closed the last window are still down: the game must not act on them
+      if (!anyHeld() && !down(6) && !down(7)) { S.hush = false; if (KD.input && KD.input.pad) KD.input.pad.capturing = false; }
+    }
+    if (!sc) {                      // in play: the pad plays the game. Remember that it was used so a window opens with the ring.
+      if (anyPress || stickMoved) { if (!S.active) setActive(true); }
+      if (S.key) { S.mem[S.key] = { el: S.el, rect: S.last }; S.key = null; S.el = null; }
+      paint();
+      return;
+    }
+    var waking = false;
+    if ((anyPress || stickMoved) && !S.active) { setActive(true); waking = true; }
+    var h = sc.win ? PN.handlers[sc.win.id] : null;
+    if (sc.key !== S.key) {
+      if (S.key) S.mem[S.key] = { el: S.el, rect: S.last };
+      S.key = sc.key; S.el = null; S.last = null; trace('scope ' + sc.key);
+      if (h && h.enter) h.enter(sc);
+    }
+    if (!S.active) return;
+    var list = focusables(sc);
+    if (!(h && h.onNodes && h.onNodes())) ensureFocus(sc, list);
+    // directions (D-pad, left stick) with repeat
+    var dir = down(12) ? 'up' : down(13) ? 'down' : down(14) ? 'left' : down(15) ? 'right' : PN.stickDir(P.ax[0], P.ax[1]);
+    if (waking) { S.rep.fire(dir || null, ts); S.wake = true; paint(); return; }       // the first press after the mouse only shows the ring
+    if (S.wake) { if (anyHeld()) { S.rep.fire(dir || null, ts); S.rep.next = Infinity; return; } S.wake = false; }   // ...until it is let go
+    var rep = isRange(S.el) && (dir === 'left' || dir === 'right') ? S.srep : S.rep;
+    if (rep.fire(dir, ts)) { trace('dir ' + dir + ' in ' + sc.key); if (!(h && h.dir && h.dir(sc, dir))) move(sc, dir); }
+    if (rep === S.srep) S.rep.on = dir; else S.srep.on = null;
+
+    var CF = swapped() ? 1 : 0, BK = 1 - CF, nWin = winCount();
+    if (pressed(CF)) { if (!(h && h.confirm && h.confirm(sc))) activate(S.el); }
+    else if (pressed(9) && !S.picker && sc.win) back(sc);          // Options / Start closes the pause menu (and any window) again
+    else if (pressed(8) && sc.win && sc.win.id === 'inventory') back(sc);       // Share / View closes the bag it opened...
+    else if (pressed(8) && sc.win && RING.indexOf(sc.win.id) > 0 && KD.win && KD.game && KD.game.state === 'play') { try { if (sc.win.id === 'web') KD.ui.windows.close('web'); else KD.win.close(sc.win.id); KD.win.open('inventory'); S.el = null; } catch (e) { /* no bag here */ } }   // ...and opens it from the hero sheet or skills
+    else if (pressed(BK)) { if (S.picker) KD.ui.windows.close('pad-keys'); else back(sc); }
+    else if (pressed(2)) { if (S.picker) S.picker.del(); else if (!(h && h.use && h.use(sc))) contextUse(S.el); }
+    else if (pressed(3) && S.picker) S.picker.space();
+    else if (pressed(3) && h && h.details) h.details(sc);
+    else if (pressed(9) && S.picker) S.picker.done();
+    // L1 / R1: the tabs; in the bag, hero sheet, skills and tree they step through those four and the triggers take the tabs
+    var inRing = inRingNow(sc), tabs = tabRows(sc), subRows = inRing ? tabs : tabs.slice(1);
+    if (pressed(4) || pressed(5)) { if (S.picker) S.picker.caps(); else if (inRing) ringWindow(sc, pressed(5) ? 1 : -1); else if (tabs.length) switchTab(sc, tabs[0], pressed(5) ? 1 : -1); }
+    if (anyPress && (!scope() || winCount() < nWin)) hush();
+    // triggers: zoom (tree, map), the second tab row, else a page of the list
+    var lt = down(6), rt = down(7);
+    if (!(h && h.trig && h.trig(sc, lt, rt, dt)) && (pressed(6) || pressed(7))) {
+      if (subRows.length) switchTab(sc, subRows[0], pressed(7) ? 1 : -1);
+      else { var sp = scroller(S.el, sc); if (sp) sp.scrollTop += (pressed(7) ? 1 : -1) * sp.clientHeight * 0.85; }
+    }
+    // the right stick: pan / turn / scroll (the item card while details are held)
+    var rx = P.ax[2], ry = P.ax[3];
+    if ((rx || ry) && !(h && h.stick && h.stick(sc, rx, ry, dt))) {
+      var T = KD.ui.tooltip, tgt = T && T.visible && T.node && T.keys && T.keys.shift && T.node.scrollHeight > T.node.clientHeight + 1 ? T.node : scroller(S.el, sc);
+      if (tgt) { tgt.scrollTop += ry * 900 * dt; tgt.scrollLeft += rx * 900 * dt; }
+    }
+    // item cards: shown for the focused thing after a short rest; Triangle / R3 held pick the view
+    if (!(h && h.onNodes && h.onNodes())) {
+      tipKeys(down(3) && !S.picker && !(h && h.details), down(11));
+      if (S.el && S.tipEl !== S.el && ts >= S.tipAt) { S.tipEl = S.el; tipFor(S.el); }
+    }
+    if (h && h.tick) h.tick(sc);
+    paint();
+  }
+  PN.start = function () { if (!S.raf) S.raf = requestAnimationFrame(frame); };
+  /** For tests: the state as data. */
+  PN.info = function () {
+    var sc = scope(), n = S.el;
+    return { active: S.active, connected: P.connected, type: P.type, scope: sc ? sc.key : null, picker: !!S.picker,
+      el: n ? { tag: n.tagName, cls: String(n.className), text: (n.textContent || '').trim().slice(0, 40), aria: n.getAttribute('aria-label') } : null,
+      node: webH.node, mode: webH.mode, hints: PN.hints() };
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', PN.start); else PN.start();
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/ui/05_screens.js
 (function (root) {
   'use strict';
@@ -112882,6 +113694,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     }
     spec.lines = W.potionNote(lines);
     if (spec.compare && spec.compare.lines && !W.potionsOn()) { spec.compare = U.assign({}, spec.compare); spec.compare.lines = W.potionNote(spec.compare.lines); }
+    var padFoot = KD.padNav && KD.padNav.cardFoot ? KD.padNav.cardFoot(o.hints, view, canCmp) : null; if (padFoot) foot = padFoot;      // [w8 pad-ui] the pad's buttons while it drives
     if (foot.length) spec.footer = foot;
     if (view !== 'full') { spec.view = view; spec.views = { details: true, compare: canCmp }; spec.anchor = true; }
     return spec;
