@@ -3379,7 +3379,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.28';
+  KD.VERSION = '0.7.29';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -22420,6 +22420,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.29', date: '2026-10-10', title: 'Allies restyled', notes: [
+      'Your summons, hirelings and Crown patrols now wear the hand-painted look: skeletons in torn shrouds, hooded wraiths, faction tabards and cloaks',
+      'Allies glow in your class colour (eyes, soul lights, arm bands) so friend and foe read at a glance',
+      'Enemy look: Classic in Settings brings the old bodies back'
+    ] },
     { version: '0.7.28', date: '2026-10-10', title: 'New adaptive music', notes: [
       'New music: every act has its own theme, and hidden places sound eerie',
       'Fights and bosses now build on the tune that is playing instead of restarting it',
@@ -78323,6 +78328,512 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     return n;
   };
   S.act4Assign();
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/gfx/49_style_recipes_allies.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var S = KD.style;
+  if (!S || !S.recipe) return;
+  var PI = Math.PI, HALF = PI / 2, TAU = PI * 2, sin = Math.sin, cos = Math.cos;
+  var geo = S.geo, g = KD.gfx.geom, U = KD.util;
+
+  /**
+   * [w8 allies look] The hero's side in the hand-painted grim style (49_style_kit.js, docs/CREATURES.md section 11):
+   * the Gravecaller's dead, the other classes' summons, every hireling and the Crown patrols.
+   *
+   *   ally_bone     skeletons: Thrall, Grave Knight (bone white, a torn purple burial shroud, a soul light in the ribs)
+   *   ally_dead     the risen: Ghoul, Husk (grey-green, hunched, rag wraps, glowing sores)
+   *   ally_folk     living hirelings, Bannerlord soldiers and Crown patrols (faction tabards, cloaks, hoods, belts)
+   *   ally_cult     Flagellant, Hollow Seer (cult rags and robes, chains, a bone mask)
+   *   ally_hound    Thornhound, Hound of the Hunt (the grim wolf body with a bramble or spirit collar)
+   *   ally_rat      Plague Rat (the grim rat body)
+   *
+   * Friend or foe at a glance: every ally carries the FRIEND colour, the resource colour of the class of the hero it
+   * belongs to (the Gravecaller's soul green, the Hexblade's violet...; Crown patrols the Crown gold): glowing eyes for
+   * the dead, a soul light in the ribs, a glowing band on the left arm and a clasp at the collar for the living. Enemies
+   * glow red, amber and yellow; allies glow in the hero's colour.
+   *
+   * Which bodies: nothing in the data changes. KD.models.build is wrapped once more: a body whose entity is an ally (or
+   * a preview such as the mercenary sheet) and whose spec matches an ally definition (KD.data.allies) gets
+   * `style: <recipe>` and `colors.friend` on a COPY of its spec; the sim's e.model is never touched. The switch is the
+   * Enemy look setting (New / Classic): Classic gives every ally its old body back.
+   * Render only: joints, hit shapes, attack data untouched (tests/style_allies.test.js digests a fight).
+   */
+  var BONE = '#e2d8bf', BONE_D = '#b9ad94', ROPE = '#8a7656', RUST = '#7a4a34', LEATHER = '#5a3e2c', IRON = '#5e5a62';
+  var SHROUD = '#4a3456', SHROUD_D = '#2a1e30', MOSS = '#56603e';
+  var LOCAL = { local: true };
+  var A = S.ALLIES = S.ALLIES || {};
+  function col(spec, k, d) { var c = spec && spec.colors && spec.colors[k]; return typeof c === 'string' && /^#[0-9a-fA-F]{6}$/.test(c) ? c : d; }
+  function fan(n, a0, a1, f) { var out = [], i; for (i = 0; i < n; i++) out.push(f(n > 1 ? a0 + (a1 - a0) * i / (n - 1) : a0, i)); return out; }
+  function T(geom, x, y, z) { return g.translate(geom, x, y, z); }
+  function R(geom, x, y, z) { return g.rotate(geom, x, y, z); }
+  function glowing(geom, k) { return g.setAux(geom, { emissive: k === undefined ? 1 : k }); }
+  /** Glows read as white when the colour is pale: every friend mark uses a deeper, more saturated friend colour. */
+  function friendOf(spec) { var c = col(spec, 'friend', '#8ff0c8'); return S.shade(S.sat(c, 2.3), -0.22); }
+  function eyeGlow(c) { return c; }
+  var GR = { sat: 0.85, tint: '#5a4a66', amount: 0.1, value: 0.97, shadow: 0.13 };
+  function gr(c, o) { return S.grade(c, o || GR); }
+  var METAL = { sat: 0.6, tint: '#4a4a5a', amount: 0.12, value: 0.8, shadow: 0.16 };      // worn, darkened steel
+
+  // ------------------------------------------------------------------ humanoid helpers (head / chest / hips space)
+  var HANDS = { hand_r: [1.3, 1.2, 1.28], hand_l: [1.3, 1.2, 1.28], foot_r: [1.16, 1.1, 1.1], foot_l: [1.16, 1.1, 1.1] };
+  var LIMBS = U.assign({ arm_r: [1.14, 1, 1.14], arm_l: [1.14, 1, 1.14], forearm_r: [1.18, 1, 1.18], forearm_l: [1.18, 1, 1.18],
+    leg_r: [1.1, 1, 1.1], leg_l: [1.1, 1, 1.1], shin_r: [1.16, 1, 1.16], shin_l: [1.16, 1, 1.16] }, HANDS);
+  var BONY = U.assign({ arm_r: [1.08, 1, 1.08], arm_l: [1.08, 1, 1.08], forearm_r: [1.1, 1, 1.1], forearm_l: [1.1, 1, 1.1] }, HANDS);
+  /** Glowing eyes in dark sockets instead of the rig's eye boxes. */
+  function humEyes(u, glow, o) {
+    var m = u.m; o = o || {};
+    u.hide(['eye_l', 'eye_r']);
+    u.add('head', 'eyes', function () {
+      var e = geo.eyes({ x: m.eyeX * (o.gap || 1.05), y: o.y === undefined ? m.eyeY - 0.005 : o.y, z: o.z === undefined ? m.faceZ + 0.006 : o.z, r: (o.r || 0.03) * m.k, color: glow, slant: o.slant === undefined ? 0.3 : o.slant, socket: o.socket || '#120e12', shape: o.shape });
+      if (o.plain) g.setAux(e, { emissive: 0 });
+      var out = [e];
+      if (o.brow) out.push(T(geo.bevelBox({ w: m.headW * 0.82, h: 0.04 * m.k, d: 0.06 * m.k, b: 0.35, color: o.brow }), 0, m.eyeY + 0.05 * m.k, m.faceZ - 0.012));
+      return out;
+    }, LOCAL);
+  }
+  /** A deep cowl open at the front, peaked at the back. */
+  function hoodGeo(m, color, inner, o) {
+    o = o || {};
+    var k = m.k, top = m.headC + m.headH * (o.top || 0.62), hh = m.headH * (o.len || 1.25);
+    var h = geo.hem({ r: m.headW * 0.3, rBottom: m.headW * (o.wide || 0.78), rz: 1.12, h: hh, sides: 12, teeth: o.teeth === undefined ? 0.18 : o.teeth, arc: TAU * 0.74, a0: TAU * 0.13, seed: o.seed || 61, color: color, inner: inner });
+    T(h, 0, top, m.headZ - m.headD * 0.06);
+    var out = [h];
+    out.push(T(geo.blob({ r: [m.headW * 0.36, m.headH * 0.16, m.headD * 0.4], sides: 8, rings: 4, color: color, lump: 0.05, seed: 3 }), 0, top - 0.01 * k, m.headZ - m.headD * 0.1));
+    var pk = R(geo.lathe([[0.0, 0], [0.07 * k, 0.02 * k], [0.05 * k, 0.12 * k], [0, 0.22 * k]], 6, color), -2.2, 0, 0);
+    out.push(T(pk, 0, top - 0.02 * k, m.headZ - m.headD * 0.28));
+    return out;
+  }
+  function beltGeo(m, color, y, buckle) {
+    var pts = [], i, rx = m.pelvisW * 0.56, rz = m.pelvisD * 0.62;
+    for (i = 0; i <= 14; i++) { var a = i / 14 * TAU; pts.push([sin(a) * rx, y, cos(a) * rz]); }
+    var out = [geo.cord(pts, 0.022 * m.k, color, 4)];
+    if (buckle) out.push(geo.buckle({ w: 0.08 * m.k, h: 0.07 * m.k, at: [0, y, rz + 0.01 * m.k], color: buckle }));
+    else out.push(T(geo.blob({ r: [0.03 * m.k, 0.025 * m.k, 0.025 * m.k], sides: 5, rings: 3, color: color }), rx * 0.45, y, rz * 0.9));
+    return out;
+  }
+  function mantleGeo(m, color, inner, o) {
+    o = o || {}; var r = m.torsoW * 0.56;
+    return T(geo.hem({ r: r * (o.r || 0.62), rz: m.torsoD / m.torsoW * 1.25, rBottom: r * (o.rb || 1.25), h: (o.h || 0.3) * m.k, sides: o.sides || 12, teeth: o.teeth === undefined ? 0.55 : o.teeth, seed: o.seed || 48, color: color, inner: inner, arc: o.arc, a0: o.a0 }), 0, m.neckY + 0.01 * m.k, -0.01 * m.k);
+  }
+  function skirtGeo(m, color, inner, o) {
+    o = o || {}; var r = m.pelvisW * 0.56;
+    return T(geo.hem({ r: r * (o.r || 1), rz: m.pelvisD / m.pelvisW * 1.15, rBottom: r * (o.rb || 1.22), h: (o.h || 0.28) * m.k, sides: o.sides || 12, teeth: o.teeth === undefined ? 0.5 : o.teeth, seed: o.seed || 50, color: color, inner: inner, arc: o.arc, a0: o.a0 }), 0, m.pelvisH * 0.42, 0);
+  }
+  function capeGeo(m, color, inner, o) {
+    o = o || {};
+    var c = geo.tatter({ w: m.torsoW * (o.w || 1.05), h: (o.h || 0.95) * m.k, teeth: o.teeth || 5, depth: 0.35, seed: o.seed || 70, color: color, inner: inner, bend: 0.1 });
+    return T(R(c, 0.08, PI, 0), 0, m.neckY - 0.02 * m.k, -m.torsoD * 0.56);
+  }
+  /** A tabard: a torn cloth panel down the front and the back of the chest (chest space), its hem below the belt. */
+  function tabardGeo(m, color, inner, trim, o) {
+    o = o || {}; var k = m.k, w = m.torsoW * (o.w || 0.62), h = m.torsoH + (o.drop || 0.42) * k, out = [];
+    [1, -1].forEach(function (sd, i) {
+      var t = geo.tatter({ w: w, h: h, teeth: 4, depth: 0.28, seed: (o.seed || 80) + i, color: color, inner: inner, bend: 0.06 * sd });
+      if (sd < 0) R(t, 0, PI, 0);
+      out.push(T(t, 0, m.torsoH * 0.98, sd * (m.torsoD * 0.5 + 0.03 * k)));
+    });
+    if (trim) out.push(T(geo.bevelBox({ w: w * 1.05, h: 0.035 * k, d: m.torsoD * 1.12, b: 0.3, color: trim }), 0, m.torsoH * 0.96, 0));
+    return out;
+  }
+  /** Tufts sticking out round a ring (fur collars, straw, hair). */
+  function ring(cx, cy, cz, rx, rz, n, len, base, tip, seed, up, sides) {
+    return fan(n, 0, TAU * (n - 1) / n, function (a, i) { return T(geo.tuft({ n: 2, len: len * (0.8 + 0.4 * ((i * 37) % 7) / 7), r: len * 0.3, spread: 0.4, seed: seed + i, color: base, tip: tip, dir: [sin(a), up === undefined ? 0.3 : up, cos(a)], sides: sides }), cx + sin(a) * rx, cy, cz + cos(a) * rz); });
+  }
+  /** The friend mark of the living: a glowing band round the left upper arm (arm_l space). */
+  function armband(u, friend) {
+    var m = u.m;
+    u.add('arm_l', 'band', function () {
+      var pts = [], i, r = m.armR * 1.28, y = -m.upperArm * 0.34;
+      for (i = 0; i <= 10; i++) { var a = i / 10 * TAU; pts.push([sin(a) * r, y + cos(a) * 0.006, cos(a) * r]); }
+      var b = glowing(geo.cord(pts, 0.016 * m.k, friend, 4), 0.85);
+      var tail = glowing(geo.tatter({ w: 0.05 * m.k, h: 0.16 * m.k, teeth: 2, depth: 0.4, seed: 9, color: friend, bend: 0.2 }), 0.7);
+      return [b, T(R(tail, 0, HALF, 0), r, y, 0)];
+    }, LOCAL);
+  }
+  /** A glowing clasp at the collar (chest space). */
+  function clasp(m, friend, z) {
+    return glowing(T(geo.blob({ r: [0.03 * m.k, 0.03 * m.k, 0.018 * m.k], sides: 6, rings: 3, color: friend }), 0, m.neckY - 0.05 * m.k, (z || m.torsoD * 0.56)), 0.9);
+  }
+  function paintParts(u, names, color) { names.forEach(function (j) { var n = u.named(j); if (n && n.mesh) n.color = color; }); }
+  function blade(u, c, metal) { if (u.has('weapon_blade')) { var bl = u.named('weapon_blade'); if (bl && bl.color) { bl.color = c; bl.metal = metal === undefined ? 0.35 : metal; } } }
+
+  // ===================================================================================================== THE DEAD
+  // ------------------------------------------------------------------ skeletons: Thrall, Grave Knight
+  function boneKind(s) { return s.head === 'great_helm' || s.armor === 'plate' ? 'knight' : 'thrall'; }
+  S.recipe('ally_bone', {
+    spec: function (s) { if (boneKind(s) === 'knight') s.colors = U.assign({}, s.colors || {}, { main: '#3c3a44', alt: '#2a2430', metal: '#5a5864' }); return s; },
+    grade: function (c, nd) { return S.grade(c, nd && nd.metal > 0.3 ? METAL : { sat: 0.8, tint: '#5a4a66', amount: 0.1, value: 0.9, shadow: 0.14 }); },
+    paint: { bottom: 0.56, top: 1.12, cool: [0.84, 0.8, 1.02], warm: [1.05, 1.02, 0.94] },
+    scale: { head: 1.12 },
+    grow: BONY,
+    dress: function (u, spec) {
+      var m = u.m; if (!m) return;
+      var k = m.k, v = boneKind(spec), friend = friendOf(spec), shroud = gr(SHROUD), shroudD = gr(SHROUD_D);
+      if (v === 'thrall') {
+        humEyes(u, eyeGlow(friend), { r: 0.036, slant: 0.15, socket: '#0c0a0e', shape: 'round', gap: 1.1 });
+        // a torn burial shroud over the shoulders and a ragged loincloth, a rope belt
+        u.add('chest', 'shroud', function () {
+          return [mantleGeo(m, shroud, shroudD, { h: 0.3, seed: 201, rb: 1.3 }),
+            // the soul light in the ribcage: the friend mark of the dead
+            glowing(T(geo.blob({ r: [0.05 * k, 0.06 * k, 0.04 * k], sides: 6, rings: 4, color: friend }), 0, m.torsoH * 0.55, 0.0), 0.95)];
+        }, LOCAL);
+        u.add('hips', 'loin', function () {
+          return [T(geo.tatter({ w: m.pelvisW * 0.7, h: 0.36 * k, teeth: 3, depth: 0.45, seed: 202, color: shroud, inner: shroudD, bend: 0.1 }), 0, m.pelvisH * 0.38, m.pelvisD * 0.6),
+            T(R(geo.tatter({ w: m.pelvisW * 0.8, h: 0.42 * k, teeth: 4, depth: 0.45, seed: 203, color: shroudD, bend: 0.1 }), 0, PI, 0), 0, m.pelvisH * 0.38, -m.pelvisD * 0.6)].concat(beltGeo(m, ROPE, m.pelvisH * 0.4));
+        }, LOCAL);
+        // a cracked, notched old blade
+        blade(u, '#7e7468', 0.3);
+      } else {
+        // the Grave Knight: dark iron, a torn purple tabard and cape, bone spikes on the shoulders, the visor glows
+        var vis = u.named('visor'); if (vis) { vis.color = eyeGlow(friend); vis.emissive = 1; }
+        u.add('chest', 'tabard', function () {
+          var out = tabardGeo(m, shroud, shroudD, gr('#8a7a5a'), { seed: 210, drop: 0.5, w: 0.58 });
+          out.push(capeGeo(m, shroudD, gr('#160f18'), { h: 1.05, seed: 211, w: 1.15 }));
+          [1, -1].forEach(function (sd) {
+            [0, 1].forEach(function (j) { out.push(geo.spike([sd * (m.shoulderX + 0.02 * k), m.shoulderY + 0.06 * k, (j - 0.5) * 0.08 * k], [sd * (m.shoulderX + 0.1 * k), m.shoulderY + 0.2 * k + j * 0.03 * k, (j - 0.5) * 0.12 * k - 0.02 * k], 0.026 * k, BONE_D, BONE, 4)); });
+          });
+          out.push(glowing(T(geo.blob({ r: [0.035 * k, 0.04 * k, 0.02 * k], sides: 6, rings: 3, color: friend }), 0, m.torsoH * 0.62, m.torsoD * 0.5 + 0.05 * k), 0.85));     // a soul gem on the tabard
+          return out;
+        }, LOCAL);
+        u.add('hips', 'belt', function () {
+          var out = beltGeo(m, gr(LEATHER), m.pelvisH * 0.42, gr(RUST));
+          out.push(geo.charm({ cord: [-m.pelvisW * 0.48, m.pelvisH * 0.42, m.pelvisD * 0.42], at: [-m.pelvisW * 0.56, m.pelvisH * 0.42 - 0.16 * k, m.pelvisD * 0.5], kind: 'skull', r: 0.045 * k }));
+          return out;
+        }, LOCAL);
+        blade(u, '#6e6a72', 0.5);
+      }
+    }
+  });
+
+  // ------------------------------------------------------------------ the risen: Ghoul, Husk
+  S.recipe('ally_dead', {
+    spec: function (s) { s.colors = U.assign({}, s.colors || {}, { skin: s.build === 'hunched' ? '#8a9878' : '#8e8a94', main: '#4a4038', alt: '#3a3036' }); return s; },
+    grade: function (c) { return S.grade(c, { sat: 0.8, tint: '#5a4a66', amount: 0.1, value: 0.97, shadow: 0.14 }); },
+    paint: { bottom: 0.54, top: 1.12, cool: [0.84, 0.8, 1.02], warm: [1.04, 1.02, 0.94] },
+    scale: { head: 1.14 },
+    grow: LIMBS,
+    dress: function (u, spec) {
+      var m = u.m; if (!m) return;
+      var k = m.k, friend = friendOf(spec), skin = gr(col(spec, 'skin', '#8a9878')), rag = gr('#5a4a3e'), ragD = S.shade(rag, -0.35), hair = '#24201e';
+      u.drop('head', function (n) { return (n.mesh === 'box_bevel' || n.mesh === 'sphere' || n.mesh === 'box') && !(n.emissive > 0.5) && n.offset && n.offset[1] > m.headC + m.headH * 0.1; });
+      humEyes(u, eyeGlow(friend), { r: 0.032, slant: 0.35, brow: S.shade(skin, -0.45), socket: '#0e0a0c' });
+      // lank hair, a slack jaw line, a torn rag wrapped round the chest, a loincloth on a rope, glowing sores
+      u.add('head', 'hair', function () {
+        return [T(geo.tatter({ w: m.headW * 0.95, h: 0.2 * k, teeth: 6, depth: 0.55, seed: 220, color: hair }), 0, m.headC + m.headH * 0.42, -m.headD * 0.42 + m.headZ),
+          T(geo.tuft({ n: 4, len: 0.1 * k, r: 0.018 * k, spread: 0.7, seed: 221, color: hair, tip: '#3a3430', dir: [0, 1, -0.4] }), 0, m.headC + m.headH * 0.5, m.headZ - 0.02 * k)];
+      }, LOCAL);
+      u.add('chest', 'wrap', function () {
+        return [T(R(geo.tatter({ w: m.torsoW * 1.1, h: 0.26 * k, teeth: 5, depth: 0.5, seed: 222, color: rag, inner: ragD, bend: 0.05 }), 0, 0, 0.3), 0, m.torsoH * 0.62, m.torsoD * 0.53),
+          // spine knobs through the skin of the back
+          fan(4, 0, 1, function (t) { return T(geo.blob({ r: [0.03 * k, 0.025 * k, 0.03 * k], sides: 5, rings: 3, color: BONE_D }), 0, m.torsoH * (0.9 - t * 0.6), -m.torsoD * 0.5); }),
+          glowing(T(geo.blob({ r: [0.022 * k, 0.022 * k, 0.014 * k], sides: 5, rings: 3, color: friend }), m.torsoW * 0.22, m.torsoH * 0.36, m.torsoD * 0.5), 0.8),
+          glowing(T(geo.blob({ r: [0.016 * k, 0.016 * k, 0.012 * k], sides: 5, rings: 3, color: friend }), -m.torsoW * 0.3, m.torsoH * 0.74, m.torsoD * 0.48), 0.7)];
+      }, LOCAL);
+      u.add('hips', 'loin', function () {
+        return [skirtGeo(m, rag, ragD, { h: 0.34, rb: 1.2, seed: 223, teeth: 0.7 })].concat(beltGeo(m, ROPE, m.pelvisH * 0.42));
+      }, LOCAL);
+      u.add('forearm_r', 'sore', function () { return [glowing(T(geo.blob({ r: [0.016 * k, 0.016 * k, 0.012 * k], sides: 5, rings: 3, color: friend }), m.forearmR * 0.7, -m.forearm * 0.4, m.forearmR * 0.7), 0.7)]; }, LOCAL);
+      paintParts(u, ['leg_r', 'leg_l'], gr('#3a3236'));
+    }
+  });
+
+  // ===================================================================================================== THE LIVING
+  // Faction colours of the hirelings, graded into the grim palette; patrols and Bannerlord soldiers wear the Crown's.
+  function folkKind(s) {
+    if (s.head === 'great_helm' || s.armor === 'plate') return 'knight';
+    if (s.armor === 'mail') return 'soldier';
+    if (s.armor === 'robe') return 'robe';
+    return 'light';
+  }
+  S.recipe('ally_folk', {
+    spec: function (s) { s.build = s.build === 'slim' ? 'normal' : (s.build || 'normal'); return s; },
+    grade: function (c, nd) { return S.grade(c, nd && nd.metal > 0.3 ? METAL : { sat: 0.82, tint: '#5a4a66', amount: 0.08, value: 0.97, shadow: 0.12 }); },
+    paint: { bottom: 0.58, top: 1.14, cool: [0.85, 0.8, 1.0], warm: [1.06, 1.01, 0.92] },
+    scale: { head: 1.1 },
+    grow: LIMBS,
+    dress: function (u, spec) {
+      var m = u.m; if (!m) return;
+      var k = m.k, v = folkKind(spec), friend = friendOf(spec), main = gr(col(spec, 'main', '#3f5f9a')), alt = gr(col(spec, 'alt', '#a8323a'));
+      var mainD = S.shade(main, -0.38), altD = S.shade(alt, -0.38), skin = gr(col(spec, 'skin', '#c79a76')), leather = gr(LEATHER);
+      var closed = spec.head === 'great_helm' || spec.head === 'skull', lit = spec.head === 'mask' ? 0.026 : 0.024;
+      if (!closed) humEyes(u, '#1e1814', { r: lit, slant: 0.25, brow: spec.head === 'mask' ? null : S.shade(skin, -0.42), plain: true });
+      else { var vis = u.named('visor'); if (vis) { vis.color = friend; vis.emissive = 0.9; } }
+      armband(u, friend);
+      // the body: a tabard over mail and plate, a long robe with a mantle, or a short cloak over leather and cloth
+      u.add('chest', 'coat', function () {
+        var out = [clasp(m, friend, m.torsoD * 0.6)];
+        if (v === 'knight' || v === 'soldier') {
+          out = out.concat(tabardGeo(m, main, mainD, alt, { seed: 240, drop: v === 'knight' ? 0.46 : 0.38, w: 0.6 }));
+          out.push(capeGeo(m, alt, altD, { h: v === 'knight' ? 1.0 : 0.82, seed: 241, w: 1.1 }));
+        } else if (v === 'robe') {
+          out.push(mantleGeo(m, alt, altD, { h: 0.28, seed: 242, rb: 1.3 }));
+        } else {
+          out.push(mantleGeo(m, alt, altD, { h: 0.2, seed: 243, rb: 1.2, arc: TAU * 0.6, a0: PI - TAU * 0.3 }));
+          out.push(capeGeo(m, alt, altD, { h: 0.7, seed: 244, w: 0.95 }));
+        }
+        return out;
+      }, LOCAL);
+      u.add('hips', 'belt', function () {
+        var out = beltGeo(m, leather, m.pelvisH * 0.42, gr('#8a7a5a'));
+        out.push(T(geo.blob({ r: [0.055 * k, 0.065 * k, 0.04 * k], sides: 7, rings: 4, lump: 0.15, seed: 245, color: gr('#7a5a3a') }), -m.pelvisW * 0.56, m.pelvisH * 0.14, m.pelvisD * 0.12));
+        if (v === 'robe') out.push(skirtGeo(m, main, mainD, { h: 0.78, rb: 1.5, seed: 246, teeth: 0.35 }));
+        else out.push(skirtGeo(m, v === 'light' ? leather : mainD, S.shade(mainD, -0.3), { h: v === 'light' ? 0.22 : 0.28, rb: 1.2, seed: 247, teeth: 0.45 }));
+        return out;
+      }, LOCAL);
+      // heads: the plan's hood and hat give way to a deep cowl and a wide floppy hat
+      if (spec.head === 'hood') {
+        u.drop('head', function (n) { return !(n.emissive > 0.5) && (n.mesh === 'box_bevel' || n.mesh === 'cone' || n.mesh === 'box') && n.offset && n.offset[1] > m.headC - m.headH * 0.3 && n.color && n.color !== '#17130f'; });
+        u.drop('chest', function (n) { return n.mesh === 'cyl8' && n.offset && n.offset[1] > m.neckY - 0.08 * k; });
+        u.add('head', 'hood', function () { return hoodGeo(m, S.shade(main, -0.12), S.shade(main, -0.6), { wide: 0.84, seed: 248 }); }, LOCAL);
+      } else if (spec.head === 'hat') {
+        u.drop('head', function (n) { return n.mesh === 'cyl12' || n.mesh === 'box_taper' || n.mesh === 'cyl8'; });
+        u.add('head', 'hat', function () {
+          var hy = m.headC + m.headH * 0.32, hat = S.shade(main, -0.1), hatD = S.shade(hat, -0.35);
+          var cone = geo.lathe([[0.16, 0], [0.15, 0.08], [0.11, 0.2], [0.06, 0.32], [0.03, 0.4], [0, 0.44]].map(function (p) { return [p[0] * k, p[1] * k]; }), 9, hat);
+          R(cone, -0.35, 0, 0.12); T(cone, 0, hy, -0.02 * k);
+          var brim = geo.hem({ r: 0.16 * k, rBottom: 0.36 * k, h: 0.07 * k, sides: 14, teeth: 0.5, seed: 249, color: hat, inner: hatD });
+          R(brim, 0.08, 0, 0.06); T(brim, 0, hy + 0.03 * k, 0);
+          var bandR = []; for (var i = 0; i <= 12; i++) { var a = i / 12 * TAU; bandR.push([sin(a) * 0.162 * k, hy + 0.04 * k, cos(a) * 0.162 * k]); }
+          return [cone, brim, geo.cord(bandR, 0.016 * k, alt, 4), glowing(T(geo.blob({ r: [0.022 * k, 0.022 * k, 0.012 * k], sides: 5, rings: 3, color: col(spec, 'glow', friend) }), 0.05 * k, hy + 0.05 * k, 0.16 * k), 0.9)];
+        }, LOCAL);
+      }
+      paintParts(u, ['leg_r', 'leg_l'], S.shade(gr(col(spec, 'main', '#3f5f9a')), -0.45));
+      blade(u, '#8a8a92', 0.55);
+    }
+  });
+
+  // ------------------------------------------------------------------ the Cult hirelings: Flagellant, Hollow Seer
+  S.recipe('ally_cult', {
+    grade: function (c) { return S.grade(c, { sat: 0.85, tint: '#5a3a4a', amount: 0.1, value: 0.96, shadow: 0.14 }); },
+    paint: { bottom: 0.54, top: 1.12, cool: [0.86, 0.78, 1.0], warm: [1.06, 0.98, 0.9] },
+    scale: { head: 1.12 },
+    grow: LIMBS,
+    dress: function (u, spec) {
+      var m = u.m; if (!m) return;
+      var k = m.k, friend = friendOf(spec), seer = spec.head === 'skull', main = gr(col(spec, 'main', '#6b2a2a')), alt = gr(col(spec, 'alt', '#2a2420'));
+      var mainD = S.shade(main, -0.4), skin = gr(col(spec, 'skin', '#b9a08a'));
+      armband(u, friend);
+      if (seer) {
+        // the Hollow Seer: a deep cowl with the eyes glowing in its dark, a little bone mask on the brow, a long robe
+        u.drop('head', function (n) { return !(n.emissive > 0.5); });
+        var face = u.named('head'); if (face && face.mesh) face.color = '#141018';
+        u.hide(['nose', 'mouth', 'brow', 'ear_l', 'ear_r']);
+        humEyes(u, eyeGlow(friend), { r: 0.032, slant: 0.2, socket: '#08060a', shape: 'round', gap: 1.15 });
+        u.add('head', 'cowl', function () {
+          return hoodGeo(m, main, '#0a080c', { wide: 0.92, top: 0.7, len: 1.45, seed: 260 }).concat([
+            T(geo.blob({ r: [m.headW * 0.5, m.headH * 0.5, m.headD * 0.42], sides: 8, rings: 5, color: '#0e0b10' }), 0, m.headC - m.headH * 0.02, m.headZ - m.headD * 0.05),
+            T(geo.bevelBox({ w: m.headW * 0.7, h: m.headH * 0.2, d: 0.04 * k, b: 0.35, smooth: true, color: BONE_D }), 0, m.eyeY + 0.06 * k, m.faceZ + 0.01 * k)]);
+        }, LOCAL);
+        u.add('chest', 'mantle', function () { return [mantleGeo(m, alt, S.shade(alt, -0.4), { h: 0.34, seed: 261, rb: 1.35 }), clasp(m, friend, m.torsoD * 0.62)].concat(ring(0, m.neckY - 0.02 * k, 0, m.torsoW * 0.36, m.torsoD * 0.48, 8, 0.12 * k, gr('#3a3030'), gr('#6a5a50'), 262, 0.4)); }, LOCAL);
+        u.add('hips', 'robe', function () { return [skirtGeo(m, main, mainD, { h: 0.8, rb: 1.5, seed: 263, teeth: 0.4 })].concat(beltGeo(m, ROPE, m.pelvisH * 0.42)); }, LOCAL);
+      } else {
+        // the Flagellant: bare-chested, scarred, hooded in red, a torn kilt, chains and a penitent's rope
+        humEyes(u, '#1e1814', { r: 0.026, slant: 0.4, brow: S.shade(skin, -0.45), plain: true });
+        u.add('head', 'hood', function () { return hoodGeo(m, main, S.shade(main, -0.6), { wide: 0.8, seed: 264 }); }, LOCAL);
+        u.add('chest', 'scars', function () {
+          var out = [clasp(m, friend, m.torsoD * 0.56)];
+          [0, 1, 2].forEach(function (i) { out.push(T(R(geo.bevelBox({ w: m.torsoW * 0.5, h: 0.012 * k, d: 0.01 * k, color: '#5a1e1a' }), 0, 0, 0.5 - i * 0.2), (i - 1) * 0.04 * k, m.torsoH * (0.4 + i * 0.12), m.torsoD * 0.51)); });
+          return out;
+        }, LOCAL);
+        u.add('hips', 'kilt', function () { return [skirtGeo(m, main, mainD, { h: 0.4, rb: 1.3, seed: 265, teeth: 0.6 })].concat(beltGeo(m, ROPE, m.pelvisH * 0.42)); }, LOCAL);
+      }
+    }
+  });
+
+  // ===================================================================================================== SPIRITS AND HULKS
+  /** The plan's own eyes (and a closed helm's visor) glow in the friend colour. */
+  var OWN = { hips: 1, chest: 1, neck: 1, head: 1, arm_r: 1, forearm_r: 1, hand_r: 1, arm_l: 1, forearm_l: 1, hand_l: 1 };
+  function friendEyes(u, friend) {
+    ['eye_l', 'eye_r', 'visor'].forEach(function (n) { var nd = u.named(n); if (nd && nd.mesh) { nd.color = eyeGlow(friend); nd.emissive = 1; } });
+  }
+  // ------------------------------------------------------------------ Wraith, Mirror Shade (ghost plan)
+  S.recipe('ally_spirit', {
+    grade: function (c, nd) { return S.grade(c, nd && nd.metal > 0.3 ? METAL : { sat: 0.75, tint: '#5a4a6a', amount: 0.14, value: 0.92, shadow: 0.16 }); },
+    paint: { bottom: 0.5, top: 1.16, cool: [0.82, 0.82, 1.06], warm: [1.0, 1.02, 1.0] },
+    scale: { head: 1.1 },
+    grow: HANDS,
+    fold: { neck: 'chest' },
+    dress: function (u, spec, built) {
+      var m = u.m; if (!m) return;
+      // the plan makes every part of a ghost see-through, which keeps it out of the bake: the body is baked opaque and
+      // the merged meshes are made see-through again in after()
+      (function walk(n) { if (!n) return; if (n.mesh && n.alpha !== undefined && n.alpha < 1 && (!n.name || OWN[n.name])) delete n.alpha; (n.children || []).forEach(walk); })(built.model);
+      var k = m.k, friend = friendOf(spec), shade = spec.species === 'shade', main = gr(col(spec, 'main', '#9fb8ad')), cloth = shade ? gr('#2a2630') : S.mix(gr(SHROUD), main, 0.35), clothD = S.shade(cloth, -0.45);
+      friendEyes(u, friend);
+      u.add('chest', 'mantle', function () {
+        var out = [mantleGeo(m, cloth, clothD, { h: shade ? 0.24 : 0.34, seed: 280, rb: 1.35, teeth: 0.7 }), clasp(m, friend, m.torsoD * 0.58)];
+        if (!shade) out.push(capeGeo(m, clothD, S.shade(clothD, -0.4), { h: 1.0, seed: 281, w: 1.1, teeth: 6 }));
+        return out;
+      }, LOCAL);
+      if (!shade) u.drop('head', function (n) { return !(n.emissive > 0.5) && (n.mesh === 'box_bevel' || n.mesh === 'cone' || n.mesh === 'box'); });
+      if (!shade) u.add('head', 'hood', function () { return hoodGeo(m, cloth, '#0c0a10', { wide: 0.86, seed: 282, len: 1.35 }); }, LOCAL);
+      u.add('hips', 'rags', function () { return [skirtGeo(m, cloth, clothD, { h: shade ? 0.5 : 0.7, rb: 1.35, seed: 283, teeth: 0.75 })]; }, LOCAL);
+    },
+    after: function (built, spec) {
+      var a = spec.species === 'shade' ? 0.86 : 0.8;
+      (function walk(n) { if (!n) return; if (n.mesh && /^sty_/.test(n.mesh)) n.alpha = a; (n.children || []).forEach(walk); })(built.model);
+    }
+  });
+  // ------------------------------------------------------------------ Charnel Colossus (flesh), Brass Golem (iron): brute plan
+  S.recipe('ally_hulk', {
+    spec: function (s) { if (s.species === 'flesh') s.colors = U.assign({}, s.colors || {}, { main: '#5a5048', alt: '#3a3036', skin: '#8e9284' }); return s; },
+    grade: function (c, nd) {
+      if (nd && nd.metal > 0.3) return S.grade(c, { sat: 0.7, tint: '#5a4a3a', amount: 0.08, value: 0.82, shadow: 0.16 });
+      return S.grade(c, { sat: 0.72, tint: '#5a4a66', amount: 0.12, value: 0.9, shadow: 0.16 });
+    },
+    paint: { bottom: 0.54, top: 1.12, cool: [0.84, 0.8, 1.02], warm: [1.05, 1.0, 0.93] },
+    dress: function (u, spec) {
+      var m = u.m; if (!m) return;
+      var k = m.k, friend = friendOf(spec), flesh = spec.species === 'flesh';
+      friendEyes(u, friend);
+      if (flesh) {
+        // stitched-together dead: seams with thread, bone spurs through the shoulders, a glowing heart seam
+        u.add('chest', 'seams', function () {
+          var z = m.torsoD * 0.52, out = [];
+          out.push(geo.stitches([-m.torsoW * 0.36, m.torsoH * 0.82, z], [m.torsoW * 0.1, m.torsoH * 0.2, z], 6, 0.03 * k, '#2a1e1a'));
+          out.push(geo.stitches([m.torsoW * 0.32, m.torsoH * 0.76, z], [m.torsoW * 0.18, m.torsoH * 0.36, z], 4, 0.03 * k, '#2a1e1a'));
+          out.push(glowing(T(geo.blob({ r: [0.06 * k, 0.07 * k, 0.03 * k], sides: 6, rings: 3, color: friend }), -m.torsoW * 0.14, m.torsoH * 0.6, z), 0.8));
+          [1, -1].forEach(function (sd) { [0, 1, 2].forEach(function (j) { out.push(geo.spike([sd * m.shoulderX * (0.7 + j * 0.12), m.shoulderY + 0.02 * k, -0.04 * k * j], [sd * m.shoulderX * (0.85 + j * 0.15), m.shoulderY + (0.2 + j * 0.04) * k, -0.08 * k * j - 0.05 * k], 0.04 * k, BONE_D, BONE, 4)); }); });
+          return out;
+        }, LOCAL);
+        u.add('hips', 'rags', function () { return [skirtGeo(m, gr(SHROUD_D), gr('#120c14'), { h: 0.36, rb: 1.2, seed: 290, teeth: 0.7 })]; }, LOCAL);
+      } else {
+        u.add('chest', 'rivets', function () {
+          var z = m.torsoD * 0.52, out = [];
+          for (var i = 0; i < 6; i++) out.push(T(geo.blob({ r: [0.02 * k, 0.02 * k, 0.012 * k], sides: 5, rings: 2, color: gr('#c8a060') }), (i % 3 - 1) * m.torsoW * 0.3, m.torsoH * (i < 3 ? 0.9 : 0.15), z));
+          out.push(glowing(T(geo.blob({ r: [0.03 * k, 0.03 * k, 0.015 * k], sides: 6, rings: 3, color: friend }), 0, m.torsoH * 0.94, z + 0.01 * k), 0.85));
+          return out;
+        }, LOCAL);
+      }
+    }
+  });
+  // ------------------------------------------------------------------ Rib Wall (construct cage): graded bone, its own glow kept
+  S.recipe('ally_cage', {
+    grade: function (c) { return S.grade(c, { sat: 0.7, tint: '#5a4a66', amount: 0.12, value: 0.88, shadow: 0.16 }); },
+    paint: { bottom: 0.52, top: 1.1, cool: [0.84, 0.8, 1.02], warm: [1.05, 1.02, 0.94] }
+  });
+
+  // ===================================================================================================== BEASTS
+  // The hounds and the plague rat wear the grim wolf / rat bodies of the enemy recipes in the ally's own colours,
+  // plus a friend collar. The enemy recipe's colours (its `spec`) and its catch-noose stay out.
+  function borrow(id, o) {
+    var base = S.RECIPES[id]; if (!base) return null;
+    return S.recipe(o.id, {
+      spec: function (s) { s.colors = U.assign({}, s.colors || {}, { glow: eyeGlow(friendOf(s)) }); return s; },
+      grade: base.grade, paint: base.paint, scale: base.scale, fold: base.fold, grow: base.grow, top: base.top,
+      dress: function (u, spec, built) {
+        var add0 = u.add;
+        u.add = function (joint, key) { if (o.skip && o.skip[key]) return false; return add0.apply(u, arguments); };
+        try { if (base.dress) base.dress(u, spec, built); } finally { u.add = add0; }
+        if (o.dress) o.dress(u, spec, built);
+      }
+    });
+  }
+  function collarAt(u, joint, r, y, friend, extra) {
+    u.add(joint, 'friend_collar', function () {
+      var pts = [], i;
+      for (i = 0; i <= 12; i++) { var a = i / 12 * TAU; pts.push([sin(a) * r, y + cos(a) * 0.01, cos(a) * r * 1.05]); }
+      var out = [glowing(geo.cord(pts, 0.018, friend, 4), 0.9)];
+      return extra ? out.concat(extra(pts)) : out;
+    }, LOCAL);
+  }
+  function quad(sp) { var P = KD.creature && KD.creature.PLANS && KD.creature.PLANS.quadruped; return (P && P.table[sp]) || null; }
+  A.ready = function () {
+    if (S.RECIPES.ally_hound || !S.RECIPES.grim_wolf) return !!S.RECIPES.ally_hound;
+    borrow('grim_wolf', { id: 'ally_hound', skip: { noose: 1 }, dress: function (u, spec) {
+      var q = quad('wolf'); if (!q) return;
+      var friend = friendOf(spec), spirit = col(spec, 'main', '#5d6b45') === '#bfe6a8';
+      collarAt(u, 'neck', q.nw * 0.6, q.nl * 0.28, friend, function (pts) {
+        // the Thornhound wears a bramble collar (thorns), the Hound of the Hunt a ring of pale antler tines
+        return fan(6, 0, TAU * 5 / 6, function (a, i) { var p = pts[(i * 2) % pts.length]; return geo.spike(p, [p[0] * 1.5, p[1] + 0.05, p[2] * 1.5], 0.016, spirit ? BONE_D : gr('#3a3020'), spirit ? BONE : gr('#7a6a40'), 3); });
+      });
+    } });
+    if (S.RECIPES.act1_rat) borrow('act1_rat', { id: 'ally_rat', dress: function (u, spec) {
+      var q = quad('rat'); var friend = friendOf(spec);
+      if (q) collarAt(u, 'neck', (q.nw || 0.2) * 0.62, (q.nl || 0.1) * 0.3, friend);
+    } });
+    return true;
+  };
+
+  // ===================================================================================================== WHO WEARS WHAT
+  /** Ally definition id -> recipe (anything not listed keeps its classic body). */
+  A.MAP = {
+    grave_thrall: 'ally_bone', grave_knight: 'ally_bone', ref_thrall: 'ally_bone',
+    grave_ghoul: 'ally_dead', ally_seer_husk: 'ally_dead',
+    ally_shieldman: 'ally_folk', ally_crossbowman: 'ally_folk', ally_pikeman: 'ally_folk', ally_knight_errant: 'ally_folk',
+    ally_lantern_acolyte: 'ally_folk', ally_field_medic: 'ally_folk', ally_dawn_warden: 'ally_folk',
+    ally_cutpurse: 'ally_folk', ally_hedge_mage: 'ally_folk', ally_knife_dancer: 'ally_folk',
+    ally_cult_flagellant: 'ally_cult', ally_hollow_seer: 'ally_cult',
+    banner_levy: 'ally_folk', banner_guard: 'ally_folk',
+    ref_ally_shieldman: 'ally_folk', ref_ally_archer: 'ally_folk', ref_ally_healer: 'ally_folk', ref_ally_blade: 'ally_folk',
+    thorn_hound: 'ally_hound', hunt_hound: 'ally_hound', grave_rat: 'ally_rat',
+    grave_wraith: 'ally_spirit', gloam_mirror_shade: 'ally_spirit', grave_colossus: 'ally_hulk', clock_brass_golem: 'ally_hulk', grave_ribwall: 'ally_cage'
+  };
+  /** The Crown's gold for allies that belong to no hero (patrols). */
+  A.CROWN = '#ffd98a';
+  /** The friend colour for an owner class (its resource colour: the glow the hero's own skills use). */
+  A.friendColor = function (classId) {
+    var c = classId && KD.data && KD.data.classes && KD.data.classes[classId];
+    var r = c && c.resource && c.resource.color;
+    return typeof r === 'string' && /^#[0-9a-fA-F]{6}$/.test(r) ? r.toLowerCase() : '#8ff0c8';
+  };
+  function sigOf(spec) {
+    var o = {}, keys = Object.keys(spec).filter(function (x) { return x !== 'style' && x !== 'plan'; }).sort();
+    keys.forEach(function (x) { o[x] = spec[x]; });
+    return (spec.plan || 'humanoid') + '|' + JSON.stringify(o);
+  }
+  var bySig = null;
+  function index() {
+    bySig = {};
+    var al = (KD.data && KD.data.allies) || {};
+    Object.keys(al).forEach(function (id) { var d = al[id]; if (d && d.body && A.MAP[id]) bySig[sigOf(U.assign({ plan: 'humanoid' }, d.body))] = id; });
+  }
+  /** The ally definition id of a body (by the entity, or by the body itself for previews), or null. */
+  A.allyOf = function (spec, e) {
+    if (!spec || spec.style || spec.plan === 'hero') return null;
+    if (e && e.kind && e.kind !== 'ally' && e.kind !== 'preview') return null;
+    if (e && e.defId && A.MAP[e.defId]) return e.defId;
+    if (!bySig) index();
+    return bySig[sigOf(spec)] || null;
+  };
+  function ownerClass(e) {
+    var o = e && e.owner;
+    if (o && o.model && o.model.classId) return o.model.classId;
+    if (o && o.classId) return o.classId;
+    if (e && e.kind === 'ally' && !o) return null;                               // a patrol: the Crown's
+    var G = KD.game, p = G && G.player;                                          // a preview: the local hero's
+    return p && p.model && p.model.classId ? p.model.classId : null;
+  }
+  /** The styled copy of an ally's spec, or null when the body keeps its own look. */
+  A.specFor = function (spec, e) {
+    var id = A.allyOf(spec, e); if (!id) return null;
+    A.ready();
+    var rid = A.MAP[id]; if (!S.RECIPES[rid]) return null;
+    var cls = ownerClass(e), friend = cls ? A.friendColor(cls) : (e && e.kind === 'ally' && !e.owner ? A.CROWN : A.friendColor('gravecaller'));
+    var out = U.assign({}, spec);
+    out.style = rid; out.colors = U.assign({}, spec.colors || {}, { friend: friend });
+    return out;
+  };
+  /** Wrap KD.models.build (outside the style wrapper): allies get their recipe on a copy of the spec. */
+  A.wrapBuild = function () {
+    var M = KD.models;
+    if (!M || !M.build || M.build.kdAllies) return false;
+    var base = M.build;
+    var fn = function (spec, ctx) {
+      var s2 = null;
+      try { s2 = A.specFor(spec, ctx && ctx.e); } catch (err) { s2 = null; }
+      return base(s2 || spec, ctx);
+    };
+    fn.kdAllies = true; fn.kdStyle = base.kdStyle;
+    M.build = fn;
+    return true;
+  };
+  A.wrapBuild();
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
