@@ -1692,6 +1692,37 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 .kd-compact .flow-runs-foot { display: none; }
 .kd-compact .flow-menu-buttons.flow-menu-has-continue { width: auto; margin-top: 0; gap: calc(7 * var(--u)); }
 
+/* Patch notes window and update banner (src/ui/20_flow_55_patchnotes.js). Kit windows, buttons and tokens only. */
+.flow-pn { display: flex; flex-direction: column; gap: calc(6 * var(--u)); }
+.flow-pn-intro { font-size: calc(12.5 * var(--u)); padding-bottom: calc(2 * var(--u)); }
+.flow-pn-entry { border: var(--u) solid rgba(87, 66, 43, .45); border-radius: calc(3 * var(--u)); background: rgba(87, 66, 43, .08); }
+.flow-pn-open { background: rgba(87, 66, 43, .16); border-color: rgba(87, 66, 43, .75); }
+.flow-pn-head { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: calc(10 * var(--u)); width: 100%; min-height: calc(42 * var(--u)); padding: 0 calc(12 * var(--u)); cursor: pointer; }
+.flow-pn-head:hover, .flow-pn-head:focus-visible { background: rgba(189, 148, 64, .18); }
+.flow-pn-arrow::before { content: '\25B8'; display: inline-block; width: calc(14 * var(--u)); font-size: calc(14 * var(--u)); transition: transform .12s; }
+.flow-pn-open .flow-pn-arrow::before { transform: rotate(90deg); }
+.flow-pn-ver { font-weight: 700; font-size: calc(13.5 * var(--u)); white-space: nowrap; }
+.flow-pn-title { flex: 1; min-width: 0; font-family: var(--kd-font-display); font-weight: 700; font-size: calc(15 * var(--u)); }
+.flow-pn-date { font-size: calc(11.5 * var(--u)); white-space: nowrap; }
+.flow-pn-notes { display: none; margin: 0; padding: calc(2 * var(--u)) calc(14 * var(--u)) calc(10 * var(--u)) calc(36 * var(--u)); font-size: calc(13.5 * var(--u)); line-height: 1.35; }
+.flow-pn-open .flow-pn-notes { display: block; }
+.flow-pn-notes li { margin: calc(3 * var(--u)) 0; }
+.flow-pn-banner { position: absolute; right: calc(18 * var(--u)); top: calc(16 * var(--u)); display: flex; align-items: center; gap: calc(10 * var(--u)); width: max-content; max-width: calc(560 * var(--u)); padding: calc(6 * var(--u)) calc(8 * var(--u)) calc(6 * var(--u)) calc(12 * var(--u)); font-size: calc(14 * var(--u)); color: var(--kd-text); text-shadow: var(--kd-text-shadow); }
+.flow-pn-banner-text { flex: 1 1 auto; min-width: 0; line-height: 1.25; }
+.flow-pn-banner-btn.kd-btn { flex: none; min-height: calc(40 * var(--u)); font-size: calc(13.5 * var(--u)); }
+.flow-pn-banner-x.kd-btn { flex: none; min-width: calc(40 * var(--u)); min-height: calc(40 * var(--u)); padding: 0; }
+.kd-compact .flow-pn-head { min-height: calc(44 * var(--u)); }
+.kd-compact .flow-pn-notes { font-size: calc(14 * var(--u)); }
+/* main menu: "What's new" and "How to play" share one row on a PC; on a phone they are two cells of the button grid */
+.flow-menu-pair { display: flex; gap: calc(8 * var(--u)); width: calc(310 * var(--u)); }
+.flow-menu-pair .flow-menu-btn.kd-btn { width: auto; flex: 1 1 0; min-width: 0; font-size: calc(15 * var(--u)); padding-left: calc(10 * var(--u)); padding-right: calc(6 * var(--u)); gap: calc(7 * var(--u)); }
+.kd-compact .flow-menu-pair { display: contents; }
+.flow-menu-has-continue .flow-menu-pair { display: contents; }
+/* phone: the right column is the button grid, so the banner sits in the free band between the title and the account plate */
+.kd-compact .flow-pn-banner { right: auto; left: calc(24 * var(--u)); top: 47%; max-width: calc(100% - 420 * var(--u)); padding: calc(5 * var(--u)) calc(6 * var(--u)) calc(5 * var(--u)) calc(10 * var(--u)); gap: calc(8 * var(--u)); font-size: calc(13.5 * var(--u)); }
+.kd-compact .flow-pn-banner-btn.kd-btn { min-height: calc(44 * var(--u)); font-size: calc(13 * var(--u)); padding-left: calc(10 * var(--u)); padding-right: calc(10 * var(--u)); }
+.kd-compact .flow-pn-banner-x.kd-btn { min-width: calc(44 * var(--u)); min-height: calc(44 * var(--u)); }
+
 /* Co-op screens (src/ui/25_coop_*.js, docs/COOP.md section 6). Prefix: coop-. Sizes in --u units, colours from the kit. */
 
 /* ---- entry and lobby (flow screen 'coop') ---- */
@@ -3379,7 +3410,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.29';
+  KD.VERSION = '0.7.30';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -22420,6 +22451,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.30', date: '2026-10-10', title: 'What\'s new window', notes: [
+      'New What\'s new window on the main menu and the pause menu, with the story of every update so far.',
+      'After an update you now get a small banner the first time you open the game.'
+    ] },
     { version: '0.7.29', date: '2026-10-10', title: 'Allies restyled', notes: [
       'Your summons, hirelings and Crown patrols now wear the hand-painted look: skeletons in torn shrouds, hooded wraiths, faction tabards and cloaks',
       'Allies glow in your class colour (eyes, soul lights, arm bands) so friend and foe read at a glance',
@@ -106933,7 +106968,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         btn('Chronicle', 'book', function () { F.account.openChronicle(game); }, 'Every run you have finished'),
         KD.wardrobe && KD.wardrobe.menuButton ? KD.wardrobe.menuButton(game) : null,      // [cosmetics] "Wardrobe" (src/ui/35_wardrobe.js)
         btn('Settings', 'gear', function () { F.pause.openSettings(game); }),
-        btn('How to play', 'info', function () { F.pause.openHelp(game); }, 'Controls, the loop of a run, and what Fate, Corruption, factions and the Crownweb are'),
+        el('div.flow-menu-pair', [      // [patch notes] "What's new" (src/ui/20_flow_55_patchnotes.js) shares a row with How to play
+          F.patch ? F.patch.button('flow-menu-btn') : null,
+        btn('How to play', 'info', function () { F.pause.openHelp(game); }, 'Controls, the loop of a run, and what Fate, Corruption, factions and the Crownweb are')
+        ]),
         el('div.flow-host-note', { tip: { title: 'Host for friends', lines: [{ text: 'Run "Host for Friends.bat" (in the game folder, next to "Play Kingdoms Descent.bat") to let people on your Wi-Fi or network play your copy in their browser. Each player has their own run and saves.', kind: 'implicit' }, { text: 'Read README.txt in that folder for the details.', kind: 'dim' }] } }, [
           KD.ui.icon('compass', 13, 'currentColor'), el('span', { text: 'Host for friends: run “Host for Friends.bat” from the game folder.' })])
       ])
@@ -106942,7 +106980,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     s.appendChild(el('div.flow-menu-version.kd-shadow', { text: 'Kingdom’s Descent · build ' + F.VERSION + ' · saves are kept in this browser' }));
     return s;
   };
-  M.show = function (game) { M.build(game); F.show('menu'); F.music('menu'); };
+  M.show = function (game) { M.build(game); F.show('menu'); F.music('menu'); if (F.patch) { try { F.patch.check(); } catch (e) { console.error(e); } } };      // [patch notes] update banner, once per version
   /** Rebuild the menu when it is visible (after an account change). */
   M.refresh = function (game) { if (F.current === 'menu') M.build(game); };
 
@@ -108592,6 +108630,81 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     w = F.window('flow-keys', { title: 'Key Bindings', icon: 'key', width: 880, content: bindingsBody(game, refresh), onClose: function () { F.sound('ui_close'); },
       footer: [KD.ui.button('Reset to defaults', { onClick: function () { KD.input.resetBindings(); refresh(); } }), KD.ui.button('Done', { kind: 'primary', onClick: function () { KD.ui.windows.close('flow-keys'); } })] });
     return w;
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/ui/20_flow_55_patchnotes.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  if (typeof document === 'undefined') return;       // browser only
+  var F = KD.flow;
+
+  /**
+   * Patch notes ("What's new"): a window listing every version newest first (data: src/data/99_patch_notes.js), a button
+   * for the main menu and the pause menu, and a small "Updated to vX" banner the first time a newer build is opened.
+   * Uses kit windows and buttons only (the painted UI restyles those). Owner: patch notes.
+   */
+  var PN = F.patch = F.patch || {};
+  var KEY = 'kd.patchSeen';
+
+  PN.seen = function () { try { return F.storage().getItem(KEY) || null; } catch (e) { return null; } };
+  PN.markSeen = function (version) { try { F.storage().setItem(KEY, version || KD.VERSION); } catch (e) { /* storage blocked */ } };
+
+  function entryNode(e, open) {
+    var el = KD.ui.el, body = el('ul.flow-pn-notes', e.notes.map(function (t) { return el('li', { text: t }); }));
+    var label = (e.from ? 'v' + e.from + ' to v' + e.version : 'v' + e.version);
+    var head = el('button.flow-pn-head.flow-click', { attrs: { type: 'button', 'aria-expanded': open ? 'true' : 'false' } }, [
+      el('span.flow-pn-arrow', { text: '' }),
+      el('span.flow-pn-ver.kd-num', { text: label }),
+      el('span.flow-pn-title', { text: e.title }),
+      el('span.flow-pn-date.kd-dim', { text: e.date || '' })
+    ]);
+    var box = el('div.flow-pn-entry' + (open ? '.flow-pn-open' : ''), [head, body]);
+    head.addEventListener('click', function () { var o = box.classList.toggle('flow-pn-open'); head.setAttribute('aria-expanded', o ? 'true' : 'false'); });
+    return box;
+  }
+  PN.body = function () {
+    var el = KD.ui.el, notes = KD.patchNotes || [];
+    var cur = KD.patchNotes && KD.patchNotes.latest ? KD.patchNotes.latest(KD.VERSION) : null;
+    return el('div.flow-pn', [
+      el('div.flow-pn-intro.kd-dim', { text: 'You are playing version ' + KD.VERSION + '. Tap a version to open or close it.' }),
+      notes.length ? notes.map(function (e) { return entryNode(e, e === cur || (!cur && e === notes[0])); }) : el('div.kd-dim', { text: 'No notes yet.' })
+    ]);
+  };
+  PN.open = function () {
+    PN.markSeen();
+    return F.window('flow-patch', { title: 'What’s new', icon: 'scroll', width: F.isCompact() ? 700 : 620, content: PN.body(), onClose: function () { F.sound('ui_close'); },
+      footer: [KD.ui.button('Close', { kind: 'primary', autofocus: true, onClick: function () { KD.ui.windows.close('flow-patch'); } })] });
+  };
+  /** The "What's new" button for the main menu (className flow-menu-btn) or the pause menu (flow-pause-btn). */
+  PN.button = function (cls, afterOpen) {
+    return KD.ui.button('What’s new', { icon: 'scroll', className: cls, onClick: function () { if (afterOpen) afterOpen(); PN.open(); } });
+  };
+
+  /** After an update: a small banner "Updated to vX: title" with a button that opens the window. Once per version. */
+  var timer = 0;
+  PN.check = function () {      // a moment after the menu shows, so that screen changes (which clear toasts) are done; skipped if the menu is gone
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(function () { timer = 0; if (F.current === 'menu') PN.show(); }, 900);
+  };
+  PN.show = function () {
+    var res = KD.patchNotes && KD.patchNotes.whatsNew ? KD.patchNotes.whatsNew(PN.seen(), KD.VERSION) : { entry: null, store: false };
+    if (res.store) PN.markSeen();
+    if (!res.entry) return null;
+    var el = KD.ui.el, e = res.entry, t;
+    var gone = function () { if (t && t.parentNode) KD.ui.unmount(t); t = null; };
+    t = el('div.kd-plate.flow-pn-banner.kd-interactive', { attrs: { role: 'status' } }, [
+      KD.ui.icon('scroll', 20, '#ecd08a'),
+      el('span.flow-pn-banner-text', [el('b', { text: 'Updated to v' + KD.VERSION + ': ' }), el('span', { text: e.title })]),
+      KD.ui.button('See what’s new', { className: 'flow-pn-banner-btn', onClick: function () { gone(); PN.open(); } }),
+      KD.ui.button('', { icon: 'cross', className: 'flow-pn-banner-x', aria: 'Dismiss', onClick: gone })
+    ]);
+    KD.ui.mount(t, 'toast');
+    setTimeout(gone, root.KD_PN_MS || 14000);      // (KD_PN_MS: the screenshot tool keeps it up longer on a slow machine)
+    return t;
   };
 })(typeof window !== 'undefined' ? window : globalThis);
 
