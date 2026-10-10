@@ -3379,7 +3379,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.27';
+  KD.VERSION = '0.7.28';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -22403,6 +22403,128 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   KD.data.rosters.dungeons = { normal: ['forgotten_prisoner', 'turnkey', 'rack_hand', 'oubliette_sludge'], elite: ['iron_maiden'], miniboss: 'executioner', boss: 'jailer_marrow' };
   KD.data.rosters.towers = { normal: ['parapet_longbow', 'spire_gargoyle', 'rampart_pavise', 'weathervane_adept'], elite: ['gale_knight'], miniboss: 'wyvern_rider', boss: 'windlord_caul' };
   KD.data.rosters.throne_room = { normal: ['royal_halberdier', 'crown_herald', 'hollow_courtier', 'crownless_shade'], elite: ['gilded_colossus'], miniboss: 'royal_guard_gauntlet', boss: 'hollow_king' };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/99_patch_notes.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+
+  /**
+   * Player-facing patch notes, newest first (owner: patch notes; docs in tools/ship.sh).
+   * Each entry: { version, from?, date, title, notes: [short plain lines] }. `version` is the newest version of the entry,
+   * `from` (optional) is the first one when several small versions are grouped. Plain English, no em dashes.
+   * tools/ship.sh adds a new entry at the marker below when you ship with NOTE="...".
+   */
+  var NOTES = [
+    // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.28', date: '2026-10-10', title: 'New adaptive music', notes: [
+      'New music: every act has its own theme, and hidden places sound eerie',
+      'Fights and bosses now build on the tune that is playing instead of restarting it',
+      'Short stings when you win or fall',
+      'Settings: Music style New or Classic'
+    ] },
+    { version: '0.7.27', date: '2026-10-10', title: 'Grim castle bosses', notes: [
+      'The castle bosses got a grim new hand-painted look, from the Marble Sentinel to the Hollow King',
+      'The Hollow King now burns with violet ghostfire on his throne, and a rift tears open behind him in the final phase',
+      'Switch back any time with Settings, Display, Enemy look'
+    ] },
+    { version: '0.7.25', from: '0.7.20', date: '2026-10-10', title: 'Painted menus and a new Gloamblade', notes: [
+      'The menus, buttons, tabs, health orb and minimap now have a hand-painted look.',
+      'Sound pass: swords, bows and spells sound different on wood, bone and metal. Bosses warn you before big hits.',
+      'Every area now has its own ambient sound, with a new Ambience slider in Settings.',
+      'Fewer sound effects at once on phones, so they stay smooth.',
+      'The Gloamblade has a new hand-painted hooded assassin with glowing eyes. Switch between New and Classic in Settings.'
+    ] },
+    { version: '0.7.19', from: '0.7.11', date: '2026-10-10', title: 'Acts 2, 3 and 4 get their own look', notes: [
+      'Mountain Trail, River Road, Frozen Outpost and Gatehouse Pass each have their own colors, light and scenery.',
+      'The city is repainted: smoky Lower Town, a golden Market District, glowing green Sewers, a salty Harbor, dusky Rooftops and the red-lit City Gates.',
+      'Castle rooms look different from each other now: courtyard, armory, library, chapel, dungeons, towers and throne room.',
+      'Enemies and bosses in these places are hand-painted to match.'
+    ] },
+    { version: '0.7.10', from: '0.7.7', date: '2026-10-10', title: 'Hits feel better and the world comes alive', notes: [
+      'New Screen shake setting: Off, Low or Full.',
+      'Enemies flash when hit, die in ways that fit what they are made of, and crits pop.',
+      'Weapon swings and shots leave trails. A boss dying now glows purple instead of white.',
+      'The world moves: drifting dust and embers, gusts of wind, glittering water, small critters and glowing lights.'
+    ] },
+    { version: '0.7.6', from: '0.7.4', date: '2026-10-10', title: 'Wardrobe, mercenaries and fairer loot', notes: [
+      'New Wardrobe to change how your hero looks.',
+      'Mercenaries were reworked, and items have clearer cards.',
+      'In co-op, loot goes to the hero who opened the chest or got the kill.',
+      'Bosses split their attention between you and your allies. You now have 3 run slots, and co-op runs can be shared between them.',
+      'The Farm Village enemies got a grim new look.'
+    ] },
+    { version: '0.7.3', from: '0.7.0', date: '2026-10-09', title: 'A new look is tested', notes: [
+      'Test of a hand-painted Gravecaller model and a dusky Farm Village. Both can be switched on or off.',
+      'Fixed some phones showing broken character models.',
+      'The camp marker is now a tent instead of a floating flame.'
+    ] },
+    { version: '0.6.2', from: '0.6.0', date: '2026-10-09', title: 'Online play', notes: [
+      'Play online with friends: pick a name with a tag, add friends, send invites and link your devices.',
+      'Greymaw is harder: more damage and an extra, tougher phase.',
+      'Your attacks no longer swap targets halfway through a swing.'
+    ] },
+    { version: '0.5.7', from: '0.5.0', date: '2026-10-09', title: 'The Gravecaller talent tree', notes: [
+      'The Gravecaller has its own talent tree with eight arms, plenty of skills and ten recommended builds you can preview and follow.',
+      'Tree shortcuts let you jump between arms.',
+      'Props slide instead of snagging you, and flat ground marks no longer flicker.',
+      'Greymaw is easier to read: he shows what he will do before he does it, and his phase changes are easy to spot.',
+      'Menu cards and shop cards stay open while you read them.'
+    ] },
+    { version: '0.4.4', from: '0.4.0', date: '2026-10-05', title: 'Phone version', notes: [
+      'The game now plays on phones, with on-screen controls and layouts made for small screens.',
+      'Graphics levels so it runs well on weaker phones.',
+      'New top-down camera option in Settings.',
+      'Fixed the camera spinning after tapping the menu, and the bottom half being cut off on some iPhones.',
+      'You can now move and attack at the same time while holding an attack button.'
+    ] },
+    { version: '0.3.6', from: '0.3.5', date: '2026-10-05', title: 'Talent web overhaul', notes: [
+      'The talent web was rebuilt around how each class plays, with hundreds of new nodes, rule nodes and pacts.',
+      'Bosses are tougher, and boss arenas have their own events. The final boss rises only once.'
+    ] },
+    { version: '0.3.2', from: '0.3.0', date: '2026-10-04', title: 'Play together', notes: [
+      'Co-op for friends: host a game and others join from their own browser.',
+      'Gear drops are about four times rarer, but more of it fits your class.',
+      'Smoother co-op play, with faster updates.'
+    ] },
+    { version: '0.2', from: '0.1', date: '2026-10-04', title: 'The first road', notes: [
+      'The first playable version: the kingdom, a roster of classes, Acts 1 to 4 with their bosses, hidden areas and roaming nemeses.',
+      'Gear, sigils, a talent web, runs, an account with levels and prestige, plus sound and music.',
+      'Allies and mercenaries to fight beside you.'
+    ] }
+  ];
+
+  KD.patchNotes = NOTES;
+
+  /** Compares two version strings like '0.7.25' and '0.7' numerically: negative, 0 or positive. */
+  function cmp(a, b) {
+    var x = String(a || '0').split('.'), y = String(b || '0').split('.');
+    for (var i = 0; i < Math.max(x.length, y.length); i++) {
+      var d = (parseInt(x[i], 10) || 0) - (parseInt(y[i], 10) || 0);
+      if (d) return d;
+    }
+    return 0;
+  }
+  KD.patchNotes.cmp = cmp;
+  /** The newest entry for the given version or older (null when there is none). */
+  KD.patchNotes.latest = function (version) {
+    for (var i = 0; i < NOTES.length; i++) if (cmp(NOTES[i].version, version) <= 0) return NOTES[i];
+    return null;
+  };
+  /**
+   * What to tell a player who last saw `seen` (version string or null) and now runs `current`.
+   * -> { entry, store: bool }. entry is the newest entry the player has not seen (null: say nothing).
+   * A first visit (seen null) says nothing and just remembers the version.
+   */
+  KD.patchNotes.whatsNew = function (seen, current) {
+    if (!seen) return { entry: null, store: true };
+    if (cmp(seen, current) >= 0) return { entry: null, store: false };
+    var e = KD.patchNotes.latest(current);
+    return { entry: e && cmp(e.version, seen) > 0 ? e : null, store: true };
+  };
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -65817,7 +65939,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     /** sim `sfx` events whose name is not a sound. */
     sfxAlias: { ambush: 'enemy_alert', counter_stance: 'parry' },
     /** music moods (KD.audio.music.moods()). act 0 = hidden areas. */
-    music: { act: { 0: 'explore_castle', 1: 'explore_outskirts', 2: 'explore_outskirts', 3: 'explore_city', 4: 'explore_castle' }, combat: 'combat', boss: 'boss', camp: 'camp', victory: 'victory', death: 'death' }
+    // [w8 music] one theme per act and one for hidden areas (src/audio/20_music_w8.js); combat / boss raise its intensity
+    music: { act: { 0: 'explore_hidden', 1: 'explore_act1', 2: 'explore_act2', 3: 'explore_act3', 4: 'explore_act4' }, combat: 'combat', boss: 'boss', camp: 'camp', victory: 'victory', death: 'death' }
   };
   /** Real-time gaps between two sounds of a group (seconds) so 30 simultaneous hits do not become noise. */
   FX.SOUND_GAP = { phit: 0.035, hit: 0.11, pswing: 0.05, proj: 0.09, tell: 0.25, drop: 0.12, swing: 0.14, cast: 0.1, death: 0.12, pickup: 0.06, fx: 0.07, alert: 1.4, status: 0.45, heal: 0.8, hurt: 0.25, big: 0.5, corrupt: 6, step: 0.16, world: 0.08 };
@@ -66054,14 +66177,16 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         if (!p) return null;
         if (p.dead && world.over) return M.death;
         var as = world.areaState || {}, arena = (g && g.inArena) || (world.layout && world.layout.kind === 'arena');
+        var area = as.areaId && KD.has && KD.has('areas', as.areaId) ? KD.get('areas', as.areaId) : null;
+        var actMood = M.act[area ? area.act : 1] || M.act[1];
+        if (KD.audio && KD.audio.score && KD.audio.score.hint) KD.audio.score.hint(actMood);      // [w8 music] fights use the area's theme
         if (arena) return (g && g.bossDead) || as.bossDead ? M.victory : M.boss;
         if (st.bossFight) { st.combatUntil = t + FX.MUSIC_HOLD; return M.boss; }
         if (st.combat) st.combatUntil = t + FX.MUSIC_HOLD;
         if (t < st.combatUntil) return st.mood === M.boss ? M.boss : M.combat;
         var run = (g && g.run) || world.run;
         if (run && run.phase === 'camp') return M.camp;
-        var area = as.areaId && KD.has && KD.has('areas', as.areaId) ? KD.get('areas', as.areaId) : null;
-        return M.act[area ? area.act : 1] || M.act[1];
+        return actMood;
       }
       function music(p) {
         var A = KD.audio, m = wantMood(p), t = ctx.real;
@@ -78198,6 +78323,598 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     return n;
   };
   S.act4Assign();
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/gfx/49_style_recipes_hidden.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var S = KD.style;
+  if (!S || !S.recipe) return;
+  var PI = Math.PI, HALF = PI / 2, TAU = PI * 2, sin = Math.sin, cos = Math.cos, min = Math.min;
+  var geo = S.geo, g = KD.gfx.geom;
+
+  /**
+   * [w8 hidden look] Stylized looks of the hidden areas' enemies (src/data/64_enemies_hidden.js) and of the roaming
+   * bosses and the nemesis (src/data/64_bosses_roaming_nemesis.js), built with KD.style (49_style_kit.js,
+   * docs/CREATURES.md section 11) in the hand-painted toon style of the Gravecaller and the Farm Village. Each area has
+   * its own palette that matches its mood preset (57_env_mood_hidden.js):
+   *
+   *   Ruined Abbey   moss and lichen greens, worn ivory, faded gold, plague-green glow
+   *                  hid_rat (Abbey Rat)  hid_monk (Miasma Monk)  hid_penitent (Bloated Penitent)
+   *                  hid_sister (Weeping Sister)  hid_gargoyle (Pox Gargoyle)  hid_saint (The Plague Saint)
+   *   Bone Fair      the wrong carnival colours: magenta, sick teal, mustard, bone white; pink glow
+   *                  hid_juggler (Bone Juggler)  hid_strider (Stilt Strider)  hid_prize (Rigged Prize)
+   *                  hid_puppeteer (Puppet Master)  hid_puppet (Bone Puppet)  hid_cat (Starved Fair Cat)
+   *                  hid_strongman (Fairground Strongman)  hid_barker (The Barker)
+   *   War Camp       oxblood, soot black, ochre, mud brown and iron; ember glow, war paint
+   *                  hid_orc (Warband Breaker, War Drummer, Warg Handler, Javelin Tosser)  hid_warg (Camp Warg)
+   *                  hid_trophy (Trophy Taker)  hid_drog (Warlord Drog)
+   *   Roaming        grave violet and ash: hid_rider (The Pale Rider)  hid_witch (The Blackbriar Witch)
+   *                  hid_knight (The Carrion Knight)  hid_hunter (Hollow Hunter)  hid_briar (Briar Growth)
+   *                  hid_crow (Gallows Crow)
+   *
+   * Enemies are mapped to recipes by id (BY_ID, applied to the bodies at load: the data files need no edit), bosses by
+   * their look id (S.UNIQUE). Boss looks (47_boss_looks_b.js) keep every part, joint and phase visual; their baked
+   * colours are graded into the palette on a copy of each mesh (the Classic look keeps its colours). Render only: hit
+   * shapes, attacks, joints and the simulation are untouched (tests/style_hidden.test.js).
+   */
+  var BONE = '#e2d8bf', BONE_D = '#b9ad94', ROPE = '#8a7656', RUST = '#7a4a34', LEATHER = '#4a3428', IRON = '#4a4c54', GOLD = '#c9a23b';
+  var LOCAL = { local: true };
+  var U = KD.util;
+  function col(spec, k, d) { var c = spec && spec.colors && spec.colors[k]; return typeof c === 'string' && /^#[0-9a-fA-F]{6}$/.test(c) ? c : d; }
+  function fan(n, a0, a1, f) { var out = [], i; for (i = 0; i < n; i++) out.push(f(n > 1 ? a0 + (a1 - a0) * i / (n - 1) : a0, i)); return out; }
+  function quad(sp) { var P = KD.creature && KD.creature.PLANS && KD.creature.PLANS.quadruped; return (P && P.table[sp]) || null; }
+  function ring(rx, rz, y, n, wob) { var pts = [], i; for (i = 0; i <= n; i++) { var a = i / n * TAU; pts.push([sin(a) * rx, y + (wob ? cos(a * 2) * wob : 0), cos(a) * rz]); } return pts; }
+  function T(m, x, y, z) { return g.translate(m, x, y, z); }
+  function R(m, x, y, z) { return g.rotate(m, x, y, z); }
+  function glow(m, v) { return g.setAux(m, { emissive: v === undefined ? 0.9 : v }); }
+  function metal(m, v) { return g.setAux(m, { metal: v === undefined ? 0.6 : v }); }
+
+  // =========================================================================================== area palettes
+  var AREA_GRADE = {
+    abbey: { sat: 0.85, tint: '#6a7a4a', amount: 0.1, value: 0.98, shadow: 0.12 },
+    fair: { sat: 1.0, tint: '#6a3a6e', amount: 0.08, value: 1.0, shadow: 0.14 },
+    camp: { sat: 0.9, tint: '#6a4436', amount: 0.1, value: 0.97, shadow: 0.12 },
+    roam: { sat: 0.82, tint: '#4a4258', amount: 0.12, value: 0.96, shadow: 0.16 }
+  };
+  S.HIDDEN_GRADE = AREA_GRADE;
+  var PAINT = {
+    abbey: { bottom: 0.56, top: 1.14, cool: [0.86, 0.9, 0.92], warm: [1.06, 1.04, 0.9] },
+    fair: { bottom: 0.54, top: 1.12, cool: [0.9, 0.78, 1.02], warm: [1.06, 0.98, 1.0] },
+    camp: { bottom: 0.56, top: 1.14, cool: [0.86, 0.8, 0.94], warm: [1.08, 0.98, 0.88] },
+    roam: { bottom: 0.54, top: 1.1, cool: [0.84, 0.82, 1.02], warm: [1.02, 1.0, 0.96] }
+  };
+  function paintOf(area, o) { return U.assign({}, PAINT[area], o || {}); }
+  var HANDS = { hand_r: [1.3, 1.2, 1.28], hand_l: [1.3, 1.2, 1.28], foot_r: [1.16, 1.1, 1.1], foot_l: [1.16, 1.1, 1.1] };
+  var LIMBS = U.assign({ arm_r: [1.14, 1, 1.14], arm_l: [1.14, 1, 1.14], forearm_r: [1.18, 1, 1.18], forearm_l: [1.18, 1, 1.18],
+    leg_r: [1.1, 1, 1.1], leg_l: [1.1, 1, 1.1], shin_r: [1.16, 1, 1.16], shin_l: [1.16, 1, 1.16] }, HANDS);
+  var BRUTE_LIMBS = { arm_r: [1.06, 1, 1.06], arm_l: [1.06, 1, 1.06], forearm_r: [1.1, 1, 1.1], forearm_l: [1.1, 1, 1.1], hand_r: [1.08, 1.06, 1.08], hand_l: [1.08, 1.06, 1.08], foot_r: [1.08, 1.06, 1.06], foot_l: [1.08, 1.06, 1.06] };
+
+  /**
+   * look(id, o): register a recipe. o = { area, colors (spec colour overrides), build, grade (extra S.grade options),
+   *   paint, scale, grow, fold, rig: 'humanoid' | 'brute' (chunky limbs, bigger head), eyes: 'glow' | false, glow,
+   *   eyeOpt, dress(u, spec, k, m) }
+   */
+  function look(id, o) {
+    var gopt = U.assign({}, AREA_GRADE[o.area] || {}, o.grade || {});
+    return S.recipe(id, {
+      spec: function (s) {
+        if (o.colors) s.colors = U.assign({}, s.colors || {}, o.colors);
+        if (o.build) s.build = o.build;
+        return s;
+      },
+      grade: function (c) { return S.grade(c, gopt); },
+      paint: o.paint || paintOf(o.area),
+      scale: o.scale === undefined ? (o.rig ? { head: o.rig === 'brute' ? 1.08 : 1.14 } : null) : o.scale,
+      grow: o.grow === undefined ? (o.rig === 'brute' ? BRUTE_LIMBS : (o.rig ? LIMBS : null)) : o.grow,
+      fold: o.fold || null,
+      dress: function (u, spec) {
+        var m = u.m, k = m ? m.k : 1;
+        if (m && o.eyes === 'glow') eyesGlow(u, col(spec, 'glow', o.glow || '#ffb347'), o.eyeOpt || {});
+        if (o.dress) o.dress(u, spec, k, m);
+      },
+      after: o.after || null
+    });
+  }
+  /** A view of `u` whose add() skips the given accessory keys (reuse another recipe without some of its parts). */
+  function without(u, keys) { var v = Object.create(u); v.add = function (j, key, make, o) { if (keys.indexOf(key) >= 0) return; return u.add(j, key, make, o); }; return v; }
+  /**
+   * from(base, id, o): a recipe that wears another recipe's dress (an Act III rat, the Farm Village crow...) in this
+   * area's colours and grade, plus o.dress. o.skip lists accessory keys of the base to leave off.
+   */
+  function from(base, id, o) {
+    var B = S.RECIPES[base] || null, gopt = U.assign({}, AREA_GRADE[o.area] || {}, o.grade || {});
+    return S.recipe(id, {
+      spec: function (s) {
+        if (B && B.spec) s = B.spec(s) || s;
+        if (o.colors) s.colors = U.assign({}, s.colors || {}, o.colors);
+        return s;
+      },
+      grade: function (c) { return S.grade(c, gopt); },
+      paint: o.paint || (B && B.paint) || paintOf(o.area),
+      scale: o.scale !== undefined ? o.scale : (B ? B.scale : null),
+      grow: o.grow !== undefined ? o.grow : (B ? B.grow : null),
+      fold: o.fold !== undefined ? o.fold : (B ? B.fold : null),
+      dress: function (u, spec, built) {
+        if (B && B.dress) B.dress(o.skip ? without(u, o.skip) : u, spec, built);
+        if (o.dress) o.dress(u, spec);
+      },
+      after: B ? B.after || null : null
+    });
+  }
+
+  // =========================================================================================== humanoid helpers
+  /** Glowing eyes in dark sockets instead of the rig's eye boxes (head space). */
+  function eyesGlow(u, glowC, o) {
+    var m = u.m; o = o || {};
+    u.hide(['eye_l', 'eye_r']);
+    u.add('head', 'eyes', function () {
+      var out = [geo.eyes({ x: m.eyeX * (o.gap || 1.05), y: o.y === undefined ? m.eyeY - 0.005 : o.y, z: o.z === undefined ? m.faceZ + 0.006 : o.z, r: (o.r || 0.028) * m.k, color: glowC, slant: o.slant === undefined ? 0.3 : o.slant, socket: o.socket || '#120e12' })];
+      if (o.brow) out.push(T(geo.bevelBox({ w: m.headW * 0.8, h: 0.04 * m.k, d: 0.06 * m.k, b: 0.35, color: o.brow }), 0, m.eyeY + 0.05 * m.k, m.faceZ - 0.012));
+      return out;
+    }, LOCAL);
+  }
+  /** A leather belt with a buckle round the hips (hips space). */
+  function belt(m, color, y, buckleC, big) {
+    var k = m.k, rx = m.pelvisW * 0.57, rz = m.pelvisD * 0.64;
+    return [geo.cord(ring(rx, rz, y, 14), (big ? 0.03 : 0.022) * k, color, 4), geo.buckle({ w: (big ? 0.13 : 0.075) * k, h: (big ? 0.1 : 0.065) * k, at: [0, y, rz + 0.006 * k], color: buckleC || RUST })];
+  }
+  /** A rope belt with a knot and hanging ends (hips space). */
+  function ropeBelt(m, color, y) {
+    var k = m.k, rx = m.pelvisW * 0.56, rz = m.pelvisD * 0.62;
+    return [geo.cord(ring(rx, rz, y, 14, 0.004), 0.018 * k, color, 4, true), T(geo.blob({ r: [0.03 * k, 0.025 * k, 0.025 * k], sides: 5, rings: 3, color: color }), rx * 0.45, y, rz * 0.9),
+      geo.cord([[rx * 0.45, y, rz * 0.95], [rx * 0.5, y - 0.1 * k, rz * 1.02], [rx * 0.42, y - 0.2 * k, rz * 1.0]], 0.012 * k, color, 3, true)];
+  }
+  /** Coat tails / a ragged skirt from the waist (hips space). */
+  function skirt(m, color, inner, seed, h, teeth, open) {
+    var k = m.k, r = m.pelvisW * 0.56;
+    var o = { r: r, rz: m.pelvisD / m.pelvisW * 1.15, rBottom: r * 1.28, h: (h || 0.3) * k, sides: 12, teeth: teeth === undefined ? 0.5 : teeth, seed: seed, color: color, inner: inner };
+    if (open) { o.arc = TAU - 1.2; o.a0 = 0.6; }
+    return T(geo.hem(o), 0, m.pelvisH * 0.42, 0);
+  }
+  /** A stitched pouch on the hip (hips space). */
+  function pouch(m, color, side, seed) {
+    var k = m.k, x = side * m.pelvisW * 0.58;
+    return [T(geo.blob({ r: [0.06 * k, 0.075 * k, 0.045 * k], sides: 7, rings: 4, lump: 0.12, seed: seed || 33, color: color }), x, m.pelvisH * 0.05, m.pelvisD * 0.12),
+      T(geo.bevelBox({ w: 0.11 * k, h: 0.03 * k, d: 0.09 * k, b: 0.3, color: S.shade(color, -0.25) }), x, m.pelvisH * 0.05 + 0.065 * k, m.pelvisD * 0.12)];
+  }
+  /** A ragged mantle / cowl falling over the shoulders (chest space). */
+  function mantle(m, color, inner, seed, h, wide) {
+    var k = m.k;
+    return T(geo.hem({ r: m.neckR * 1.6, rBottom: m.torsoW * (wide || 0.7), rz: 1.05, h: (h || 0.2) * k, sides: 12, teeth: 0.5, seed: seed, color: color, inner: inner }), 0, m.neckY + 0.03 * k, -0.01 * k);
+  }
+  /** A fur mantle: a hem with tufts along its edge (chest space). */
+  function furMantle(m, fur, seed) {
+    var k = m.k, out = [mantle(m, fur, S.shade(fur, -0.3), seed, 0.16, 0.66)];
+    fan(9, -2.6, 2.6, function (a, i) {
+      out.push(T(geo.tuft({ n: 3, len: 0.1 * k, r: 0.03 * k, spread: 0.5, seed: seed + i, color: fur, tip: S.mix(fur, BONE, 0.35), dir: [sin(a), 0.6, cos(a) * 0.8] }), sin(a) * m.torsoW * 0.5, m.neckY - 0.03 * k, cos(a) * m.torsoD * 0.55));
+    });
+    return out;
+  }
+  /** A pleated ruff collar in alternating colours (chest space): the fair's clown collar. */
+  function ruff(m, ca, cb, n, seed) {
+    var k = m.k, out = [], i, R0 = m.neckR * 1.4, R1 = m.neckR * 3.0;
+    for (i = 0; i < n; i++) {
+      var a = i / n * TAU, a2 = (i + 0.5) / n * TAU, c = i % 2 ? ca : cb;
+      var p = geo.blob({ r: [(R1 - R0) * 0.55, 0.035 * k, R0 * 0.55], sides: 5, rings: 3, color: c, lump: 0.1, seed: seed + i });
+      R(p, 0, a2, 0); T(p, sin(a2) * (R0 + R1) * 0.5, m.neckY + 0.005 * k + (i % 2) * 0.012 * k, cos(a2) * (R0 + R1) * 0.5 * 0.95);
+      out.push(p);
+    }
+    return out;
+  }
+  /** War paint on the face: a soot band across the eyes and a red stripe down the chin (head space). */
+  function warPaint(m, band, stripe) {
+    var k = m.k;
+    return [T(geo.bevelBox({ w: m.headW * 0.92, h: 0.045 * k, d: 0.02 * k, b: 0.4, color: band }), 0, m.eyeY, m.faceZ + 0.002 * k),
+      T(geo.bevelBox({ w: 0.024 * k, h: m.headH * 0.32, d: 0.016 * k, b: 0.4, color: stripe }), 0, m.headC - m.headH * 0.24, m.faceZ + 0.004 * k)];
+  }
+  /** Glowing sores: small lumpy blobs that shine (any space). pts = [[x, y, z, r], ...] */
+  function sores(pts, c, seed) { return pts.map(function (p, i) { return glow(T(geo.blob({ r: [p[3], p[3] * 0.8, p[3] * 0.6], sides: 6, rings: 3, lump: 0.25, seed: (seed || 7) + i, color: c }), p[0], p[1], p[2]), 0.8); }); }
+  /** A glowing bulb on a short cord (any space). */
+  function bulb(x, y, z, r, c) { return glow(T(g.scale(g.sphere({ r: 1, detail: 1, color: c }), r, r * 1.2, r), x, y, z), 1); }
+
+  /**
+   * The Gravecaller hood: a deep rounded hood with a back-swept point and a dark void for a face (head space); the
+   * plan's own hood / cap parts and the face go. Returns the z of the void's front, for glowing eyes in front of it.
+   */
+  function hood(u, color, inner, seed, o) {
+    var m = u.m, k = m.k; o = o || {};
+    u.drop('head', function (n) { return n.mesh === 'box_bevel' || n.mesh === 'cone' || n.mesh === 'box' || n.mesh === 'cyl12' || n.mesh === 'box_taper' || n.mesh === 'cyl8'; });
+    u.drop('chest', function (n) { return n.mesh === 'cyl8' && n.offset && n.offset[1] > m.torsoH * 0.9; });
+    u.hide(['nose', 'mouth', 'brow', 'ear_l', 'ear_r', 'hair']);
+    var hw = m.headW, hh = m.headH, hd = m.headD, cz = m.headZ - hd * 0.06, fz = cz + hd * 0.66;
+    u.add('head', 'hood', function () {
+      var shell = geo.blob({ r: [hw * 0.74, hh * 0.7, hd * 0.72], sides: 9, rings: 6, lump: 0.05, seed: seed, color: color });
+      T(shell, 0, m.headC + hh * 0.08, cz);
+      var tip = geo.spike([0, m.headC + hh * 0.5, cz - hd * 0.25], [0, m.headC + hh * (o.tall ? 1.05 : 0.7), cz - hd * (o.tall ? 0.95 : 0.8)], hw * 0.34, color, S.shade(color, -0.2), 6);
+      var voidF = geo.blob({ r: [hw * 0.46, hh * 0.44, 0.05 * k], sides: 9, rings: 4, color: '#0a080c' }); T(voidF, 0, m.headC - hh * 0.02, fz - 0.03 * k);
+      var lip = geo.cord(ring(hw * 0.52, 0.05 * k, 0, 12).map(function (p) { return [p[0], m.headC - hh * 0.02 + p[2] / (0.05 * k) * hh * 0.5, fz - 0.02 * k + 0.012 * k]; }), 0.028 * k, inner || S.shade(color, -0.25), 4, false);
+      return [shell, tip, voidF, lip];
+    }, LOCAL);
+    return fz + 0.02 * k;
+  }
+
+  // =========================================================================================== boss looks: grade the baked colours
+  var bossMeshes = {};
+  /** Recolour the boss-look meshes (blb_* / bla_*) of a built body into the area palette: a graded copy of each mesh. */
+  function bossGrade(u, area, amount) {
+    var base = AREA_GRADE[area] || {}, gopt = U.assign({}, base, { amount: (base.amount || 0.1) * (amount || 1) });
+    (function walk(nd) {
+      if (!nd) return;
+      if (nd.mesh && /^bl[ab]_/.test(nd.mesh) && !(nd.emissive > 0.5)) {
+        var key = 'hidg_' + area + '_' + nd.mesh;
+        if (!bossMeshes[key] || !KD.gfx.hasMesh(key)) {
+          var id = KD.gfx.meshId(nd.mesh);
+          if (id >= 0) {
+            var src = KD.gfx.meshes.list[id].geom, cp = g.clone(src), c = cp.col, ax = cp.aux, i, memo = {};
+            for (i = 0; i < c.length; i += 3) {
+              if (ax && ax[i / 3 * 4] > 0.5) continue;               // glowing bits keep their colour
+              var hk = (c[i] * 255 | 0) + ',' + (c[i + 1] * 255 | 0) + ',' + (c[i + 2] * 255 | 0), v = memo[hk];
+              if (!v) { v = memo[hk] = KD.gfx.color._get(S.grade(KD.gfx.color.toHex([min(1, c[i]), min(1, c[i + 1]), min(1, c[i + 2])]), gopt)); }
+              c[i] = v[0]; c[i + 1] = v[1]; c[i + 2] = v[2];
+            }
+            KD.gfx.registerMesh(key, cp); bossMeshes[key] = 1;
+          }
+        }
+        if (bossMeshes[key]) nd.mesh = key;
+      }
+      var ch = nd.children; if (ch) for (var j = 0; j < ch.length; j++) walk(ch[j]);
+    })(u.built.model);
+  }
+  /** A boss recipe keyed by its look id: area grade + paint over the plan body and the boss look, plus o.dress. */
+  function bossLook(id, unique, o) {
+    var r = look(id, U.assign({ eyes: o.eyes === undefined ? false : o.eyes }, o, {
+      dress: function (u, spec, k, m) {
+        bossGrade(u, o.area, o.lookGrade);
+        if (o.dress) o.dress(u, spec, k, m);
+      }
+    }));
+    S.UNIQUE[unique] = id;
+    return r;
+  }
+
+  // =========================================================================================== RUINED ABBEY
+  // Moss and lichen greens, worn ivory, faded gold; plague-green glow. Everything a little overgrown.
+  var PLAGUE = '#b7e04a', MOSS = '#5e7a34', IVORY = '#d8d0b0';
+
+  // Abbey Rat: the Act III gutter rat's mangy body in plague colours: olive-grey fur, green glowing eyes, glowing sores.
+  from('a3_rat', 'hid_rat', {
+    area: 'abbey', colors: { main: '#5e5a48', alt: '#8a8a5a', glow: PLAGUE },
+    dress: function (u) {
+      var q = quad('rat'); if (!q) return;
+      u.add('chest', 'sores', function () { return sores([[q.cw * 0.32, q.cd * 0.32, q.len * 0.1, 0.035], [-q.cw * 0.28, q.cd * 0.28, -q.len * 0.2, 0.03], [q.cw * 0.4, 0, -q.len * 0.3, 0.025]], PLAGUE, 11); }, LOCAL);
+    }
+  });
+
+  // Miasma Monk: the Gravecaller's deep hood in moss green over a void with plague-green eyes, a ragged ivory mantle,
+  // a rope cincture with prayer beads and a bone charm, a ragged robe hem.
+  look('hid_monk', {
+    area: 'abbey', rig: 'humanoid', colors: { main: '#55663a', alt: '#c9c08a', skin: '#a8a888', glow: PLAGUE },
+    dress: function (u, spec, k, m) {
+      var robe = S.grade('#55663a', AREA_GRADE.abbey), robeD = S.shade(robe, -0.3), z = hood(u, robe, robeD, 101, { tall: true });
+      eyesGlow(u, PLAGUE, { z: z, r: 0.026, slant: 0.35, socket: '#0a080c' });
+      u.add('chest', 'mantle', function () {
+        return [mantle(m, S.grade(IVORY, AREA_GRADE.abbey), S.shade(IVORY, -0.4), 102, 0.22),
+          geo.cord(ring(m.neckR * 2.1, m.neckR * 1.6, m.neckY - 0.06 * k, 12).map(function (p) { return [p[0], p[1] - Math.max(0, p[2]) * 0.9, p[2] + 0.01 * k]; }), 0.016 * k, '#4a3a2a', 4, true),
+          geo.charm({ at: [0, m.neckY - 0.2 * k, m.torsoD * 0.56], kind: 'bone', r: 0.04 * k, color: BONE })];
+      }, LOCAL);
+      u.add('hips', 'cincture', function () { return ropeBelt(m, ROPE, m.pelvisH * 0.45).concat([skirt(m, robe, robeD, 103, 0.36, 0.55)]); }, LOCAL);
+    }
+  });
+
+  // Bloated Penitent: a swollen plague corpse: grey-green skin with glowing sores on the belly, a stitched sack hood,
+  // a rope noose, a ragged loincloth, nails in the shoulders.
+  look('hid_penitent', {
+    area: 'abbey', rig: 'humanoid', colors: { main: '#5a6440', alt: '#3a4030', skin: '#8e9a70', glow: PLAGUE },
+    dress: function (u, spec, k, m) {
+      // the sack hood in stained, grave-damp burlap (the plan's own is a bright straw colour), eyes glowing through it
+      var burlap = '#6e6a50', sk = u.named('skull');
+      u.find('head', function (n) { return n.mesh === 'box_bevel' && !n.name; }).forEach(function (n) { n.color = burlap; });
+      if (sk && sk.mesh) sk.color = burlap;
+      eyesGlow(u, PLAGUE, { z: m.headZ + m.headD * 0.6 + 0.008 * k, r: 0.03, slant: 0.2, socket: '#1a1a12' });
+      u.add('head', 'stitches', function () { return [geo.stitches([-m.headW * 0.25, m.headC - m.headH * 0.22, m.headZ + m.headD * 0.6], [m.headW * 0.25, m.headC - m.headH * 0.2, m.headZ + m.headD * 0.6], 5, 0.025 * k, '#2a2418')]; }, LOCAL);
+      u.add('chest', 'sores', function () {
+        return sores([[m.torsoW * 0.22, m.torsoH * 0.32, m.torsoD * 0.6, 0.05 * k], [-m.torsoW * 0.18, m.torsoH * 0.5, m.torsoD * 0.56, 0.04 * k], [m.torsoW * 0.05, m.torsoH * 0.15, m.torsoD * 0.62, 0.035 * k], [-m.torsoW * 0.36, m.torsoH * 0.8, -m.torsoD * 0.3, 0.035 * k]], PLAGUE, 21)
+          .concat([geo.cord(ring(m.neckR * 1.5, m.neckR * 1.5, m.neckY - 0.02 * k, 10), 0.024 * k, ROPE, 4, true), geo.cord([[0, m.neckY - 0.03 * k, -m.neckR * 1.5], [0.02 * k, m.torsoH * 0.6, -m.torsoD * 0.6], [0.04 * k, m.torsoH * 0.3, -m.torsoD * 0.62]], 0.02 * k, ROPE, 4)])
+          .concat(fan(3, -0.4, 0.4, function (a) { return geo.rod([m.torsoW * 0.42 + a * 0.05 * k, m.torsoH * 0.95, a * 0.06 * k], [m.torsoW * 0.5 + a * 0.06 * k, m.torsoH * 1.08, a * 0.08 * k], 0.01 * k, RUST, 0.006 * k, 4); }));
+      }, LOCAL);
+      u.add('hips', 'loin', function () { return ropeBelt(m, '#5a4a34', m.pelvisH * 0.46).concat([skirt(m, S.grade('#6a6248', AREA_GRADE.abbey), '#3a3424', 104, 0.3, 0.7)]); }, LOCAL);
+    }
+  });
+
+  // Weeping Sister: a veiled ghost nun in pale ivory and sage under a tattered veil.
+  look('hid_sister', {
+    area: 'abbey', colors: { main: '#c9d2be', alt: '#7f9a86', glow: '#eaffd0' }, grade: { sat: 0.8, amount: 0.05 }, paint: paintOf('abbey', { bottom: 0.7, top: 1.12 }), grow: null, scale: null,
+    dress: function (u, spec, k, m) {
+      if (!m) return;
+      u.add('chest', 'veil', function () { return [mantle(m, '#d8ddcc', '#8a9a8a', 111, 0.26, 0.74)]; }, LOCAL);
+    }
+  });
+
+  // Pox Gargoyle: the Act III roof gargoyle grown over with moss, glowing plague pustules on its back and shoulders.
+  from('a3_gargoyle', 'hid_gargoyle', {
+    area: 'abbey', colors: { main: '#6f7468', alt: '#46503a', glow: PLAGUE },
+    dress: function (u) {
+      u.add('chest', 'pox', function () { return sores([[0.12, 0.32, -0.12, 0.05], [-0.14, 0.3, -0.06, 0.045], [0.02, 0.36, -0.22, 0.04], [-0.06, 0.24, 0.1, 0.035]], PLAGUE, 31); }, LOCAL);
+    }
+  });
+
+  // The Plague Saint (boss): a tall, gaunt plague relic: faded gold mitre and vestments, a ragged ivory mantle with a
+  // gold-trimmed stole, glowing sores, a censer of green smoke on a chain at the hip. Halo, chains and staff stay.
+  bossLook('hid_saint', 'plague_saint', {
+    area: 'abbey', rig: 'humanoid', eyes: 'glow', glow: PLAGUE, eyeOpt: { r: 0.026, slant: 0.25, brow: '#3a3a2a' }, scale: { head: 1.04 },
+    dress: function (u, spec, k, m) {
+      var vest = S.grade('#c9c08a', AREA_GRADE.abbey), gold = S.grade(GOLD, AREA_GRADE.abbey), ivory = S.grade(IVORY, AREA_GRADE.abbey);
+      // a tall, cracked mitre in place of the plan's box one, with a plague-green gem and a burial veil down the back
+      u.drop('head', function (n) { return n.mesh === 'cyl8' || n.mesh === 'box_bevel' || n.mesh === 'prism3' || (n.mesh === 'box' && n.metal > 0); });
+      u.add('head', 'mitre', function () {
+        var hw = m.headW, hh = m.headH, hd = m.headD, y = m.headC + hh * 0.36, z = m.headZ - 0.008 * k;
+        var cap = geo.lathe([[hw * 0.56, 0], [hw * 0.62, hh * 0.45], [hw * 0.5, hh * 1.0], [hw * 0.22, hh * 1.4], [0, hh * 1.52]], 8, ivory);
+        g.scale(cap, 1, 1, hd / hw * 0.82); T(cap, 0, y, z);
+        var out = [cap, metal(T(g.cylinder({ r: hw * 0.6, h: 0.05 * k, sides: 10, color: gold }), 0, y + 0.02 * k, z), 0.5),
+          metal(T(geo.bevelBox({ w: 0.04 * k, h: hh * 1.1, d: 0.02 * k, b: 0.3, color: gold }), 0, y + hh * 0.62, z + hd * 0.4), 0.5),
+          glow(T(g.scale(g.sphere({ r: 1, detail: 1, color: PLAGUE }), 0.035 * k, 0.045 * k, 0.02 * k), 0, y + hh * 0.5, z + hd * 0.43), 1)];
+        var veil = geo.hem({ r: hw * 0.58, rBottom: hw * 0.8, rz: hd / hw * 0.9, h: hh * 1.1, sides: 9, teeth: 0.5, seed: 125, color: ivory, inner: S.shade(ivory, -0.45), arc: PI * 1.1, a0: PI * 0.45 });
+        out.push(T(veil, 0, y + 0.02 * k, z));
+        return out;
+      }, LOCAL);
+      u.add('chest', 'stole', function () {
+        var out = [mantle(m, S.grade(IVORY, AREA_GRADE.abbey), S.shade(IVORY, -0.45), 121, 0.24, 0.76)];
+        [1, -1].forEach(function (s) {
+          out.push(T(R(geo.tatter({ w: 0.08 * k, h: m.torsoH * 0.95, teeth: 2, depth: 0.25, seed: 122 + s, color: gold, bend: 0.05 }), 0, 0, s * 0.04), s * m.torsoW * 0.2, m.neckY - 0.04 * k, m.torsoD * 0.56));
+        });
+        return out.concat(sores([[m.torsoW * 0.3, m.torsoH * 0.6, m.torsoD * 0.55, 0.035 * k], [-m.torsoW * 0.05, m.torsoH * 0.35, m.torsoD * 0.58, 0.03 * k]], PLAGUE, 123));
+      }, LOCAL);
+      u.add('hips', 'censer', function () {
+        var x = -m.pelvisW * 0.6, y = -m.pelvisH * 0.3, out = [geo.cord([[x, m.pelvisH * 0.4, 0], [x - 0.02 * k, y + 0.12 * k, 0.02 * k], [x, y + 0.06 * k, 0.02 * k]], 0.008 * k, '#6a5a3a', 3)];
+        out.push(metal(T(geo.lathe([[0, 0], [0.06 * k, 0.01 * k], [0.07 * k, 0.06 * k], [0.04 * k, 0.1 * k], [0, 0.12 * k]], 7, gold), x, y - 0.06 * k, 0.02 * k), 0.6));
+        out.push(glow(T(geo.blob({ r: [0.04 * k, 0.03 * k, 0.04 * k], sides: 6, rings: 3, color: PLAGUE }), x, y + 0.01 * k, 0.02 * k), 0.8));
+        return out.concat([skirt(m, vest, S.shade(vest, -0.45), 124, 0.42, 0.45)]).concat(ropeBelt(m, gold, m.pelvisH * 0.46));
+      }, LOCAL);
+    }
+  });
+
+  // =========================================================================================== BONE FAIR
+  // The wrong carnival colours: magenta, sick teal, mustard and bone white; pink glow; everything a little too bright.
+  var PINK = '#ff8fd0', MAG = '#a8287a', TEAL = '#24a090', MUST = '#d6aa22';
+
+  // Bone Juggler: a skeleton jester: a pleated magenta and teal ruff, a two-pointed jester cap with bone bells,
+  // pink glowing eyes.
+  look('hid_juggler', {
+    area: 'fair', rig: 'humanoid', colors: { main: '#a8287a', alt: '#d6aa22', skin: '#e6dfcc', glow: PINK }, eyes: 'glow', eyeOpt: { r: 0.028, slant: 0.2, socket: '#1a0a16' },
+    dress: function (u, spec, k, m) {
+      u.drop('head', function (n) { return n.mesh === 'cyl12' || n.mesh === 'cyl8' || n.mesh === 'box_taper'; });    // the plain hat
+      u.add('chest', 'ruff', function () { return ruff(m, MAG, TEAL, 10, 131); }, LOCAL);
+      u.add('head', 'cap', function () {
+        var top = m.headC + m.headH * 0.42, out = [T(geo.blob({ r: [m.headW * 0.58, m.headH * 0.3, m.headD * 0.58], sides: 9, rings: 4, color: MAG }), 0, top, m.headZ)];
+        [1, -1].forEach(function (s) {
+          var tip = [s * m.headW * 0.95, top + m.headH * 0.2, m.headZ - m.headD * 0.1];
+          out.push(geo.spike([s * m.headW * 0.2, top + m.headH * 0.12, m.headZ], tip, m.headW * 0.22, s > 0 ? MAG : TEAL, s > 0 ? TEAL : MAG, 6));
+          out.push(T(g.scale(g.sphere({ r: 1, detail: 1, color: MUST }), 0.035 * k, 0.035 * k, 0.035 * k), tip[0], tip[1] - 0.03 * k, tip[2]));
+        });
+        return out;
+      }, LOCAL);
+      u.add('hips', 'belt', function () { return [skirt(m, TEAL, S.shade(TEAL, -0.5), 132, 0.22, 0.6)].concat(belt(m, '#3a2830', m.pelvisH * 0.44, MUST)); }, LOCAL);
+    }
+  });
+
+  // Stilt Strider: a lanky carnival stilt-walker: a striped tailcoat (open, ragged tails), a ruff, a tall crooked hat
+  // over its mask, pink-lit eyes.
+  look('hid_strider', {
+    area: 'fair', rig: 'humanoid', colors: { main: '#3a2f5a', alt: '#d6aa22', skin: '#d9c7b8', glow: PINK }, grow: { shin_r: [1.1, 1, 1.1], shin_l: [1.1, 1, 1.1], hand_r: [1.2, 1.15, 1.2], hand_l: [1.2, 1.15, 1.2] },
+    dress: function (u, spec, k, m) {
+      u.add('chest', 'ruff', function () { return ruff(m, '#ece2c8', MAG, 10, 141); }, LOCAL);
+      u.add('head', 'hat', function () {
+        var top = m.headC + m.headH * 0.46, hc = '#2a2040';
+        return [T(g.cylinder({ r: m.headW * 0.8, h: 0.03 * k, sides: 10, color: hc }), 0, top, m.headZ),
+          R(T(geo.lathe([[m.headW * 0.46, 0], [m.headW * 0.5, m.headH * 0.5], [m.headW * 0.42, m.headH * 1.0], [0, m.headH * 1.02]], 9, hc), 0, top, m.headZ), 0, 0, 0.12),
+          T(g.cylinder({ r: m.headW * 0.5, h: 0.04 * k, sides: 9, color: MAG }), 0.012 * k, top + 0.04 * k, m.headZ),
+          glow(T(g.scale(g.sphere({ r: 1, detail: 1, color: PINK }), 0.03 * k, 0.03 * k, 0.02 * k), m.headW * 0.42, top + 0.04 * k, m.headZ + m.headW * 0.25), 0.9)];
+      }, LOCAL);
+      u.add('hips', 'tails', function () { return [skirt(m, '#3a2f5a', '#1a1428', 142, 0.55, 0.45, true)].concat(belt(m, '#2a1e22', m.pelvisH * 0.44, MUST)); }, LOCAL);
+    }
+  });
+
+  // Rigged Prize: the cage trap painted in fairground mustard and red, with a few glowing bulbs.
+  look('hid_prize', { area: 'fair', colors: { main: '#d6aa22', alt: '#a8323a', metal: '#e6dfcc', glow: PINK }, paint: paintOf('fair', { bottom: 0.6, top: 1.16 }), grow: null, scale: null });
+
+  // Puppet Master: a masked shade in deep violet, a ruff, and a puppeteer's cross with strings hanging from each hand.
+  look('hid_puppeteer', {
+    area: 'fair', colors: { main: '#2c2440', alt: '#a8287a', glow: PINK }, grow: null, scale: null, paint: paintOf('fair', { bottom: 0.6, top: 1.12 }), fold: { hand_r: 'forearm_r', hand_l: 'forearm_l' },
+    dress: function (u, spec, k, m) {
+      if (!m) return;
+      u.add('chest', 'ruff', function () { return ruff(m, MAG, '#ece2c8', 10, 151); }, LOCAL);
+      ['hand_r', 'hand_l'].forEach(function (h, i) {
+        u.add(h, 'cross', function () {
+          var y = -0.12 * k, out = [geo.rod([-0.12 * k, y, 0], [0.12 * k, y, 0], 0.012 * k, '#3a2830', 0.012 * k, 4), geo.rod([0, y, -0.1 * k], [0, y, 0.1 * k], 0.012 * k, '#3a2830', 0.012 * k, 4)];
+          [[-0.12, 0], [0.12, 0], [0, -0.1], [0, 0.1]].forEach(function (p, j) { out.push(glow(geo.rod([p[0] * k, y, p[1] * k], [p[0] * k * 1.2, y - (0.45 + 0.08 * j) * k, p[1] * k * 1.2], 0.003 * k, PINK, 0.003 * k, 3), 0.7)); });
+          return out;
+        }, LOCAL);
+      });
+    }
+  });
+
+  // Bone Puppet: a little skeleton marionette: a ruff, a pointed cap, glowing strings rising from its head and wrists.
+  look('hid_puppet', {
+    area: 'fair', rig: 'humanoid', colors: { main: '#e6dfcc', alt: '#a8287a', skin: '#e6dfcc', glow: PINK }, eyes: 'glow', eyeOpt: { r: 0.03, slant: 0.1, socket: '#1a0a16' },
+    dress: function (u, spec, k, m) {
+      u.add('chest', 'ruff', function () { return ruff(m, TEAL, MAG, 8, 161); }, LOCAL);
+      u.add('head', 'string', function () { return [glow(geo.rod([0, m.headC + m.headH * 0.5, m.headZ], [0, m.headC + m.headH * 0.5 + 0.6 * k, m.headZ], 0.004 * k, PINK, 0.003 * k, 3), 0.7)]; }, LOCAL);
+    }
+  });
+
+  // Starved Fair Cat: a scrawny ginger stray with a spiked carnival collar and a little brass bell, pink eyes.
+  look('hid_cat', {
+    area: 'fair', colors: { main: '#b87a3a', alt: '#3a2f2a', glow: PINK }, paint: paintOf('fair', { rim: 0.12 }), scale: { head: 1.12 }, fold: { ear_l: 'head', ear_r: 'head' },
+    dress: function (u, spec) {
+      var q = quad('cat'); if (!q) return;
+      var hd = q.hd, fz = hd[2] * 0.3 + hd[2] * 0.5;
+      u.drop('head', function (n) { return n.mesh === 'box' && n.emissive > 0.5; });
+      u.add('head', 'eyes', function () { return [geo.eyes({ x: hd[0] * 0.28, y: hd[1] * 0.14, z: fz - 0.012, r: 0.024, color: PINK, slant: 0.45, socket: '#140a10' })]; }, LOCAL);
+      u.add('neck', 'collar', function () {
+        var r = q.nw * 0.62, y = q.nl * 0.3;
+        return [geo.cord(ring(r, r * 1.05, y, 12), 0.02, MAG, 4)].concat(fan(5, -1.6, 1.6, function (a) { return geo.spike([sin(a) * r, y, cos(a) * r], [sin(a) * (r + 0.06), y, cos(a) * (r + 0.06)], 0.012, '#c8c0b0', '#ece2c8', 4); }),
+          [metal(T(g.scale(g.sphere({ r: 1, detail: 1, color: MUST }), 0.03, 0.03, 0.03), 0, y - 0.04, r + 0.02), 0.7)]);
+      }, LOCAL);
+    }
+  });
+
+  // Fairground Strongman: a huge flesh brute in a striped singlet, a waxed moustache, a gold championship belt,
+  // leather wrist straps.
+  look('hid_strongman', {
+    area: 'fair', rig: 'brute', colors: { main: '#c98a7a', alt: '#a8287a', skin: '#d9a58a', metal: '#d6aa22', glow: PINK },
+    dress: function (u, spec, k, m) {
+      if (!m) return;
+      u.add('chest', 'singlet', function () {
+        var out = [];
+        [0.25, 0.5, 0.75].forEach(function (t, i) { out.push(geo.cord(ring(m.torsoW * 0.52, m.torsoD * 0.56, m.torsoH * t, 14), 0.03 * k, i % 2 ? '#ece2c8' : MAG, 4)); });
+        return out;
+      }, LOCAL);
+      u.add('head', 'moustache', function () {
+        return [1, -1].map(function (s) { return geo.spike([s * 0.02 * k, m.headC - m.headH * 0.12, m.faceZ + 0.01 * k], [s * m.headW * 0.5, m.headC - m.headH * 0.02, m.faceZ - 0.01 * k], 0.022 * k, '#2a1a14', '#3a2a1a', 4); });
+      }, LOCAL);
+      u.add('hips', 'belt', function () { return belt(m, '#3a2420', m.pelvisH * 0.5, MUST, true); }, LOCAL);
+      ['forearm_r', 'forearm_l'].forEach(function (f) { u.add(f, 'strap', function () { return [T(g.torus({ R: m.armR * 1.2, r: 0.025 * k, seg: 10, sides: 4, color: LEATHER }), 0, -0.25 * k, 0)]; }, LOCAL); });
+    }
+  });
+
+  // The Barker (boss): the ringmaster: a battered top hat with a magenta band and a glowing pink flower, a ruff,
+  // gold-buttoned tailcoat with ragged tails, a moustache over the beard. Whip and lantern stay.
+  bossLook('hid_barker', 'the_barker', {
+    area: 'fair', rig: 'humanoid', eyes: 'glow', glow: PINK, eyeOpt: { r: 0.026, slant: 0.3, brow: '#2a1a20' },
+    dress: function (u, spec, k, m) {
+      u.drop('head', function (n) { return n.mesh === 'cyl12' || n.mesh === 'cyl8' || n.mesh === 'box_taper'; });
+      u.add('head', 'tophat', function () {
+        var top = m.headC + m.headH * 0.44, hc = '#241a26';
+        return [T(g.cylinder({ r: m.headW * 0.85, h: 0.03 * k, sides: 12, color: hc }), 0, top, m.headZ),
+          R(T(geo.lathe([[m.headW * 0.5, 0], [m.headW * 0.47, m.headH * 0.5], [m.headW * 0.56, m.headH * 1.1], [0, m.headH * 1.12]], 10, hc), 0, top, m.headZ), -0.06, 0, -0.06),
+          T(g.cylinder({ r: m.headW * 0.51, h: 0.06 * k, sides: 10, color: MAG }), 0, top + 0.05 * k, m.headZ),
+          glow(T(geo.blob({ r: [0.05 * k, 0.04 * k, 0.03 * k], sides: 6, rings: 3, lump: 0.3, seed: 171, color: PINK }), m.headW * 0.46, top + 0.07 * k, m.headZ + m.headW * 0.2), 0.9)];
+      }, LOCAL);
+      u.add('chest', 'coat', function () {
+        var out = ruff(m, '#ece2c8', MAG, 12, 172);
+        fan(4, 0.2, 0.8, function (t) { out.push(metal(T(g.scale(g.sphere({ r: 1, detail: 1, color: MUST }), 0.022 * k, 0.022 * k, 0.012 * k), m.torsoW * 0.12, m.torsoH * t, m.torsoD * 0.55), 0.7)); });
+        return out;
+      }, LOCAL);
+      u.add('hips', 'tails', function () { return [skirt(m, S.grade('#a8323a', AREA_GRADE.fair), '#3a1418', 173, 0.62, 0.4, true)].concat(belt(m, '#2a1a1a', m.pelvisH * 0.44, MUST)); }, LOCAL);
+    }
+  });
+
+  // =========================================================================================== WAR CAMP
+  // Oxblood, soot black, ochre, mud brown, iron; ember glow; soot war paint.
+  var EMBER = '#ff7a3a', OXBLOOD = '#7a1e1a', SOOT = '#1a1416', OCHRE = '#a8702a';
+
+  // The camp orcs (Warband Breaker, War Drummer, Warg Handler, Javelin Tosser): heavy-set, olive skin, ember eyes,
+  // soot war paint, a fur mantle (or an oxblood scarf), a belt with an iron buckle and a pouch; each keeps its own head,
+  // weapon and extras from the data.
+  look('hid_orc', {
+    area: 'camp', rig: 'humanoid', colors: { glow: EMBER }, eyes: 'glow', eyeOpt: { r: 0.026, slant: 0.45, brow: '#2a2a1a' },
+    dress: function (u, spec, k, m) {
+      var main = col(spec, 'main', '#5a4a3a'), fur = S.grade(S.mix(main, '#5a4a3a', 0.5), AREA_GRADE.camp), heavy = spec.build === 'heavy';
+      u.add('head', 'paint', function () { return warPaint(m, SOOT, OXBLOOD); }, LOCAL);
+      u.add('chest', 'mantle', function () {
+        if (heavy) return furMantle(m, fur, 181);
+        return [mantle(m, S.grade(OXBLOOD, AREA_GRADE.camp), '#3a1010', 182, 0.12, 0.5)];
+      }, LOCAL);
+      u.add('hips', 'belt', function () { return belt(m, LEATHER, m.pelvisH * 0.44, IRON).concat(pouch(m, '#5a4430', -1, 183)); }, LOCAL);
+    }
+  });
+
+  // Camp Warg: the Farm Village wolf as a war beast: soot-brown fur, ember eyes, a spiked iron collar and a chain.
+  from('grim_wolf', 'hid_warg', {
+    area: 'camp', colors: { main: '#5a4a40', alt: '#2f2a26', glow: '#ffb347' }, skip: ['noose'],
+    dress: function (u) {
+      var q = quad('wolf'); if (!q) return;
+      u.add('neck', 'collar', function () {
+        var r = q.nw * 0.62, y = q.nl * 0.3;
+        return [metal(geo.cord(ring(r, r * 1.05, y, 12), 0.03, IRON, 4), 0.5)].concat(fan(6, -2.2, 2.2, function (a) { return metal(geo.spike([sin(a) * r, y, cos(a) * r], [sin(a) * (r + 0.09), y + 0.01, cos(a) * (r + 0.09)], 0.016, '#6a6a70', '#a8a8b0', 4), 0.6); }),
+          [metal(geo.cord([[0, y - 0.02, r], [0.02, y - 0.12, r + 0.04], [0.03, y - 0.22, r + 0.02]], 0.014, IRON, 3, true), 0.5)]);
+      }, LOCAL);
+    }
+  });
+
+  // Trophy Taker (elite): a big orc in bone armour under a skull helm: ember eyes, soot paint, a fur mantle, a belt
+  // hung with skull trophies on cords, an oxblood loin rag.
+  look('hid_trophy', {
+    area: 'camp', rig: 'humanoid', colors: { glow: '#ff5a3a' }, eyes: 'glow', glow: '#ff5a3a', eyeOpt: { r: 0.026, slant: 0.5 },
+    dress: function (u, spec, k, m) {
+      u.add('chest', 'mantle', function () { return furMantle(m, S.grade('#4a3a2c', AREA_GRADE.camp), 191); }, LOCAL);
+      u.add('hips', 'trophies', function () {
+        var out = belt(m, LEATHER, m.pelvisH * 0.44, IRON).concat([skirt(m, S.grade(OXBLOOD, AREA_GRADE.camp), '#2a0e0c', 192, 0.3, 0.7)]);
+        fan(3, -0.9, 0.9, function (a, i) {
+          var x = sin(a + PI) * m.pelvisW * 0.6, z = cos(a + PI) * m.pelvisD * 0.66, y = m.pelvisH * 0.44;
+          out.push(geo.charm({ cord: [x, y, z], at: [x * 1.05, y - (0.16 + 0.04 * i) * k, z * 1.08], kind: 'skull', r: 0.05 * k, color: BONE }));
+        });
+        return out;
+      }, LOCAL);
+    }
+  });
+
+  // Warlord Drog (boss): the ogre warlord: ember eyes, soot war paint, a fur mantle, a war belt with a skull boss and
+  // hanging trophies, an oxblood war skirt. Horns, plate, spikes and the cage on his back stay.
+  bossLook('hid_drog', 'warlord_drog', {
+    area: 'camp', rig: 'brute', eyes: 'glow', glow: '#ff5a3a', eyeOpt: { r: 0.022, slant: 0.5, brow: '#2a2a1a' },
+    dress: function (u, spec, k, m) {
+      if (!m) return;
+      u.add('head', 'paint', function () { return warPaint(m, SOOT, OXBLOOD); }, LOCAL);
+      u.add('chest', 'mantle', function () { return furMantle(m, S.grade('#4a3a2c', AREA_GRADE.camp), 201); }, LOCAL);
+      u.add('hips', 'warbelt', function () {
+        var y = m.pelvisH * 0.48, out = belt(m, '#2e2018', y, IRON, true).concat([skirt(m, S.grade(OXBLOOD, AREA_GRADE.camp), '#2a0e0c', 202, 0.34, 0.6)]);
+        out.push(geo.skull({ at: [0, y, m.pelvisD * 0.66 + 0.04 * k], r: 0.06 * k, color: BONE }));
+        [1, -1].forEach(function (s) { var x = s * m.pelvisW * 0.5, z = m.pelvisD * 0.5; out.push(geo.charm({ cord: [x, y, z], at: [x * 1.06, y - 0.2 * k, z * 1.1], kind: s > 0 ? 'skull' : 'bone', r: 0.05 * k, color: BONE })); });
+        return out;
+      }, LOCAL);
+    }
+  });
+
+  // =========================================================================================== ROAMING BOSSES + NEMESIS
+  // Grave violet and ash: their boss looks keep every part (masks, ribs, lanterns, brambles, the gibbet, the trophy
+  // rack and every glow); colours are graded and painted, with a few painted extras.
+  bossLook('hid_rider', 'pale_rider', { area: 'roam', grow: null, scale: null, lookGrade: 0.7, paint: paintOf('roam', { bottom: 0.6, top: 1.1, rim: 0.18 }) });
+  bossLook('hid_witch', 'blackbriar_witch', {
+    area: 'roam', rig: 'humanoid', eyes: 'glow', glow: '#c94a7a', eyeOpt: { r: 0.024, slant: 0.4 },
+    dress: function (u, spec, k, m) {
+      u.add('hips', 'rags', function () { return [skirt(m, S.grade('#231f2a', AREA_GRADE.roam), '#100c14', 211, 0.5, 0.7)]; }, LOCAL);
+      u.add('chest', 'shawl', function () { return [mantle(m, S.grade('#3a1a2a', AREA_GRADE.roam), '#1a0a12', 212, 0.24, 0.72)]; }, LOCAL);
+    }
+  });
+  bossLook('hid_knight', 'carrion_knight', {
+    area: 'roam', rig: 'humanoid', eyes: false,
+    dress: function (u, spec, k, m) {
+      u.add('chest', 'cape', function () {
+        var cape = S.grade('#3a1418', AREA_GRADE.roam);
+        return [T(R(geo.tatter({ w: m.torsoW * 1.1, h: m.torsoH * 1.5, teeth: 5, depth: 0.35, seed: 221, color: cape, inner: '#1a0a0c', bend: -0.12 }), 0.12, 0, 0), 0, m.torsoH * 0.96, -m.torsoD * 0.56)];
+      }, LOCAL);
+    }
+  });
+  bossLook('hid_hunter', 'hollow_hunter', {
+    area: 'roam', rig: 'humanoid', eyes: false,
+    dress: function (u, spec, k, m) {
+      u.add('chest', 'cloak', function () { return [mantle(m, S.grade('#2a1f33', AREA_GRADE.roam), '#120c18', 231, 0.3, 0.74)]; }, LOCAL);
+      u.add('hips', 'tails', function () { return [skirt(m, S.grade('#2a1f33', AREA_GRADE.roam), '#120c18', 232, 0.4, 0.6, true)]; }, LOCAL);
+    }
+  });
+  look('hid_briar', { area: 'roam', colors: { main: '#2f3a2a', alt: '#6a1f3a', glow: '#c94a7a' }, grow: null, scale: null });
+  from('grim_crow', 'hid_crow', { area: 'roam', colors: { main: '#1f1c22', alt: '#4a3f52', glow: '#ff5a5a' } });
+
+  // =========================================================================================== enemy id -> recipe
+  var BY_ID = S.HIDDEN_BY_ID = {
+    abbey_rat: 'hid_rat', miasma_monk: 'hid_monk', bloated_penitent: 'hid_penitent', weeping_sister: 'hid_sister', pox_gargoyle: 'hid_gargoyle',
+    bone_juggler: 'hid_juggler', stilt_strider: 'hid_strider', rigged_prize: 'hid_prize', puppet_master: 'hid_puppeteer', bone_puppet: 'hid_puppet', fair_beast: 'hid_cat', fair_strongman: 'hid_strongman',
+    warband_breaker: 'hid_orc', war_drummer: 'hid_orc', warg_handler: 'hid_orc', javelin_tosser: 'hid_orc', camp_warg: 'hid_warg', trophy_taker: 'hid_trophy',
+    briar_growth: 'hid_briar', gallows_crow: 'hid_crow'
+  };
+  /** Give the hidden bodies their recipe (only when the data has no style of its own). */
+  S.hiddenAssign = function () {
+    var E = KD.data && KD.data.enemies, n = 0;
+    if (!E) return 0;
+    for (var id in BY_ID) { var d = E[id]; if (d && d.body && !d.body.style && S.RECIPES[BY_ID[id]]) { d.body.style = BY_ID[id]; n++; } }
+    return n;
+  };
+  S.hiddenAssign();
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -96743,6 +97460,818 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/audio/20_music_w8.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var A = KD.audio = KD.audio || {};
+  var MU = A.musicgen = A.musicgen || {};
+
+  /**
+   * [w8 music] Adaptive score. Replaces the music player of src/audio/20_music.js (kept as "Classic", see setStyle)
+   * with hand-written themes that play in layers on one clock:
+   *
+   *   theme (per act, hidden areas, camp, menu, lament)      composed phrase by phrase: intro, A, A2, B, rest, breath
+   *     stem 'base'  drone (continuous), plucked accompaniment, choir pad, bells        always on
+   *     stem 'lead'  the melody (flute, lute, solo voice, bells), silent in rest phrases  dims in fights
+   *     stem 'c'     combat: frame drums, low string ostinato, choir                     fades in at intensity 1
+   *     stem 'b'     boss: war drums, double-time strings, horn swells                   fades in at intensity 2
+   *   stings: 'victory' and 'death' play over (or before) the theme that follows.
+   *
+   * Moods (the KD.audio.music.play API is unchanged): explore_act1..4, explore_hidden, menu, camp change the THEME
+   * (crossfade); combat / boss only raise the INTENSITY of the theme that is playing (no restart, no crossfade);
+   * victory and death play a sting. Legacy names (explore_outskirts, explore_city, explore_castle) are aliases.
+   * Stems that are silent are not scheduled at all, and nothing is scheduled while the music volume is 0 (CPU).
+   * Phones (quality 'low'): fewer oscillators per choir note and drone, ornaments dropped.
+   * Docs: docs/AUDIO.md section 5b. Tests: node tools/test.js music_w8. Lab: tools/audio_lab.py --music ...
+   */
+  var SC = A.score = A.score || {};
+  var LEVEL = 0.34;                      // overall music level (same as the classic player)
+  var STEM_GAIN = { base: [1, 0.78, 0.62], lead: [1, 0.42, 0.22], c: [0, 1, 1], b: [0, 0, 1], x: [1, 1, 1] };
+  var TAU_UP = 0.45, TAU_DOWN = 1.3;      // stem fade time constants (in about 1.5 s, out about 4.5 s)
+  var SCALES = {
+    ionian: [0, 2, 4, 5, 7, 9, 11], dorian: [0, 2, 3, 5, 7, 9, 10], phrygian: [0, 1, 3, 5, 7, 8, 10],
+    mixolydian: [0, 2, 4, 5, 7, 9, 10], aeolian: [0, 2, 3, 5, 7, 8, 10], locrian: [0, 1, 3, 5, 6, 8, 10]
+  };
+  var CELLS = {
+    6: { sparse: [[6], [4, 2], [3, 3], [-1, 5]], medium: [[2, 1, 3], [3, 1, 2], [2, 2, 2], [3, 2, 1], [-1, 2, 3]], dense: [[1, 1, 1, 3], [2, 1, 1, 2], [3, 1, 1, 1]], strong: [0, 3] },
+    8: { sparse: [[8], [4, 4], [6, 2], [-2, 6]], medium: [[3, 1, 4], [2, 2, 4], [4, 2, 2], [3, 3, 2], [-2, 2, 4]], dense: [[2, 1, 1, 4], [1, 1, 2, 2, 2], [2, 2, 1, 1, 2]], strong: [0, 4] }
+  };
+  function fill(main, steps) {
+    var out = main.filter(function (h) { return h[0] < steps - 2; });
+    return out.concat([[steps - 2, 'tak', 0.6], [steps - 1.5, 'tak', 0.65], [steps - 1, 'tak', 0.75], [steps - 0.5, 'tak', 0.85]]);
+  }
+
+  /**
+   * Themes. root: tonic MIDI note; steps: eighth-note steps per bar (6 = 6/8 or 3/4, 8 = 4/4); step: seconds per step.
+   * motif: the theme's own two bars, [step, length, scale degree] (hand-written: it is what the player learns to
+   * recognise). progs: 4-bar chord progressions (scale degrees; progs[0] carries the A phrases). forms: phrase plans
+   * of one cycle (the first one is played first, later cycles pick at random). leads: lead instrument per cycle.
+   */
+  var THEMES = SC.THEMES = {
+    act1: {
+      desc: 'Rural folk, dark: D Dorian in 6/8. Wooden flute and lute over a hurdy-gurdy drone, soft "oo" choir.',
+      root: 50, scale: 'dorian', steps: 6, step: 0.27, leadOct: 1, accOct: -1, density: 0.45,
+      motif: [[[0, 2, 0], [2, 1, 2], [3, 2, 4], [5, 1, 3]], [[0, 3, 2], [3, 1, 1], [4, 2, 0]]],
+      progs: [[0, 6, 3, 0], [0, 3, 6, 4], [5, 6, 3, 0], [3, 0, 6, 0], [0, 6, 5, 6]],
+      forms: [['intro', 'A', 'A2', 'rest', 'B', 'A2', 'breath'], ['A', 'rest', 'B', 'A2', 'breath'], ['intro', 'A2', 'B', 'rest', 'A', 'breath']],
+      leads: ['flute', 'lute', 'flute', 'both'], answer: 'lute',
+      acc: { inst: 'lute', full: [[0, 0, 0.9], [2, 1, 0.5], [3, 2, 0.6], [5, 1, 0.45]], thin: [[0, 0, 0.8], [3, 1, 0.42]] },
+      drone: { vel: 0.42, fifth: true }, pad: { vel: 0.2, every: 2, kinds: { intro: 1, rest: 1, breath: 1, B: 1 } }, vowel: 'u',
+      combat: { drums: [[0, 'dum', 1], [2, 'ka', 0.4], [3, 'tak', 0.75], [4, 'ka', 0.35], [5, 'tak', 0.55]], ost: [1, 0.45, 0.6, 0.9, 0.45, 0.6], pad: 0.3 },
+      boss: { drums: [[0, 'boom', 1], [3, 'boom', 0.75], [4.5, 'tak', 0.55], [5, 'tak', 0.65]], horn: 0.55 },
+      room: 0.34, fade: 3
+    },
+    act2: {
+      desc: 'Cold mountains: E Aeolian, slow 4/4. Harp with a long echo, glassy bells, low flute, wind-like choir, deep drone.',
+      root: 52, scale: 'aeolian', steps: 8, step: 0.34, leadOct: 1, accOct: -1, density: 0.3,
+      motif: [[[0, 4, 4], [4, 2, 3], [6, 2, 4]], [[0, 3, 7], [3, 1, 6], [4, 4, 4]]],
+      progs: [[0, 5, 2, 6], [0, 3, 5, 4], [5, 3, 0, 6], [0, 6, 5, 0], [3, 5, 6, 0]],
+      forms: [['intro', 'A', 'rest', 'A2', 'breath', 'B', 'rest'], ['A', 'breath', 'B', 'A2', 'rest'], ['intro', 'A2', 'rest', 'B', 'breath']],
+      leads: ['flute', 'bell', 'flute', 'voice'], answer: 'bell',
+      acc: { inst: 'harp', oct: 1, full: [[0, 0, 0.8], [2, 2, 0.5], [3, 3, 0.45], [5, 4, 0.4]], thin: [[0, 0, 0.7], [4, 2, 0.4]] },
+      drone: { vel: 0.38, fifth: true, sub: 0.5 }, pad: { vel: 0.26, every: 2, kinds: { intro: 1, A: 1, A2: 1, rest: 1, breath: 1, B: 1 } }, vowel: 'u',
+      bell: { every: 4, deg: 4, oct: 2, vel: 0.32, ratio: 3.51 }, echo: { time: 0.51, fb: 0.42, send: 0.45 },
+      combat: { drums: [[0, 'dum', 1], [3, 'dum', 0.7], [4, 'tak', 0.7], [6, 'dum', 0.8], [7, 'ka', 0.45]], ost: [1, 0.4, 0.55, 0.4, 0.9, 0.4, 0.55, 0.5], pad: 0.32 },
+      boss: { drums: [[0, 'boom', 1], [3, 'boom', 0.7], [4, 'boom', 0.85], [6, 'tak', 0.6], [7, 'tak', 0.7]], horn: 0.55 },
+      room: 0.42, fade: 3.5
+    },
+    act3: {
+      desc: 'The city: A Dorian, 4/4. A busy lute line, plucked bass, a far tower bell, light tambourine.',
+      root: 57, scale: 'dorian', steps: 8, step: 0.26, leadOct: 1, accOct: -1, density: 0.55,
+      motif: [[[0, 1, 0], [1, 1, 2], [2, 2, 4], [4, 1, 3], [5, 1, 2], [6, 2, 3]], [[0, 2, 4], [2, 2, 1], [4, 3, 2], [7, 1, 0]]],
+      progs: [[0, 6, 3, 0], [0, 3, 4, 0], [5, 6, 0, 4], [3, 6, 0, 0], [0, 2, 3, 4]],
+      forms: [['A', 'A2', 'rest', 'B', 'A2', 'breath'], ['intro', 'A', 'B', 'rest', 'A2', 'breath'], ['A2', 'rest', 'B', 'A', 'breath']],
+      leads: ['lute', 'flute', 'lute', 'both'], answer: 'bell',
+      acc: { inst: 'lute', full: [[0, 0, 0.85], [2, 2, 0.45], [3, 3, 0.5], [4, 1, 0.65], [6, 2, 0.45], [7, 3, 0.4]], thin: [[0, 0, 0.8], [4, 1, 0.55]] },
+      drone: { vel: 0.26, fifth: true }, calmDrums: [[0, 'jingle', 0.22], [4, 'jingle', 0.18]], vowel: 'o',
+      bell: { every: 8, deg: 0, oct: 1, vel: 0.36, ratio: 2.4 },
+      combat: { drums: [[0, 'dum', 1], [0, 'jingle', 0.3], [2, 'ka', 0.4], [3, 'tak', 0.7], [4, 'dum', 0.8], [5, 'ka', 0.4], [6, 'tak', 0.75], [6, 'jingle', 0.3], [7, 'ka', 0.45]], ost: [1, 0.45, 0.6, 0.45, 0.9, 0.45, 0.6, 0.5], pad: 0.26 },
+      boss: { drums: [[0, 'boom', 1], [1.5, 'tak', 0.5], [3, 'boom', 0.8], [4.5, 'tak', 0.5], [6, 'boom', 0.9], [7, 'tak', 0.7]], horn: 0.55 },
+      room: 0.3, fade: 3
+    },
+    act4: {
+      desc: 'The castle: C Phrygian in a slow 3/4. Low "ah" choir, organ-like drone, a tolling bell, sparse harp.',
+      root: 48, scale: 'phrygian', steps: 6, step: 0.38, leadOct: 1, accOct: -1, density: 0.3,
+      motif: [[[0, 4, 0], [4, 2, 1]], [[0, 2, 2], [2, 2, 1], [4, 2, -1]]],
+      progs: [[0, 1, 6, 0], [0, 5, 1, 0], [3, 1, 0, 6], [5, 1, 6, 0], [0, 6, 5, 1]],
+      forms: [['intro', 'A', 'rest', 'A2', 'B', 'breath'], ['A', 'breath', 'B', 'A2', 'rest'], ['intro', 'A2', 'rest', 'B', 'A', 'breath']],
+      leads: ['voice', 'flute', 'voice', 'lute'], answer: 'bell',
+      acc: { inst: 'harp', oct: 1, full: [[0, 0, 0.75], [2, 1, 0.45], [4, 2, 0.45]], thin: [[0, 0, 0.7]] },
+      drone: { vel: 0.5, fifth: true, sub: 0.6 }, pad: { vel: 0.3, every: 1, kinds: { intro: 1, A: 1, A2: 1, rest: 1, breath: 1, B: 1 } }, vowel: 'a',
+      bell: { every: 4, deg: 0, oct: 0, vel: 0.42, ratio: 1.41 },
+      combat: { drums: [[0, 'boom', 0.8], [2, 'tak', 0.6], [3, 'dum', 0.8], [4, 'tak', 0.55], [5, 'ka', 0.45]], ost: [1, 0.45, 0.6, 0.9, 0.45, 0.6], pad: 0.22 },
+      boss: { drums: [[0, 'boom', 1], [1, 'tak', 0.5], [2, 'boom', 0.75], [3, 'boom', 0.9], [4.5, 'tak', 0.6], [5, 'tak', 0.75]], horn: 0.65 },
+      room: 0.45, fade: 3.5
+    },
+    hidden: {
+      desc: 'Hidden places, eerie: B Locrian, very slow. Glassy bell fragments, clustered choir, beating drone, rising swells.',
+      root: 47, scale: 'locrian', steps: 8, step: 0.42, leadOct: 1, accOct: -1, density: 0.2,
+      motif: [[[0, 6, 4], [6, 2, 3]], [[0, 8, 1]]],
+      progs: [[0, 4, 0, 1], [0, 1, 0, 4], [5, 4, 1, 0], [0, 3, 4, 0]],
+      forms: [['intro', 'A', 'breath', 'rest', 'A2', 'breath'], ['breath', 'A', 'rest', 'B', 'breath'], ['intro', 'rest', 'A2', 'breath', 'B']],
+      leads: ['bell', 'voice', 'bell', 'flute'], answer: 'bell',
+      acc: { inst: 'harp', oct: 1, full: [[0, 0, 0.6], [3, 2, 0.35], [6, 1, 0.3]], thin: [[0, 0, 0.5]] },
+      drone: { vel: 0.46, fifth: false, sub: 0.6, beat: 9 }, pad: { vel: 0.24, every: 2, cluster: true, kinds: { intro: 1, A: 1, A2: 1, rest: 1, breath: 1, B: 1 } }, vowel: 'u',
+      swell: { every: 8, vel: 0.28 }, echo: { time: 0.63, fb: 0.45, send: 0.5 },
+      combat: { drums: [[0, 'boom', 0.85], [3, 'ka', 0.45], [5, 'tak', 0.55], [6, 'dum', 0.7]], ost: [1, 0, 0.5, 0, 0.85, 0, 0.5, 0.4], pad: 0.3 },
+      boss: { drums: [[0, 'boom', 1], [2, 'tak', 0.5], [4, 'boom', 0.85], [6, 'tak', 0.6], [7, 'tak', 0.7]], horn: 0.55 },
+      room: 0.5, fade: 4
+    },
+    camp: {
+      desc: 'Camp: warm G Mixolydian lute in 6/8, the flute joins later, a soft drone. No drums.',
+      root: 55, scale: 'mixolydian', steps: 6, step: 0.3, leadOct: 1, accOct: -1, density: 0.4,
+      motif: [[[0, 2, 4], [2, 1, 5], [3, 3, 6]], [[0, 2, 4], [2, 1, 2], [3, 3, 0]]],
+      progs: [[0, 6, 3, 0], [0, 3, 0, 4], [3, 0, 6, 0]],
+      forms: [['A', 'A2', 'rest', 'B', 'A2', 'breath'], ['A2', 'rest', 'A', 'breath']],
+      leads: ['lute', 'flute', 'lute', 'both'], answer: 'lute',
+      acc: { inst: 'lute', full: [[0, 0, 0.85], [2, 2, 0.5], [3, 1, 0.6], [5, 3, 0.45]], thin: [[0, 0, 0.75], [3, 1, 0.45]] },
+      drone: { vel: 0.3, fifth: true }, vowel: 'o', room: 0.3, fade: 2.5
+    },
+    menu: {
+      desc: 'Title theme: D Aeolian in 3/4. Choir and harp, the flute sings the Kingdom theme, a low bell.',
+      root: 50, scale: 'aeolian', steps: 6, step: 0.4, leadOct: 1, accOct: -1, density: 0.35,
+      motif: [[[0, 3, 4], [3, 1, 3], [4, 2, 2]], [[0, 2, 1], [2, 1, 2], [3, 3, 0]]],
+      progs: [[0, 5, 6, 0], [0, 3, 6, 4], [5, 6, 0, 4], [3, 5, 6, 0]],
+      forms: [['intro', 'A', 'A2', 'rest', 'B', 'A2', 'breath'], ['A', 'rest', 'B', 'A2', 'breath']],
+      leads: ['flute', 'voice', 'flute', 'both'], answer: 'bell',
+      acc: { inst: 'harp', oct: 1, full: [[0, 0, 0.75], [2, 1, 0.45], [3, 2, 0.5], [4, 3, 0.4]], thin: [[0, 0, 0.7], [3, 1, 0.4]] },
+      drone: { vel: 0.36, fifth: true }, pad: { vel: 0.26, every: 2, kinds: { intro: 1, A: 1, A2: 1, rest: 1, breath: 1, B: 1 } }, vowel: 'a',
+      bell: { every: 8, deg: 0, oct: 0, vel: 0.36, ratio: 1.41 },
+      room: 0.4, fade: 2.5
+    },
+    lament: {
+      desc: 'After a death: A Aeolian lament, very slow. Drone, a tolling bell, a few harp notes, a low flute now and then.',
+      root: 57, scale: 'aeolian', steps: 6, step: 0.52, leadOct: 0, accOct: -1, density: 0.15,
+      motif: [[[0, 6, 4]], [[0, 3, 3], [3, 3, 2]]],
+      progs: [[0, 5, 3, 0], [0, 3, 4, 0], [5, 3, 4, 0]],
+      forms: [['intro', 'A', 'breath', 'rest', 'A2', 'breath']],
+      leads: ['flute', 'voice'], answer: 'harp',
+      acc: { inst: 'harp', oct: 1, full: [[0, 0, 0.6], [3, 2, 0.35]], thin: [[0, 0, 0.5]] },
+      drone: { vel: 0.4, fifth: true, sub: 0.4 }, pad: { vel: 0.2, every: 2, kinds: { intro: 1, rest: 1, breath: 1 } }, vowel: 'o',
+      bell: { every: 2, deg: 0, oct: 0, vel: 0.34, ratio: 1.41 }, room: 0.45, fade: 3
+    },
+    sting_victory: {
+      desc: 'Victory sting: drum roll, strummed lute and bells into a D major choir chord.', once: true, vowel: 'a', room: 0.35, root: 50, scale: 'ionian', steps: 8, step: 0.25,
+      sting: function (ev) {
+        var D = [50, 54, 57, 62], Aa = [45, 52, 57, 61], i;
+        for (i = 0; i < 6; i++) ev('tak', i * 0.09, 0, 0, 0.35 + i * 0.09);
+        ev('boom', 0.56, 0, 0, 0.9); ev('dum', 0.56, 0, 0, 0.8);
+        for (i = 0; i < 4; i++) ev('lute', 0.56 + i * 0.024, 2.2, D[i] + 12, 0.75 - i * 0.05);
+        ev('bell', 0.56, 3, 74, 0.45, { ratio: 3.51 }); ev('bell', 0.74, 3, 78, 0.38, { ratio: 3.51 }); ev('bell', 0.92, 3, 81, 0.34, { ratio: 3.51 });
+        for (i = 0; i < 4; i++) ev('lute', 1.48 + i * 0.024, 1.4, Aa[i] + 12, 0.6 - i * 0.05);
+        ev('dum', 1.48, 0, 0, 0.6); ev('tak', 1.94, 0, 0, 0.6); ev('tak', 2.06, 0, 0, 0.7);
+        ev('boom', 2.2, 0, 0, 0.85); ev('dum', 2.2, 0, 0, 0.85);
+        for (i = 0; i < 4; i++) ev('lute', 2.2 + i * 0.026, 3, D[i] + 12, 0.8 - i * 0.05);
+        ev('bell', 2.2, 4, 86, 0.4, { ratio: 3.51 });
+        [50, 54, 57, 62].forEach(function (m) { ev('choir', 2.2, 2.6, m, 0.5, { a: 0.35 }); });
+        ev('flute', 2.2, 2.2, 66, 0.6);
+      }
+    },
+    sting_death: {
+      desc: 'Death sting: a low boom, a falling "oo" choir and a tolling bell.', once: true, vowel: 'o', room: 0.45, root: 45, scale: 'aeolian', steps: 6, step: 0.5,
+      sting: function (ev) {
+        ev('boom', 0, 0, 0, 1); ev('bell', 0.02, 5, 45, 0.55, { ratio: 1.41 });
+        [57, 60, 64].forEach(function (m) { ev('choir', 0.1, 3.4, m, 0.55, { a: 0.6, glide: -1 }); });
+        ev('str', 0.02, 3.8, 45, 0.6, { long: true });
+        ev('bell', 1.7, 4, 45, 0.42, { ratio: 1.41 }); ev('bell', 3.4, 4, 45, 0.32, { ratio: 1.41 });
+        ev('flute', 1.0, 0.9, 64, 0.5); ev('flute', 1.95, 0.9, 62, 0.45); ev('flute', 2.9, 1.8, 60, 0.42);
+      }
+    }
+  };
+
+  /** Mood -> what it does. theme: change theme; level: intensity; sting: play a sting first. */
+  var MOODS = SC.MOODS = {
+    menu: { theme: 'menu' }, camp: { theme: 'camp' },
+    explore_act1: { theme: 'act1', explore: true }, explore_act2: { theme: 'act2', explore: true }, explore_act3: { theme: 'act3', explore: true },
+    explore_act4: { theme: 'act4', explore: true }, explore_hidden: { theme: 'hidden', explore: true },
+    explore_outskirts: { theme: 'act1', explore: true }, explore_city: { theme: 'act3', explore: true }, explore_castle: { theme: 'act4', explore: true },
+    combat: { level: 1 }, boss: { level: 2 },
+    victory: { sting: 'victory', after: 2.4 }, death: { sting: 'death', theme: 'lament', after: 3.2 }
+  };
+  // register the new mood names so KD.audio.music.play accepts them (the classic table keeps its own entries)
+  if (MU.MOODS) {
+    ['act1', 'act2', 'act3', 'act4', 'hidden'].forEach(function (k) {
+      var name = 'explore_' + k;
+      if (!MU.MOODS[name]) MU.MOODS[name] = { score: true, desc: THEMES[k].desc };
+    });
+  }
+  /** Classic names for the new moods (style 'classic' plays the old player). */
+  var CLASSIC = { explore_act1: 'explore_outskirts', explore_act2: 'explore_outskirts', explore_act3: 'explore_city', explore_act4: 'explore_castle', explore_hidden: 'explore_castle' };
+
+  // trims baked from the offline renders (tools/audio_lab.py --music ... --calib): each calm theme at about -30 LUFS
+  var TRIM = {
+    /*TRIM-BEGIN*/
+    act1: 0.87, act2: 0.95, act3: 1.1, act4: 1.1, hidden: 1.2, camp: 1.1, menu: 1, lament: 1, sting_victory: 0.8, sting_death: 0.9
+    /*TRIM-END*/
+  };
+
+  // ---------------------------------------------------------------- settings: style and phone mode
+  var STYLE_KEY = 'kd.musicStyle', style = 'new', players = [], hintTheme = null;
+  function store() { try { return root.localStorage || null; } catch (e) { return null; } }
+  (function () { try { var s = store(), v = s && s.getItem(STYLE_KEY); if (v === 'classic') style = 'classic'; } catch (e) { /* blocked */ } })();
+  /** 'new' (adaptive score) or 'classic' (the first music). Saved in localStorage; switching crossfades at once. */
+  SC.style = function () { return style; };
+  SC.setStyle = function (s) {
+    s = s === 'classic' ? 'classic' : 'new';
+    if (s === style) return style;
+    style = s;
+    try { var st = store(); if (st) st.setItem(STYLE_KEY, s); } catch (e) { /* storage blocked */ }
+    players.forEach(function (p) { p.restyle(); });
+    return style;
+  };
+  /** The game tells the score which explore theme belongs to the area (so a fight in a new area uses the right theme). */
+  SC.hint = function (mood) { var M = MOODS[mood]; hintTheme = M && M.explore ? M.theme : null; return hintTheme; };
+  SC.lite = function () { var Q = KD.gfx && KD.gfx.quality; return !!(Q && Q.name === 'low'); };
+
+  // ---------------------------------------------------------------- composer (pure data, deterministic per seed)
+  /** Small seeded RNG (string or number seed); the score does not need the sim's KD.RNG (tools load only the audio files). */
+  function hash(str) { var h = 2166136261; for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+  function Rand(seed) { this.seed = (typeof seed === 'number' ? seed : hash(String(seed))) >>> 0 || 1; this.s = this.seed; }
+  Rand.prototype.next = function () { var t = (this.s = (this.s + 0x6D2B79F5) >>> 0); t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  Rand.prototype.pick = function (a) { return a[Math.floor(this.next() * a.length)]; };
+  Rand.prototype.chance = function (p) { return this.next() < p; };
+  Rand.prototype.weighted = function (a, w) { var tot = 0, i; for (i = 0; i < w.length; i++) tot += w[i]; var x = this.next() * tot; for (i = 0; i < a.length; i++) { x -= w[i]; if (x < 0) return a[i]; } return a[a.length - 1]; };
+  Rand.prototype.fork = function (label) { return new Rand((hash(String(label)) ^ Math.imul(this.seed, 2654435761)) >>> 0); };
+  SC.Rand = Rand;
+  function mod7(d) { return ((d % 7) + 7) % 7; }
+  function Composer(id, seed) {
+    this.id = id; this.T = THEMES[id]; this.seed = seed >>> 0; this.cycle = 0; this.pos = 0; this.bar = 0; this.done = false;
+    this.barDur = this.T.steps * this.T.step;
+    if (!this.T.once) this.startCycle();
+  }
+  Composer.prototype.startCycle = function () {
+    var T = this.T;
+    this.r = new Rand('kd-score-' + this.id + '-' + this.seed + '-' + this.cycle);
+    this.form = this.cycle === 0 ? T.forms[0] : this.r.pick(T.forms);
+    this.lead = T.leads[this.cycle % T.leads.length];
+    this.Bmat = null;
+  };
+  Composer.prototype.pitch = function (deg, oct) { var T = this.T; return T.root + 12 * (oct + Math.floor(deg / 7)) + SCALES[T.scale][mod7(deg)]; };
+  Composer.prototype.chordTone = function (deg, chord) {
+    for (var k = 0; k < 4; k++) for (var s = 0; s < 2; s++) { var d = deg + (s ? -k : k), rel = mod7(d - chord); if (rel === 0 || rel === 2 || rel === 4) return d; }
+    return deg;
+  };
+  Composer.prototype.strong = function (s) { return CELLS[this.T.steps].strong.indexOf(s) >= 0; };
+  Composer.prototype.fold = function (d) { var lo = -3, hi = 9, g = 0; while ((d > hi || d < lo) && g++ < 6) { if (d > hi) d = 2 * hi - d; if (d < lo) d = 2 * lo - d; } return d; };
+  Composer.prototype.adapt = function (bar, chord) {
+    var self = this;
+    return bar.map(function (n) { return { s: n[0], len: n[1], deg: self.strong(n[0]) ? self.fold(self.chordTone(n[2], chord)) : n[2] }; });
+  };
+  Composer.prototype.seq = function (bar, chord, shift) {
+    var self = this, first = bar[0][2], off = this.chordTone(first + shift, chord) - first;
+    return bar.map(function (n) { var d = n[2] + off; return { s: n[0], len: n[1], deg: self.fold(self.strong(n[0]) ? self.chordTone(d, chord) : d) }; });
+  };
+  Composer.prototype.walk = function (r, chord, start) {
+    var C = CELLS[this.T.steps], x = r.next(), dens = this.T.density;
+    var cell = r.pick(C[x < 1 - dens ? (x < (1 - dens) * 0.45 ? 'sparse' : 'medium') : 'dense']), out = [], s = 0, deg = start, first = true;
+    for (var i = 0; i < cell.length; i++) {
+      var len = cell[i];
+      if (len < 0) { s += -len; continue; }
+      if (first) deg = this.chordTone(deg, chord);
+      else { deg += r.weighted([-2, -1, 1, 2, 0, 3], [1, 3, 3, 1, 0.6, 0.4]); if (this.strong(s)) deg = this.chordTone(deg, chord); }
+      deg = this.fold(deg); out.push([s, len, deg]); s += len; first = false;
+    }
+    return out;
+  };
+  Composer.prototype.ornament = function (bar, r, p) {
+    var out = [];
+    for (var i = 0; i < bar.length; i++) {
+      var n = bar[i], nx = bar[i + 1];
+      if (n.len >= 2 && r.chance(p)) {
+        var nb = nx ? (nx.deg > n.deg ? n.deg + 1 : n.deg - 1) : n.deg + 1;
+        out.push({ s: n.s, len: n.len - 1, deg: n.deg }); out.push({ s: n.s + n.len - 1, len: 1, deg: this.fold(nb) });
+      } else out.push(n);
+    }
+    return out;
+  };
+  Composer.prototype.cadence = function (chord, prev, closed) {
+    var SPB = this.T.steps, tgt;
+    if (closed && mod7(chord) === 0) tgt = 7 * Math.round(prev / 7);
+    else tgt = this.fold(this.chordTone(prev, chord));
+    var held = SPB === 6 ? 4 : 5;
+    if (Math.abs(prev - tgt) >= 2) return [{ s: 0, len: SPB === 6 ? 2 : 3, deg: tgt + (prev > tgt ? 1 : -1) }, { s: SPB === 6 ? 2 : 3, len: held, deg: tgt }];
+    return [{ s: 0, len: held + 1, deg: tgt }];
+  };
+  /** The melody of a phrase: an array of 4 bars of { s, len, deg }. */
+  Composer.prototype.melody = function (kind, prog) {
+    var T = this.T, m = T.motif, r = this.r, last;
+    function lastDeg(bar) { return bar[bar.length - 1].deg; }
+    if (kind === 'A' || kind === 'A2') {
+      var b0 = this.adapt(m[0], prog[0]), b1 = this.adapt(m[1], prog[1]), b2;
+      if (kind === 'A') b2 = this.seq(m[0], prog[2], 2);
+      else { b0 = this.ornament(b0, r, 0.35); b2 = this.ornament(this.seq(m[1], prog[2], 1), r, 0.3); }
+      last = lastDeg(b2);
+      return [b0, b1, b2, this.cadence(prog[3], last, kind === 'A2')];
+    }
+    // B: new material each cycle, a bit higher, answered by a sequence and an open cadence
+    if (!this.Bmat) {
+      var rb = this.r.fork('B'), w0 = this.walk(rb, prog[0], 4 + rb.pick([0, 1, 2])), w1 = this.walk(rb, prog[1], w0[w0.length - 1][2] + rb.pick([-1, 1]));
+      this.Bmat = [w0, w1, rb.pick([-1, -2, 1])];
+    }
+    var B = this.Bmat, c0 = this.adapt(B[0], prog[0]), c1 = this.adapt(B[1], prog[1]), c2 = this.seq(B[0], prog[2], B[2]);
+    return [c0, c1, c2, this.cadence(prog[3], lastDeg(c2), false)];
+  };
+  /** Next phrase: { kind, bars, len, events } (events sorted, times relative to the phrase start), or null when done. */
+  Composer.prototype.next = function () {
+    var T = this.T;
+    if (T.once) {
+      if (this.done) return null;
+      this.done = true;
+      var evs = [];
+      T.sting(function (v, t, d, m, vel, o) { var e = { v: v, t: t, d: d, m: m, vel: vel, st: 'x' }; if (o) for (var k in o) e[k] = o[k]; evs.push(e); });
+      evs.sort(function (a, b) { return a.t - b.t; });
+      return { kind: 'sting', bars: 0, len: 6, events: evs };
+    }
+    if (this.pos >= this.form.length) { this.cycle++; this.pos = 0; this.startCycle(); }
+    return this.phrase(this.form[this.pos++]);
+  };
+  Composer.prototype.phrase = function (kind) {
+    var T = this.T, r = this.r, SPB = T.steps, sd = T.step, bd = this.barDur, ev = [], self = this, i, b;
+    var bars = kind === 'intro' ? 2 : 4;
+    var prog = kind === 'A' ? T.progs[0] : kind === 'A2' ? T.progs[this.cycle % 2 ? 0 : 1] : kind === 'intro' ? [0, 0, 0, 0] : r.pick(T.progs.slice(1));
+    var hum = r.fork('h' + this.pos);
+    function jit(a) { return (hum.next() - 0.5) * 2 * a; }
+    function push(st, v, t, d, m, vel, extra) {
+      while (m > 91) m -= 12;                       // bells and flutes above G6 turn shrill
+      var e = { st: st, v: v, t: Math.max(0, t), d: d, m: m, vel: vel };
+      if (extra) for (var k in extra) e[k] = extra[k];
+      ev.push(e);
+    }
+    var lead = this.lead, mel = (kind === 'A' || kind === 'A2' || kind === 'B') ? this.melody(kind, prog) : null;
+    var accOct = T.accOct + (T.acc.oct || 0);
+    for (b = 0; b < bars; b++) {
+      var t0 = b * bd, chord = prog[b], cf = chord > 4 ? chord - 7 : chord, gb = this.bar + b;
+      // ---- melody (stem lead)
+      if (mel) {
+        var notes = mel[b];
+        for (i = 0; i < notes.length; i++) {
+          var n = notes[i], nt = t0 + n.s * sd + jit(0.008), nd = n.len * sd, acc = this.strong(n.s) ? 1 : 0.85, vv = acc * (0.92 + hum.next() * 0.14);
+          var mp = this.pitch(n.deg, T.leadOct);
+          if (lead === 'flute' || lead === 'both') push('lead', 'flute', nt, nd * 0.95, mp + 12, 0.78 * vv);
+          if (lead === 'lute' || lead === 'both') push('lead', 'lute', nt, nd + 0.5, mp, (lead === 'both' ? 0.5 : 0.9) * vv);
+          if (lead === 'voice') push('lead', 'voice', nt, nd * 0.97, mp, 0.7 * vv);
+          if (lead === 'bell' && (n.len >= 2 || i === 0)) push('lead', 'bell', nt, 2.6, mp + (mp > 64 ? 12 : 24), 0.42 * vv, { ratio: T.bell ? T.bell.ratio : 3.51 });
+        }
+      }
+      // ---- answer in rest phrases: the motif's head, an octave up, once
+      if (kind === 'rest' && b === 1 && T.answer) {
+        var head = T.motif[0];
+        for (i = 0; i < Math.min(3, head.length); i++) {
+          var hp = this.pitch(this.chordTone(head[i][2], chord), T.leadOct) + 12, ht = t0 + head[i][0] * sd;
+          if (T.answer === 'bell') push('base', 'bell', ht, 2.4, hp + 12, 0.24, { ratio: T.bell ? T.bell.ratio : 3.51, orn: true });
+          else push('base', T.answer, ht, head[i][1] * sd + 0.6, hp, 0.42, { orn: true });
+        }
+      }
+      // ---- accompaniment (stem base)
+      var pat = null;
+      if (kind === 'A' || kind === 'A2' || kind === 'B') pat = T.acc.full;
+      else if (kind === 'rest') pat = b % 2 ? T.acc.thin : T.acc.full;
+      else if (kind === 'breath') pat = b % 2 ? null : T.acc.thin;
+      else if (kind === 'intro') pat = b === 1 ? T.acc.thin : null;
+      var tones = [this.pitch(cf, accOct), this.pitch(cf + 4, accOct), this.pitch(cf + 7, accOct), this.pitch(cf + 2, accOct + 1), this.pitch(cf + 4, accOct + 1)];
+      var low = [this.pitch(cf, T.accOct + 1), this.pitch(cf + 4, T.accOct + 1)], closing = b === 3 && kind === 'A2';
+      if (closing) pat = [[0, -1, 0.8]];
+      for (i = 0; pat && i < pat.length; i++) {
+        var p = pat[i], pt = t0 + p[0] * sd;
+        if (p[1] < 0) { for (var k = 0; k < 4; k++) push('base', T.acc.inst, pt + k * 0.022, bd + 0.4, tones[k], p[2] * (0.72 - k * 0.06)); }
+        else push('base', T.acc.inst, pt + jit(0.006), (p[1] === 0 ? SPB : 3) * sd + 0.3, tones[p[1]], p[2] * (0.88 + hum.next() * 0.2), { orn: i > 0 && p[2] < 0.42 });
+      }
+      if (T.calmDrums && (kind === 'A' || kind === 'A2' || kind === 'B')) for (i = 0; i < T.calmDrums.length; i++) push('base', T.calmDrums[i][1], t0 + T.calmDrums[i][0] * sd + jit(0.004), 0, 0, T.calmDrums[i][2], { orn: true });
+      // ---- choir pad (stem base), bells, swells
+      var P = T.pad;
+      if (P && P.kinds[kind] && b % P.every === 0) {
+        var pd = bd * P.every + 0.5, pdeg = P.cluster ? [cf, cf + 1, cf + 4] : [cf, cf + 2, cf + 4];
+        for (i = 0; i < 3; i++) push('base', 'choir', t0, pd, this.pitch(pdeg[i], 0), P.vel * (i ? 0.85 : 1), { a: 0.9 });
+      }
+      if (T.bell && gb % T.bell.every === 0) push('base', 'bell', t0 + jit(0.01), 3.2, this.pitch(T.bell.deg, T.bell.oct) + 12, T.bell.vel, { ratio: T.bell.ratio });
+      if (T.swell && gb % T.swell.every === T.swell.every - 1) push('base', 'swell', t0 + bd - 2.4, 2.4, 0, T.swell.vel, { orn: true });
+      // ---- combat stem 'c'
+      var CB = T.combat;
+      if (CB) {
+        var dp = b === bars - 1 ? (CB.fill || (CB.fill = fill(CB.drums, SPB))) : CB.drums;
+        for (i = 0; i < dp.length; i++) push('c', dp[i][1], t0 + dp[i][0] * sd + jit(0.004), 0, 0, dp[i][2] * (0.9 + hum.next() * 0.2), dp[i][1] === 'ka' ? { orn: true } : null);
+        for (i = 0; i < SPB; i++) if (CB.ost[i] > 0) push('c', 'str', t0 + i * sd + jit(0.003), sd * 0.9, low[0] + (i === SPB - 1 && b % 2 ? 12 : 0), CB.ost[i] * 0.8);
+        if (b % 2 === 0) for (i = 0; i < 3; i++) push('c', 'choir', t0, bd * 2 + 0.3, this.pitch([cf, cf + 2, cf + 4][i], 0), CB.pad * (i ? 0.85 : 1), { a: 0.5 });
+      }
+      // ---- boss stem 'b'
+      var BS = T.boss;
+      if (BS) {
+        for (i = 0; i < BS.drums.length; i++) push('b', BS.drums[i][1], t0 + BS.drums[i][0] * sd + jit(0.003), 0, 0, BS.drums[i][2] * (0.92 + hum.next() * 0.16));
+        for (i = 0; i < SPB * 2; i++) push('b', 'str', t0 + i * sd * 0.5 + jit(0.002), sd * 0.42, i % 4 === 2 ? low[1] : low[0], i % 2 ? 0.42 : 0.62, i % 2 ? { orn: true } : null);
+        if (b % 2 === 0) push('b', 'horn', t0, bd * 2 * 0.94, this.pitch(cf, T.accOct + 1), BS.horn);
+      }
+    }
+    this.bar += bars;
+    ev.sort(function (a, b2) { return a.t - b2.t; });
+    return { kind: kind, bars: bars, len: bars * bd, events: ev, lead: mel ? lead : null };
+  };
+  SC.Composer = Composer;
+
+  // ---------------------------------------------------------------- instruments (any BaseAudioContext)
+  function SY() { return A.synth; }
+  function mtof(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+  function percEnv(ctx, node, dest, t, g, d) {
+    var e = ctx.createGain();
+    e.gain.setValueAtTime(g, t); e.gain.exponentialRampToValueAtTime(Math.max(1e-4, g * 0.001), t + d);
+    node.connect(e); e.connect(dest);
+    return e;
+  }
+  function noiseSrc(ctx, color, t, dur, seed) {
+    var n = ctx.createBufferSource(), buf = SY().noise(ctx, color);
+    n.buffer = buf; n.loop = true;
+    n.start(t, Math.abs(seed * 0.6180339887) % Math.max(0.01, buf.duration - 0.1)); n.stop(t + dur);
+    return n;
+  }
+  var VOWELS = { a: [[730, 1, 6], [1090, 0.5, 8], [2440, 0.18, 10]], o: [[500, 1, 6], [850, 0.45, 8], [2500, 0.12, 10]], u: [[330, 1, 5], [760, 0.35, 8], [2400, 0.08, 10]] };
+  /** Instrument buses: gain, filters [type, f, q, gain], pan, echo send. 'formant' builds the choir vowel bank. */
+  var BUS = {
+    lute: { g: 0.85, f: [['peaking', 240, 1, 3], ['lowpass', 4200, 0.6]], pan: -0.18 },
+    harp: { g: 0.7, f: [['highpass', 120, 0.6], ['lowpass', 5200, 0.6]], pan: 0.12, echo: 1 },
+    flute: { g: 0.27, f: [['lowpass', 3400, 0.6]], pan: 0.2 },
+    voice: { g: 0.5, formant: true, pan: 0.08 },
+    choir: { g: 0.42, formant: true },
+    drone: { g: 0.2, f: [['lowpass', 620, 0.7]] },
+    bell: { g: 0.4, pan: 0.1, echo: 1 },
+    str: { g: 0.36, f: [['highpass', 45, 0.6]] },
+    horn: { g: 0.22, pan: -0.06 },
+    swell: { g: 0.3, echo: 1 },
+    perc: { g: 0.8, f: [['lowpass', 7000, 0.6]] }
+  };
+  var PERC = { dum: 1, tak: 1, ka: 1, boom: 1, jingle: 1 };
+
+  var VOICES = {
+    lute: function (L, t, e, out) {
+      var ctx = L.ctx, pk = SY().pluck(ctx, e.m), src = ctx.createBufferSource(), g = ctx.createGain();
+      var rate = mtof(e.m) / pk.f0, full = pk.dur / rate, d = Math.min(full, e.d);
+      src.buffer = pk.buffer; src.playbackRate.value = rate;
+      g.gain.setValueAtTime(e.vel, t);
+      src.connect(g); g.connect(out); src.start(t);
+      if (d < full - 0.05) { g.gain.setTargetAtTime(0, t + d, 0.07); src.stop(t + d + 0.45); } else src.stop(t + full + 0.02);
+    },
+    flute: function (L, t, e, out) {
+      var ctx = L.ctx, f = mtof(e.m), o = ctx.createOscillator(), g = ctx.createGain(), v = e.vel, d = Math.max(0.08, e.d), end = t + d + 0.3;
+      o.setPeriodicWave(SY().fluteWave(ctx)); o.frequency.value = f;
+      if (d > 0.4 && !L.lite) {
+        var lfo = ctx.createOscillator(), lg = ctx.createGain();
+        lfo.frequency.value = 5.1; lg.gain.setValueAtTime(0, t + 0.16); lg.gain.linearRampToValueAtTime(10, t + 0.6);
+        lfo.connect(lg); lg.connect(o.detune); lfo.start(t); lfo.stop(end);
+      }
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v, t + 0.05);
+      g.gain.setTargetAtTime(v * 0.82, t + 0.05, 0.1); g.gain.setTargetAtTime(0, t + d, 0.06);
+      var n = noiseSrc(ctx, 'pink', t, d + 0.3, e.m + t), bp = ctx.createBiquadFilter(), bg = ctx.createGain();
+      bp.type = 'bandpass'; bp.frequency.value = Math.min(5000, f * 2); bp.Q.value = 1.2;
+      bg.gain.setValueAtTime(0.8, t); bg.gain.setTargetAtTime(0.25, t + 0.02, 0.05);
+      n.connect(bp); bp.connect(bg); bg.connect(g);
+      o.connect(g); g.connect(out); o.start(t); o.stop(end);
+    },
+    /** choir note: detuned saws into the layer's shared vowel (formant) bus. e.a attack, e.glide semitones over the note. */
+    choir: function (L, t, e, out) {
+      var ctx = L.ctx, g = ctx.createGain(), a = e.a == null ? 0.7 : e.a, end = t + e.d + 2.2, det = L.lite ? [0] : [-7, 6], i;
+      for (i = 0; i < det.length; i++) {
+        var o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = mtof(e.m); o.detune.value = det[i];
+        if (e.glide) { o.detune.setValueAtTime(det[i], t + e.d * 0.25); o.detune.linearRampToValueAtTime(det[i] + e.glide * 100, t + e.d); }
+        o.connect(g); o.start(t); o.stop(end);
+      }
+      var lv = e.vel / det.length;
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(lv, t + a); g.gain.setTargetAtTime(0, t + e.d, 0.5);
+      g.connect(out);
+    },
+    /** solo voice (lead): one saw with a gentle late vibrato, through the vowel bus. */
+    voice: function (L, t, e, out) {
+      var ctx = L.ctx, o = ctx.createOscillator(), g = ctx.createGain(), d = Math.max(0.15, e.d), end = t + d + 0.8;
+      o.type = 'sawtooth'; o.frequency.value = mtof(e.m);
+      if (!L.lite) {
+        var lfo = ctx.createOscillator(), lg = ctx.createGain();
+        lfo.frequency.value = 4.8; lg.gain.setValueAtTime(0, t + 0.2); lg.gain.linearRampToValueAtTime(14, t + 0.8);
+        lfo.connect(lg); lg.connect(o.detune); lfo.start(t); lfo.stop(end);
+      }
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(e.vel, t + 0.12); g.gain.setTargetAtTime(0, t + d, 0.12);
+      o.connect(g); g.connect(out); o.start(t); o.stop(end);
+    },
+    harp: function (L, t, e, out) { VOICES.lute(L, t, e, out); },
+    bell: function (L, t, e, out) {
+      var ctx = L.ctx, f = mtof(e.m), ratio = e.ratio || 3.51, car = ctx.createOscillator(), mod = ctx.createOscillator(), mg = ctx.createGain();
+      car.frequency.value = f; mod.frequency.value = f * ratio;
+      mg.gain.setValueAtTime(f * ratio * 0.9, t); mg.gain.exponentialRampToValueAtTime(f * ratio * 0.02, t + 1.6);
+      mod.connect(mg); mg.connect(car.frequency);
+      var g = ctx.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(e.vel, t + 0.004); g.gain.exponentialRampToValueAtTime(e.vel * 0.001, t + e.d);
+      car.connect(g); g.connect(out);
+      car.start(t); mod.start(t); car.stop(t + e.d + 0.05); mod.stop(t + e.d + 0.05);
+    },
+    /** low string: a short bowed / plucked note (ostinato), or e.long for a held one. */
+    str: function (L, t, e, out) {
+      var ctx = L.ctx, f = mtof(e.m), o = ctx.createOscillator(), s = ctx.createOscillator(), sg = ctx.createGain(), lp = ctx.createBiquadFilter(), g = ctx.createGain();
+      var d = e.long ? e.d : Math.min(0.32, Math.max(0.09, e.d));
+      o.type = 'sawtooth'; o.frequency.value = f; s.type = 'sine'; s.frequency.value = f; sg.gain.value = 0.7;
+      lp.type = 'lowpass'; lp.Q.value = 1.4;
+      lp.frequency.setValueAtTime(Math.min(2400, f * 9), t); lp.frequency.exponentialRampToValueAtTime(Math.max(180, f * (e.long ? 3 : 2.2)), t + (e.long ? d : 0.12));
+      o.connect(lp); s.connect(sg); sg.connect(lp);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(e.vel, t + (e.long ? 0.15 : 0.008));
+      if (e.long) g.gain.setTargetAtTime(0, t + d * 0.6, d * 0.25); else g.gain.exponentialRampToValueAtTime(Math.max(1e-4, e.vel * 0.002), t + d);
+      lp.connect(g); g.connect(out);
+      o.start(t); s.start(t); o.stop(t + d + (e.long ? 1.5 : 0.02)); s.stop(t + d + (e.long ? 1.5 : 0.02));
+    },
+    horn: function (L, t, e, out) {
+      var ctx = L.ctx, g = ctx.createGain(), lp = ctx.createBiquadFilter(), end = t + e.d + 0.3, n = L.lite ? 1 : 2;
+      lp.type = 'lowpass'; lp.Q.value = 1.1;
+      lp.frequency.setValueAtTime(240, t); lp.frequency.exponentialRampToValueAtTime(950, t + e.d * 0.55); lp.frequency.exponentialRampToValueAtTime(360, t + e.d);
+      for (var i = 0; i < n; i++) { var o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = mtof(e.m); o.detune.value = n > 1 ? (i ? 8 : -8) : 0; o.connect(lp); o.start(t); o.stop(end); }
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(e.vel * 0.35 * 2 / n, t + 0.15); g.gain.linearRampToValueAtTime(e.vel * 2 / n, t + e.d * 0.55); g.gain.linearRampToValueAtTime(0, t + e.d + 0.2);
+      lp.connect(g); g.connect(out);
+    },
+    /** rising filtered noise that cuts off on the bar line (eerie reverse swell). */
+    swell: function (L, t, e, out) {
+      var ctx = L.ctx, n = noiseSrc(ctx, 'pink', t, e.d + 0.05, t), bp = ctx.createBiquadFilter(), g = ctx.createGain();
+      bp.type = 'bandpass'; bp.Q.value = 3; bp.frequency.setValueAtTime(300, t); bp.frequency.exponentialRampToValueAtTime(2400, t + e.d);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(e.vel, t + e.d * 0.92); g.gain.linearRampToValueAtTime(0, t + e.d);
+      n.connect(bp); bp.connect(g); g.connect(out);
+    },
+    dum: function (L, t, e, out) {
+      var ctx = L.ctx, o = ctx.createOscillator();
+      o.frequency.setValueAtTime(130, t); o.frequency.exponentialRampToValueAtTime(74, t + 0.07);
+      percEnv(ctx, o, out, t, e.vel, 0.3); o.start(t); o.stop(t + 0.32);
+      var n = noiseSrc(ctx, 'pink', t, 0.04, t), lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900;
+      n.connect(lp); percEnv(ctx, lp, out, t, e.vel * 0.55, 0.035);
+    },
+    tak: function (L, t, e, out) {
+      var ctx = L.ctx, n = noiseSrc(ctx, 'white', t, 0.1, t), bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass'; bp.frequency.value = 1500; bp.Q.value = 1.2;
+      n.connect(bp); percEnv(ctx, bp, out, t, e.vel * 0.85, 0.075);
+      var o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.setValueAtTime(320, t); o.frequency.exponentialRampToValueAtTime(220, t + 0.04);
+      percEnv(ctx, o, out, t, e.vel * 0.45, 0.06); o.start(t); o.stop(t + 0.08);
+    },
+    ka: function (L, t, e, out) {
+      var ctx = L.ctx, n = noiseSrc(ctx, 'white', t, 0.06, t), bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass'; bp.frequency.value = 2300; bp.Q.value = 2;
+      n.connect(bp); percEnv(ctx, bp, out, t, e.vel * 0.75, 0.04);
+    },
+    boom: function (L, t, e, out) {
+      var ctx = L.ctx, o = ctx.createOscillator();
+      o.frequency.setValueAtTime(84, t); o.frequency.exponentialRampToValueAtTime(48, t + 0.16);
+      percEnv(ctx, o, out, t, e.vel * 0.75, 0.5); o.start(t); o.stop(t + 0.52);
+      // a mid "skin" slap so the drum still reads on phone speakers (they cannot play 40 to 80 Hz)
+      var n = noiseSrc(ctx, 'pink', t, 0.09, t + 1), bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 420; bp.Q.value = 1.1;
+      n.connect(bp); percEnv(ctx, bp, out, t, e.vel * 1.2, 0.09);
+    },
+    jingle: function (L, t, e, out) {
+      var ctx = L.ctx, n = noiseSrc(ctx, 'white', t, 0.09, t), bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass'; bp.frequency.value = 5200; bp.Q.value = 2.5;
+      n.connect(bp); percEnv(ctx, bp, out, t, e.vel * 0.45, 0.07);
+    }
+  };
+  SC.VOICES = VOICES;
+
+  // ---------------------------------------------------------------- Layer: one playing theme
+  var seedCounter = 0;
+  function Layer(ctx, dest, room, themeId, t0, seed) {
+    var T = THEMES[themeId];
+    this.ctx = ctx; this.themeId = themeId; this.T = T; this.lite = SC.lite();
+    this.gain = ctx.createGain(); this.gain.connect(dest);
+    this.levelNode = ctx.createGain(); this.levelNode.gain.value = (TRIM[themeId] == null ? 1 : TRIM[themeId]) * LEVEL; this.levelNode.connect(this.gain);
+    if (room) { var send = ctx.createGain(); send.gain.value = T.room == null ? 0.3 : T.room; this.gain.connect(send); send.connect(room); this.send = send; }
+    this.echoIn = null;
+    if (T.echo) {
+      // one feedback echo per layer (cold mountain, hidden places): delay -> lowpass -> feedback
+      var ein = ctx.createGain(), d = ctx.createDelay(2), lp = ctx.createBiquadFilter(), fb = ctx.createGain();
+      ein.gain.value = T.echo.send; d.delayTime.value = T.echo.time; lp.type = 'lowpass'; lp.frequency.value = 2600; fb.gain.value = T.echo.fb;
+      ein.connect(d); d.connect(lp); lp.connect(fb); fb.connect(d); lp.connect(this.levelNode);
+      this.echoIn = ein;
+    }
+    this.buses = {}; this.outs = {}; this.stemNodes = {};
+    this.level = 0; this.win = { c: [], b: [] };
+    this.comp = new Composer(themeId, seed == null ? (++seedCounter * 7919) : seed);
+    this.nextStart = t0; this.ph = null; this.phStart = t0; this.idx = 0; this.killAt = null; this.finished = false;
+    this.stats = { notes: 0, skipped: 0, byStem: { base: 0, lead: 0, c: 0, b: 0, x: 0 }, phrases: [] };
+    this.oscs = [];
+    if (T.drone) this.startDrone(t0);
+  }
+  Layer.prototype.bus = function (inst) {
+    var key = PERC[inst] ? 'perc' : inst;
+    if (this.buses[key]) return this.buses[key];
+    var ctx = this.ctx, spec = BUS[key] || { g: 0.3 }, inp = ctx.createGain(), node = inp;
+    inp.gain.value = spec.g;
+    if (spec.formant) {
+      // shared vowel bank for every choir / voice note of this layer: three formant bandpasses and a little body
+      var sum = ctx.createGain(), body = ctx.createBiquadFilter(), bg = ctx.createGain();
+      (VOWELS[this.T.vowel] || VOWELS.o).forEach(function (fm) {
+        var bp = ctx.createBiquadFilter(), g = ctx.createGain(); bp.type = 'bandpass'; bp.frequency.value = fm[0]; bp.Q.value = fm[2]; g.gain.value = fm[1] * 2.2;
+        inp.connect(bp); bp.connect(g); g.connect(sum);
+      });
+      body.type = 'lowpass'; body.frequency.value = 900; body.Q.value = 0.5; bg.gain.value = 0.22;
+      inp.connect(body); body.connect(bg); bg.connect(sum);
+      var lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 3200; lp.Q.value = 0.5;
+      sum.connect(lp); node = lp;
+    }
+    (spec.f || []).forEach(function (s) {
+      var f = ctx.createBiquadFilter(); f.type = s[0]; f.frequency.value = s[1]; f.Q.value = s[2] == null ? 0.7 : s[2]; if (s[3] != null) f.gain.value = s[3];
+      node.connect(f); node = f;
+    });
+    if (spec.pan && ctx.createStereoPanner) { var p = ctx.createStereoPanner(); p.pan.value = spec.pan; node.connect(p); node = p; }
+    node.connect(this.levelNode);
+    if (spec.echo && this.echoIn) node.connect(this.echoIn);
+    return (this.buses[key] = inp);
+  };
+  function stemGain(stem, level) {
+    var g = STEM_GAIN[stem] || STEM_GAIN.base, l = Math.max(0, Math.min(2, level)), i = Math.min(1, Math.floor(l)), f = l - i;
+    return g[i] + (g[i + 1] - g[i]) * f;
+  }
+  SC.stemGain = stemGain;
+  /** The node a note of `stem` on instrument `inst` connects to (stem gain -> instrument bus), made on first use. */
+  Layer.prototype.out = function (stem, inst) {
+    var key = stem + '|' + inst;
+    if (this.outs[key]) return this.outs[key];
+    var g = this.ctx.createGain();
+    g.gain.value = stemGain(stem, this.level);
+    g.connect(this.bus(inst));
+    (this.stemNodes[stem] = this.stemNodes[stem] || []).push(g);
+    return (this.outs[key] = g);
+  };
+  Layer.prototype.startDrone = function (t) {
+    var ctx = this.ctx, D = this.T.drone, g = ctx.createGain(), wave = SY().reedWave(ctx), m = this.T.root + 12 * this.T.accOct, self = this, i;
+    while (m < 40) m += 12;                         // nothing under E2: phone and laptop speakers cannot play it, it only eats headroom
+    var parts = D.fifth ? [[0, -4, 0.6], [0, 4, 0.32], [7, -3, 0.2], [7, 3, 0.11]] : [[0, -(D.beat || 4), 0.6], [0, D.beat || 4, 0.4]];
+    if (this.lite) parts = parts.slice(0, 2);
+    for (i = 0; i < parts.length; i++) {
+      var o = ctx.createOscillator(), og = ctx.createGain();
+      o.setPeriodicWave(wave); o.frequency.value = mtof(m + parts[i][0]); o.detune.value = parts[i][1]; og.gain.value = parts[i][2];
+      o.connect(og); og.connect(g); o.start(t); self.oscs.push(o);
+    }
+    if (D.sub && !this.lite) { var s = ctx.createOscillator(), sg = ctx.createGain(); s.frequency.value = mtof(m); sg.gain.value = D.sub * 0.4; s.connect(sg); sg.connect(g); s.start(t); this.oscs.push(s); }
+    // slow breathing of the drone level (one LFO for the whole layer)
+    var lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 0.07; lg.gain.value = D.vel * 0.25; lfo.connect(lg); lg.connect(g.gain); lfo.start(t); this.oscs.push(lfo);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(D.vel, t + 3);
+    g.connect(this.out('base', 'drone'));
+  };
+  /** Change the intensity (0 calm, 1 combat, 2 boss; fractions blend) at time t: stems fade, a drum accent marks a rise. */
+  Layer.prototype.setIntensity = function (level, t) {
+    level = Math.max(0, Math.min(2, +level || 0));
+    if (level === this.level) return;
+    var prev = this.level, up = level > prev, k, i;
+    this.level = level;
+    for (k in this.stemNodes) {
+      var target = stemGain(k, level);
+      for (i = 0; i < this.stemNodes[k].length; i++) this.stemNodes[k][i].gain.setTargetAtTime(target, t, up ? TAU_UP : TAU_DOWN);
+    }
+    ['c', 'b'].forEach(function (s) {
+      var w = this.win[s], on = stemGain(s, level) > 0, last = w[w.length - 1], open = last && last[1] === Infinity;
+      if (on && !open) w.push([t, Infinity]);
+      else if (!on && open) last[1] = t + TAU_DOWN * 4;
+      while (w.length > 3) w.shift();
+    }, this);
+    if (up && this.T.combat && ((prev < 1 && level >= 1) || (prev < 2 && level >= 2))) {
+      var big = level >= 2;
+      VOICES.boom(this, t + 0.02, { vel: big ? 0.9 : 0.7 }, this.out('x', 'perc'));
+      VOICES.tak(this, t + 0.02, { vel: 0.5 }, this.out('x', 'perc'));
+      if (big) VOICES.horn(this, t + 0.05, { d: 1.6, m: this.T.root + 12 * this.T.accOct, vel: 0.5 }, this.out('x', 'horn'));
+      this.stats.notes += big ? 3 : 2;
+    }
+  };
+  Layer.prototype.stemOn = function (stem, t) {
+    var w = this.win[stem];
+    if (!w) return true;
+    for (var i = 0; i < w.length; i++) if (t >= w[i][0] - 0.05 && t < w[i][1]) return true;
+    return false;
+  };
+  /** Schedule every note that starts before `until`. Late notes are dropped, never bunched. silent: advance only. */
+  Layer.prototype.schedule = function (until, silent) {
+    var now = this.ctx.currentTime, guard = 0;
+    while (guard++ < 4000) {
+      if (!this.ph) {
+        if (this.finished) break;
+        var ph = this.comp.next();
+        if (!ph) { this.finished = true; break; }
+        this.ph = ph; this.phStart = this.nextStart; this.nextStart += ph.len; this.idx = 0;
+        if (this.stats.phrases.length < 64) this.stats.phrases.push(ph.kind);
+      }
+      var e = this.ph.events[this.idx];
+      if (!e) { this.ph = null; if (this.nextStart >= until) break; continue; }
+      var t = this.phStart + e.t;
+      if (t >= until) break;
+      this.idx++;
+      if (silent || t < now - 0.03 || (this.lite && e.orn) || !this.stemOn(e.st, t)) { this.stats.skipped++; continue; }
+      VOICES[e.v](this, t < now ? now : t, e, this.out(e.st, PERC[e.v] ? 'perc' : e.v));
+      this.stats.notes++; this.stats.byStem[e.st] = (this.stats.byStem[e.st] || 0) + 1;
+    }
+  };
+  Layer.prototype.kill = function () {
+    var now = this.ctx.currentTime;
+    for (var i = 0; i < this.oscs.length; i++) { try { this.oscs[i].stop(now + 0.05); } catch (e) { /* already stopped */ } }
+    try { this.gain.disconnect(); if (this.send) this.send.disconnect(); } catch (err) { /* already gone */ }
+  };
+  SC.Layer = Layer;
+
+  // ---------------------------------------------------------------- Player (same interface as the classic one)
+  var Classic = MU.Player;
+  MU.ClassicPlayer = Classic;
+  function Player(ctx, dest, room) {
+    this.ctx = ctx; this.dest = dest; this.room = room; this.layers = []; this.cur = null; this.mood = null;
+    this.lastExplore = null; this.classic = null;
+    this.live = !!(A._state && A._state.ctx === ctx);
+    players.push(this);
+    if (players.length > 4) players.shift();
+  }
+  /** What a mood means right now: { theme, level, sting, after, fade } or null. */
+  Player.prototype.resolve = function (mood) {
+    var M = MOODS[mood];
+    if (!M) return null;
+    var cur = this.cur && THEMES[this.cur.themeId].combat ? this.cur.themeId : null;
+    var adaptive = hintTheme || cur || this.lastExplore || 'act1';
+    if (M.theme) return { theme: M.theme, level: 0, sting: M.sting || null, after: M.after || 0, explore: !!M.explore };
+    if (M.level) return { theme: adaptive, level: M.level, fade: 1.2 };
+    if (M.sting) return { theme: cur || hintTheme || (this.cur && this.cur.themeId !== 'lament' ? this.cur.themeId : null) || 'menu', level: 0, sting: M.sting, after: M.after };
+    return null;
+  };
+  Player.prototype.play = function (mood, fade, when) {
+    if (mood === 'intensity') { if (this.cur) this.cur.setIntensity(+fade || 0, when == null ? this.ctx.currentTime + 0.05 : when); return !!this.cur; }
+    if (style === 'classic') return this.playClassic(mood, fade, when);
+    var R = this.resolve(mood);
+    if (!R) return false;
+    if (this.mood === mood && this.cur) return true;
+    var t = when == null ? this.ctx.currentTime + 0.06 : when, T = THEMES[R.theme];
+    this.mood = mood;
+    if (R.explore) this.lastExplore = R.theme;
+    if (R.sting) {
+      var S = new Layer(this.ctx, this.dest, this.room, 'sting_' + R.sting, t);
+      S.gain.gain.setValueAtTime(1, t); S.killAt = t + 9;
+      this.layers.push(S);
+    }
+    if (!this.cur || this.cur.themeId !== R.theme) {
+      var f = fade != null ? fade : (R.fade != null ? R.fade : T.fade || 2.5), had = !!this.cur;
+      if (R.sting) f = Math.min(f, 1.2);
+      this._out(f, t);
+      var start = t + (R.sting ? R.after : 0), L = new Layer(this.ctx, this.dest, this.room, R.theme, start + 0.02);
+      var fin = R.sting ? 2.5 : (had ? f : Math.min(f, 0.6));
+      if (fin > 0) { L.gain.gain.setValueAtTime(0, start); L.gain.gain.setTargetAtTime(1, start, fin / 3.5); } else L.gain.gain.setValueAtTime(1, start);
+      L.setIntensity(R.level, start);
+      this.layers.push(L); this.cur = L;
+    } else this.cur.setIntensity(R.level, t);
+    return true;
+  };
+  Player.prototype.playClassic = function (mood, fade, when) {
+    if (!this.classic && Classic) this.classic = new Classic(this.ctx, this.dest, this.room);
+    if (!this.classic) return false;
+    var m = CLASSIC[mood] || mood;
+    if (!MU.MOODS[m] || MU.MOODS[m].score) return false;
+    this.mood = mood;
+    return this.classic.play(m, fade, when);
+  };
+  Player.prototype._out = function (fade, t) {
+    var L = this.cur;
+    if (!L) return;
+    L.gain.gain.cancelScheduledValues(t);
+    L.gain.gain.setTargetAtTime(0, t, Math.max(0.015, fade / 3.5));
+    L.killAt = t + Math.max(0.1, fade) * 2.2 + 0.2;
+    this.cur = null;
+  };
+  Player.prototype.stop = function (fade, when) {
+    var t = when == null ? this.ctx.currentTime : when, f = fade == null ? 1.5 : fade;
+    this._out(f, t);
+    if (this.classic) this.classic.stop(f, when);
+    this.mood = null;
+  };
+  /** Music style switched: fade out what plays; the engine asks for the wanted mood again on its next tick. */
+  Player.prototype.restyle = function () {
+    var t = this.ctx.currentTime;
+    this._out(1, t);
+    if (this.classic) { this.classic.stop(1, t); }
+    this.mood = null;
+  };
+  Player.prototype.silent = function () {
+    if (!this.live) return false;
+    var s = A._state;
+    if (!s || !s.vol) return false;
+    if (s.muted || s.vol.music <= 0.001 || s.vol.master <= 0.001) return true;
+    return !!(root.document && root.document.hidden);
+  };
+  /** Keep every live layer scheduled up to `until` and drop layers that finished fading out. */
+  Player.prototype.tick = function (until) {
+    var now = this.ctx.currentTime, silent = this.silent();
+    for (var i = this.layers.length - 1; i >= 0; i--) {
+      var L = this.layers[i];
+      if (L.killAt != null && now > L.killAt) { L.kill(); this.layers.splice(i, 1); continue; }
+      L.schedule(L.killAt != null ? Math.min(until, L.killAt) : until, silent);
+    }
+    if (this.classic) this.classic.tick(until);
+  };
+  Player.prototype.killAll = function () {
+    for (var i = 0; i < this.layers.length; i++) this.layers[i].kill();
+    this.layers = []; this.cur = null; this.mood = null;
+    if (this.classic) this.classic.killAll();
+  };
+  /** For tools and tests: { theme, level, layers, notes } of what plays. */
+  Player.prototype.info = function () {
+    var c = this.cur;
+    return { mood: this.mood, theme: c ? c.themeId : null, level: c ? c.level : 0, layers: this.layers.length, notes: c ? c.stats.notes : 0, style: style };
+  };
+  SC.Player = Player;
+  MU.Player = Player;
+  /** The live player (or null before audio unlocks). */
+  SC.live = function () { var s = A._state; return s && s.player && s.player.info ? s.player : null; };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/audio/30_engine.js
 (function (root) {
   'use strict';
@@ -106376,6 +107905,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       btn('Settings', 'gear', function () { P.openSettings(game); }),
       KD.wardrobe && KD.wardrobe.pauseButton ? KD.wardrobe.pauseButton(game, close) : null,      // [cosmetics] the Wardrobe (src/ui/35_wardrobe.js)
       touch ? null : btn('Key bindings', 'key', function () { P.openBindings(game); }),      // keys are for keyboards
+      F.patch ? F.patch.button('flow-pause-btn') : null,      // [patch notes] "What's new" (src/ui/20_flow_55_patchnotes.js)
       btn('How to play', 'info', function () { P.openHelp(game); }),
       inRun ? btn('Save and quit to menu', 'arrow_left', function () { close(); game.toMenu(); }, null, 'The run is saved exactly where it stands. Continue it from the menu.') : null,
       inRun ? btn('Abandon run', 'skull', function () {
@@ -106406,6 +107936,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       el('div.flow-set-col', [
         el('div.kd-h3', { text: 'Sound' }),
         row('Master volume', vol('master')), row('Effects', vol('sfx')), row('Music', vol('music')),
+        // [w8 music] music style: the adaptive score (New) or the first music (Classic); kept by KD.audio.score itself
+        KD.audio && KD.audio.score && KD.audio.score.setStyle ? row('Music style', F.segmented([{ id: 'new', label: 'New' }, { id: 'classic', label: 'Classic' }], KD.audio.score.style(), function (id) { KD.audio.score.setStyle(id); })) : null,
         // [w8 sound] ambience volume (area sounds: wind, birds, water, crowds); kept by KD.audio.amb itself
         KD.audio && KD.audio.amb ? row('Ambience', F.slider({ min: 0, max: 100, step: 5, value: Math.round(KD.audio.amb.getVolume() * 100), format: pct, label: 'ambience volume', onInput: function (x) { KD.audio.amb.setVolume(x / 100); }, onChange: function () { F.sound('ui_click'); } })) : null,
         row('Mute everything', onoff(v.muted, function (on) { ST.set('muted', on); })),
