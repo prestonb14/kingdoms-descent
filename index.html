@@ -3221,7 +3221,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.14';
+  KD.VERSION = '0.7.15';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -72849,11 +72849,120 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   bossLook('a3_ooze', 'ooze_sovereign', { area: 'sewers', paint: WET, grow: null, scale: null,
     dress: function (u) { u.add('body', 'junk', function () { return [geo.skull({ at: [0.5, 0.9, 0.5], r: 0.13, color: '#d8d0b0' }), geo.skull({ at: [-0.6, 0.7, 0.3], r: 0.11, color: '#c8c0a0' })].concat(drips([[0.9, 0.6, 0.2, 0.08], [-0.85, 0.55, -0.3, 0.07], [0.2, 0.7, 1.0, 0.07]], SLIME_G, 190)); }); } });
 
+  // =========================================================================================== HARBOR
+  // Sea blues, sailcloth whites, tarred rope, brass; drowned teal glows.
+  var SEAWEED = '#3a5a3a', TAR = '#2a2622';
+  /** Sailor stripes: bands round the torso (chest space). */
+  function stripes(m, c, n) { var k = m.k, out = [], i; for (i = 0; i < n; i++) out.push(geo.cord(ring(m.torsoW * 0.53, m.torsoD * 0.6, m.torsoH * (0.18 + i * 0.7 / n), 12), 0.022 * k, c, 4)); return out; }
+  function weed(p, len, seed) { return T(geo.tatter({ w: 0.06, h: len, teeth: 2, depth: 0.5, seed: seed, color: SEAWEED, bend: 0.2 }), p[0], p[1], p[2]); }
+  function barnacles(pts, s) { return pts.map(function (p) { return T(geo.lathe([[0, 0], [0.04 * s, 0], [0.032 * s, 0.03 * s], [0.016 * s, 0.04 * s], [0, 0.025 * s]], 5, '#b8b0a0'), p[0], p[1], p[2]); }); }
+
+  // Dock Smuggler: a sailor in a blue and white striped shirt, red bandana, gold hoop earring, a tarred rope coil
+  // over the shoulder, a sash with a stolen bottle, a boathook.
+  look('a3_smuggler', {
+    area: 'harbor', rig: 'humanoid', colors: { main: '#e2dccc', alt: '#b8302e', skin: '#b98f72', metal: '#8f969c' },
+    eyeOpt: { brow: '#3a2418', browTilt: 0.2 },
+    dress: function (u, spec, k, m) {
+      var red = S.grade(col(spec, 'alt', '#b8302e'), { sat: 1, amount: 0.03 });
+      ['chest'].forEach(function (j) { var n = u.named(j); if (n && n.mesh) n.color = '#e2dccc'; });
+      u.add('chest', 'shirt', function () {
+        return stripes(m, '#2c4a82', 4).concat([geo.cord([[m.torsoW * 0.5, m.torsoH * 1.0, 0], [0, m.torsoH * 0.5, m.torsoD * 0.6], [-m.torsoW * 0.52, m.torsoH * 0.05, 0]], 0.04 * k, '#8a7046', 5)]);
+      }, LOCAL);
+      u.add('head', 'earring', function () { return [T(metal(g.torus({ R: 0.022 * k, r: 0.005 * k, seg: 8, sides: 3, color: '#e8c040' }), 0.9), m.headW * 0.52, m.eyeY - 0.07 * k, m.headZ)]; }, LOCAL);
+      u.add('hips', 'sash', function () {
+        return [geo.cord(ring(m.pelvisW * 0.58, m.pelvisD * 0.66, m.pelvisH * 0.44, 14), 0.032 * k, red, 5), T(R(geo.tatter({ w: 0.08 * k, h: 0.24 * k, teeth: 2, depth: 0.3, seed: 201, color: red }), 0, 0, 0.2), m.pelvisW * 0.42, m.pelvisH * 0.44, m.pelvisD * 0.56),
+          T(R(bottle(0.028 * k, 0.15 * k, '#3a6a3a'), 0.2, 0, -0.25), -m.pelvisW * 0.5, m.pelvisH * 0.2, m.pelvisD * 0.45)];
+      }, LOCAL);
+    }
+  });
+
+  // Powder Gunner: a ship's gunner in a black tricorn and a navy coat with brass buttons, a powder horn and a
+  // bandolier of cartridges, soot-blackened cuffs.
+  look('a3_gunner', {
+    area: 'harbor', rig: 'humanoid', colors: { main: '#283c5e', alt: '#d0a238', skin: '#c79a76', metal: '#6b6f73' },
+    eyeOpt: { brow: '#3a2a1e', browTilt: -0.2 },
+    dress: function (u, spec, k, m) {
+      var navy = S.grade(col(spec, 'main', '#283c5e')), navyD = S.shade(navy, -0.3), gold = '#d8a838';
+      u.drop('head', function (n) { return n.mesh === 'cyl12' || n.mesh === 'box_taper' || n.mesh === 'cyl8'; });
+      u.add('head', 'tricorn', function () {
+        var hy = m.headC + m.headH * 0.4, out = [T(geo.blob({ r: [m.headW * 0.6, m.headH * 0.28, m.headD * 0.6], sides: 9, rings: 4, color: '#1e1c22', seed: 211 }), 0, hy + m.headH * 0.08, m.headZ)];
+        [0, 1, 2].forEach(function (i) { var a = i / 3 * TAU, b = geo.bevelBox({ w: m.headW * 1.1, h: m.headH * 0.3, d: 0.03 * k, b: 0.3, taper: [1.1, 1], color: '#1e1c22' }); R(b, -0.25, a, 0); T(b, sin(a) * m.headW * 0.5, hy + m.headH * 0.12, m.headZ + cos(a) * m.headW * 0.5); out.push(b); });
+        out.push(geo.cord(ring(m.headW * 0.86, m.headW * 0.86, hy + m.headH * 0.26, 3).map(function (p, i) { return p; }), 0.01 * k, gold, 3));
+        return out;
+      }, LOCAL);
+      u.add('chest', 'coat', function () {
+        var out = [T(geo.hem({ r: m.neckR * 1.8, rBottom: m.torsoW * 0.6, h: 0.1 * k, sides: 10, teeth: 0.2, seed: 212, color: navyD }), 0, m.neckY + 0.02 * k, 0)];
+        [0.8, 0.6, 0.4, 0.2].forEach(function (t) { [1, -1].forEach(function (sd) { out.push(T(metal(g.sphere({ r: 0.016 * k, detail: 0, color: gold }), 0.85), sd * m.torsoW * 0.16, m.torsoH * t, m.torsoD * 0.56)); }); });
+        out.push(geo.cord([[-m.torsoW * 0.5, m.torsoH * 1.0, 0], [0, m.torsoH * 0.5, m.torsoD * 0.6], [m.torsoW * 0.52, m.torsoH * 0.05, 0]], 0.022 * k, LEATHER, 4));
+        var horn = geo.tusk([m.torsoW * 0.35, m.torsoH * 0.3, m.torsoD * 0.62], [m.torsoW * 0.65, m.torsoH * 0.1, m.torsoD * 0.3], 0.04 * k, '#d8c8a0', 0.06 * k, false); out.push(horn);
+        return out;
+      }, LOCAL);
+      ['chest', 'arm_r', 'arm_l'].forEach(function (j) { var n = u.named(j); if (n && n.mesh) n.color = navy; });
+      u.add('hips', 'coat', function () { return [skirt(m, navy, navyD, 213, 0.42, 0.2, true)].concat(belt(m, LEATHER, m.pelvisH * 0.46, gold)); }, LOCAL);
+      ['forearm_r', 'forearm_l'].forEach(function (j) { u.add(j, 'cuff', function () { return [T(g.cylinder({ r: m.forearmR * 1.35, h: 0.06 * k, sides: 8, color: '#2a2622' }), 0, -m.forearm * 0.7, 0)]; }, LOCAL); });
+    }
+  });
+
+  // Tide Crab: a big barnacled shore crab, rust-red shell with a pale belly, weed trailing from the shell.
+  look('a3_crab', {
+    area: 'harbor', colors: { main: '#b04a32', alt: '#e8d0a8', glow: '#ffd27a' }, paint: { bottom: 0.58, top: 1.15, rim: 0.25 }, grow: null, scale: null,
+    dress: function (u) {
+      u.add('chest', 'barnacles', function () { return barnacles([[0.22, 0.18, -0.1], [0.3, 0.16, 0.05], [-0.25, 0.17, -0.15], [-0.05, 0.2, -0.22], [0.1, 0.19, 0.12]], 1.6).concat([weed([0.35, 0.05, -0.25], 0.22, 221), weed([-0.4, 0.05, -0.2], 0.18, 222)]); }, LOCAL);
+    }
+  });
+
+  // Harbor Siren: a drowned singer: weed for hair, a crown of shells, pearls, teal glow.
+  look('a3_siren', {
+    area: 'harbor', rig: 'humanoid', colors: { main: '#4a9aa8', alt: '#22404e', skin: '#a8d0c8', glow: '#aaffee' }, eyes: false, grow: null, scale: null,
+    dress: function (u, spec, k, m) {
+      u.add('head', 'weed', function () {
+        var out = [];
+        fan(6, -2.2, 2.2, function (a, i) { out.push(weed([sin(a) * m.headW * 0.5, m.headC + m.headH * 0.3, cos(a) * m.headD * 0.5 - 0.02 * k], 0.4 * k, 230 + i)); });
+        fan(5, -0.9, 0.9, function (a, i) { out.push(T(R(geo.lathe([[0, 0], [0.04 * k, 0.01 * k], [0.02 * k, 0.08 * k], [0, 0.09 * k]], 5, i % 2 ? '#e8d8d0' : '#f0b8a8'), 0, 0, -a * 0.5), sin(a) * m.headW * 0.5, m.headC + m.headH * 0.55, cos(a) * m.headD * 0.3)); });
+        return out;
+      }, LOCAL);
+    }
+  });
+
+  // Bilge Revenant: a drowned sailor: barnacles on his shoulders and skull, weed hanging off him, a rotted striped
+  // shirt, cold teal eyes.
+  look('a3_revenant', {
+    area: 'harbor', rig: 'humanoid', colors: { main: '#3e5a5a', alt: '#2a3a3a', skin: '#7a9a92', glow: '#7affd8' }, eyes: 'glow', eyeOpt: { r: 0.026, slant: 0.2 },
+    dress: function (u, spec, k, m) {
+      u.add('chest', 'drowned', function () {
+        return stripes(m, '#2a3a4a', 3).concat(barnacles([[m.torsoW * 0.4, m.torsoH * 0.95, 0.02 * k], [m.torsoW * 0.32, m.torsoH * 0.9, m.torsoD * 0.3], [-m.torsoW * 0.42, m.torsoH * 0.92, -0.04 * k]], k * 1.2),
+          [weed([m.torsoW * 0.3, m.torsoH * 0.95, m.torsoD * 0.5], 0.36 * k, 241), weed([-m.torsoW * 0.35, m.torsoH * 0.9, -m.torsoD * 0.5], 0.4 * k, 242), weed([-m.torsoW * 0.1, m.torsoH * 0.5, m.torsoD * 0.52], 0.3 * k, 243)]);
+      }, LOCAL);
+      u.add('head', 'barnacles', function () { return barnacles([[m.headW * 0.3, m.headC + m.headH * 0.48, 0], [-m.headW * 0.15, m.headC + m.headH * 0.5, -m.headD * 0.2]], k).concat([weed([m.headW * 0.4, m.headC + m.headH * 0.3, -m.headD * 0.3], 0.25 * k, 244)]); }, LOCAL);
+      u.add('hips', 'rags', function () { return [skirt(m, S.grade('#3a4a4a'), S.grade('#22302e'), 245, 0.28, 0.7)]; }, LOCAL);
+    }
+  });
+
+  // Press-Gang Bosun (elite): a huge bosun in a knitted cap and a striped jersey, a coil of tarred rope over his
+  // shoulder, a brass whistle, an anchor.
+  look('a3_bosun', {
+    area: 'harbor', rig: 'brute', colors: { main: '#2c4466', alt: '#7a3a2a', skin: '#a8866a', metal: '#6b6f73', glow: '#7ad8ff' }, eyes: 'paint', eyeOpt: { brow: '#3a2a20' },
+    dress: function (u, spec, k, m) {
+      u.drop('head', function (n) { return n.mesh === 'sphere' && n.offset && n.offset[1] > m.headC + m.headH * 0.4; });
+      u.add('head', 'cap', function () { return [T(geo.blob({ r: [m.headW * 0.62, m.headH * 0.32, m.headD * 0.62], sides: 9, rings: 4, color: '#8a2a2a', seed: 251 }), 0, m.headC + m.headH * 0.42, m.headZ), T(g.torus({ R: m.headW * 0.56, r: 0.03 * k, seg: 10, sides: 4, color: '#6a2020' }), 0, m.headC + m.headH * 0.28, m.headZ)]; }, LOCAL);
+      var n0 = u.named('chest'); if (n0 && n0.mesh) n0.color = '#e2dccc';
+      u.add('chest', 'jersey', function () {
+        var coil = []; for (var i = 0; i < 3; i++) coil.push(T(R(g.torus({ R: 0.2 * k, r: 0.03 * k, seg: 10, sides: 4, color: TAR }), 0.3, 0, 0.9), m.torsoW * 0.32 + i * 0.02 * k, m.torsoH * 0.75, -0.03 * k + i * 0.02 * k));
+        return stripes(m, '#2c4466', 4).concat(coil, [geo.cord([[0, m.neckY, m.neckR], [0.03 * k, m.torsoH * 0.75, m.torsoD * 0.72]], 0.008 * k, '#c8a040', 3), T(R(metal(g.cylinder({ r: 0.015 * k, h: 0.08 * k, sides: 6, color: BRASS }), 0.85), HALF, 0, 0), 0.03 * k, m.torsoH * 0.72, m.torsoD * 0.76)]);
+      }, LOCAL);
+    }
+  });
+
+  bossLook('a3_admiral', 'smuggler_admiral', { area: 'harbor', rig: 'humanoid', eyes: 'paint', eyeOpt: { brow: '#2a2020' } });
+  bossLook('a3_maw', 'maw_of_the_deep', { area: 'harbor', grow: null, scale: null, paint: { bottom: 0.56, top: 1.15, rim: 0.28 },
+    dress: function (u) { u.add('seg3', 'barnacles', function () { return barnacles([[0.1, 0.3, 0], [-0.12, 0.28, 0.1], [0.0, 0.32, -0.12]], 2.2); }, LOCAL); } });
+
   // =========================================================================================== enemy id -> recipe
   var BY_ID = S.ACT3_BY_ID = {
     gutter_rat: 'a3_rat', crooked_watchman: 'a3_watchman', alley_knifer: 'a3_knifer', firebottle_urchin: 'a3_urchin', rat_piper: 'a3_piper', debt_collector: 'a3_collector',
     stall_cutpurse: 'a3_cutpurse', guild_arbalist: 'a3_arbalist', counting_golem: 'a3_golem', tonic_peddler: 'a3_peddler', gilded_bravo: 'a3_bravo',
-    sludge_heap: 'a3_sludge', sovereign_spawn: 'a3_sludge', canal_eel: 'a3_eel', drain_tick: 'a3_tick', sluice_fungus: 'a3_fungus', cistern_gulper: 'a3_gulper', sewer_skulker: 'a3_skulker'
+    sludge_heap: 'a3_sludge', sovereign_spawn: 'a3_sludge', canal_eel: 'a3_eel', drain_tick: 'a3_tick', sluice_fungus: 'a3_fungus', cistern_gulper: 'a3_gulper', sewer_skulker: 'a3_skulker',
+    dock_smuggler: 'a3_smuggler', powder_gunner: 'a3_gunner', tide_crab: 'a3_crab', harbor_siren: 'a3_siren', bilge_revenant: 'a3_revenant', press_gang_bosun: 'a3_bosun'
   };
   /** Give the city bodies their recipe (only when the data has no style of its own). */
   S.act3Assign = function () {
@@ -78529,7 +78638,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   M.register('city_rooftops', ROOFS);
   M.register('city_siege', SIEGE);
   /** Areas switched on so far (they ship one at a time; the rest stay classic until their look is done). */
-  M.ACT3_READY = ['lower_town', 'market_district', 'sewers'];
+  M.ACT3_READY = ['lower_town', 'market_district', 'sewers', 'harbor'];
   M.ACT3_READY.forEach(function (a) { if (!M.AREAS[a]) M.AREAS[a] = ACT3[a]; });
   M.act3 = { rectOf: rectOf, facingPairs: facingPairs, openFaces: openFaces, birdModel: birdModel };
 })(typeof window !== 'undefined' ? window : globalThis);
