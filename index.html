@@ -3221,7 +3221,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.8';
+  KD.VERSION = '0.7.9';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -63877,8 +63877,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     // bosses: the body glows and pulses, then bursts and goes the way of its material
     if (!D.bossDone) {
       var f = clamp(D.t / J.BOSS.prelude, 0, 1);
-      a.emissive += 0.55 * f;
-      a.flash = Math.max(a.flash, (0.18 + 0.22 * Math.abs(Math.sin(D.t * 11))) * f);
+      a.emissive += 0.35 * f;
+      a.flash = Math.max(a.flash, (0.1 + 0.18 * Math.abs(Math.sin(D.t * 11))) * f);
+      var bt = a._tint; bt[0] *= 1 - 0.15 * f; bt[1] *= 1 - 0.35 * f; bt[2] *= 1 - 0.05 * f;      // a purple cast, the Gravecaller's grim palette
       if (ctx && k > 0 && dt > 0) {
         D.acc += dt * 40 * k;
         while (D.acc >= 1) { D.acc -= 1; bodyPoint(v, e, PT); ctx.emit(JT.soul, PT[0], PT[1], PT[2], 1, J.BOSS.mote[0], J.BOSS.mote[1]); if (rnd() < 0.5) ctx.emit(JT.ash, PT[0], PT[1], PT[2], 1, J.BOSS.ash[0], J.BOSS.ash[1]); }
