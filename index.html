@@ -3221,7 +3221,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.11';
+  KD.VERSION = '0.7.12';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -72195,6 +72195,436 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/gfx/49_style_recipes_act3.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var S = KD.style;
+  if (!S || !S.recipe) return;
+  var PI = Math.PI, HALF = PI / 2, TAU = PI * 2, sin = Math.sin, cos = Math.cos, abs = Math.abs, min = Math.min, max = Math.max;
+  var geo = S.geo, g = KD.gfx.geom;
+
+  /**
+   * [w8 act3 look] Stylized looks of the Act III (city) enemies, elites, adds and bosses, built with KD.style
+   * (49_style_kit.js, docs/CREATURES.md section 11) in the hand-painted toon style of the Gravecaller and the Farm
+   * Village. Render only: the rig, hit shapes, attacks and the boss looks' animated / phase parts are untouched.
+   *
+   * Every city enemy is mapped to a recipe by id (S.ACT3_BY_ID, applied to its body at load: the data files need no
+   * edit), every boss by its `unique` id (S.UNIQUE). Each area has a palette (AREA_GRADE) that pulls the colours of its
+   * enemies together: soot browns in Lower Town, warm rich colour in the Market, sickly greens in the Sewers, sea
+   * blues in the Harbor, dusk purples on the Rooftops, crimson and steel at the City Gates.
+   *
+   * Helpers (all in a joint's local frame unless said otherwise): eyesGlow / eyesPainted, belt, scarf, coatTail,
+   * pouch, hoodCowl, plus the kit's geo.* shapes. Boss looks (46/47_boss_looks_*.js) keep their parts; their baked colours
+   * are graded into the area palette by bossGrade (a copy of the mesh, so the classic look keeps its colours).
+   */
+  var BONE = '#e2d8bf', BONE_D = '#b9ad94', ROPE = '#8a7656', RUST = '#7a4a34', LEATHER = '#4a3428', LEATHER_D = '#33241c', IRON = '#4a4c54', BRASS = '#b8902e';
+  var LOCAL = { local: true };
+  function col(spec, k, d) { var c = spec && spec.colors && spec.colors[k]; return typeof c === 'string' && /^#[0-9a-fA-F]{6}$/.test(c) ? c : d; }
+  function fan(n, a0, a1, f) { var out = [], i; for (i = 0; i < n; i++) out.push(f(n > 1 ? a0 + (a1 - a0) * i / (n - 1) : a0, i)); return out; }
+  function quad(sp) { var P = KD.creature && KD.creature.PLANS && KD.creature.PLANS.quadruped; return (P && P.table[sp]) || null; }
+  function ring(rx, rz, y, n, wob) { var pts = [], i; for (i = 0; i <= n; i++) { var a = i / n * TAU; pts.push([sin(a) * rx, y + (wob ? cos(a * 2) * wob : 0), cos(a) * rz]); } return pts; }
+  function T(m, x, y, z) { return g.translate(m, x, y, z); }
+  function R(m, x, y, z) { return g.rotate(m, x, y, z); }
+  function glow(m, v) { return g.setAux(m, { emissive: v === undefined ? 0.9 : v }); }
+  function metal(m, v) { return g.setAux(m, { metal: v === undefined ? 0.6 : v }); }
+
+  // =========================================================================================== area palettes
+  /** Grade options per area (S.grade): how far colours are pulled together and toward which tint. */
+  var AREA_GRADE = {
+    lower_town: { sat: 0.82, tint: '#6a5446', amount: 0.12, value: 0.95, shadow: 0.14 },
+    market_district: { sat: 1.0, tint: '#a8744a', amount: 0.06, value: 1.0, shadow: 0.1 },
+    sewers: { sat: 0.85, tint: '#4a6a4a', amount: 0.14, value: 0.95, shadow: 0.12 },
+    harbor: { sat: 0.9, tint: '#4a6478', amount: 0.1, value: 0.98, shadow: 0.1 },
+    rooftops: { sat: 0.85, tint: '#5a4a6e', amount: 0.14, value: 0.95, shadow: 0.16 },
+    city_gates: { sat: 0.9, tint: '#6a4a40', amount: 0.1, value: 0.97, shadow: 0.12 }
+  };
+  S.ACT3_GRADE = AREA_GRADE;
+  var PAINT_HUM = { bottom: 0.56, top: 1.12 };
+  var HANDS = { hand_r: [1.3, 1.2, 1.28], hand_l: [1.3, 1.2, 1.28], foot_r: [1.16, 1.1, 1.1], foot_l: [1.16, 1.1, 1.1] };
+  var LIMBS = KD.util.assign({ arm_r: [1.14, 1, 1.14], arm_l: [1.14, 1, 1.14], forearm_r: [1.18, 1, 1.18], forearm_l: [1.18, 1, 1.18],
+    leg_r: [1.1, 1, 1.1], leg_l: [1.1, 1, 1.1], shin_r: [1.16, 1, 1.16], shin_l: [1.16, 1, 1.16] }, HANDS);
+  var BRUTE_LIMBS = { arm_r: [1.06, 1, 1.06], arm_l: [1.06, 1, 1.06], forearm_r: [1.1, 1, 1.1], forearm_l: [1.1, 1, 1.1], hand_r: [1.08, 1.06, 1.08], hand_l: [1.08, 1.06, 1.08], foot_r: [1.08, 1.06, 1.06], foot_l: [1.08, 1.06, 1.06] };
+
+  /**
+   * look(id, o): register a recipe. o = { area, colors (spec colour overrides), build, grade (extra S.grade options),
+   *   paint, scale, grow, fold, eyes: 'glow' | 'paint' | false, glow (eye colour), dress(u, spec, k, m) }
+   * Humanoid-rig bodies (humanoid, brute, ghost) get the chunky limbs and the bigger head by default.
+   */
+  function look(id, o) {
+    var gopt = KD.util.assign({}, AREA_GRADE[o.area] || {}, o.grade || {});
+    return S.recipe(id, {
+      spec: function (s) {
+        if (o.colors) s.colors = KD.util.assign({}, s.colors || {}, o.colors);
+        if (o.build) s.build = o.build;
+        return s;
+      },
+      grade: function (c) { return S.grade(c, gopt); },
+      paint: o.paint || PAINT_HUM,
+      scale: o.scale === undefined ? (o.rig ? { head: o.rig === 'brute' ? 1.08 : 1.14 } : null) : o.scale,
+      grow: o.grow === undefined ? (o.rig === 'brute' ? BRUTE_LIMBS : (o.rig ? LIMBS : null)) : o.grow,
+      fold: o.fold || null,
+      dress: function (u, spec) {
+        var m = u.m, k = m ? m.k : 1;
+        if (m && o.eyes === 'glow') eyesGlow(u, col(spec, 'glow', o.glow || '#ffb347'), o.eyeOpt || {});
+        else if (m && o.eyes !== false && !o.noEyes) eyesPainted(u, o.eyeOpt || {});
+        if (o.dress) o.dress(u, spec, k, m);
+      },
+      after: o.after || null
+    });
+  }
+
+  // =========================================================================================== humanoid helpers
+  /** Glowing eyes in dark sockets instead of the rig's eye boxes (head space). */
+  function eyesGlow(u, glowC, o) {
+    var m = u.m; o = o || {};
+    u.hide(['eye_l', 'eye_r']);
+    u.add('head', 'eyes', function () {
+      var out = [geo.eyes({ x: m.eyeX * (o.gap || 1.05), y: o.y === undefined ? m.eyeY - 0.005 : o.y, z: o.z === undefined ? m.faceZ + 0.006 : o.z, r: (o.r || 0.028) * m.k, color: glowC, slant: o.slant === undefined ? 0.3 : o.slant, socket: o.socket || '#120e12' })];
+      if (o.brow) out.push(T(geo.bevelBox({ w: m.headW * 0.8, h: 0.04 * m.k, d: 0.06 * m.k, b: 0.35, color: o.brow }), 0, m.eyeY + 0.05 * m.k, m.faceZ - 0.012));
+      return out;
+    }, LOCAL);
+  }
+  /** Painted toon eyes for living people: dark almond eyes with a pale catch light, a heavy brow (not glowing). */
+  function eyesPainted(u, o) {
+    var m = u.m; o = o || {};
+    if (o.keep) return;
+    u.hide(['eye_l', 'eye_r']);
+    u.add('head', 'eyes', function () {
+      var k = m.k, out = [], s;
+      for (s = -1; s <= 1; s += 2) {
+        var e = g.sphere({ r: 1, detail: 1, color: o.color || '#16121a' }); g.scale(e, 0.03 * k, 0.024 * k, 0.012 * k); g.rotate(e, 0, 0, -s * (o.slant === undefined ? 0.2 : o.slant)); g.translate(e, s * m.eyeX * 1.02, m.eyeY - 0.004 * k, m.faceZ + 0.004 * k);
+        var w = g.sphere({ r: 1, detail: 0, color: '#f2ead8' }); g.scale(w, 0.008 * k, 0.008 * k, 0.004 * k); g.translate(w, s * m.eyeX * 1.02 + 0.008 * k, m.eyeY + 0.004 * k, m.faceZ + 0.014 * k);
+        out.push(e, w);
+        if (o.brow !== false) { var b = geo.bevelBox({ w: m.headW * 0.34, h: 0.026 * k, d: 0.04 * k, b: 0.35, color: o.brow || '#2a2020' }); g.rotate(b, 0, 0, -s * (o.browTilt === undefined ? 0.28 : o.browTilt)); g.translate(b, s * m.eyeX * 1.05, m.eyeY + 0.042 * k, m.faceZ - 0.004 * k); out.push(b); }
+      }
+      return out;
+    }, LOCAL);
+  }
+  /** A leather belt with a buckle round the hips (hips space). */
+  function belt(m, color, y, buckleC) {
+    var k = m.k, rx = m.pelvisW * 0.57, rz = m.pelvisD * 0.64;
+    return [geo.cord(ring(rx, rz, y, 14), 0.022 * k, color, 4), geo.buckle({ w: 0.075 * k, h: 0.065 * k, at: [0, y, rz + 0.006 * k], color: buckleC || RUST })];
+  }
+  /** A rope belt with a knot and hanging ends (hips space). */
+  function ropeBelt(m, color, y) {
+    var k = m.k, rx = m.pelvisW * 0.56, rz = m.pelvisD * 0.62;
+    return [geo.cord(ring(rx, rz, y, 14, 0.004), 0.018 * k, color, 4, true), T(geo.blob({ r: [0.03 * k, 0.025 * k, 0.025 * k], sides: 5, rings: 3, color: color }), rx * 0.45, y, rz * 0.9),
+      geo.cord([[rx * 0.45, y, rz * 0.95], [rx * 0.5, y - 0.1 * k, rz * 1.02], [rx * 0.42, y - 0.2 * k, rz * 1.0]], 0.012 * k, color, 3, true)];
+  }
+  /** A ragged scarf / neckerchief round the neck with a hanging tail (chest space). */
+  function scarf(m, color, seed, tail) {
+    var k = m.k, out = [T(geo.hem({ r: m.neckR * 1.5, rBottom: m.neckR * 2.6, h: 0.09 * k, sides: 9, teeth: 0.45, seed: seed, color: color }), 0, m.neckY + 0.025 * k, 0.005 * k)];
+    if (tail !== false) out.push(T(R(geo.tatter({ w: 0.08 * k, h: 0.22 * k, teeth: 2, depth: 0.4, seed: seed + 1, color: color, bend: 0.15 }), 0.15, 0, 0.2), m.neckR * 0.8, m.neckY - 0.01 * k, m.torsoD * 0.5 + 0.01 * k));
+    return out;
+  }
+  /** Coat tails / a ragged skirt from the waist (hips space). */
+  function skirt(m, color, inner, seed, h, teeth, open) {
+    var k = m.k, r = m.pelvisW * 0.56;
+    var o = { r: r, rz: m.pelvisD / m.pelvisW * 1.15, rBottom: r * 1.28, h: (h || 0.3) * k, sides: 12, teeth: teeth === undefined ? 0.5 : teeth, seed: seed, color: color, inner: inner };
+    if (open) { o.arc = TAU - 1.2; o.a0 = 0.6; }       // open at the front (a coat)
+    return T(geo.hem(o), 0, m.pelvisH * 0.42, 0);
+  }
+  /** A stitched pouch on the hip (hips space). side: 1 = right of the model (+X), -1 = left. */
+  function pouch(m, color, side, seed) {
+    var k = m.k, x = side * m.pelvisW * 0.58;
+    return [T(geo.blob({ r: [0.06 * k, 0.075 * k, 0.045 * k], sides: 7, rings: 4, lump: 0.12, seed: seed || 33, color: color }), x, m.pelvisH * 0.05, m.pelvisD * 0.12),
+      T(geo.bevelBox({ w: 0.11 * k, h: 0.03 * k, d: 0.09 * k, b: 0.3, color: S.shade(color, -0.25) }), x, m.pelvisH * 0.05 + 0.065 * k, m.pelvisD * 0.12)];
+  }
+  /** A bottle (stoppered) standing along +Y from the origin. */
+  function bottle(r, h, glass, cork, glowV) {
+    var b = geo.lathe([[0, 0], [r, 0.02], [r * 1.05, h * 0.55], [r * 0.45, h * 0.72], [r * 0.38, h * 0.92], [0, h * 0.92]], 7, glass);
+    if (glowV) glow(b, glowV);
+    return g.merge([b, T(g.cylinder({ r: r * 0.42, h: h * 0.14, sides: 5, color: cork || '#8a6a44' }), 0, h * 0.97, 0)]);
+  }
+  /** Pauldron cap over a shoulder (arm space). */
+  function pauldron(m, color, sd, seed, studs) {
+    var k = m.k, p = geo.blob({ r: [m.armR * 1.9, m.armR * 1.1, m.armR * 1.8], sides: 8, rings: 4, color: color, seed: seed || 4 });
+    T(p, sd * m.armR * 0.25, m.armR * 0.35, 0);
+    var out = [metal(p, 0.5)];
+    if (studs) [-1, 0, 1].forEach(function (i) { out.push(T(metal(g.sphere({ r: 0.012 * k, detail: 0, color: studs })), sd * m.armR * 0.3 + i * m.armR * 0.6, m.armR * 1.25, m.armR * 0.6)); });
+    return out;
+  }
+  /** Ragged hood cowl falling over the shoulders (chest space). */
+  function cowl(m, color, inner, seed) {
+    var k = m.k;
+    return T(geo.hem({ r: m.neckR * 1.6, rBottom: m.torsoW * 0.7, rz: 1.05, h: 0.2 * k, sides: 12, teeth: 0.5, seed: seed, color: color, inner: inner }), 0, m.neckY + 0.03 * k, -0.01 * k);
+  }
+
+  /**
+   * The Gravecaller hood: a deep rounded hood with a back-swept point and a dark void for a face (head space); the
+   * plan's own hood / cap parts and the face go. Returns the z of the void's front, for glowing eyes in front of it.
+   */
+  function hood(u, color, inner, seed, o) {
+    var m = u.m, k = m.k; o = o || {};
+    u.drop('head', function (n) { return n.mesh === 'box_bevel' || n.mesh === 'cone' || n.mesh === 'box' || n.mesh === 'cyl12' || n.mesh === 'box_taper' || n.mesh === 'cyl8'; });
+    u.drop('chest', function (n) { return n.mesh === 'cyl8' && n.offset && n.offset[1] > m.torsoH * 0.9; });
+    u.hide(['nose', 'mouth', 'brow', 'ear_l', 'ear_r', 'hair']);
+    var hw = m.headW, hh = m.headH, hd = m.headD, cz = m.headZ - hd * 0.06, fz = cz + hd * 0.66;
+    u.add('head', 'hood', function () {
+      var shell = geo.blob({ r: [hw * 0.74, hh * 0.7, hd * 0.72], sides: 9, rings: 6, lump: 0.05, seed: seed, color: color });
+      T(shell, 0, m.headC + hh * 0.08, cz);
+      var tip = geo.spike([0, m.headC + hh * 0.5, cz - hd * 0.25], [0, m.headC + hh * (o.tall ? 1.05 : 0.7), cz - hd * (o.tall ? 0.95 : 0.8)], hw * 0.34, color, S.shade(color, -0.2), 6);
+      var voidF = geo.blob({ r: [hw * 0.46, hh * 0.44, 0.05 * k], sides: 9, rings: 4, color: '#0a080c' }); T(voidF, 0, m.headC - hh * 0.02, fz - 0.03 * k);
+      var lip = geo.cord(ring(hw * 0.52, 0.05 * k, 0, 12).map(function (p) { return [p[0], m.headC - hh * 0.02 + p[2] / (0.05 * k) * hh * 0.5, fz - 0.02 * k + 0.012 * k]; }), 0.028 * k, inner || S.shade(color, -0.25), 4, false);
+      return [shell, tip, voidF, lip];
+    }, LOCAL);
+    return fz + 0.02 * k;
+  }
+  // =========================================================================================== boss looks: grade the baked colours
+  var bossMeshes = {};
+  /** Recolour the boss-look meshes (blb_* / bla_*) of a built body into the area palette: a graded copy of each mesh. */
+  function bossGrade(u, area, amount) {
+    var gopt = KD.util.assign({}, AREA_GRADE[area] || {}, { amount: (AREA_GRADE[area] || {}).amount * (amount || 1) });
+    (function walk(nd) {
+      if (!nd) return;
+      if (nd.mesh && /^bl[ab]_/.test(nd.mesh) && !(nd.emissive > 0.5)) {
+        var key = 'a3g_' + area + '_' + nd.mesh;
+        if (!bossMeshes[key] || !KD.gfx.hasMesh(key)) {
+          var id = KD.gfx.meshId(nd.mesh);
+          if (id >= 0) {
+            var src = KD.gfx.meshes.list[id].geom, cp = g.clone(src), c = cp.col, ax = cp.aux, i, memo = {};
+            for (i = 0; i < c.length; i += 3) {
+              if (ax && ax[i / 3 * 4] > 0.5) continue;               // glowing bits keep their colour
+              var hk = (c[i] * 255 | 0) + ',' + (c[i + 1] * 255 | 0) + ',' + (c[i + 2] * 255 | 0), v = memo[hk];
+              if (!v) { v = memo[hk] = KD.gfx.color._get(S.grade(KD.gfx.color.toHex([min(1, c[i]), min(1, c[i + 1]), min(1, c[i + 2])]), gopt)); }
+              c[i] = v[0]; c[i + 1] = v[1]; c[i + 2] = v[2];
+            }
+            KD.gfx.registerMesh(key, cp); bossMeshes[key] = 1;
+          }
+        }
+        if (bossMeshes[key]) nd.mesh = key;
+      }
+      var ch = nd.children; if (ch) for (var j = 0; j < ch.length; j++) walk(ch[j]);
+    })(u.built.model);
+  }
+  S.act3BossGrade = bossGrade;
+  /** A boss recipe: area grade + paint over the plan body and the boss look, plus o.dress for a few painted extras. */
+  function bossLook(id, unique, o) {
+    var r = look(id, KD.util.assign({ eyes: o.eyes === undefined ? false : o.eyes }, o, {
+      dress: function (u, spec, k, m) {
+        bossGrade(u, o.area, o.lookGrade);
+        if (o.dress) o.dress(u, spec, k, m);
+      }
+    }));
+    S.UNIQUE[unique] = id;
+    return r;
+  }
+
+  // =========================================================================================== LOWER TOWN
+  // Soot browns, rag colours, rust; ember-orange and rat-red glows.
+
+  // Gutter Rat: a mangy, big-headed sewer rat: scabby brown-grey fur, ragged ears, whiskers, yellow buck teeth,
+  // ember-red glowing eyes, a long naked ringed tail.
+  look('a3_rat', {
+    area: 'lower_town', colors: { main: '#5e5048', alt: '#8a6a5e', glow: '#ff5a3c' },
+    grade: { sat: 0.9, amount: 0.06, value: 1 }, paint: { bottom: 0.56, top: 1.06, rim: 0.12 },
+    scale: { head: 1.18 }, fold: { ear_l: 'head', ear_r: 'head', tail3: 'tail2' },
+    grow: { paw_fl: [1.25, 1.2, 1.15], paw_fr: [1.25, 1.2, 1.15], paw_bl: [1.25, 1.2, 1.15], paw_br: [1.25, 1.2, 1.15] },
+    dress: function (u, spec) {
+      var q = quad('rat'); if (!q) return;
+      var fur = S.grade(col(spec, 'main', '#5e5048'), { sat: 0.75 }), furD = S.shade(fur, -0.35), furL = S.mix(fur, '#c8b8a0', 0.35), pink = '#b07a74', glowC = col(spec, 'glow', '#ff5a3c');
+      var hd = q.hd, sn = q.sn, skullZ = hd[2] * 0.3, fz = skullZ + hd[2] * 0.5;
+      u.drop('head', function (n) { return n.mesh === 'box' && n.emissive > 0.5; });
+      u.add('head', 'face', function () {
+        var out = [geo.eyes({ x: hd[0] * 0.3, y: hd[1] * 0.16, z: fz - 0.012, r: 0.022, color: glowC, slant: 0.35, socket: '#140c0c' })];
+        [1, -1].forEach(function (sd) {
+          var b = geo.bevelBox({ w: hd[0] * 0.42, h: 0.035, d: 0.07, b: 0.35, taper: [1, 0.7], color: furD }); R(b, 0.2, 0, -sd * 0.35); T(b, sd * hd[0] * 0.26, hd[1] * 0.34, fz - 0.03); out.push(b);
+          // whiskers fanning out of the snout
+          fan(3, -0.25, 0.3, function (a) { out.push(geo.rod([sd * sn[0] * 0.4, -hd[1] * 0.12, skullZ + hd[2] * 0.5 + sn[2] * 0.7], [sd * (sn[0] * 0.4 + 0.16), -hd[1] * 0.12 + a * 0.12, skullZ + hd[2] * 0.5 + sn[2] * 0.6 - 0.04], 0.004, '#d8ccb8', 0.002, 3)); });
+          // torn round ears
+          var ear = geo.blob({ r: [0.075, 0.08, 0.02], sides: 7, rings: 4, color: pink, lump: 0.18, seed: 5 + sd }); R(ear, -0.2, sd * 0.4, sd * 0.3); T(ear, sd * hd[0] * 0.5, hd[1] * 0.48, skullZ - hd[2] * 0.15); out.push(ear);
+        });
+        // a big pink nose and yellow buck teeth
+        out.push(T(geo.blob({ r: [0.03, 0.025, 0.025], sides: 6, rings: 3, color: pink }), 0, -hd[1] * 0.06, skullZ + hd[2] * 0.5 + sn[2] * 1.02));
+        [1, -1].forEach(function (sd) { out.push(T(geo.bevelBox({ w: 0.022, h: 0.05, d: 0.014, b: 0.3, color: '#e0c878' }), sd * 0.013, -hd[1] * 0.3, skullZ + hd[2] * 0.5 + sn[2] * 0.86)); });
+        return out;
+      }, LOCAL);
+      // scabby, ragged fur along the back and a bald patch
+      u.add('chest', 'mange', function () {
+        var out = [], i;
+        for (i = 0; i < 6; i++) { var z = q.len * 0.4 - i * q.len * 0.18; out.push(T(geo.tuft({ n: 3, len: 0.09 - i * 0.006, r: 0.03, spread: 0.6, seed: 20 + i, color: furD, tip: fur, dir: [0, 1, -0.9] }), (i % 2 ? 0.03 : -0.03), q.cd * 0.5 - 0.02 + q.rise * i * 0.15, z)); }
+        [1, -1].forEach(function (s) { out.push(T(geo.tuft({ n: 3, len: 0.08, r: 0.03, spread: 0.5, seed: 30 + s, color: fur, tip: furL, dir: [s, -0.4, 0.4] }), s * q.cw * 0.45, -q.cd * 0.05, q.len * 0.25)); });
+        out.push(T(geo.blob({ r: [0.06, 0.02, 0.05], sides: 6, rings: 3, color: '#8a5a54' }), q.cw * 0.3, q.cd * 0.3, -q.len * 0.1));
+        return out;
+      }, LOCAL);
+      // the naked tail: pink rings
+      ['tail', 'tail2'].forEach(function (j, i) {
+        u.add(j, 'rings', function () { return fan(3, 0.15, 0.85, function (t) { return T(g.torus({ R: q.tw * 0.55 * (1 - i * 0.3), r: 0.008, seg: 7, sides: 3, color: S.shade(pink, -0.25) }), 0, q.tl * 0.33 * t, 0); }); }, LOCAL);
+      });
+      ['paw_fl', 'paw_fr', 'paw_bl', 'paw_br'].forEach(function (p) {
+        u.add(p, 'claws', function () { var PH = q.lw * 0.55; return fan(3, -0.025, 0.025, function (x) { return geo.spike([x, -PH * 0.75, q.lw * 1.0], [x * 1.3, -PH * 1.0, q.lw * 1.45], 0.011, BONE_D, BONE, 3); }); }, LOCAL);
+      });
+    }
+  });
+
+  // Crooked Watchman: a pot-bellied city guard gone to seed: dented kettle helm, a short rust-red watch capelet with a
+  // brass badge, a dirty bandage, a hand lantern on his belt, a bribe purse, a truncheon-mace and a battered shield.
+  look('a3_watchman', {
+    area: 'lower_town', rig: 'humanoid', colors: { main: '#46535e', alt: '#9a3428', skin: '#c49a7c', metal: '#868a90' },
+    grade: { sat: 0.95, amount: 0.06 }, eyeOpt: { brow: '#3a2a22', browTilt: -0.15 },
+    dress: function (u, spec, k, m) {
+      var red = S.grade(col(spec, 'alt', '#9a3428'), { sat: 1, amount: 0.04 }), redD = S.shade(red, -0.3);
+      u.add('chest', 'capelet', function () {
+        return [T(geo.hem({ r: m.neckR * 1.7, rBottom: m.torsoW * 0.72, rz: 1.1, h: 0.24 * k, sides: 12, teeth: 0.35, seed: 61, color: red, inner: redD }), 0, m.neckY + 0.03 * k, -0.005 * k),
+          T(metal(geo.lathe([[0, 0], [0.045 * k, 0.004 * k], [0.04 * k, 0.012 * k], [0, 0.014 * k]], 6, BRASS), 0.8), m.torsoW * 0.2, m.torsoH * 0.82, m.torsoD * 0.62)]
+          .map(function (q, i) { return i === 1 ? R(q, HALF, 0, 0) : q; });
+      }, LOCAL);
+      u.add('hips', 'kit', function () {
+        var out = belt(m, LEATHER, m.pelvisH * 0.46, BRASS).concat(pouch(m, '#7a5a3a', -1, 63));
+        var lx = m.pelvisW * 0.62, ly = m.pelvisH * 0.2;
+        out.push(T(metal(geo.bevelBox({ w: 0.08 * k, h: 0.11 * k, d: 0.08 * k, b: 0.2, color: IRON })), lx, ly - 0.06 * k, 0));
+        out.push(T(glow(geo.bevelBox({ w: 0.06 * k, h: 0.075 * k, d: 0.086 * k, b: 0.2, color: '#ffc060' }), 0.85), lx, ly - 0.06 * k, 0));
+        out.push(geo.cord([[lx, ly + 0.08 * k, 0], [lx, ly, 0]], 0.006 * k, IRON, 3));
+        return out;
+      }, LOCAL);
+      u.add('forearm_l', 'bandage', function () { return [geo.cord(ring(m.forearmR * 1.25, m.forearmR * 1.25, -m.forearm * 0.45, 9), 0.016 * k, '#c8bca0', 4), geo.cord(ring(m.forearmR * 1.22, m.forearmR * 1.22, -m.forearm * 0.58, 9), 0.016 * k, '#b0a488', 4)]; }, LOCAL);
+      u.add('head', 'face', function () {
+        return [T(geo.bevelBox({ w: m.headW * 0.7, h: m.headH * 0.2, d: 0.02 * k, b: 0.4, color: '#6a4a3e' }), 0, m.headC - m.headH * 0.33, m.faceZ - 0.006 * k),        // stubble
+          T(R(geo.bevelBox({ w: m.headW * 0.5, h: 0.03 * k, d: 0.03 * k, b: 0.4, color: '#3a2620' }), 0, 0, 0.12), 0, m.headC - m.headH * 0.12, m.faceZ + 0.004 * k)];   // a drooping moustache
+      }, LOCAL);
+    }
+  });
+
+  // Alley Knifer: a lean cutthroat under a deep soot-black hood (the Gravecaller's shape): a void for a face with two
+  // pale glowing eyes, a plum scarf over the mouth, a bandolier of knives, wrapped forearms, ragged coat tails.
+  look('a3_knifer', {
+    area: 'lower_town', rig: 'humanoid', colors: { main: '#2c2a34', alt: '#6a2a46', skin: '#b08a70', metal: '#a0a4aa', glow: '#f0e2c0' }, noEyes: true,
+    dress: function (u, spec, k, m) {
+      var cloak = S.grade(col(spec, 'main', '#2c2a34'), { sat: 1, amount: 0.02 }), cloakD = S.shade(cloak, -0.35), plum = S.grade(col(spec, 'alt', '#6a2a46'), { sat: 1, amount: 0.02 });
+      var fz = hood(u, cloak, plum, 71, { tall: true });
+      eyesGlow(u, col(spec, 'glow', '#f0e2c0'), { r: 0.022, slant: 0.45, z: fz, y: m.eyeY - 0.01 * k, socket: null });
+      u.add('chest', 'gear', function () {
+        var out = [cowl(m, cloak, plum, 72), T(geo.hem({ r: m.neckR * 1.3, rBottom: m.neckR * 2.2, h: 0.1 * k, sides: 9, teeth: 0.4, seed: 70, color: plum }), 0, m.neckY + 0.05 * k, 0.01 * k)], i;
+        var a = [m.torsoW * 0.5, m.torsoH * 0.95, m.torsoD * 0.45], b = [-m.torsoW * 0.5, m.torsoH * 0.15, m.torsoD * 0.45];
+        out.push(geo.cord([a, [0, m.torsoH * 0.55, m.torsoD * 0.56], b], 0.02 * k, LEATHER, 4));
+        for (i = 0; i < 4; i++) {
+          var t = 0.2 + i * 0.18, p = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, m.torsoD * 0.56];
+          out.push(T(R(metal(geo.bevelBox({ w: 0.02 * k, h: 0.1 * k, d: 0.012 * k, b: 0.3, color: '#c8ccd0' }), 0.8), 0, 0, 0.6), p[0], p[1] + 0.05 * k, p[2] + 0.01 * k));
+          out.push(T(R(geo.bevelBox({ w: 0.026 * k, h: 0.05 * k, d: 0.02 * k, b: 0.3, color: LEATHER_D }), 0, 0, 0.6), p[0], p[1] - 0.02 * k, p[2] + 0.01 * k));
+        }
+        return out;
+      }, LOCAL);
+      u.add('hips', 'coat', function () { return [skirt(m, cloak, cloakD, 73, 0.42, 0.6, true)].concat(belt(m, LEATHER_D, m.pelvisH * 0.42, IRON)); }, LOCAL);
+      ['forearm_r', 'forearm_l'].forEach(function (j) { u.add(j, 'wraps', function () { return fan(3, 0.3, 0.8, function (t) { return geo.cord(ring(m.forearmR * 1.22, m.forearmR * 1.22, -m.forearm * t, 8), 0.012 * k, '#5a4a40', 3); }); }, LOCAL); });
+    }
+  });
+
+  // Firebottle Urchin: a scrawny street kid in a mustard jacket of patches and an oversized flat cap, a red scarf,
+  // a satchel of bottles with burning rag wicks, a torch, soot on the face.
+  look('a3_urchin', {
+    area: 'lower_town', rig: 'humanoid', colors: { main: '#9a7434', alt: '#b83a2a', skin: '#c49a7c', glow: '#ff8a2c' },
+    grade: { sat: 1, amount: 0.04 }, scale: { head: 1.24 }, eyeOpt: { brow: '#3a2a20', browTilt: 0.35 },
+    dress: function (u, spec, k, m) {
+      var jac = S.grade(col(spec, 'main', '#9a7434'), { sat: 1, amount: 0.04 }), jacD = S.shade(jac, -0.3), red = S.grade(col(spec, 'alt', '#b83a2a'), { sat: 1, amount: 0.03 });
+      u.drop('head', function (n) { return n.mesh === 'box_bevel' || n.mesh === 'box'; });
+      u.add('head', 'cap', function () {
+        var hy = m.headC + m.headH * 0.42, cap = geo.blob({ r: [m.headW * 0.74, m.headH * 0.22, m.headD * 0.72], sides: 10, rings: 4, color: '#4e4a44', seed: 81 });
+        R(cap, -0.12, 0, 0.14); T(cap, 0.01 * k, hy, m.headZ + 0.01 * k);
+        var peak = geo.bevelBox({ w: m.headW * 0.72, h: 0.025 * k, d: m.headD * 0.42, b: 0.3, color: '#36322e' }); R(peak, 0.25, 0, 0.14); T(peak, 0.01 * k, hy - m.headH * 0.08, m.headZ + m.headD * 0.56);
+        return [cap, peak, T(geo.tuft({ n: 4, len: 0.09 * k, r: 0.022 * k, spread: 0.7, seed: 82, color: '#3a2a20', dir: [0.3, -0.3, -1] }), 0, m.headC + m.headH * 0.1, -m.headD * 0.48),
+          T(geo.bevelBox({ w: 0.06 * k, h: 0.03 * k, d: 0.006 * k, b: 0.4, color: '#2a2422' }), m.eyeX * 0.8, m.eyeY - 0.06 * k, m.faceZ + 0.002 * k)];
+      }, LOCAL);
+      ['chest', 'arm_r', 'arm_l', 'forearm_r', 'forearm_l'].forEach(function (j) { var n = u.named(j); if (n && n.mesh) n.color = jac; });
+      u.add('chest', 'rags', function () {
+        return scarf(m, red, 83).concat([geo.patch({ w: 0.09 * k, h: 0.08 * k, at: [m.torsoW * 0.18, m.torsoH * 0.5, m.torsoD * 0.5 + 0.006 * k], color: S.grade('#4a5a6a'), rot: 0.2 }),
+          geo.patch({ w: 0.07 * k, h: 0.07 * k, at: [-m.torsoW * 0.22, m.torsoH * 0.28, m.torsoD * 0.5 + 0.006 * k], color: S.grade('#6a3a2a'), rot: -0.3 }),
+          geo.cord([[m.torsoW * 0.45, m.torsoH * 0.98, 0], [0, m.torsoH * 0.5, m.torsoD * 0.55], [-m.torsoW * 0.5, m.torsoH * 0.05, 0]], 0.016 * k, LEATHER, 4)]);
+      }, LOCAL);
+      u.add('hips', 'satchel', function () {
+        var sx = -m.pelvisW * 0.66, out = [T(geo.blob({ r: [0.08 * k, 0.1 * k, 0.12 * k], sides: 8, rings: 4, lump: 0.1, seed: 84, color: '#6a5038' }), sx, m.pelvisH * 0.25, 0.0)];
+        [-0.05, 0, 0.05].forEach(function (z, i) {
+          var b = bottle(0.024 * k, 0.13 * k, i === 1 ? '#5a8a5a' : '#8a6a3a'); T(b, sx + (i - 1) * 0.012 * k, m.pelvisH * 0.32, z * k); out.push(b);
+          out.push(T(glow(geo.tuft({ n: 3, len: 0.05 * k, r: 0.014 * k, spread: 0.5, seed: 85 + i, color: '#ff9a3c', tip: '#ffe08a' }), 0.95), sx + (i - 1) * 0.012 * k, m.pelvisH * 0.32 + 0.14 * k, z * k));
+        });
+        return out.concat([skirt(m, jac, jacD, 86, 0.18, 0.7)]);
+      }, LOCAL);
+    }
+  });
+
+  // Rat Piper: a hunched rat-man under a moss-green hood (the Gravecaller's shape) with sick yellow-green eyes and a
+  // pink snout poking out, a bone pipe on a cord, rat skulls on a rope belt, a long patched robe, a crooked staff.
+  look('a3_piper', {
+    area: 'lower_town', rig: 'humanoid', colors: { main: '#4c4434', alt: '#5e7a2e', skin: '#8a7a6a', glow: '#d2f05a' }, noEyes: true,
+    grade: { sat: 1, amount: 0.04 },
+    dress: function (u, spec, k, m) {
+      var robe = S.grade(col(spec, 'alt', '#5e7a2e'), { sat: 1, amount: 0.04 }), robeD = S.shade(robe, -0.32), sack = S.grade(col(spec, 'main', '#4c4434'));
+      var fz = hood(u, robe, robeD, 91, {});
+      eyesGlow(u, col(spec, 'glow', '#d2f05a'), { r: 0.024, slant: 0.35, z: fz, socket: null });
+      u.add('head', 'snout', function () {
+        var sn = geo.blob({ r: [m.headW * 0.18, m.headH * 0.15, m.headD * 0.3], sides: 7, rings: 4, color: '#8a6e66' }); T(sn, 0, m.headC - m.headH * 0.22, fz + m.headD * 0.06);
+        var out = [sn, T(geo.blob({ r: [0.025 * k, 0.02 * k, 0.02 * k], sides: 5, rings: 3, color: '#c88a84' }), 0, m.headC - m.headH * 0.2, fz + m.headD * 0.34)];
+        [1, -1].forEach(function (sd) { fan(3, -0.2, 0.25, function (a) { out.push(geo.rod([sd * m.headW * 0.1, m.headC - m.headH * 0.24, fz + m.headD * 0.22], [sd * m.headW * 0.62, m.headC - m.headH * 0.24 + a * 0.1, fz + m.headD * 0.05], 0.003 * k, '#d8ccb8', 0.0015, 3)); }); });
+        return out;
+      }, LOCAL);
+      u.add('chest', 'mantle', function () {
+        return [cowl(m, robe, robeD, 92),
+          geo.patch({ w: 0.1 * k, h: 0.09 * k, at: [-m.torsoW * 0.18, m.torsoH * 0.45, m.torsoD * 0.5 + 0.006 * k], color: sack, rot: -0.25 }),
+          geo.cord([[m.neckR * 1.2, m.neckY, m.neckR * 0.6], [m.torsoW * 0.1, m.torsoH * 0.7, m.torsoD * 0.6]], 0.008 * k, ROPE, 3),
+          geo.bone([m.torsoW * 0.02, m.torsoH * 0.55, m.torsoD * 0.62], [m.torsoW * 0.22, m.torsoH * 0.8, m.torsoD * 0.64], 0.02 * k, BONE)];
+      }, LOCAL);
+      u.add('hips', 'robe', function () {
+        return [skirt(m, robe, robeD, 93, 0.46, 0.55)].concat(ropeBelt(m, ROPE, m.pelvisH * 0.42),
+          [0, 1, 2].map(function (i) { return geo.charm({ cord: [m.pelvisW * (0.1 + i * 0.18), m.pelvisH * 0.42, m.pelvisD * 0.58], at: [m.pelvisW * (0.1 + i * 0.18), m.pelvisH * 0.42 - (0.1 + i * 0.03) * k, m.pelvisD * 0.62], kind: 'skull', r: 0.028 * k }); }));
+      }, LOCAL);
+    }
+  });
+
+  // Debt Collector (elite): a huge ogre bailiff in a battered stovepipe hat and a long soot-black coat with brass
+  // buttons, a chained ledger, a moneybag and a ring of keys, iron manacles on the wrists, the debtors' cage on his back.
+  look('a3_collector', {
+    area: 'lower_town', rig: 'brute', colors: { main: '#34302e', alt: '#2c2828', skin: '#b08a6a', metal: '#6e7278', glow: '#e2b94a' },
+    eyes: 'glow', eyeOpt: { r: 0.02, slant: 0.4, brow: '#4a3a30' }, paint: { bottom: 0.55, top: 1.1 },
+    dress: function (u, spec, k, m) {
+      var coat = S.grade(col(spec, 'main', '#34302e')), coatD = S.shade(coat, -0.3), coatL = S.shade(coat, 0.25);
+      u.drop('head', function (n) { return n.mesh === 'sphere' && n.offset && n.offset[1] > m.headC + m.headH * 0.4; });   // the top knot
+      u.add('head', 'hat', function () {
+        var hy = m.headC + m.headH * 0.4, hat = geo.lathe([[0, 0], [m.headW * 0.62, 0.0], [m.headW * 0.6, m.headH * 0.5], [m.headW * 0.66, m.headH * 1.05], [0, m.headH * 1.05]], 9, '#2a2626');
+        R(hat, -0.08, 0, 0.12); T(hat, 0, hy, m.headZ - 0.01 * k);
+        var brim = g.cylinder({ r: m.headW * 0.95, h: 0.025 * k, sides: 11, color: '#222020' }); R(brim, -0.08, 0, 0.12); T(brim, 0, hy + 0.01 * k, m.headZ - 0.01 * k);
+        var band = geo.cord(ring(m.headW * 0.62, m.headW * 0.62, 0, 12), 0.022 * k, '#6a2a24', 4); R(band, -0.08, 0, 0.12); T(band, 0, hy + m.headH * 0.1, m.headZ - 0.01 * k);
+        return [hat, brim, band];
+      }, LOCAL);
+      u.add('chest', 'coat', function () {
+        var out = [T(geo.hem({ r: m.neckR * 2.2, rBottom: m.torsoW * 0.64, h: 0.14 * k, sides: 10, teeth: 0.3, seed: 101, color: coatL }), 0, m.neckY + 0.02 * k, 0)];
+        [0.75, 0.55, 0.35].forEach(function (t) { out.push(T(metal(g.sphere({ r: 0.026 * k, detail: 0, color: BRASS }), 0.8), m.torsoW * 0.14, m.torsoH * t, m.torsoD * 0.74)); });
+        return out;
+      }, LOCAL);
+      ['chest', 'arm_r', 'arm_l'].forEach(function (j) { var n = u.named(j); if (n && n.mesh) n.color = coat; });
+      u.add('hips', 'kit', function () {
+        var out = belt(m, LEATHER_D, m.pelvisH * 0.45, BRASS).concat([skirt(m, coat, coatD, 102, 0.5, 0.35, true)]);
+        var lx = -m.pelvisW * 0.66;
+        out.push(T(geo.bevelBox({ w: 0.06 * k, h: 0.2 * k, d: 0.15 * k, b: 0.15, color: '#6a2a24' }), lx, m.pelvisH * 0.0, 0.02 * k), T(geo.bevelBox({ w: 0.064 * k, h: 0.17 * k, d: 0.12 * k, b: 0.1, color: '#d8ccb0' }), lx, m.pelvisH * 0.0, 0.03 * k));
+        out.push(geo.cord([[lx, m.pelvisH * 0.45, 0.03 * k], [lx - 0.02 * k, m.pelvisH * 0.25, 0.05 * k], [lx, m.pelvisH * 0.1, 0.03 * k]], 0.012 * k, IRON, 4, true));
+        var rx = m.pelvisW * 0.66;
+        out.push(T(geo.blob({ r: [0.08 * k, 0.1 * k, 0.07 * k], sides: 7, rings: 4, lump: 0.1, seed: 103, color: '#9a7440' }), rx, m.pelvisH * 0.05, m.pelvisD * 0.2));
+        out.push(T(metal(g.torus({ R: 0.045 * k, r: 0.008 * k, seg: 8, sides: 4, color: BRASS }), 0.8), rx, m.pelvisH * 0.12, -m.pelvisD * 0.3));
+        fan(3, -0.4, 0.4, function (a) { out.push(T(R(metal(geo.bevelBox({ w: 0.014 * k, h: 0.07 * k, d: 0.006 * k, b: 0.2, color: BRASS }), 0.8), 0, 0, a), rx + sin(a) * 0.03 * k, m.pelvisH * 0.12 - 0.07 * k, -m.pelvisD * 0.3)); });
+        return out;
+      }, LOCAL);
+      ['forearm_r', 'forearm_l'].forEach(function (j) { u.add(j, 'manacle', function () { return [metal(T(g.torus({ R: m.forearmR * 1.3, r: 0.02 * k, seg: 10, sides: 4, color: IRON }), 0, -m.forearm * 0.82, 0), 0.6), geo.cord([[m.forearmR * 1.3, -m.forearm * 0.85, 0], [m.forearmR * 1.5, -m.forearm * 1.05, 0.02 * k], [m.forearmR * 1.3, -m.forearm * 1.2, 0]], 0.014 * k, IRON, 4, true)]; }, LOCAL); });
+    }
+  });
+  // Mini-boss and boss of Lower Town: their boss looks stay; colours graded into the soot palette, painted.
+  bossLook('a3_gutter_king', 'gutter_king', { area: 'lower_town', rig: 'humanoid', eyes: 'glow', glow: '#ff5a3c', eyeOpt: { r: 0.026, slant: 0.35 } });
+  bossLook('a3_beggar_prince', 'beggar_prince', { area: 'lower_town', rig: 'humanoid', eyes: 'glow', glow: '#ffd27a', eyeOpt: { r: 0.024, slant: 0.25 } });
+
+  // =========================================================================================== enemy id -> recipe
+  var BY_ID = S.ACT3_BY_ID = {
+    gutter_rat: 'a3_rat', crooked_watchman: 'a3_watchman', alley_knifer: 'a3_knifer', firebottle_urchin: 'a3_urchin', rat_piper: 'a3_piper', debt_collector: 'a3_collector'
+  };
+  /** Give the city bodies their recipe (only when the data has no style of its own). */
+  S.act3Assign = function () {
+    var E = KD.data && KD.data.enemies, n = 0;
+    if (!E) return 0;
+    for (var id in BY_ID) { var d = E[id]; if (d && d.body && !d.body.style) { d.body.style = BY_ID[id]; n++; } }
+    return n;
+  };
+  S.act3Assign();
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/gfx/50_env_core.js
 (function (root) {
   'use strict';
@@ -76970,6 +77400,896 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   M.register('a2_river', RIVER);
   M.register('a2_frozen', FROZEN);
   M.register('a2_gate', GATE);
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/gfx/57_env_mood_act3.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var E = KD.env = KD.env || {};
+
+  /**
+   * [w8 act3 look] Mood presets of Act III, the city (55_env_mood.js, docs/GFX.md "Mood presets", docs/ENV.md):
+   * the six city areas in the painted, graded style of the grim Farm Village, each with its own identity.
+   *
+   *   city_slums     Lower Town        soot and smoke under a hazy amber sky, laundry lines across the alleys,
+   *                                    lit windows, lantern glow, chimney smoke, pigeons
+   *   city_market    Market District   warm golden afternoon, bright awnings and bunting across the streets, golden
+   *                                    dust in the air, pigeons on the roofs and wheeling overhead
+   *   city_sewers    Sewers            green-teal murk, dripping walls, glowing slime and fungus, bubbling water,
+   *                                    toxic spores, a light round the hero
+   *   city_harbor    Harbor            cool sea blue, salt haze, wet planks, gulls perched on masts and wheeling
+   *   city_rooftops  Rooftops          dusk sky with a moon, smoking and glowing chimneys, bats, embers
+   *   city_siege     City Gates        grand pale stone at a smoky red dusk, war banners on the walls, torches,
+   *                                    ash falling and embers rising, smoke over the camp fires
+   *
+   * Purely visual: the layout, its colliders and everything the simulation reads stay as they are. Dressing only
+   * hangs above head height (lines at 2.6 m and up), sits on wall faces above 2.4 m, or stays inside a footprint.
+   * Every runtime effect scales with KD.env.mood.quality() (1 high, 0.6 medium, 0.25 low; costly ones off on low).
+   * Atmosphere hooks for the shared living-world layer (57_env_life.js) are in each preset's `life` field.
+   */
+  var M = E.mood;
+  if (!M || !M.register) return;
+  var PI = Math.PI, TAU = PI * 2, sin = Math.sin, cos = Math.cos, sqrt = Math.sqrt, floor = Math.floor, min = Math.min, max = Math.max, abs = Math.abs;
+  function hsh(s, salt) { return (KD.util.hash(String(s) + ':' + (salt || '')) % 10000) / 10000; }
+  function C(c) { return Array.isArray(c) ? c.slice(0, 3) : KD.gfx.color._get(c).slice(0, 3); }
+  function copy(p, o) { var q = {}, k; for (k in p) q[k] = p[k]; for (k in o) q[k] = o[k]; return q; }
+  function lerp3(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]; }
+  var NY = 4, PY = 8, NZ = 16;
+  var ACT3 = M.ACT3 = { lower_town: 'city_slums', market_district: 'city_market', sewers: 'city_sewers', harbor: 'city_harbor', rooftops: 'city_rooftops', city_gates: 'city_siege' };
+
+  // ================================================================== layout helpers
+  /** World AABB of a box piece (w x d, any rotation). */
+  function rectOf(p) {
+    var w = +p.w || +p.len || 1, d = +p.d || +p.thick || 1, c = abs(cos(p.rot || 0)), s = abs(sin(p.rot || 0));
+    var hx = (w * c + d * s) / 2, hz = (w * s + d * c) / 2;
+    return { x0: p.x - hx, x1: p.x + hx, z0: p.z - hz, z1: p.z + hz, p: p };
+  }
+  function square(p) { var r = ((p.rot || 0) % (PI / 2) + PI / 2) % (PI / 2); return r < 0.02 || r > PI / 2 - 0.02; }
+  function block(layout, x, z) { try { return KD.gen && KD.gen.blockHeightAt ? KD.gen.blockHeightAt(layout, x, z) : 0; } catch (e) { return 0; } }
+  function surfAt(layout, x, z) { var ix = floor(x), iz = floor(z); if (ix < 0 || iz < 0 || ix >= layout.gw || iz >= layout.gd) return -1; return layout.surf[iz * layout.gw + ix]; }
+  function world(p, lx, lz) { var c = cos(p.rot || 0), s = sin(p.rot || 0); return [p.x + lx * c + lz * s, p.z - lx * s + lz * c]; }
+  function houseTop(p) { return p.kind === 'house' ? 2.6 + 3 * (+p.floors || 1) : (p.kind === 'shack' ? 3.2 : (p.kind === 'warehouse' ? 7.5 : (+p.h || 7))); }
+  function houseEave(p) { return p.kind === 'house' ? (+p.floors || 1) >= 2 ? 3.7 : 3.0 : (p.kind === 'warehouse' ? 4.2 : (p.kind === 'masonry' ? min(+p.h || 7, 6) - 1 : 2.8)); }
+  /**
+   * Pairs of buildings facing each other across a street or an alley, for lines strung between them above head
+   * height: [{ a: [x, y, z], b: [x, y, z], key }]. Deterministic (sorted by hash of the piece ids).
+   */
+  function facingPairs(layout, kinds, o) {
+    var R = [], i, j, out = [];
+    (layout.pieces || []).forEach(function (p) { if (kinds[p.kind] && square(p)) R.push(rectOf(p)); });
+    for (i = 0; i < R.length; i++) for (j = i + 1; j < R.length; j++) {
+      var A = R[i], B = R[j], y = min(houseEave(A.p), houseEave(B.p)) - (o.drop || 0);
+      if (y < (o.yMin || 2.9)) continue;
+      y = min(y, o.yMax || 4.4);
+      var gx = max(A.x0 - B.x1, B.x0 - A.x1), gz = max(A.z0 - B.z1, B.z0 - A.z1);
+      var ovZ = min(A.z1, B.z1) - max(A.z0, B.z0), ovX = min(A.x1, B.x1) - max(A.x0, B.x0), a, b, u;
+      if (gx >= o.gap[0] && gx <= o.gap[1] && ovZ >= 1.6) {
+        u = max(A.z0, B.z0) + 0.6 + hsh(A.p.id + B.p.id, 'u') * (ovZ - 1.2);
+        if (A.x1 <= B.x0) { a = [A.x1 - 0.05, y, u]; b = [B.x0 + 0.05, y + (hsh(A.p.id, 'dy') - 0.5) * 0.4, u]; } else { a = [B.x1 - 0.05, y, u]; b = [A.x0 + 0.05, y + (hsh(B.p.id, 'dy') - 0.5) * 0.4, u]; }
+      } else if (gz >= o.gap[0] && gz <= o.gap[1] && ovX >= 1.6) {
+        u = max(A.x0, B.x0) + 0.6 + hsh(A.p.id + B.p.id, 'u') * (ovX - 1.2);
+        if (A.z1 <= B.z0) { a = [u, y, A.z1 - 0.05]; b = [u, y + (hsh(A.p.id, 'dy') - 0.5) * 0.4, B.z0 + 0.05]; } else { a = [u, y, B.z1 - 0.05]; b = [u, y + (hsh(B.p.id, 'dy') - 0.5) * 0.4, A.z0 + 0.05]; }
+      } else continue;
+      // nothing else in the way along the line (sampled), open below the middle
+      var ok = true;
+      for (var t = 0.2; t <= 0.81; t += 0.2) { var hx = a[0] + (b[0] - a[0]) * t, hz = a[2] + (b[2] - a[2]) * t; if (block(layout, hx, hz) > 0.01) { ok = false; break; } }
+      if (ok) out.push({ a: a, b: b, key: hsh(A.p.id + '|' + B.p.id, o.salt || 'line') });
+    }
+    out.sort(function (p, q) { return p.key - q.key; });
+    var picked = [];
+    for (i = 0; i < out.length && picked.length < (o.cap || 12); i++) {
+      var L = out[i], mx = (L.a[0] + L.b[0]) / 2, mz = (L.a[2] + L.b[2]) / 2, near = false;
+      for (j = 0; j < picked.length; j++) { var Q = picked[j], dx = (Q.a[0] + Q.b[0]) / 2 - mx, dz = (Q.a[2] + Q.b[2]) / 2 - mz; if (dx * dx + dz * dz < (o.spacing || 7) * (o.spacing || 7)) { near = true; break; } }
+      if (!near) picked.push(L);
+    }
+    return picked;
+  }
+  /** A sagging rope from a to b as points (n segments). */
+  function sagPts(a, b, sag, n) {
+    var pts = [], i;
+    for (i = 0; i <= n; i++) { var t = i / n; pts.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t - sag * 4 * t * (1 - t), a[2] + (b[2] - a[2]) * t]); }
+    return pts;
+  }
+  /** Laundry (shirts, sheets, rags, socks) or bunting (triangle flags) along a line, into the mesh m (world space). */
+  function stringLine(m, L, P, kind, R) {
+    var a = L.a, b = L.b, dx = b[0] - a[0], dz = b[2] - a[2], len = sqrt(dx * dx + dz * dz), yaw = Math.atan2(dx, dz) - PI / 2;
+    var sag = kind === 'bunting' ? 0.22 + len * 0.025 : 0.3 + len * 0.04, pts = sagPts(a, b, sag, 8), i;
+    var rope = kind === 'bunting' ? [0.55, 0.48, 0.38] : P.rope;
+    for (i = 0; i < 8; i++) m.rod(pts[i][0], pts[i][1], pts[i][2], pts[i + 1][0], pts[i + 1][1], pts[i + 1][2], 0.012, 3, rope, 0.012, 0);
+    var cloth = P.cloth, whites = [[0.86, 0.82, 0.74], [0.78, 0.74, 0.66], [0.7, 0.66, 0.6]];
+    var s = 0.35 + R.next() * 0.3, th = 0.018;
+    while (s < len - 0.35) {
+      var t = s / len, px = a[0] + dx * t, pz = a[2] + dz * t, py = a[1] + (b[1] - a[1]) * t - sag * 4 * t * (1 - t);
+      m.push(); m.translate(px, py, pz); m.rotY(yaw); m.rotX((R.next() - 0.5) * 0.12);
+      var col, w, h;
+      if (kind === 'bunting') {
+        col = cloth[floor(s / 0.42) % cloth.length]; w = 0.15; h = 0.32;
+        m.tri(-w, 0, th, w, 0, th, 0, -h, th, col); m.tri(w, 0, -th, -w, 0, -th, 0, -h, -th, col);
+        m.quad(-w, 0, -th, w, 0, -th, w, 0, th, -w, 0, th, col);
+        m.quad(w, 0, -th, 0, -h, -th, 0, -h, th, w, 0, th, col); m.quad(0, -h, -th, -w, 0, -th, -w, 0, th, 0, -h, th, col);
+        s += 0.42;
+      } else {
+        var r = R.next();
+        col = R.next() < 0.45 ? whites[floor(R.next() * 3)] : cloth[floor(R.next() * cloth.length)];
+        col = [col[0] * 0.92, col[1] * 0.92, col[2] * 0.92];
+        if (r < 0.38) {                  // shirt with sleeves
+          w = 0.22 + R.next() * 0.06; h = 0.46 + R.next() * 0.1;
+          m.box(-w, -h, -th, w, -0.02, th, col, 0);
+          m.box(-w - 0.16, -0.2, -th, -w, -0.02, th, col, 0); m.box(w, -0.2, -th, w + 0.16, -0.02, th, col, 0);
+          m.box(-0.012, -0.05, -0.03, 0.012, 0.012, 0.03, [0.62, 0.5, 0.36], 0);
+          s += w * 2 + 0.5;
+        } else if (r < 0.62) {           // sheet
+          w = 0.34 + R.next() * 0.2; h = 0.62 + R.next() * 0.2;
+          m.box(-w, -h, -th, w, 0, th, col, 0);
+          if (R.next() < 0.5) m.box(-w * 0.5, -h * 0.55, th, w * 0.3, -h * 0.35, th + 0.006, [col[0] * 0.8, col[1] * 0.78, col[2] * 0.82], NZ);
+          s += w * 2 + 0.25;
+        } else if (r < 0.82) {           // trousers
+          w = 0.17; h = 0.62;
+          m.box(-w, -0.16, -th, w, 0, th, col, 0); m.box(-w, -h, -th, -0.02, -0.16, th, col, 0); m.box(0.02, -h, -th, w, -0.16, th, col, 0);
+          s += 0.6;
+        } else {                         // socks / rags
+          m.box(-0.06, -0.3, -th, 0.0, 0, th, col, 0); m.box(0.05, -0.26, -th, 0.11, 0, th, col, 0);
+          s += 0.4;
+        }
+      }
+      m.pop();
+    }
+  }
+  /** Lines between buildings as one static mesh. */
+  function dressLines(out, pairs, kind, seed) {
+    if (!pairs.length) return;
+    var A = KD.env.arch, P = A.pal(out.theme), m = new A.Mesh(seed), R = new KD.RNG(seed), i;
+    m.jit = 0.06;
+    for (i = 0; i < pairs.length; i++) stringLine(m, pairs[i], P, kind, R);
+    var g = m.done();
+    out.statics.push({ geom: g, pos: [0, 0, 0], yaw: 0, tag: 'piece' });
+    out.stats.tris.pieces += g.idx.length / 3;
+  }
+  function pushStatic(out, m) { var g = m.done(); if (!g.idx.length) return; out.statics.push({ geom: g, pos: [0, 0, 0], yaw: 0, tag: 'piece' }); out.stats.tris.pieces += g.idx.length / 3; }
+  function addLight(out, rec) { out.lights.push({ x: rec.x, y: rec.y, z: rec.z, color: rec.color, r: rec.r, intensity: rec.intensity, flicker: rec.flicker || 0, mood: true }); }
+  /** Faces of box pieces that look onto open ground: [{ p, x, z, nx, nz, yaw, u0, u1, top }] (centre of the face on the ground, outward normal). */
+  function openFaces(layout, p, depth) {
+    var w = +p.w || +p.len || 1, d = +p.d || +p.thick || 1, faces = [], k;
+    var F = [[0, d / 2, 0, 1, w], [0, -d / 2, 0, -1, w], [w / 2, 0, 1, 0, d], [-w / 2, 0, -1, 0, d]];
+    for (k = 0; k < 4; k++) {
+      var f = F[k], c = world(p, f[0], f[1]), n = world({ x: 0, z: 0, rot: p.rot }, f[2], f[3]);
+      var px = c[0] + n[0] * (depth || 1.2), pz = c[1] + n[1] * (depth || 1.2);
+      if (block(layout, px, pz) > 0.01) continue;
+      var s0 = surfAt(layout, px, pz);
+      if (s0 < 0 || s0 === KD.gen.SURF.void || s0 === KD.gen.SURF.water) continue;
+      faces.push({ p: p, x: c[0], z: c[1], nx: n[0], nz: n[1], yaw: Math.atan2(n[0], n[1]), len: f[4] });
+    }
+    return faces;
+  }
+  /** Lit windows: amber glass (palette window '#ffb347', which the builders turn into P.glass) glows. */
+  function litWindows(g, amount) {
+    var col = g.col, aux = g.aux, n = g.pos.length / 3, i;
+    for (i = 0; i < n; i++) {
+      var r0 = col[i * 3], g0 = col[i * 3 + 1], b0 = col[i * 3 + 2];
+      if (r0 > 0.2 && r0 < 0.42 && b0 > 0 && r0 / b0 > 1.9 && g0 / r0 > 0.62 && g0 / r0 < 0.86) { aux[i * 4] = max(aux[i * 4], amount); col[i * 3] = r0 * 1.15; }
+    }
+  }
+  /** Deeper occlusion toward the ground on every piece (the painted look of the grim village). */
+  function groundAO(g, h, k0) {
+    var pos = g.pos, col = g.col, n = pos.length / 3, i;
+    for (i = 0; i < n; i++) {
+      var y = pos[i * 3 + 1];
+      if (y >= h) continue;
+      var sy = y <= 0 ? 0 : y / h, k = k0 + (1 - k0) * sy * sy * (3 - 2 * sy);
+      col[i * 3] *= k; col[i * 3 + 1] *= k; col[i * 3 + 2] *= k * 1.02;
+    }
+  }
+  /** Vertical soot streaks: the lower walls darken in a noisy band (slums, siege). */
+  function soot(g, p, amt) {
+    var pos = g.pos, col = g.col, n = pos.length / 3, i, ph = hsh(p.id, 'soot') * 10;
+    for (i = 0; i < n; i++) {
+      var x = pos[i * 3], z = pos[i * 3 + 2], y = pos[i * 3 + 1];
+      var st = 0.5 + 0.5 * sin(x * 2.3 + z * 1.7 + ph) * sin(x * 0.7 - z * 1.1 + ph * 2), k = 1 - amt * st * (y < 4 ? 1 : max(0, 1 - (y - 4) / 3));
+      col[i * 3] *= k; col[i * 3 + 1] *= k; col[i * 3 + 2] *= k;
+    }
+  }
+  /** Wet: a faint sheen (metal) on the lower parts and a darker, bluer tone. */
+  function wet(g, h, amt) {
+    var pos = g.pos, col = g.col, aux = g.aux, n = pos.length / 3, i;
+    for (i = 0; i < n; i++) {
+      var y = pos[i * 3 + 1]; if (y > h) continue;
+      var t = 1 - max(0, y) / h;
+      aux[i * 4 + 1] = max(aux[i * 4 + 1], amt * t);
+      col[i * 3] *= 1 - 0.18 * t; col[i * 3 + 1] *= 1 - 0.12 * t; col[i * 3 + 2] *= 1 - 0.04 * t;
+    }
+  }
+
+  // ================================================================== small dressing models (local frame, then placed)
+  /** A wall torch in a sconce on a face: bracket from the wall (z = 0) outward to +Z, flame point returned. */
+  function torch(m, P, y) {
+    var ir = P.iron, wd = P.woodDark;
+    m.box(-0.06, y - 0.16, 0, 0.06, y + 0.04, 0.05, ir, NZ);                                     // wall plate
+    m.rod(0, y - 0.08, 0.03, 0, y - 0.02, 0.3, 0.025, 4, ir, 0.022, 0);                          // the arm
+    m.rod(0, y - 0.2, 0.32, 0, y + 0.22, 0.32, 0.035, 5, wd, 0.045, 2);                          // the torch shaft
+    m.cyl(0, y + 0.12, 0.32, 0.07, y + 0.22, 0.085, 6, ir, 0);                                   // the cup
+    var em = m.emis; m.emis = 0.9; m.cyl(0, y + 0.2, 0.32, 0.06, y + 0.25, 0.04, 6, [1, 0.72, 0.36], 2); m.emis = em;
+    return [0, y + 0.3, 0.32];
+  }
+  /** A glowing slime / fungus cluster at a wall foot (sewers): local z = 0 is the wall face, +Z out of it. */
+  function slime(m, P, R, glow, w) {
+    var i, n = 3 + floor(R.next() * 4), em = m.emis;
+    for (i = 0; i < n; i++) {
+      var x = (R.next() - 0.5) * w, y = R.next() * 0.5, r = 0.06 + R.next() * 0.09;
+      m.emis = 0.75; m.blob(x, y + r * 0.5, 0.03, r, r * 0.7, r * 0.6, R.next() < 0.5 ? glow : lerp3(glow, [1, 1, 0.8], 0.3), 6);
+      m.emis = em;
+      if (R.next() < 0.6) { m.cyl(x + r * 1.4, y, 0.06, 0.018, y + 0.12 + r, 0.014, 4, P.bone, 0); m.emis = 0.6; m.blob(x + r * 1.4, y + 0.13 + r, 0.06, 0.06, 0.035, 0.06, glow, 6); m.emis = em; }
+    }
+    // a slick of slime running down the wall
+    m.emis = 0.4; m.box(-w * 0.2, 0.02, 0.0, w * 0.15, 0.9 + R.next() * 0.9, 0.025, lerp3(glow, P.moss, 0.6), NZ); m.emis = em;
+  }
+  /** A pale moon disc with darker seas, facing +Z, radius r (unlit through emissive, never shadowed). */
+  function moon(r) {
+    var A = KD.env.arch, m = new A.Mesh(77), em, i;
+    m.jit = 0.03; em = m.emis; m.emis = 1;
+    m.disc(0, 0, 0, r, 18, [0.98, 0.93, 0.8]);
+    for (i = 0; i < 5; i++) { var a = i * 2.1, d = r * (0.25 + 0.12 * i); m.disc(cos(a) * d * 0.9, 0.01 + i * 0.002, sin(a) * d * 0.9, r * (0.12 + 0.03 * (i % 3)), 8, [0.86, 0.8, 0.7]); }
+    m.emis = em;
+    var g = m.done(), G = KD.gfx.geom;
+    G.rotate(g, PI / 2, 0, 0);
+    return g;
+  }
+
+  // ================================================================== runtime birds (gulls, pigeons, bats)
+  function birdModel(kind) {
+    var PAL = { gull: ['#e8e6e0', '#9aa2ac', '#e8b030', '#141216', '#2a2a30'], bat: ['#2a2230', '#3a2e40', '#2a2230', '#ff6a3a', '#3a2e40'],
+      crow: ['#1d1a22', '#2c2838', '#3a3530', '#ff5a3a', '#2c2838'], pigeon: ['#7c7c8a', '#5c5c6c', '#3a3036', '#141216', '#4a4a58'] }[kind] || ['#7c7c8a', '#5c5c6c', '#3a3036', '#141216', '#4a4a58'];
+    var body = PAL[0], wing = PAL[1], beak = PAL[2], eye = PAL[3], tip = PAL[4], glowEye = kind === 'bat' || kind === 'crow';
+    var wl = kind === 'bat' ? [{ mesh: 'box_bevel', size: [0.035, 0.012, 0.3], offset: [0.12, 0, -0.02], color: wing }, { mesh: 'box', size: [0.2, 0.01, 0.14], offset: [0.16, 0, -0.06], color: wing }]
+      : [{ mesh: 'box_bevel', size: [0.24, 0.025, 0.11], offset: [0.12, 0, -0.01], color: wing }, { mesh: 'box_bevel', size: [0.12, 0.02, 0.08], offset: [0.27, 0, -0.03], color: tip }];
+    function mirror(list) { return list.map(function (n) { return { mesh: n.mesh, size: n.size, offset: [-n.offset[0], n.offset[1], n.offset[2]], color: n.color }; }); }
+    var s = kind === 'bat' ? 0.8 : 1;
+    return { name: kind, scale: [s, s, s], children: [
+      { name: 'body', pos: [0, 0.14, 0], children: [
+        { mesh: 'sphere', size: [0.15, 0.13, 0.26], color: body },
+        { mesh: 'wedge', pos: [0, 0.02, -0.15], rot: [0.2, 0, 0], size: [0.1, 0.025, 0.12], offset: [0, 0, -0.05], color: kind === 'gull' ? '#f4f2ec' : wing },
+        { name: 'wing_l', pos: [0.06, 0.04, 0.02], children: wl },
+        { name: 'wing_r', pos: [-0.06, 0.04, 0.02], children: mirror(wl) },
+        { name: 'head', pos: [0, 0.08, 0.12], children: [
+          { mesh: 'sphere', size: [0.1, 0.1, 0.11], color: body },
+          { mesh: 'cone', pos: [0, -0.01, 0.075], rot: [PI / 2, 0, 0], size: [0.03, kind === 'bat' ? 0.03 : 0.08, 0.025], color: beak },
+          { mesh: 'box', pos: [0.04, 0.02, 0.03], size: [0.012, 0.014, 0.014], color: eye, emissive: glowEye ? 1 : 0 },
+          { mesh: 'box', pos: [-0.04, 0.02, 0.03], size: [0.012, 0.014, 0.014], color: eye, emissive: glowEye ? 1 : 0 }
+        ].concat(kind === 'bat' ? [{ mesh: 'cone', pos: [0.035, 0.07, 0], size: [0.03, 0.07, 0.02], color: body }, { mesh: 'cone', pos: [-0.035, 0.07, 0], size: [0.03, 0.07, 0.02], color: body }] : []) }
+      ] },
+      { mesh: 'box', pos: [0.03, 0.04, 0.01], size: [0.014, 0.08, 0.014], color: kind === 'gull' ? '#d8a040' : '#8a5a50' },
+      { mesh: 'box', pos: [-0.03, 0.04, 0.01], size: [0.014, 0.08, 0.014], color: kind === 'gull' ? '#d8a040' : '#8a5a50' }
+    ] };
+  }
+
+  // ================================================================== the shared runtime
+  /**
+   * cfg: { hero: { color, r, intensity }, mist: { color, peak, r }, motes: [{ rate, color, color2, alpha, size, additive,
+   *   gravity, life, y, radius, shape }], halos: alpha, smoke: { color, alpha, rate, size }, drips: { color, rate },
+   *   bubbles: { color, rate }, birds: { kind, perched, circling }, spray: { color, rate }, flames: true }
+   * Spots come from the preset's dress (asm.mood): lanterns, smoke, drips, pools, perches, flames, glows, spray.
+   */
+  function cityRuntime(cfg) {
+    return function (asm, renderer, opts) {
+      var parts = renderer.particles || null, mo = asm.mood || {};
+      var theme = asm.theme, wind = (theme.env && theme.env.windYaw !== undefined ? theme.env.windYaw : 0.6), wx = sin(wind), wz = cos(wind);
+      var focus = [asm.layout.w / 2, 0, asm.layout.d / 2], rnd = Math.random, i;
+      var rt = { lights: [], birds: [], circlers: [] };
+      // [w8 living world] what KD.env.life draws for this area is left to it: air, glows at lights, perched birds
+      var LF = KD.env.life, lifeOn = !!(LF && LF.handles && asm.life);
+      function lifeHas(w) { try { return lifeOn && LF.handles(asm, w); } catch (e) { return false; } }
+      var skipMotes = lifeOn, skipHalos = lifeHas('glow'), skipPerched = lifeHas('birds') || lifeHas('crows');
+      var heroL = null;
+      if (cfg.hero && renderer.lights && renderer.lights.add) { heroL = renderer.lights.add({ x: focus[0], y: 2.6, z: focus[2], color: cfg.hero.color, r: cfg.hero.r, intensity: cfg.hero.intensity, flicker: 0 }); rt.lights.push(heroL); }
+      var lanterns = (mo.lanterns || []).map(function (l) { return { x: l.x, y: l.y, z: l.z, c: C(l.color), acc: rnd(), s: l.halo || 1 }; });
+      var smoke = (mo.smoke || []).map(function (s) { return { x: s.x, y: s.y, z: s.z, big: s.big || 1, acc: rnd(), ember: !!s.ember }; });
+      var drips = (mo.drips || []).map(function (d) { return { x: d.x, y: d.y, z: d.z, acc: rnd() * 3, rate: 0.25 + rnd() * 0.5 }; });
+      var pools = mo.pools || [], glows = (mo.glows || []).map(function (gl) { return { x: gl.x, z: gl.z, r: gl.r, c: C(gl.color), ph: rnd() * TAU }; });
+      var flames = (mo.flames || []).map(function (f) { return { x: f.x, y: f.y, z: f.z, acc: rnd() }; });
+      var spray = mo.spray || [];
+      // mist patches (renderer underlays: never over a decal or a telegraph)
+      var patches = [], NP = cfg.mist ? 10 : 0, cMist = cfg.mist ? C(cfg.mist.color) : null;
+      function placePatch(pt, anywhere) {
+        var a = rnd() * TAU, d = anywhere ? sqrt(rnd()) * 30 : 22 + rnd() * 8;
+        if (!anywhere) a = Math.atan2(-wx, -wz) + (rnd() - 0.5) * 2.2;
+        pt.x = focus[0] + sin(a) * d; pt.z = focus[2] + cos(a) * d; pt.r = (cfg.mist.r || 6) * (0.8 + rnd() * 0.6); pt.peak = (cfg.mist.peak || 0.2) * (0.7 + rnd() * 0.6); pt.age = 0; pt.life = 14 + rnd() * 12;
+        pt.vx = wx * (0.3 + rnd() * 0.3); pt.vz = wz * (0.3 + rnd() * 0.3);
+      }
+      for (i = 0; i < NP; i++) { var pt = {}; placePatch(pt, true); pt.age = rnd() * pt.life; patches.push(pt); }
+      // birds: perched ones take off when the hero comes near; circling ones wheel overhead
+      var B = cfg.birds, perches = (mo.perches || []).slice(), Actor = KD.gfx && KD.gfx.Actor;
+      if (B && Actor) {
+        var def = birdModel(B.kind || 'pigeon'), np = skipPerched ? 0 : min(B.perched || 0, perches.length);
+        for (i = 0; i < np; i++) {
+          var bd = { actor: null, perch: null, state: 'gone', x: 0, y: 0, z: 0, yaw: 0, vx: 0, vy: 0, vz: 0, t: 0, next: 0, flap: rnd() * 6, wait: 0 };
+          try { bd.actor = new Actor(def); } catch (err) { break; }
+          bd.actor.radius = 0.4; bd.actor.centerY = 0.15;
+          var pc0 = perches[floor(hsh(i, 'bird') * perches.length)];
+          if (pc0.taken) pc0 = freePerch(-1e4, -1e4);
+          if (pc0) seat(bd, pc0); else { bd.actor.visible = false; bd.wait = 4; }
+          rt.birds.push(bd);
+        }
+        for (i = 0; i < (B.circling || 0); i++) {
+          var cr = { actor: null, a: rnd() * TAU, r: 9 + rnd() * 10, h: (B.height || 10) + rnd() * 5, w: (0.25 + rnd() * 0.2) * (rnd() < 0.5 ? -1 : 1), ox: (rnd() - 0.5) * 20, oz: (rnd() - 0.5) * 20, flap: rnd() * 6, glide: 0 };
+          try { cr.actor = new Actor(def); } catch (err2) { break; }
+          cr.actor.radius = 0.5; cr.actor.centerY = 0.15;
+          rt.circlers.push(cr);
+        }
+      }
+      function freePerch(ax, az) {
+        for (var tries = 0; tries < 12 && perches.length; tries++) {
+          var pc = perches[floor(rnd() * perches.length)];
+          if (pc.taken) continue;
+          var dx = pc.x - ax, dz = pc.z - az;
+          if (dx * dx + dz * dz < 14 * 14) continue;
+          return pc;
+        }
+        return null;
+      }
+      function seat(bd, pc) {
+        if (bd.perch) bd.perch.taken = false;
+        bd.perch = pc; pc.taken = true; bd.state = 'perch'; bd.x = pc.x + (rnd() - 0.5) * 0.1; bd.y = pc.y; bd.z = pc.z; bd.yaw = (pc.yaw || 0) + (rnd() - 0.5) * 1.2; bd.t = rnd() * 5; bd.next = 1 + rnd() * 3;
+        bd.actor.visible = true;
+      }
+      function pose(a, flying, t, flap) {
+        var body = a.joint('body'), head = a.joint('head'), wl = a.joint('wing_l'), wr = a.joint('wing_r');
+        if (flying) { var fa = flap; wl.rot[2] = -0.3 - fa; wr.rot[2] = 0.3 + fa; body.rot[0] = -0.15; head.rot[0] = 0; }
+        else { wl.rot[2] = -0.05 * sin(t * 1.3); wr.rot[2] = -wl.rot[2]; body.rot[0] = 0; }
+        return head;
+      }
+
+      rt.update = function (dt, world, r) {
+        var F = r && r._f, q = M.quality(), k = q.k, low = q.name === 'low', dx, dz;
+        if (F && F.ready && F.focus) { focus[0] = F.focus[0]; focus[2] = F.focus[2]; }
+        var hero = world && world.players ? (world.players[world.viewIndex || 0] || world.players[0]) : null;
+        var hx = hero ? hero.x : focus[0], hz = hero ? hero.z : focus[2];
+        if (heroL) { heroL.x = hx; heroL.z = hz; }
+        // ---- perched birds
+        var nB = low ? min(2, rt.birds.length) : (q.name === 'medium' ? min(4, rt.birds.length) : rt.birds.length);
+        for (i = 0; i < rt.birds.length; i++) {
+          var c = rt.birds[i], a = c.actor;
+          if (i >= nB) { a.visible = false; continue; }
+          if (dt > 0) {
+            c.t += dt;
+            if (c.state === 'perch') {
+              dx = hx - c.x; dz = hz - c.z;
+              if (dx * dx + dz * dz < 6 * 6) {
+                var dl = sqrt(dx * dx + dz * dz) || 1;
+                c.state = 'fly'; c.t = 0; c.vx = -dx / dl * (3 + rnd() * 2); c.vz = -dz / dl * (3 + rnd() * 2); c.vy = 2.4 + rnd(); c.yaw = Math.atan2(c.vx, c.vz);
+                if (c.perch) { c.perch.taken = false; c.perch = null; }
+              } else if (c.t > c.next) { c.t = 0; c.next = 1.2 + rnd() * 3.5; c.look = (rnd() - 0.5) * 1.6; c.peck = rnd() < 0.3 ? 0.5 : 0; }
+            } else if (c.state === 'fly') {
+              c.x += c.vx * dt; c.y += c.vy * dt; c.z += c.vz * dt; c.vy += 0.5 * dt;
+              if (c.t > 4.5 || c.y > 18) { c.state = 'gone'; a.visible = false; c.wait = 14 + rnd() * 18; }
+            } else {
+              c.wait -= dt;
+              if (c.wait <= 0) { var pn = freePerch(hx, hz); if (pn) seat(c, pn); else c.wait = 5; }
+            }
+          }
+          if (c.state === 'gone') continue;
+          c.flap += dt * 22;
+          var hd = pose(a, c.state === 'fly', c.t, sin(c.flap) * 1.1);
+          if (c.state !== 'fly') {
+            var pk = c.peck > 0 ? c.peck : 0; if (c.peck > 0) c.peck = max(0, c.peck - dt);
+            hd.rot[1] = (hd.rot[1] || 0) + ((c.look || 0) - (hd.rot[1] || 0)) * min(1, dt * 8);
+            hd.rot[0] = pk > 0 ? 0.6 * sin(pk * PI * 2) : 0.05 * sin(c.t * 2.1);
+          }
+          a.setTransform(c.x, c.y, c.z, c.yaw, 1);
+          a.submit(r);
+        }
+        // ---- circling birds (fewer on low)
+        var nC = low ? min(1, rt.circlers.length) : (q.name === 'medium' ? min(3, rt.circlers.length) : rt.circlers.length);
+        for (i = 0; i < rt.circlers.length; i++) {
+          var w = rt.circlers[i], ac = w.actor;
+          if (i >= nC) { ac.visible = false; continue; }
+          ac.visible = true;
+          w.a += w.w * dt;
+          var cx = focus[0] + w.ox + sin(w.a) * w.r, cz = focus[2] + w.oz + cos(w.a) * w.r, cy = w.h + sin(w.a * 2.3) * 0.8;
+          w.glide += dt; var flapping = (w.glide % 7) < 2.2;
+          w.flap += dt * (flapping ? 14 : 0);
+          pose(ac, true, 0, flapping ? sin(w.flap) * 0.9 : -0.25 + 0.05 * sin(w.glide * 2));
+          ac.joint('body').rot[2] = w.w > 0 ? -0.35 : 0.35;
+          ac.setTransform(cx, cy, cz, Math.atan2(cos(w.a) * w.w, -sin(w.a) * w.w), B && B.kind === 'gull' ? 1.25 : 1);
+          ac.submit(r);
+        }
+        // ---- mist patches and ground glows
+        var wantP = low ? 4 : (q.name === 'medium' ? 7 : NP);
+        for (i = 0; i < patches.length; i++) {
+          var P0 = patches[i];
+          if (i >= wantP) continue;
+          if (dt > 0) { P0.age += dt; P0.x += P0.vx * dt; P0.z += P0.vz * dt; dx = P0.x - focus[0]; dz = P0.z - focus[2]; if (P0.age >= P0.life || dx * dx + dz * dz > 40 * 40) placePatch(P0, false); }
+          var u = P0.age / P0.life, fade = u < 0.25 ? u / 0.25 : (u > 0.7 ? (1 - u) / 0.3 : 1);
+          if (r && r.underlay) r.underlay(P0.x, P0.z, P0.r * (0.9 + 0.2 * u), cMist, P0.peak * fade * fade);
+        }
+        var tt = (rt.t = (rt.t || 0) + dt);
+        for (i = 0; i < glows.length && r && r.underlay; i++) {
+          var gl = glows[i]; dx = gl.x - focus[0]; dz = gl.z - focus[2];
+          if (dx * dx + dz * dz > 36 * 36) continue;
+          r.underlay(gl.x, gl.z, gl.r, gl.c, 0.32 + 0.1 * sin(tt * 1.7 + gl.ph));
+        }
+        if (dt <= 0 || !parts) return;
+        var pk2 = (KD.gfx.quality && KD.gfx.quality.def && KD.gfx.quality.def.particles) || 1;
+        // ---- air: motes, soot, ash, embers, spores, petals around the camera
+        (skipMotes ? [] : (cfg.motes || [])).forEach(function (mt, mi) {
+          if (low && mt.notLow) return;
+          rt['m' + mi] = (rt['m' + mi] || 0) + dt * mt.rate * k * pk2;
+          var c1 = mt.c1 || (mt.c1 = C(mt.color)), c2 = mt.c2 || (mt.c2 = C(mt.color2 || mt.color));
+          while (rt['m' + mi] >= 1) {
+            rt['m' + mi] -= 1;
+            var oa = rnd() * TAU, od = sqrt(rnd()) * (mt.radius || 14), y = mt.y ? mt.y[0] + rnd() * (mt.y[1] - mt.y[0]) : 0.3 + rnd() * 3.2;
+            parts.emit({ x: focus[0] + sin(oa) * od, y: y, z: focus[2] + cos(oa) * od, count: 1, dir: [wx, mt.up === undefined ? 0.25 : mt.up, wz], spread: mt.spread || 1.2, speed: mt.speed || [0.08, 0.3], life: mt.life || [4, 7],
+              size: mt.size || [0.022, 0.045], sizeEnd: mt.sizeEnd === undefined ? 0.005 : mt.sizeEnd, color: c1, color2: c2, alpha: mt.alpha || 0.4, gravity: mt.gravity === undefined ? -0.02 : mt.gravity, drag: mt.drag === undefined ? 0.1 : mt.drag,
+              spin: mt.spin || 0, additive: mt.additive !== false, shape: mt.shape || 'soft' });
+          }
+        });
+        // ---- lantern glow halos (the cheap stand-in for bloom)
+        var cHalo = cfg.halos || 0.3;
+        for (i = 0; i < lanterns.length && !skipHalos; i++) {
+          var L = lanterns[i]; dx = L.x - focus[0]; dz = L.z - focus[2];
+          if (dx * dx + dz * dz > 40 * 40) continue;
+          L.acc += dt * (low ? 3 : 6);
+          while (L.acc >= 1) { L.acc -= 1; parts.emit({ x: L.x, y: L.y, z: L.z, count: 1, speed: 0, life: [0.5, 0.7], size: [0.5 * L.s, 0.65 * L.s], sizeEnd: 0.6 * L.s, color: L.c, alpha: cHalo, gravity: 0, additive: true, shape: 'soft' }); }
+        }
+        // ---- smoke columns (and embers from fires and chimneys)
+        if (cfg.smoke && !low) {
+          var cs = cfg.smoke, sc1 = cs.c1 || (cs.c1 = C(cs.color)), sc2 = cs.c2 || (cs.c2 = C(cs.color2 || cs.color)), ce = cs.ce || (cs.ce = C(cs.ember || '#ff9a48'));
+          for (i = 0; i < smoke.length; i++) {
+            var S0 = smoke[i]; dx = S0.x - focus[0]; dz = S0.z - focus[2];
+            if (dx * dx + dz * dz > 34 * 34) continue;
+            S0.acc += dt * (cs.rate || 1.6) * k * S0.big;
+            while (S0.acc >= 1) {
+              S0.acc -= 1;
+              parts.emit({ x: S0.x + (rnd() - 0.5) * 0.2, y: S0.y, z: S0.z + (rnd() - 0.5) * 0.2, count: 1, dir: [wx * 0.25, 1, wz * 0.25], spread: 0.25, speed: [0.5, 0.9], life: [4.5, 7],
+                size: [0.18 * S0.big, 0.3 * S0.big], sizeEnd: (cs.size || 1.4) * S0.big, color: sc1, color2: sc2, alpha: cs.alpha || 0.22, gravity: -0.04, drag: 0.25, additive: false, shape: 'soft' });
+              if (S0.ember && rnd() < 0.35) parts.emit({ x: S0.x, y: S0.y, z: S0.z, count: 1, dir: [wx * 0.3, 1, wz * 0.3], spread: 0.6, speed: [0.6, 1.4], life: [1.2, 2.4], size: [0.02, 0.035], sizeEnd: 0.004, color: ce, color2: [0.6, 0.15, 0.05], alpha: 0.95, gravity: -0.15, drag: 0.4, additive: true, shape: 'soft' });
+            }
+          }
+        }
+        // ---- torch flames
+        if (flames.length) {
+          var cF1 = rt.cF1 || (rt.cF1 = C('#ffd27a')), cF2 = rt.cF2 || (rt.cF2 = C('#ff5a1a'));
+          for (i = 0; i < flames.length; i++) {
+            var Fl = flames[i]; dx = Fl.x - focus[0]; dz = Fl.z - focus[2];
+            if (dx * dx + dz * dz > 32 * 32) continue;
+            Fl.acc += dt * (low ? 7 : 14);
+            while (Fl.acc >= 1) {
+              Fl.acc -= 1;
+              parts.emit({ x: Fl.x, y: Fl.y, z: Fl.z, radius: 0.04, count: 1, dir: [wx * 0.2, 1, wz * 0.2], spread: 0.3, speed: [0.4, 0.9], life: [0.35, 0.6], size: [0.07, 0.11], sizeEnd: 0.02, color: cF1, color2: cF2, alpha: 0.9, gravity: -0.6, drag: 0.6, additive: true, shape: 'soft' });
+            }
+            if (!low && rnd() < dt * 2) parts.emit({ x: Fl.x, y: Fl.y + 0.1, z: Fl.z, count: 1, dir: [wx * 0.3, 1, wz * 0.3], spread: 0.6, speed: [0.8, 1.6], life: [0.8, 1.6], size: [0.015, 0.025], sizeEnd: 0.003, color: cF1, color2: cF2, alpha: 1, gravity: -0.2, drag: 0.3, additive: true, shape: 'soft' });
+            Fl.acc2 = (Fl.acc2 || 0) + dt * 6;
+            while (Fl.acc2 >= 1) { Fl.acc2 -= 1; parts.emit({ x: Fl.x, y: Fl.y + 0.05, z: Fl.z, count: 1, speed: 0, life: [0.4, 0.55], size: [0.42, 0.5], sizeEnd: 0.45, color: cF2, alpha: 0.22, gravity: 0, additive: true, shape: 'soft' }); }
+          }
+        }
+        // ---- drips from walls, pipes and arches
+        if (cfg.drips && drips.length) {
+          var cD = cfg.drips.c || (cfg.drips.c = C(cfg.drips.color));
+          for (i = 0; i < drips.length; i++) {
+            var D = drips[i]; dx = D.x - focus[0]; dz = D.z - focus[2];
+            if (dx * dx + dz * dz > 26 * 26) continue;
+            D.acc += dt * D.rate * (low ? 0.5 : 1);
+            if (D.acc >= 1) {
+              D.acc -= 1;
+              parts.emit({ x: D.x, y: D.y, z: D.z, count: 1, dir: [0, -1, 0], spread: 0.02, speed: 0.2, life: [0.9, 1.1], size: [0.022, 0.026], sizeEnd: 0.02, color: cD, alpha: 0.85, gravity: 9, drag: 0, additive: true, shape: 'spark', stretch: 3, bounce: 0 });
+              D.sp = 0.95;
+            }
+            if (D.sp > 0 && (D.sp -= dt) <= 0) parts.emit({ x: D.x, y: 0.05, z: D.z, count: low ? 2 : 4, dir: [0, 1, 0], spread: 1.0, speed: [0.5, 1.1], life: [0.25, 0.4], size: [0.012, 0.018], sizeEnd: 0.004, color: cD, alpha: 0.7, gravity: 6, drag: 0.2, additive: true, shape: 'dot' });
+          }
+        }
+        // ---- bubbles on the water
+        if (cfg.bubbles && pools.length) {
+          var cb = cfg.bubbles.c || (cfg.bubbles.c = C(cfg.bubbles.color));
+          rt.bub = (rt.bub || 0) + dt * cfg.bubbles.rate * k;
+          var tries = 0;
+          while (rt.bub >= 1 && tries++ < 20) {
+            var pl = pools[floor(rnd() * pools.length)]; dx = pl.x - focus[0]; dz = pl.z - focus[2];
+            if (dx * dx + dz * dz > 24 * 24) { rt.bub -= 0.25; continue; }
+            rt.bub -= 1;
+            parts.emit({ x: pl.x + (rnd() - 0.5) * 0.8, y: -0.22, z: pl.z + (rnd() - 0.5) * 0.8, count: 1, dir: [0, 1, 0], spread: 0.2, speed: [0.05, 0.12], life: [0.8, 1.4], size: [0.04, 0.08], sizeEnd: 0.11, color: cb, alpha: 0.6, gravity: 0, drag: 0.5, additive: true, shape: 'soft' });
+          }
+        }
+        // ---- salt spray along the quays
+        if (cfg.spray && spray.length && !low) {
+          var cS = cfg.spray.c || (cfg.spray.c = C(cfg.spray.color));
+          rt.spr = (rt.spr || 0) + dt * cfg.spray.rate * k;
+          var t2 = 0;
+          while (rt.spr >= 1 && t2++ < 20) {
+            var sp = spray[floor(rnd() * spray.length)]; dx = sp.x - focus[0]; dz = sp.z - focus[2];
+            if (dx * dx + dz * dz > 30 * 30) { rt.spr -= 0.25; continue; }
+            rt.spr -= 1;
+            parts.emit({ x: sp.x + (rnd() - 0.5) * 0.6, y: -0.15, z: sp.z + (rnd() - 0.5) * 0.6, count: 4, dir: [wx * 0.3, 1, wz * 0.3], spread: 0.5, speed: [1.2, 2.4], life: [0.6, 1.0], size: [0.03, 0.06], sizeEnd: 0.1, color: cS, alpha: 0.55, gravity: 4, drag: 0.6, additive: false, shape: 'soft' });
+          }
+        }
+      };
+      rt.dispose = function () {
+        rt.lights.forEach(function (h) { if (h && h.remove) h.remove(); });
+        rt.birds.forEach(function (c) { if (c.perch) c.perch.taken = false; });
+        rt.lights = []; rt.birds = []; rt.circlers = [];
+      };
+      return rt;
+    };
+  }
+  M.cityRuntime = cityRuntime;
+
+  /** Layout lights near a lamp post (or any warm light) get a halo; cool ones (shrines) take the Bloom purple. */
+  function haloLights(out, mo, o) {
+    o = o || {};
+    out.lights = out.lights.map(function (l) {
+      if (l.mood) return l;
+      var c = C(l.color || '#ffd27a');
+      if (c[2] > c[0] * 0.8) return copy(l, { color: o.cool || '#9a6cff' });
+      if (o.warm) l = copy(l, { color: o.warm, intensity: (l.intensity || 1) * (o.boost || 1) });
+      if (mo.lanterns.length < (o.cap || 40)) mo.lanterns.push({ x: l.x, y: l.y, z: l.z, color: l.color || '#ffb25e', halo: o.halo || 1 });
+      return l;
+    });
+  }
+  /** Perches: tops of crates, barrels, carts, carts and posts, plus roof ridges (y given). */
+  function perchesFrom(pieces, kinds, cap, salt) {
+    var out = [], i;
+    for (i = 0; i < pieces.length && out.length < cap; i++) {
+      var p = pieces[i], y = kinds[p.kind];
+      if (y === undefined || hsh(p.id, salt || 'perch') > 0.5) continue;
+      out.push({ x: p.x + (hsh(p.id, 'px') - 0.5) * 0.3, y: typeof y === 'function' ? y(p) : y, z: p.z + (hsh(p.id, 'pz') - 0.5) * 0.3, yaw: hsh(p.id, 'py') * TAU });
+    }
+    return out;
+  }
+  function houseSmoke(pieces, kinds, cap, frac) {
+    var out = [];
+    for (var i = 0; i < pieces.length && out.length < cap; i++) {
+      var p = pieces[i]; if (!kinds[p.kind] || hsh(p.id, 'smoke') > frac) continue;
+      var off = world(p, (hsh(p.id, 'sx') - 0.5) * (+p.w || 4) * 0.5, (hsh(p.id, 'sz') - 0.5) * (+p.d || 4) * 0.3);
+      out.push({ x: off[0], y: houseTop(p) + 0.3, z: off[1], big: 0.8 + hsh(p.id, 'sb') * 0.5 });
+    }
+    return out;
+  }
+  var PAINT = { paintFine: 0.09, paintBroad: 0.15, paintHue: 0.024 };
+  function env(o) { return KD.util.assign({ clouds: false, grade: 1, rim: 0.45 }, PAINT, o); }
+
+  // ================================================================== LOWER TOWN: soot, laundry, lantern glow
+  var SLUMS = {
+    env: env({ sunDir: [0.62, 0.44, 0.52], sunColor: [1.0, 0.76, 0.52], sunIntensity: 1.1, skyColor: [0.5, 0.47, 0.62], skyIntensity: 0.52,
+      groundColor: [0.38, 0.32, 0.3], groundIntensity: 0.3, zenith: [0.17, 0.16, 0.22], horizon: [0.56, 0.48, 0.44],
+      fogDensity: 0.0092, fogStart: 12, fogMax: 0.88, sunGlow: 0.85, exposure: 1.06, knee: 0.68, saturation: 0.92, windStrength: 0.1,
+      mist: 0.3, mistDensity: 0.03, mistFalloff: 0.45, mistStart: 16, mistColor: [0.5, 0.45, 0.44],
+      contrast: 0.28, vignette: 0.4, vignetteRadius: 0.3, gradeShadow: [0.06, 0.03, 0.08], gradeHigh: [1.05, 0.98, 0.88] }),
+    palette: {
+      cobble: '#5f5b55', road_cobble: '#66615a', plaza: '#6f685f', dirt: '#5b4b3b', mud: '#3f3529', grass: '#4f5a38', grassAlt: '#465033', plank: '#5e4a38', path: '#655848',
+      plaster: '#ab9f8a', plasterAlt: '#988b77', timber: '#30251d', brick: '#73403a', stoneWall: '#716c67', stoneDark: '#4b4745', roofA: '#5c3631', roofB: '#3d424b', roofC: '#4e4636', thatch: '#7a6a4a',
+      door: '#3b2b22', shutter: '#3a3a30', window: '#ffb347', trim: '#c9bda4', woodDark: '#3a2c24', woodLight: '#7a644c', canvas: '#8e8470', rope: '#8c7a5c', iron: '#3f4047', metal: '#6a6e74', fire: '#ff9848',
+      leafA: '#4c5a36', leafB: '#5a6440', leafC: '#3f4a30', bush: '#4a5434', moss: '#56603a',
+      cloth: ['#7e3a34', '#465a72', '#ae975c', '#5a6a4a']
+    },
+    look: { scatter: { tuft: 0.5, flower: 0, pebble: 0.9, weed: 1.4, rubble: 1.0, straw: 0.4 } },
+    post: function (p, g) {
+      if (p.kind === 'house' || p.kind === 'shack' || p.kind === 'masonry' || p.kind === 'inn' || p.kind === 'barracks' || p.kind === 'tower' || p.kind === 'wall') {
+        soot(g, p, 0.22);
+        if ((p.kind === 'house' || p.kind === 'inn') && hsh(p.id, 'lit') < 0.6) litWindows(g, 0.6);
+      }
+      groundAO(g, 1.6, 0.7);
+    },
+    dress: function (out) {
+      var layout = out.layout, pieces = layout.pieces || [], mo = out.mood;
+      mo.lanterns = []; mo.perches = []; mo.smoke = [];
+      dressLines(out, facingPairs(layout, { house: 1, shack: 1, inn: 1 }, { gap: [2.2, 7.5], cap: 22, spacing: 6, salt: 'laundry', yMin: 2.95, yMax: 3.9 }), 'laundry', 811);
+      haloLights(out, mo, { warm: '#ffb25e', boost: 1.15, halo: 1 });
+      mo.smoke = houseSmoke(pieces, { house: 1, inn: 1 }, 40, 0.18);
+      mo.perches = perchesFrom(pieces, { crate: 0.95, barrel: 1.0, cart: 1.1, pile: 0.7, well: 1.2, notice_board: 2.1 }, 30, 'pg');
+    },
+    runtime: cityRuntime({
+      hero: { color: '#ffe6c8', r: 7, intensity: 0.55 },
+      mist: { color: '#7c706a', peak: 0.2, r: 6 },
+      motes: [{ rate: 6, color: '#2a2422', color2: '#4a4240', alpha: 0.55, additive: false, size: [0.025, 0.04], sizeEnd: 0.02, gravity: 0.05, up: -0.1, shape: 'shard', spin: 2, life: [5, 8], y: [1, 5] },
+        { rate: 1.2, color: '#ff9a48', color2: '#7a2a10', alpha: 0.9, size: [0.018, 0.03], gravity: -0.08, notLow: true }],
+      halos: 0.34,
+      smoke: { color: '#3a3536', color2: '#6a6264', alpha: 0.2, rate: 1.4, size: 1.5 },
+      birds: { kind: 'pigeon', perched: 7, circling: 2, height: 9 }
+    }),
+    life: { air: { ash: 0.8, embers: 0.3, motes: 0.3 }, colors: { ash: '#3a3432', mote: '#c8b8a0' }, critters: { birds: 1, rats: 1.5, crows: 0.5, moths: 0.8 }, windStrength: 0.1, rimColor: '#ffb27a', glow: 1.2 }
+  };
+
+  // ================================================================== MARKET DISTRICT: bright awnings, warm sun, busy colour
+  var MARKET = {
+    env: env({ sunDir: [0.52, 0.6, 0.5], sunColor: [1.0, 0.85, 0.6], sunIntensity: 1.45, skyColor: [0.6, 0.66, 0.88], skyIntensity: 0.5,
+      groundColor: [0.72, 0.6, 0.44], groundIntensity: 0.42, zenith: [0.25, 0.42, 0.74], horizon: [0.96, 0.82, 0.62],
+      fogDensity: 0.0056, fogStart: 16, fogMax: 0.84, sunGlow: 1.3, exposure: 1.04, knee: 0.7, saturation: 1.08, windStrength: 0.12, clouds: true,
+      mist: 0.12, mistDensity: 0.02, mistFalloff: 0.35, mistStart: 20, mistColor: [0.96, 0.82, 0.62], rim: 0.38,
+      contrast: 0.22, vignette: 0.24, vignetteRadius: 0.34, gradeShadow: [0.07, 0.03, 0.07], gradeHigh: [1.05, 1.0, 0.9] }),
+    palette: {
+      cobble: '#a09078', road_cobble: '#a8977e', plaza: '#c6b492', dirt: '#9c7a52', grass: '#6a9a40', grassAlt: '#5e8c3a', plank: '#9a744a',
+      plaster: '#ecd9b0', plasterAlt: '#dec08c', timber: '#4a3020', brick: '#aa553a', stoneWall: '#a69a88', stoneDark: '#746a5e', roofA: '#b23e2c', roofB: '#3c5e90', roofC: '#5e8a42',
+      door: '#5e3a22', shutter: '#2f6a50', window: '#7aaccc', trim: '#f4e6c4', gold: '#f0c040', canvas: '#f0e2c0',
+      leafA: '#3e7a34', leafB: '#5a9a40', leafC: '#2e6a36', bush: '#4a8a3a', flowerA: '#f4cc40', flowerB: '#e45a8a',
+      cloth: ['#cc303a', '#2c5cbc', '#eab02c', '#36a05a']
+    },
+    look: { scatter: { tuft: 0.2, flower: 0.5, pebble: 0.3, weed: 0.2 } },
+    post: function (p, g) {
+      if (p.kind === 'stall' || p.kind === 'tent' || p.kind === 'banner_pole') {     // awnings: richer, deeper colour
+        var col = g.col, n = g.pos.length / 3, i;
+        for (i = 0; i < n; i++) { var r0 = col[i * 3], g0 = col[i * 3 + 1], b0 = col[i * 3 + 2], l = r0 * 0.3 + g0 * 0.55 + b0 * 0.15; col[i * 3] = l + (r0 - l) * 1.22; col[i * 3 + 1] = l + (g0 - l) * 1.22; col[i * 3 + 2] = l + (b0 - l) * 1.22; }
+      }
+      groundAO(g, 1.4, 0.8);
+    },
+    dress: function (out) {
+      var layout = out.layout, pieces = layout.pieces || [], mo = out.mood;
+      mo.lanterns = []; mo.perches = [];
+      dressLines(out, facingPairs(layout, { house: 1, inn: 1, masonry: 1 }, { gap: [3, 12], cap: 26, spacing: 7, salt: 'bunting', yMin: 3.2, yMax: 4.6 }), 'bunting', 913);
+      haloLights(out, mo, { halo: 0.8 });
+      mo.perches = perchesFrom(pieces, { crate: 0.95, barrel: 1.0, cart: 1.1, fountain: 1.05, bench: 0.5, sign: 2.3, topiary: 1.6 }, 34, 'pg');
+    },
+    runtime: cityRuntime({
+      motes: [{ rate: 9, color: '#ffe0a0', color2: '#ffc070', alpha: 0.38, size: [0.02, 0.04], gravity: -0.01, y: [0.4, 4] },
+        { rate: 1.2, color: '#e45a8a', color2: '#f4cc40', alpha: 0.95, additive: false, size: [0.035, 0.05], sizeEnd: 0.035, gravity: 0.25, up: -0.2, drag: 1.6, spin: 4, shape: 'shard', y: [3, 6], life: [5, 8], notLow: true }],
+      halos: 0.2,
+      birds: { kind: 'pigeon', perched: 9, circling: 4, height: 10 }
+    }),
+    life: { air: { motes: 1.0, pollen: 0.5 }, colors: { mote: '#ffd890', pollen: '#f4c0d0' }, critters: { birds: 2, butterflies: 0.5 }, windStrength: 0.12, rimColor: '#ffdca0', shafts: 0.4 }
+  };
+
+  // ================================================================== SEWERS: green-teal murk, dripping, glowing slime
+  var SLIME = '#9cff5a';
+  var SEWERS = {
+    env: env({ sunDir: [0.3, 0.86, 0.4], sunColor: [0.66, 0.84, 0.72], sunIntensity: 0.8, skyColor: [0.32, 0.52, 0.5], skyIntensity: 0.56,
+      groundColor: [0.2, 0.3, 0.25], groundIntensity: 0.32, zenith: [0.04, 0.08, 0.08], horizon: [0.17, 0.27, 0.25],
+      fogDensity: 0.0125, fogStart: 9, fogMax: 0.92, sunGlow: 0.3, exposure: 1.1, knee: 0.66, saturation: 0.96, windStrength: 0.04, rim: 0.5,
+      mist: 0.48, mistDensity: 0.05, mistFalloff: 0.65, mistStart: 8, mistColor: [0.22, 0.4, 0.32],
+      contrast: 0.3, vignette: 0.5, vignetteRadius: 0.28, gradeShadow: [0.0, 0.05, 0.05], gradeHigh: [0.96, 1.04, 0.98] }),
+    palette: {
+      stone: '#5a615b', cobble: '#565c55', plank: '#4e4032', water: '#46703a', void: '#0a100e', dirt: '#4a4434', mud: '#3a3a2a',
+      plaster: '#8a8a78', timber: '#33281e', brick: '#603c32', stoneWall: '#5e645e', stoneDark: '#3c423e', roofA: '#4e3a32', roofB: '#3a4a4a',
+      metal: '#5a666c', rust: '#7a4a2e', iron: '#3c4246', moss: '#4f7a36', woodDark: '#33281e', woodLight: '#6e5a40', rope: '#6e6046', canvas: '#7a7660',
+      leafDead: '#5a5a3a', bone: '#c8c8b0', fire: '#ff9848', cloth: ['#5a3a34', '#2e4a4e', '#6a6a3a', '#3a5a3a']
+    },
+    look: { scatter: { tuft: 0, flower: 0, pebble: 0.4, weed: 1.2, rubble: 0.6, mushroom: 0.6 } },
+    post: function (p, g) {
+      if (p.kind === 'wall' || p.kind === 'pillar' || p.kind === 'doorway' || p.kind === 'sluice_gate' || p.kind === 'bridge') { wet(g, 1.4, 0.3); }
+      groundAO(g, 1.8, 0.62);
+    },
+    dress: function (out) {
+      var layout = out.layout, pieces = layout.pieces || [], mo = out.mood, A = KD.env.arch, P = A.pal(out.theme), i;
+      mo.lanterns = []; mo.drips = []; mo.pools = []; mo.glows = []; mo.perches = [];
+      haloLights(out, mo, { halo: 1.1 });
+      // glowing slime and fungus at the feet of walls that look onto a walkway; drips from wall tops above water
+      var m = new A.Mesh(4242), R = new KD.RNG(4242), walls = pieces.filter(function (p) { return p.kind === 'wall' && (+p.h || 4) >= 2 && square(p); }), nSl = 0, glowC = C(SLIME);
+      m.jit = 0.06;
+      walls.sort(function (a, b) { return hsh(a.id, 'sl') - hsh(b.id, 'sl'); });
+      for (i = 0; i < walls.length; i++) {
+        var wp = walls[i], faces = openFaces(layout, wp, 0.9), f;
+        if (!faces.length) continue;
+        f = faces[floor(hsh(wp.id, 'face') * faces.length)];
+        var along = (hsh(wp.id, 'al') - 0.5) * max(0, f.len - 1.6), tx = cos(f.yaw), tz = -sin(f.yaw);   // along the face (right of the normal)
+        var bx = f.x + tx * along, bz = f.z + tz * along;
+        if (nSl < 34 && hsh(wp.id, 'slime') < 0.5) {
+          m.push(); m.translate(bx, 0, bz); m.rotY(f.yaw); slime(m, P, R, glowC, 0.9 + R.next() * 0.7); m.pop();
+          mo.glows.push({ x: bx + f.nx * 0.5, z: bz + f.nz * 0.5, r: 1.3, color: SLIME });
+          if (nSl % 4 === 0) addLight(out, { x: bx + f.nx * 0.6, y: 0.6, z: bz + f.nz * 0.6, color: '#7aff6a', r: 5, intensity: 1.1, flicker: 0.15 });
+          nSl++;
+        }
+        if (mo.drips.length < 60 && hsh(wp.id, 'drip') < 0.55) {
+          var top = +wp.h || 4, dxp = bx + f.nx * 0.08 + tx * 0.6, dzp = bz + f.nz * 0.08 + tz * 0.6;
+          mo.drips.push({ x: dxp, y: top - 0.15, z: dzp });
+          // a rusty pipe mouth or a moss beard where it drips
+          m.push(); m.translate(dxp - f.nx * 0.08, 0, dzp - f.nz * 0.08); m.rotY(f.yaw);
+          if (hsh(wp.id, 'pipe') < 0.5) { m.rod(0, top - 0.6, 0.0, 0, top - 0.6, 0.32, 0.09, 6, P.rust, 0.09, 2); m.cyl(0, top - 0.6, 0.3, 0.11, top - 0.6, 0.11, 6, P.iron, 0); }
+          else m.box(-0.25, top - 0.9, 0, 0.25, top - 0.1, 0.03, P.moss, NZ);
+          m.pop();
+        }
+      }
+      pushStatic(out, m);
+      // pools for bubbles: water cells next to a walkway, a sample
+      var S = KD.gen.SURF, step = 3, x, z;
+      for (z = 1; z < layout.gd - 1; z += step) for (x = 1; x < layout.gw - 1; x += step) {
+        if (surfAt(layout, x + 0.5, z + 0.5) !== S.water) continue;
+        if (hsh(x * 977 + z, 'pool') < 0.3) mo.pools.push({ x: x + 0.5, z: z + 0.5 });
+      }
+      mo.perches = [];
+    },
+    runtime: cityRuntime({
+      hero: { color: '#d8fff0', r: 8, intensity: 0.8 },
+      mist: { color: '#3c7a52', peak: 0.26, r: 6 },
+      motes: [{ rate: 7, color: '#b6ff7a', color2: '#2a7a3a', alpha: 0.65, size: [0.018, 0.032], gravity: -0.03, y: [0.2, 3] },
+        { rate: 3, color: '#3a5040', color2: '#24302a', alpha: 0.35, additive: false, size: [0.03, 0.05], sizeEnd: 0.02, gravity: 0.02, up: 0, life: [5, 8], notLow: true }],
+      halos: 0.36,
+      drips: { color: '#bfffd0' },
+      bubbles: { color: '#a8ff6a', rate: 10 }
+    }),
+    life: { air: { fireflies: 0.9, motes: 0.3 }, colors: { firefly: '#b8ff8a', mote: '#9ac8a0' }, critters: { rats: 2, moths: 0.4 }, windStrength: 0.04, waves: 0.15, ripple: 0.6, shimmer: 0.25, rimColor: '#9affc8', glow: 1.3 }
+  };
+
+  // ================================================================== HARBOR: sea blue, gulls, salt haze, wet planks
+  var HARBOR = {
+    env: env({ sunDir: [0.36, 0.62, 0.62], sunColor: [1.0, 0.94, 0.84], sunIntensity: 1.32, skyColor: [0.56, 0.7, 0.92], skyIntensity: 0.58,
+      groundColor: [0.5, 0.56, 0.6], groundIntensity: 0.38, zenith: [0.2, 0.42, 0.72], horizon: [0.8, 0.88, 0.92],
+      fogDensity: 0.0074, fogStart: 12, fogMax: 0.86, sunGlow: 1.0, exposure: 1.04, knee: 0.7, saturation: 0.98, windStrength: 0.17, clouds: true, rim: 0.42,
+      mist: 0.32, mistDensity: 0.03, mistFalloff: 0.4, mistStart: 14, mistColor: [0.8, 0.88, 0.92],
+      contrast: 0.24, vignette: 0.3, vignetteRadius: 0.32, gradeShadow: [0.02, 0.04, 0.09], gradeHigh: [1.0, 1.01, 1.03] }),
+    palette: {
+      water: '#1e5a8a', plank: '#6c5e4c', wood: '#685844', cobble: '#7a8086', road_cobble: '#82888e', plaza: '#9a9c98', sand: '#c6b88e', dirt: '#7e6e54',
+      plaster: '#d8d2c2', plasterAlt: '#c2b8a2', timber: '#3e3226', brick: '#8a4e3e', stoneWall: '#8a8e90', stoneDark: '#5a6066', roofA: '#8e4234', roofB: '#34587e', roofC: '#4e7a6c',
+      shutter: '#2a5a7a', window: '#7ab0d0', canvas: '#d2ccb6', rope: '#a88e62', woodLight: '#9a8260', woodDark: '#3e3228', iron: '#464c54', metal: '#7a8896',
+      cloth: ['#a83834', '#2c5a9c', '#d8a63e', '#e2dece']
+    },
+    look: { scatter: { tuft: 0.15, flower: 0, pebble: 0.4, weed: 0.4 } },
+    post: function (p, g) {
+      if (p.kind === 'pier' || p.kind === 'boat' || p.kind === 'bridge' || p.kind === 'crane') wet(g, 1.2, 0.32);
+      else if (p.kind === 'masonry' || p.kind === 'warehouse' || p.kind === 'house') wet(g, 0.6, 0.12);
+      groundAO(g, 1.4, 0.76);
+    },
+    dress: function (out) {
+      var layout = out.layout, pieces = layout.pieces || [], mo = out.mood, S = KD.gen.SURF, x, z, i;
+      mo.lanterns = []; mo.perches = []; mo.spray = [];
+      haloLights(out, mo, { halo: 0.9 });
+      // gulls perch on masts, bollards (crate / barrel tops) and crane jibs
+      for (i = 0; i < pieces.length; i++) {
+        var p = pieces[i];
+        if (p.kind === 'boat' && p.style === 'ship') mo.perches.push({ x: p.x, y: 9.05, z: p.z, yaw: hsh(p.id, 'gy') * TAU });
+        else if (p.kind === 'crane') mo.perches.push({ x: p.x, y: 8.05, z: p.z, yaw: hsh(p.id, 'gy') * TAU });
+      }
+      mo.perches = mo.perches.concat(perchesFrom(pieces, { crate: 0.95, barrel: 1.0, pile: 0.7, statue: 2.6 }, 26, 'gull'));
+      // salt spray where the water meets a quay
+      for (z = 1; z < layout.gd - 1; z += 2) for (x = 1; x < layout.gw - 1; x += 2) {
+        if (surfAt(layout, x + 0.5, z + 0.5) !== S.water) continue;
+        var land = false;
+        [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) { var s1 = surfAt(layout, x + 0.5 + d[0] * 1.5, z + 0.5 + d[1] * 1.5); if (s1 >= 0 && s1 !== S.water && s1 !== S.void) land = true; });
+        if (land && hsh(x * 991 + z, 'spray') < 0.4) mo.spray.push({ x: x + 0.5, z: z + 0.5 });
+      }
+    },
+    runtime: cityRuntime({
+      mist: { color: '#d8e4ea', peak: 0.2, r: 7 },
+      motes: [{ rate: 6, color: '#f4fbff', color2: '#cfe2ea', alpha: 0.35, size: [0.018, 0.03], gravity: -0.01, y: [0.3, 3.5] }],
+      halos: 0.22,
+      spray: { color: '#e6f2f6', rate: 5 },
+      birds: { kind: 'gull', perched: 8, circling: 5, height: 11 }
+    }),
+    life: { air: { motes: 0.8 }, colors: { mote: '#f2f6fa', bird: '#e9e6df' }, critters: { birds: 2, rats: 0.5 }, windStrength: 0.17, waves: 1.4, ripple: 1.3, shimmer: 1.3, rimColor: '#d8e8ff' }
+  };
+
+  // ================================================================== ROOFTOPS: dusk sky, chimney smoke, moon
+  var ROOFS = {
+    env: env({ sunDir: [-0.64, 0.24, 0.72], sunColor: [1.0, 0.6, 0.42], sunIntensity: 1.08, skyColor: [0.46, 0.4, 0.7], skyIntensity: 0.58,
+      groundColor: [0.36, 0.28, 0.36], groundIntensity: 0.32, zenith: [0.09, 0.08, 0.24], horizon: [0.94, 0.52, 0.42],
+      fogDensity: 0.0058, fogStart: 18, fogMax: 0.84, sunGlow: 1.5, exposure: 1.06, knee: 0.68, saturation: 0.98, windStrength: 0.15, rim: 0.58,
+      mist: 0.26, mistDensity: 0.035, mistFalloff: 0.08, mistStart: 20, mistColor: [0.48, 0.38, 0.54],
+      contrast: 0.3, vignette: 0.38, vignetteRadius: 0.3, gradeShadow: [0.06, 0.03, 0.12], gradeHigh: [1.06, 0.97, 0.9] }),
+    palette: {
+      roof: '#8a4c3e', roofA: '#7e3c32', roofB: '#3c4a68', roofC: '#6a5038', tile: '#9a8e7c', plank: '#6e5640', stone: '#78747c', cobble: '#6c6872', void: '#1c1a2c',
+      plaster: '#bcae9a', plasterAlt: '#a69682', timber: '#352a22', brick: '#80463a', stoneWall: '#7c7882', stoneDark: '#4e4a58', metal: '#6c7484', iron: '#3e404a',
+      window: '#ffb347', shutter: '#3a3a4a', woodLight: '#8e7456', woodDark: '#3a2e28', canvas: '#a49a8a',
+      cloth: ['#9a3238', '#34508e', '#c89a36', '#d8d0bc']
+    },
+    look: { scatter: { tuft: 0, flower: 0, pebble: 0.5, weed: 0.4 } },
+    post: function (p, g) {
+      if (p.kind === 'roof_block') litWindows(g, 0.6);
+      if (p.kind === 'chimney') soot(g, p, 0.25);
+      groundAO(g, 1.4, 0.74);
+    },
+    dress: function (out) {
+      var layout = out.layout, pieces = layout.pieces || [], mo = out.mood, A = KD.env.arch, P = A.pal(out.theme), i, nl = 0;
+      mo.lanterns = []; mo.perches = []; mo.smoke = [];
+      haloLights(out, mo, { halo: 1 });
+      var m = new A.Mesh(5151);
+      for (i = 0; i < pieces.length; i++) {
+        var p = pieces[i]; if (p.kind !== 'chimney') continue;
+        var h = +p.h || 2.6, lit = hsh(p.id, 'ch');
+        if (lit < 0.55) mo.smoke.push({ x: p.x, y: h + 0.35, z: p.z, big: 0.9 + hsh(p.id, 'cb') * 0.5, ember: lit < 0.25 });
+        if (lit < 0.25 && nl < 14) {                       // fire inside: a warm glow over the pot and a real light
+          var em = m.emis; m.emis = 0.85; m.disc(p.x, h + 0.08, p.z, 0.16, 6, [1, 0.55, 0.22]); m.emis = em;
+          addLight(out, { x: p.x, y: h + 0.6, z: p.z, color: '#ff8a3c', r: 6, intensity: 1.2, flicker: 0.5 }); nl++;
+        }
+        if (hsh(p.id, 'perch') < 0.4) mo.perches.push({ x: p.x + 0.3, y: h + 0.02, z: p.z, yaw: hsh(p.id, 'py') * TAU });
+      }
+      pushStatic(out, m);
+      // the moon, far over the city toward the darker sky (opposite the sunset)
+      var mg = moon(9);
+      out.statics.push({ geom: mg, pos: [layout.w / 2 + 160, 78, layout.d / 2 - 150], yaw: -PI * 0.75, tag: 'backdrop', castShadow: false });
+      out.stats.tris.backdrop += mg.idx.length / 3;
+    },
+    runtime: cityRuntime({
+      mist: { color: '#5a4a66', peak: 0.16, r: 7 },
+      motes: [{ rate: 3, color: '#ff9a48', color2: '#7a2a10', alpha: 0.9, size: [0.016, 0.028], gravity: -0.06, notLow: false },
+        { rate: 4, color: '#2a2630', color2: '#4a4450', alpha: 0.45, additive: false, size: [0.025, 0.04], sizeEnd: 0.02, gravity: 0.04, up: -0.1, shape: 'shard', spin: 2, life: [5, 8], y: [1, 5], notLow: true }],
+      halos: 0.32,
+      smoke: { color: '#3c3640', color2: '#7a6a7a', alpha: 0.22, rate: 1.5, size: 1.7, ember: '#ffa04a' },
+      birds: { kind: 'bat', perched: 0, circling: 5, height: 8 }
+    }),
+    life: { air: { embers: 0.8, ash: 0.5 }, colors: { ash: '#2a2630' }, critters: { crows: 1, moths: 0.6 }, windStrength: 0.15, rimColor: '#ffa080', glow: 1.2 }
+  };
+
+  // ================================================================== CITY GATES: grand stone, banners, torches
+  var SIEGE = {
+    env: env({ sunDir: [0.6, 0.36, 0.5], sunColor: [1.0, 0.68, 0.46], sunIntensity: 1.15, skyColor: [0.52, 0.44, 0.56], skyIntensity: 0.5,
+      groundColor: [0.42, 0.33, 0.29], groundIntensity: 0.32, zenith: [0.15, 0.12, 0.17], horizon: [0.72, 0.44, 0.34],
+      fogDensity: 0.0086, fogStart: 14, fogMax: 0.88, sunGlow: 1.15, exposure: 1.06, knee: 0.68, saturation: 0.96, windStrength: 0.13, rim: 0.5,
+      mist: 0.3, mistDensity: 0.03, mistFalloff: 0.35, mistStart: 16, mistColor: [0.52, 0.42, 0.38],
+      contrast: 0.3, vignette: 0.42, vignetteRadius: 0.3, gradeShadow: [0.07, 0.03, 0.06], gradeHigh: [1.06, 0.97, 0.87] }),
+    palette: {
+      stoneWall: '#9a9184', stoneDark: '#635c53', cobble: '#706a60', road_cobble: '#777066', plaza: '#857d70', dirt: '#6a5440', mud: '#4a3a2c', path: '#77644c',
+      grass: '#5c6038', grassAlt: '#505634', sand: '#a8946c', plaster: '#c6b69a', plasterAlt: '#b0a084', timber: '#3a2a1e', brick: '#7e4836', roofA: '#7a3a30', roofB: '#3e4c66', roofC: '#5a5a3c',
+      canvas: '#aa9c7e', woodDark: '#3a2c22', woodLight: '#7e6648', iron: '#3c3e44', metal: '#7a7e86', gold: '#e2b244', rope: '#8c7656',
+      leafA: '#4a5a32', leafB: '#5a643a', leafC: '#3e4a2e', bush: '#4a5634', leafDead: '#6a5a3a', trunk: '#4a3a2c',
+      cloth: ['#9c2a2e', '#2c4a8c', '#ca982e', '#2a2628']
+    },
+    look: { scatter: { tuft: 0.5, flower: 0, pebble: 1.2, rubble: 1.3, weed: 0.5 } },
+    post: function (p, g) {
+      if (p.kind === 'masonry' || p.kind === 'wall' || p.kind === 'tower' || p.kind === 'gatehouse') soot(g, p, 0.16);
+      if ((p.kind === 'house' || p.kind === 'barracks') && hsh(p.id, 'lit') < 0.7) litWindows(g, 0.6);
+      groundAO(g, 1.6, 0.7);
+    },
+    dress: function (out) {
+      var layout = out.layout, pieces = layout.pieces || [], mo = out.mood, A = KD.env.arch, P = A.pal(out.theme), i;
+      mo.lanterns = []; mo.perches = []; mo.smoke = []; mo.flames = [];
+      haloLights(out, mo, { halo: 1.1 });
+      // smoke and embers over every camp fire, forge and brazier
+      for (i = 0; i < pieces.length; i++) {
+        var p = pieces[i];
+        if (p.kind === 'campfire') mo.smoke.push({ x: p.x, y: 0.9, z: p.z, big: 1.2, ember: true });
+        else if (p.kind === 'forge' || p.kind === 'brazier') mo.smoke.push({ x: p.x, y: 1.6, z: p.z, big: 0.9, ember: true });
+        else if (p.kind === 'siege_engine' && hsh(p.id, 'burn') < 0.3) mo.smoke.push({ x: p.x, y: 1.5, z: p.z, big: 1.4, ember: true });
+      }
+      // banners and torches on the faces of the city wall that look onto open ground
+      var m = new A.Mesh(6262), big = pieces.filter(function (p) { return (p.kind === 'masonry' && p.style !== 'rowhouses' && (+p.h || 7) >= 5) || (p.kind === 'wall' && (+p.h || 4) >= 5) || p.kind === 'tower' || p.kind === 'gatehouse'; });
+      var nb = 0, nt = 0, spots = [];
+      big.sort(function (a, b) { return hsh(a.id, 'bn') - hsh(b.id, 'bn'); });
+      for (i = 0; i < big.length; i++) {
+        var bp = big[i], H = +bp.h || (bp.kind === 'tower' ? 10 : 7), faces = square(bp) && !bp.r ? openFaces(layout, bp, 1.3) : [];
+        for (var fi = 0; fi < faces.length; fi++) {
+          var f = faces[fi]; if (f.len < 3) continue;
+          var tx = cos(f.yaw), tz = -sin(f.yaw), uMax = f.len / 2 - 1.2, nU = max(1, floor(f.len / 7)), k2;
+          for (k2 = 0; k2 < nU; k2++) {
+            var u = nU === 1 ? 0 : -uMax + 2 * uMax * k2 / (nU - 1), x0 = f.x + tx * u, z0 = f.z + tz * u, close = false;
+            for (var s = 0; s < spots.length; s++) { var ddx = spots[s][0] - x0, ddz = spots[s][1] - z0; if (ddx * ddx + ddz * ddz < 25) { close = true; break; } }
+            if (close) continue;
+            spots.push([x0, z0]);
+            var kind = hsh(bp.id + fi + ':' + k2, 'bt');
+            m.push(); m.translate(x0 + f.nx * 0.01, 0, z0 + f.nz * 0.01); m.rotY(f.yaw);
+            if (kind < 0.5 && nb < 26 && H >= 6) {        // a tall war banner: crimson or royal blue with a gold stripe and crest
+              var col = hsh(bp.id, 'bc') < 0.6 ? P.cloth[0] : P.cloth[1], top = min(H - 0.5, 7.2), hh = min(4.2, top - 2.6);
+              A.banner(m, 0, top, 1.3, hh, { col: col, stripe: P.gold, emblem: hsh(bp.id, 'em') < 0.5 ? 'crown' : 'sword', emblemCol: P.gold, tail: hsh(bp.id, 'tl') < 0.5 ? 'swallow' : 'point', z: 0.05 });
+              nb++;
+            } else if (nt < 22) {                           // a torch in an iron sconce, two when the face is long
+              var fl = torch(m, P, 2.7);
+              mo.flames.push({ x: x0 + f.nx * fl[2], y: fl[1], z: z0 + f.nz * fl[2] });
+              if (nt % 2 === 0) addLight(out, { x: x0 + f.nx * 0.6, y: 3.0, z: z0 + f.nz * 0.6, color: '#ff9a48', r: 7, intensity: 1.4, flicker: 0.6 });
+              nt++;
+            }
+            m.pop();
+          }
+        }
+      }
+      pushStatic(out, m);
+      mo.perches = perchesFrom(pieces, { crate: 0.95, barrel: 1.0, cart: 1.1, pile: 0.7 }, 20, 'crow');
+    },
+    runtime: cityRuntime({
+      hero: { color: '#ffe0c0', r: 7, intensity: 0.45 },
+      mist: { color: '#6a5a52', peak: 0.2, r: 7 },
+      motes: [{ rate: 4, color: '#ff9a48', color2: '#7a2a10', alpha: 0.95, size: [0.018, 0.03], gravity: -0.12, y: [0.3, 3] },
+        { rate: 5, color: '#b8aea4', color2: '#6a6460', alpha: 0.5, additive: false, size: [0.025, 0.04], sizeEnd: 0.02, gravity: 0.08, up: -0.3, shape: 'shard', spin: 2.5, life: [5, 8], y: [3, 7], notLow: true }],
+      halos: 0.34,
+      smoke: { color: '#2e2a2c', color2: '#6a6060', alpha: 0.26, rate: 1.8, size: 2.0, ember: '#ffa04a' },
+      birds: { kind: 'crow', perched: 6, circling: 3, height: 12 }
+    }),
+    life: { air: { ash: 1.0, embers: 1.0 }, colors: { ash: '#b8aea4' }, critters: { crows: 1.5, rats: 0.5 }, windStrength: 0.13, rimColor: '#ffa868', glow: 1.2 }
+  };
+  // [w8 living world] the presets' perches (crate tops, masts, chimneys) become perch spots for the shared critters
+  [SLUMS, MARKET, SEWERS, HARBOR, ROOFS, SIEGE].forEach(function (P0) {
+    var d0 = P0.dress;
+    P0.dress = function (out, ctx) {
+      d0(out, ctx);
+      var LF = KD.env.life, mo = out.mood;
+      if (LF && LF.spot && mo && mo.perches) mo.perches.forEach(function (pc) { try { LF.spot(out, 'perch', { x: pc.x, y: pc.y, z: pc.z, yaw: pc.yaw || 0 }); } catch (e) { /* life absent */ } });
+    };
+  });
+  M.register('city_slums', SLUMS);
+  M.register('city_market', MARKET);
+  M.register('city_sewers', SEWERS);
+  M.register('city_harbor', HARBOR);
+  M.register('city_rooftops', ROOFS);
+  M.register('city_siege', SIEGE);
+  /** Areas switched on so far (they ship one at a time; the rest stay classic until their look is done). */
+  M.ACT3_READY = ['lower_town'];
+  M.ACT3_READY.forEach(function (a) { if (!M.AREAS[a]) M.AREAS[a] = ACT3[a]; });
+  M.act3 = { rectOf: rectOf, facingPairs: facingPairs, openFaces: openFaces, birdModel: birdModel };
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
