@@ -3221,7 +3221,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.9';
+  KD.VERSION = '0.7.10';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -51639,6 +51639,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     'uniform int uLightCount;',
     'uniform vec4 uPaint;',    // fine amount, broad amount, warm/cool amount, rim strength
     'uniform vec4 uSee;',      // xyz = the followed character's chest, w = see-through radius (0 = off)
+    'uniform vec4 uRimB;',     // [w8 living world] character back light: rgb colour (linear), w strength (0 = off)
     'in vec3 vPos; in vec3 vNrm; in vec3 vCol; in vec4 vMat; in vec3 vShadow;',
     'out vec4 oCol;',
     'void main() {',
@@ -51687,6 +51688,13 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     '  }',
     '  float rim = 1.0 - max(dot(N, V), 0.0); rim = rim * rim * rim;',
     '  col += alb * uSkyCol * (rim * uPaint.w * (0.4 + 0.6 * max(N.y * 0.5 + 0.5, 0.0)));',
+    '#ifdef INSTANCED',        // [w8 living world] a soft back light on the silhouette, strongest on the side away from the sun
+    '  if (uRimB.w > 0.0) {',
+    '    float fr = 1.0 - max(dot(N, V), 0.0); vec3 bd = normalize(vec3(-uSunDir.x, 0.45, -uSunDir.z));',
+    '    float rb = fr * fr * fr * (0.4 + 0.6 * max(dot(N, bd), 0.0)) * smoothstep(-0.7, 0.25, N.y);',
+    '    col += uRimB.rgb * (rb * uRimB.w) * (0.55 + 0.45 * sh);',
+    '  }',
+    '#endif',
     '  col += alb * (vMat.x * 2.4);',
     '  float fl = clamp(vMat.z, 0.0, 1.0);',
     '  col = mix(col, vec3(1.1), fl * fl);',
@@ -51757,16 +51765,20 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     'layout(location=2) in vec4 aCol;',
     'uniform mat4 uViewProj;',
     'uniform mat4 uShadowMat;',
+    'uniform vec4 uWaterP;',   // [w8 living world] x ripple scale (1), y wave height m (0 = flat), z shimmer, w time
     'out vec3 vPos; out vec3 vCol; out vec3 vShadow;',
     'void main() {',
-    '  vPos = aPos; vCol = pow(aCol.rgb, vec3(2.2));',
-    '  vShadow = (uShadowMat * vec4(aPos, 1.0)).xyz;',
-    '  gl_Position = uViewProj * vec4(aPos, 1.0);',
+    '  vec3 p = aPos;',
+    '  if (uWaterP.y > 0.0) { float t = uWaterP.w; p.y += uWaterP.y * (sin(dot(p.xz, vec2(0.37, 0.21)) + t * 0.9) * 0.6 + sin(dot(p.xz, vec2(-0.18, 0.43)) + t * 1.3) * 0.4 - 0.35); }',
+    '  vPos = p; vCol = pow(aCol.rgb, vec3(2.2));',
+    '  vShadow = (uShadowMat * vec4(p, 1.0)).xyz;',
+    '  gl_Position = uViewProj * vec4(p, 1.0);',
     '}'
   ].join('\n');
   var FS_WATER = [
     FS_COMMON, FS_SHADOW_FN, FS_NOISE,
     'uniform float uTime;',
+    'uniform vec4 uWaterP;',   // [w8 living world]
     'in vec3 vPos; in vec3 vCol; in vec3 vShadow; out vec4 oCol;',
     'void main() {',
     '  vec2 p = vPos.xz; float t = uTime;',
@@ -51777,6 +51789,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     '  g += vec2(0.2, -0.98) * cos(dot(p, vec2(0.2, -0.98)) * 5.3 + t * 2.6) * 0.02;',
     '  float nz = vnoise(vec3(p * 0.9 + vec2(t * 0.15, t * 0.1), t * 0.25));',
     '  g += (nz - 0.5) * 0.06;',
+    '  g *= uWaterP.x;',
+    '  if (uWaterP.y > 0.0) { float t = uWaterP.w; g += uWaterP.y * (vec2(0.37, 0.21) * cos(dot(p, vec2(0.37, 0.21)) + t * 0.9) * 0.6 + vec2(-0.18, 0.43) * cos(dot(p, vec2(-0.18, 0.43)) + t * 1.3) * 0.4); }',
     '  vec3 N = normalize(vec3(-g.x, 1.0, -g.y));',
     '  vec3 V = normalize(uCam - vPos);',
     '  float sh = shadowAt(vShadow);',
@@ -51787,6 +51801,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     '  vec3 col = mix(base, refl, 0.18 + 0.6 * fr);',
     '  vec3 H = normalize(uSunDir + V);',
     '  col += uSunCol * (pow(max(dot(N, H), 0.0), 180.0) * 1.6 * sh);',
+    '  if (uWaterP.z > 0.0) {',   // [w8 living world] glitter: small sun sparkles that come and go
+    '    float gs = vnoise(vec3(p * 3.1 + g * 9.0, t * 0.9)); gs = smoothstep(0.78, 0.95, gs) * (0.35 + 0.65 * pow(max(dot(N, H), 0.0), 6.0));',
+    '    col += uSunCol * (gs * uWaterP.z * 0.9 * (0.3 + 0.7 * sh)) + uSkyCol * (gs * uWaterP.z * 0.25);',
+    '  }',
     '  col = applyFog(col, vPos);',
     '  oCol = vec4(tonemap(col), mix(0.74, 0.94, fr));',
     '}'
@@ -52245,7 +52263,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       shadowRadius: 35, shadowBias: 0.012,
       // [mood presets] 0 = off (the classic look): low mist, colour grade and vignette (docs/GFX.md section 9)
       mist: 0, mistDensity: 0.03, mistFalloff: 0.6, mistStart: 10, mistColor: [0.6, 0.6, 0.66],
-      grade: 0, contrast: 0, vignette: 0, vignetteRadius: 0.32, gradeShadow: [0, 0, 0], gradeHigh: [1, 1, 1]
+      grade: 0, contrast: 0, vignette: 0, vignetteRadius: 0.32, gradeShadow: [0, 0, 0], gradeHigh: [1, 1, 1],
+      // [w8 living world] KD.env.life (docs/ENV.md): character back light, water waves and glitter. Defaults = the classic picture.
+      rimBack: 0, rimBackColor: [1, 0.86, 0.68], waterRipple: 1, waterWaves: 0, waterShimmer: 0
     };
     this.stats = { drawCalls: 0, triangles: 0, instances: 0, cpuMs: 0, shadowDrawCalls: 0, shadowTriangles: 0, staticBatches: 0, particles: 0, decals: 0, lights: 0,
       blobs: 0, width: 0, height: 0, pixels: 0, pixelRatio: 1, level: 'high', shadows: this.shadows, frames: 0, resizes: 0, contextLost: 0, contextRestored: 0 };
@@ -52263,7 +52283,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       horizon: new Float32Array(3), zenith: new Float32Array(3), fog: new Float32Array(4), tone: new Float32Array(4), wind: new Float32Array(4),
       shadowMat: new Float32Array(16), shadowClip: new Float32Array(16), shadowP: new Float32Array(4), paint: new Float32Array(4), see: new Float32Array(4),
       lightPos: new Float32Array(32), lightCol: new Float32Array(24), lightCount: 0, right: new Float32Array(3), up: new Float32Array(3), ready: false,
-      fogH: new Float32Array(4), fogC: new Float32Array(3), grade: new Float32Array(4), gradeLo: new Float32Array(3), gradeHi: new Float32Array(3), screenI: new Float32Array(2)   // [mood presets]
+      fogH: new Float32Array(4), fogC: new Float32Array(3), grade: new Float32Array(4), gradeLo: new Float32Array(3), gradeHi: new Float32Array(3), screenI: new Float32Array(2),   // [mood presets]
+      rimB: new Float32Array(4), waterP: new Float32Array(4)   // [w8 living world]
     };
     G.m4.identity(F.viewProj); G.m4.identity(F.shadowMat);
     this.cssW = 1; this.cssH = 1;
@@ -52667,6 +52688,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (F.fogH[0] > 0) lin(e.mistColor || [0.6, 0.6, 0.66], 1, F.fogC, 0);
     F.grade[0] = e.grade || 0; F.grade[1] = e.contrast || 0; F.grade[2] = mk > 0.5 ? (e.vignette || 0) : 0; F.grade[3] = e.vignetteRadius || 0.32;
     if (F.grade[0] > 0) { var gl0 = G.color._get(e.gradeShadow || [0, 0, 0]), gh0 = G.color._get(e.gradeHigh || [1, 1, 1]); F.gradeLo[0] = gl0[0]; F.gradeLo[1] = gl0[1]; F.gradeLo[2] = gl0[2]; F.gradeHi[0] = gh0[0]; F.gradeHi[1] = gh0[1]; F.gradeHi[2] = gh0[2]; }
+    // [w8 living world] back light on characters, water waves and glitter (KD.env.life sets them per area)
+    F.rimB[3] = e.rimBack > 0 ? e.rimBack : 0; if (F.rimB[3] > 0) lin(e.rimBackColor || [1, 0.86, 0.68], 1, F.rimB, 0);
+    F.waterP[0] = e.waterRipple === undefined ? 1 : e.waterRipple; F.waterP[1] = e.waterWaves || 0; F.waterP[2] = e.waterShimmer || 0; F.waterP[3] = this.time;
     var seeR = e.seeRadius || 0, sf = camera.focus;
     if (seeR > 0 && sf) { F.see[0] = sf[0]; F.see[1] = sf[1]; F.see[2] = sf[2]; F.see[3] = seeR; } else F.see[3] = 0;
     // shadow box: fixed light basis, centre snapped to whole texels so the map does not shimmer when the camera moves
@@ -52756,6 +52780,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (u.uWind) gl.uniform4fv(u.uWind, F.wind);
     if (u.uPaint) gl.uniform4fv(u.uPaint, F.paint);
     if (u.uSee) gl.uniform4fv(u.uSee, F.see);
+    if (u.uRimB) gl.uniform4fv(u.uRimB, F.rimB);           // [w8 living world]
+    if (u.uWaterP) gl.uniform4fv(u.uWaterP, F.waterP);
     if (u.uShadowMat) gl.uniformMatrix4fv(u.uShadowMat, false, F.shadowMat);
     if (u.uShadowP) gl.uniform4fv(u.uShadowP, F.shadowP);
     if (u.uShadowMap) gl.uniform1i(u.uShadowMap, 0);
@@ -71549,8 +71575,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     // [mood presets] 55_env_mood.js: an area preset recolours the theme, changes scatter and swaps / dresses pieces (visual only)
     var mood = E.mood && E.mood.forLayout ? E.mood.forLayout(layout, opts) : null;
     if (mood) { theme = E.mood.theme(theme, mood); look = E.mood.look(look, mood); }
+    // [w8 living world] 57_env_life.js: rim light, air, wind, water, critters of this area (theme < area < mood preset)
+    var life = E.life && E.life.resolve ? E.life.resolve(layout, mood, opts) : null;
+    if (life) theme = E.life.theme(theme, life);
     var rng = new KD.RNG(((layout.seed >>> 0) ^ 0x5eed) >>> 0);
-    var out = { theme: theme, look: look, layout: layout, opts: opts, statics: [], dynamics: [], lights: [], flames: [], bloom: [], stats: null, moodPreset: mood, mood: {} };
+    var out = { theme: theme, look: look, layout: layout, opts: opts, statics: [], dynamics: [], lights: [], flames: [], bloom: [], stats: null, moodPreset: mood, mood: {}, life: life, lifeSpots: {} };
     var st = out.stats = { tris: { ground: 0, water: 0, scatter: 0, backdrop: 0, pieces: 0, total: 0 }, ms: {}, pieces: layout.pieces.length, built: 0, cacheHits: 0, fallbacks: 0, dynamic: 0 };
     function push(geom, o, tag) {
       if (!geom || !geom.pos || !geom.idx || !geom.idx.length) return 0;
@@ -71619,6 +71648,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     // ---- lights, flames, bloom
     (layout.lights || []).forEach(function (l) { out.lights.push(l); });
     if (E.dynamic && E.dynamic.collect) { try { E.dynamic.collect(layout, out); } catch (err) { if (typeof console !== 'undefined') console.error('KD.env: collect failed', err); } }
+    // [w8 act4 look] a preset may recolour the layout's own lights and flames once they are all in (visual only)
+    if (mood && mood.lateDress) { try { mood.lateDress(out, ctx); } catch (err) { if (typeof console !== 'undefined') console.error('KD.env.mood: lateDress failed', err); } }
     st.tris.total = st.tris.ground + st.tris.water + st.tris.scatter + st.tris.backdrop + st.tris.pieces;
     st.ms.assemble = H.now() - t0;
     return out;
@@ -71651,7 +71682,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   E.build = function (layout, renderer, opts) {
     opts = opts || {};
     if (renderer._kdEnv && renderer._kdEnv.dispose) { try { renderer._kdEnv.dispose(); } catch (err) { /* a stale handle must never block a new area */ } }
-    var scene = renderer.scene, rt = null, moodRt = null, disposed = false, handle = null;
+    var scene = renderer.scene, rt = null, moodRt = null, lifeRt = null, disposed = false, handle = null;   // [w8 living world] lifeRt
     /** Assembles the area and uploads it. again: a rebuild of the same area (lighting, lights of others and piece states are kept). */
     function construct(again) {
       // the quality level decides how dense the ground scatter is (KD.gfx.quality; an explicit opts.scatterDetail wins)
@@ -71675,6 +71706,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         try { rt = E.dynamic.createRuntime(asm, renderer, bo); } catch (err) { if (typeof console !== 'undefined') console.error('KD.env: runtime failed', err); rt = null; }
       }
       moodRt = E.mood && E.mood.runtime ? E.mood.runtime(asm, renderer, bo) : null;     // [mood presets] mist, particles, birds
+      lifeRt = E.life && E.life.runtime ? E.life.runtime(asm, renderer, bo) : null;     // [w8 living world] air, glow, critters, shafts
       if (!rt) asm.lights.forEach(function (l) { renderer.lights.add(l); });
       scene.buildStatic();
       st.ms.upload = H.now() - t1;
@@ -71691,7 +71723,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         if (disposed) return;
         if (rt) rt.update(dt || 0, world || null, r || renderer);
         if (moodRt) { try { moodRt.update(dt || 0, world || null, r || renderer); } catch (err) { if (typeof console !== 'undefined') console.error('KD.env.mood: update failed', err); moodRt = null; } }
+        if (lifeRt) { try { lifeRt.update(dt || 0, world || null, r || renderer); } catch (err) { if (typeof console !== 'undefined') console.error('KD.env.life: update failed', err); lifeRt = null; } }   // [w8 living world]
       },
+      /** [w8 living world] The KD.env.life runtime of this area (stats, def) or null. */
+      life: function () { return lifeRt; },
       /** The mood preset in force ('grim_farm', ...) or null (classic). */
       mood: asm0.moodPreset ? asm0.moodPreset.id : null,
       setPieceState: function (id, state, o) { return rt && !disposed ? rt.setState(id, state, o) : false; },
@@ -71707,6 +71742,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         for (i = 0; i < ids.length; i++) states[ids[i]] = rt.pieces[ids[i]].state;
         if (rt) rt.dispose(); else renderer.lights.clear();
         if (moodRt) { moodRt.dispose(); moodRt = null; }
+        if (lifeRt) { lifeRt.dispose(); lifeRt = null; }   // [w8 living world]
         var asm = construct(true);
         if (relight) applyEnv(renderer, asm.theme);
         if (rt) for (i = 0; i < ids.length; i++) rt.setState(ids[i], states[ids[i]], { instant: true });
@@ -71721,6 +71757,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         disposed = true;
         if (rt) rt.dispose(); else renderer.lights.clear();
         if (moodRt) { moodRt.dispose(); moodRt = null; }
+        if (lifeRt) { lifeRt.dispose(); lifeRt = null; }   // [w8 living world]
         scene.clearStatic();
         if (renderer._kdEnv === handle) renderer._kdEnv = null;
       }
@@ -74411,7 +74448,15 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       }
     },
     dress: dress,
-    runtime: runtime
+    runtime: runtime,
+    // [w8 living world] KD.env.life (57_env_life.js) draws the crows, motes, embers, leaves and lantern halos of this
+    // preset now (the runtime below leaves them out while life handles them); a cool lavender back light on characters
+    life: {
+      rim: 0.85, rimColor: '#bfb0ff', glow: 1.15, gust: 0.6, waves: 0.3, shimmer: 0.35,
+      air: { motes: 0.75, embers: 0.6, pollen: 0, fireflies: 0.35, leaves: 0.9 },
+      critters: { birds: 0, crows: 1.2, moths: 1, rats: 0.7, frogs: 0.7, butterflies: 0 },
+      colors: { mote: '#e6dcc4', crowEyes: '#8dff5c', firefly: '#9dff7a', moth: '#cfc6b4', leaves: ['#6b4f2e', '#8a6a3a', '#4a3a2a'] }
+    }
   };
   /** Boulders of 0.6-1.6 m (they have a collider) stand for a grave, nine in ten; decorative small rocks stay rocks. */
   function isGrave(p) { return p.kind === 'rock' && (+p.size || 1) >= 0.6 && (+p.size || 1) <= 1.6 && hsh(p.id, 'grave') < 0.9; }
@@ -74448,6 +74493,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       picked.push({ x: w[0], z: w[1] }); mo.lanterns.push(rec);
       out.lights.push({ x: rec.x, y: rec.y, z: rec.z, color: rec.color, r: rec.r, intensity: rec.intensity, flicker: rec.flicker, mood: true });
       mo.perches.push({ x: w[0], y: 2.08, z: w[1], yaw: yaw + PI / 2, kind: 'pole' });
+      if (E.life && E.life.spot) E.life.spot(out, 'perch', { x: w[0], y: 2.08, z: w[1], yaw: yaw + PI / 2 });   // [w8 living world]
     }
     // fence-top perches along the middle of long fences
     for (i = 0; i < fences.length && mo.perches.length < 28; i++) {
@@ -74504,8 +74550,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       cr.perch = pc; pc.taken = true; cr.state = 'perch'; cr.x = pc.x + (rnd() - 0.5) * 0.1; cr.y = pc.y; cr.z = pc.z; cr.yaw = pc.yaw + (rnd() - 0.5) * 0.8; cr.t = rnd() * 5; cr.next = 1 + rnd() * 3;
       cr.actor.visible = true;
     }
-    var NC = 7;
-    if (KD.gfx && KD.gfx.Actor && perches.length) {
+    var NC = 7, LH = E.life && E.life.handles ? E.life.handles : function () { return false; };   // [w8 living world] life draws what it handles
+    if (KD.gfx && KD.gfx.Actor && perches.length && !LH(asm, 'crows')) {
       for (var ci = 0; ci < min(NC, perches.length); ci++) {
         var cr = { actor: null, perch: null, state: 'gone', x: 0, y: 0, z: 0, yaw: 0, vx: 0, vy: 0, vz: 0, t: 0, next: 0, flap: 0, wait: 0, slot: ci };
         try { cr.actor = new KD.gfx.Actor(crowModelDef); } catch (err) { break; }
@@ -74589,6 +74635,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       }
       // ---- dust motes and a few embers around the camera
       rt.mote = (rt.mote || 0) + dt * 7 * k * pk2;
+      if (LH(asm, 'motes')) rt.mote = 0;   // [w8 living world]
       while (rt.mote >= 1) {
         rt.mote -= 1;
         var oa = rnd() * TAU, od = sqrt(rnd()) * 14, ember = rnd() < 0.18;
@@ -74607,7 +74654,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         }
       }
       // ---- lantern glow: a soft additive halo refreshed all the time (the cheap stand-in for bloom), and moths of light
-      for (i = 0; i < lanterns.length; i++) {
+      for (i = 0; i < lanterns.length && !LH(asm, 'glow'); i++) {   // [w8 living world] life draws the halos
         var L = lanterns[i]; dx = L.x - focus[0]; dz = L.z - focus[2];
         if (dx * dx + dz * dz > 40 * 40) continue;
         L.acc += dt * (low ? 3 : 6);
@@ -74617,7 +74664,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         }
       }
       // ---- leaves from dead trees near the camera
-      if (!low) {
+      if (!low && !LH(asm, 'leaves')) {   // [w8 living world]
         for (i = 0; mo.trees && i < mo.trees.length; i++) {
           var tr = mo.trees[i]; dx = tr.x - focus[0]; dz = tr.z - focus[2];
           if (dx * dx + dz * dz > 28 * 28) continue;
@@ -74640,6 +74687,820 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   }
 
   M.register('grim_farm', GRIM);
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/gfx/57_env_life.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var E = KD.env = KD.env || {};
+  var U = KD.util;
+
+  /**
+   * KD.env.life: global atmosphere and a living world, shared by every area (docs/ENV.md "Living world").
+   * Purely visual: nothing here reads or writes the simulation (Math.random, never a sim RNG), so co-op and the
+   * world digests are unaffected.
+   *
+   *   lighting   a soft back light on characters and creatures (rim), warm halos and ground pools at every fire,
+   *              lantern, brazier and window glow, optional light shafts (god rays)
+   *   air        dust motes, embers, pollen, fireflies, falling leaves, snow, ash (per-area densities)
+   *   motion     wind strength with gusts (the foliage sway of the lit shader follows), water waves and glitter
+   *   critters   birds that scatter, crows on fences and posts, moths at lights, rats, frogs, butterflies:
+   *              renderer actors and particles only, never sim entities
+   *
+   * Who decides (later wins, field by field): L.BASE < L.THEMES[theme] < L.AREAS[areaId] < moodPreset.life.
+   *   L.area(areaId, def)   per-area settings (area restyles register theirs here, in their own file)
+   *   L.themeDef(id, def)   per-theme defaults        moodPreset.life = def   a mood preset's own (55_env_mood.js)
+   *   L.spot(out, type, rec) from a mood preset's dress(out, ctx): extra spots for the runtime (glow, shaft, perch, ...)
+   *   L.resolve(layout, moodPreset, opts) -> the full def      L.validate(def) -> [] or a list of problems
+   *   L.runtime(asm, renderer, opts) -> { update, dispose, def, stats }   (called by KD.env.build, 50_env_core.js)
+   * Quality: everything scales with L.quality(): k = 1 high, 0.6 medium, 0.3 low; shafts, butterflies and the
+   * extra critters are off on low.
+   */
+  var L = E.life = E.life || {};
+  var PI = Math.PI, TAU = PI * 2, sin = Math.sin, cos = Math.cos, sqrt = Math.sqrt, floor = Math.floor, min = Math.min, max = Math.max, abs = Math.abs, rnd = Math.random;
+
+  // ------------------------------------------------------------------ the def
+  L.AIR = ['motes', 'embers', 'pollen', 'fireflies', 'leaves', 'snow', 'ash'];
+  L.CRITTERS = ['birds', 'crows', 'moths', 'rats', 'frogs', 'butterflies'];
+  /** Everything a def can hold, with the classic default. Numbers are densities / strengths: 0 = off, 1 = normal. */
+  L.BASE = {
+    rim: 0.45,                 // back light on characters, creatures and props (0..1.5)
+    rimColor: '#ffe2b8',       // its colour
+    wind: 1,                   // multiplier on the area's wind strength (foliage sway, leaves, snow drift) (0..3)
+    windStrength: null,        // or the absolute strength (renderer.env.windStrength, classic 0.1); wins over wind when set (0..0.5)
+    gust: 0.5,                 // how much the wind comes in gusts (0..1)
+    waves: 0.5,                // water: gentle wave height (0..2; 1 = about 4 cm)
+    ripple: 1,                 // water: ripple strength (0..2)
+    shimmer: 0.6,              // water: sun glitter (0..2)
+    glow: 1,                   // halos and warm ground pools at lights (0..2)
+    shafts: 0,                 // light shafts / god rays (0..1.5)
+    shaftColor: '#fff0c8',
+    air: { motes: 0.5, embers: 0, pollen: 0, fireflies: 0, leaves: 0.3, snow: 0, ash: 0 },
+    critters: { birds: 0, crows: 0, moths: 0.5, rats: 0, frogs: 0, butterflies: 0 },
+    colors: {}                 // optional: mote, ember, pollen, firefly, snow, ash, leaves: [..], bird, crowEyes, butterfly: [..]
+  };
+  L.LIMITS = { rim: [0, 1.5], wind: [0, 3], windStrength: [0, 0.5], gust: [0, 1], waves: [0, 2], ripple: [0, 2], shimmer: [0, 2], glow: [0, 2], shafts: [0, 1.5], air: [0, 3], critters: [0, 3] };
+  L.COLOR_KEYS = ['mote', 'ember', 'pollen', 'firefly', 'snow', 'ash', 'leaves', 'bird', 'crowEyes', 'butterfly', 'moth'];
+
+  function t(o) { return o; }
+  var OUT = { rim: 0.5 }, IN = { rim: 0.62, wind: 0.15, gust: 0, waves: 0.2, shimmer: 0.3 };
+  function th(base, o) { var r = U.assign({}, base, o); return r; }
+  /** Per-theme defaults (the 26 themes of 51_env_themes.js). Sunny daytime is the owner's base: no rain, no storms. */
+  L.THEMES = {
+    farmland:   th(OUT, { air: { motes: 0.6, pollen: 0.8, leaves: 0.4 }, critters: { birds: 1, crows: 0.6, moths: 0.5, frogs: 0.6, butterflies: 1 }, shimmer: 0.9 }),
+    forest:     th(OUT, { wind: 0.8, shafts: 0.7, air: { motes: 0.8, pollen: 0.3, fireflies: 0.3, leaves: 1 }, critters: { birds: 0.6, crows: 0.4, moths: 0.5, frogs: 0.5, butterflies: 0.4 } }),
+    swamp:      th(OUT, { wind: 0.5, waves: 0.25, shimmer: 0.3, shafts: 0.3, air: { motes: 0.4, fireflies: 1, leaves: 0.3 }, critters: { birds: 0.2, crows: 0.6, moths: 0.8, frogs: 1.5 }, colors: { firefly: '#c8ff6a' } }),
+    bandit:     th(OUT, { glow: 1.2, air: { motes: 0.5, embers: 1, ash: 0.2, leaves: 0.4 }, critters: { birds: 0.3, crows: 1, moths: 0.6, rats: 0.6 } }),
+    mill:       th(OUT, { waves: 0.8, shimmer: 1, air: { motes: 0.9, pollen: 0.7, leaves: 0.3 }, critters: { birds: 1.2, crows: 0.5, moths: 0.4, rats: 0.8, frogs: 0.6, butterflies: 0.6 }, colors: { mote: '#fff6e6' } }),
+    crossroads: th(OUT, { air: { motes: 0.5, pollen: 0.5, leaves: 0.4 }, critters: { birds: 1, crows: 1, moths: 0.4, butterflies: 0.5 } }),
+    mountain:   th(OUT, { wind: 1.5, gust: 0.8, air: { motes: 0.4, snow: 0.15, leaves: 0.2 }, critters: { birds: 0.4, crows: 0.5, moths: 0.2 } }),
+    river:      th(OUT, { waves: 1, shimmer: 1.2, air: { motes: 0.5, pollen: 0.5, fireflies: 0.2, leaves: 0.5 }, critters: { birds: 1, crows: 0.4, moths: 0.4, frogs: 1, butterflies: 0.6 } }),
+    snow:       th(OUT, { wind: 1.2, gust: 0.7, shimmer: 0.3, air: { motes: 0.2, embers: 0.6, snow: 1 }, critters: { birds: 0.3, crows: 0.5, moths: 0 } }),
+    stonefort:  th(OUT, { wind: 1.2, air: { motes: 0.5, embers: 0.4, leaves: 0.2 }, critters: { birds: 0.5, crows: 0.8, moths: 0.4, rats: 0.3 } }),
+    slums:      th(OUT, { air: { motes: 0.7, embers: 0.3, ash: 0.2, leaves: 0.2 }, critters: { birds: 0.6, crows: 1, moths: 0.6, rats: 1.2 }, colors: { bird: '#8a8d96' } }),
+    market:     th(OUT, { air: { motes: 0.6, pollen: 0.3, leaves: 0.2 }, critters: { birds: 1.2, crows: 0.3, moths: 0.4, rats: 0.4, butterflies: 0.2 }, colors: { bird: '#8a8d96' } }),
+    canals:     th(OUT, { wind: 0.4, waves: 0.3, shimmer: 0.4, air: { motes: 0.4 }, critters: { moths: 0.5, rats: 1.5, frogs: 0.4 } }),
+    harbor:     th(OUT, { wind: 1.3, gust: 0.7, waves: 1.2, shimmer: 1.3, air: { motes: 0.4 }, critters: { birds: 1.2, crows: 0.3, moths: 0.3, rats: 0.6 }, colors: { bird: '#e9e6df' } }),
+    rooftops:   th(OUT, { wind: 1.4, gust: 0.7, air: { motes: 0.5, leaves: 0.2 }, critters: { birds: 1.2, crows: 0.8, moths: 0.3 }, colors: { bird: '#8a8d96' } }),
+    citywall:   th(OUT, { wind: 1.2, air: { motes: 0.5, embers: 0.3, leaves: 0.2 }, critters: { birds: 0.6, crows: 0.8, moths: 0.4, rats: 0.3 } }),
+    courtyard:  th(OUT, { waves: 0.5, shimmer: 0.8, air: { motes: 0.5, pollen: 0.5, leaves: 0.4 }, critters: { birds: 0.8, crows: 0.4, moths: 0.4, butterflies: 0.6 } }),
+    armory:     th(IN, { shafts: 0.6, air: { motes: 0.8, embers: 0.6, leaves: 0 }, critters: { moths: 0.4, rats: 0.5 } }),
+    library:    th(IN, { shafts: 0.8, air: { motes: 1, leaves: 0 }, critters: { moths: 0.6, rats: 0.4 }, colors: { mote: '#fff1d6' } }),
+    chapel:     th(IN, { shafts: 1, air: { motes: 1, leaves: 0 }, critters: { moths: 0.5, rats: 0.2 } }),
+    dungeon:    th(IN, { wind: 0, rim: 0.7, air: { motes: 0.5, embers: 0.3, leaves: 0 }, critters: { moths: 0.6, rats: 1.5 } }),
+    battlements: th(OUT, { wind: 1.5, gust: 0.8, air: { motes: 0.4, embers: 0.4, ash: 0.2 }, critters: { birds: 0.5, crows: 1, moths: 0.3 } }),
+    throne:     th(IN, { wind: 0.1, shafts: 0.8, air: { motes: 0.8, embers: 0.3, leaves: 0 }, critters: { moths: 0.4, rats: 0.2 } }),
+    abbey:      th(OUT, { shafts: 0.6, air: { motes: 0.7, fireflies: 0.3, leaves: 0.6 }, critters: { birds: 0.4, crows: 1, moths: 0.5 } }),
+    bonefair:   th(OUT, { glow: 1.2, air: { motes: 0.4, embers: 0.6, ash: 0.3, leaves: 0.2 }, critters: { crows: 1.2, moths: 0.8, rats: 0.8 } }),
+    warcamp:    th(OUT, { glow: 1.2, air: { motes: 0.5, embers: 1, ash: 0.4, leaves: 0.2 }, critters: { birds: 0.3, crows: 1, moths: 0.5, rats: 0.5 } })
+  };
+  /** Per-area settings: areaId -> partial def (register with L.area). */
+  L.AREAS = L.AREAS || {};
+  L.area = function (areaId, def) { L.AREAS[areaId] = merge(L.AREAS[areaId] || {}, def || {}); return L.AREAS[areaId]; };
+  L.themeDef = function (themeId, def) { L.THEMES[themeId] = merge(L.THEMES[themeId] || {}, def || {}); return L.THEMES[themeId]; };
+  /** Switch for tests and the owner: KD.config.art.life = false turns the whole system off (classic picture). */
+  var cfg = KD.config = KD.config || {}, art = cfg.art = cfg.art || {};
+  if (art.life === undefined) art.life = true;
+  try { var lq = root.location && root.location.search ? /[?&]life=(\d)/.exec(root.location.search) : null; if (lq) art.life = lq[1] !== '0'; } catch (e) { /* no page */ }   // ?life=0: A/B checks
+
+  function merge(a, b) {
+    var r = U.assign({}, a), k;
+    if (!b) return r;
+    for (k in b) {
+      if (!Object.prototype.hasOwnProperty.call(b, k) || b[k] === undefined) continue;
+      if ((k === 'air' || k === 'critters' || k === 'colors') && b[k] && typeof b[k] === 'object') r[k] = U.assign({}, a[k] || {}, b[k]);
+      else r[k] = b[k];
+    }
+    return r;
+  }
+  L.merge = merge;
+  /**
+   * Shorthands accepted in any def (turned into the full form by L.normalize before merging):
+   *   air: 'soot' | ['dust', 'embers'] (names or aliases, density 1)        critters: ['pigeon', 'rat'] (count 1)
+   *   rim: [r, g, b] (0..1 or 0..255: the colour, strength from the rest of the chain)  rimColor: [r, g, b]
+   * Aliases: dust / dust_gold / flour -> motes (+ colour), soot / cinders -> ash, sparks -> embers, spores / glow ->
+   * fireflies, petals -> pollen; pigeon / sparrow / gull / songbird -> birds (+ colour), raven -> crows, bat -> crows.
+   */
+  L.ALIASES = {
+    air: { dust: ['motes'], dust_gold: ['motes', '#ffd890'], flour: ['motes', '#fff8ec'], soot: ['ash'], cinders: ['ash'], sparks: ['embers'], spores: ['fireflies', '#b8ff8a'], glow: ['fireflies'], petals: ['pollen', '#f4c0d0'], salt: ['motes', '#f2f6fa'], grit: ['motes', '#c8b8a0'], haze: ['motes'], ash_embers: ['ash', null, 'embers'], snowflakes: ['snow'], mote: ['motes'], leaf: ['leaves'], ember: ['embers'], firefly: ['fireflies'] },
+    critters: { pigeon: ['birds', '#8a8d96'], pigeons: ['birds', '#8a8d96'], sparrow: ['birds', '#7a5a40'], songbird: ['birds'], bird: ['birds'], gull: ['birds', '#e9e6df'], gulls: ['birds', '#e9e6df'], raven: ['crows'], hawk: ['birds', '#6a5242'], dragonfly: ['butterflies'], dragonflies: ['butterflies'], fish: [null], bee: [null], bees: [null], crow: ['crows'], bat: ['crows'], bats: ['crows'], rat: ['rats'], frog: ['frogs'], moth: ['moths'], butterfly: ['butterflies'] }
+  };
+  L.WATER = { sea: { waves: 1.4, ripple: 1.3, shimmer: 1.3 }, river: { waves: 0.8, shimmer: 1.1 }, calm: { waves: 0.2, ripple: 0.7, shimmer: 0.8 },
+    still: { waves: 0, ripple: 0.4, shimmer: 0.5 }, toxic: { waves: 0.15, ripple: 0.6, shimmer: 0.25 }, murky: { waves: 0.1, ripple: 0.5, shimmer: 0.15 } };
+  var AIR_COL = { motes: 'mote', fireflies: 'firefly', pollen: 'pollen' };
+  function hexOf(a) { var k = a[0] > 1 || a[1] > 1 || a[2] > 1 ? 1 : 255; return '#' + a.slice(0, 3).map(function (v) { var x = Math.round(max(0, min(255, v * k))).toString(16); return x.length < 2 ? '0' + x : x; }).join(''); }
+  L.normalize = function (d) {
+    if (!d || typeof d !== 'object') return d;
+    var r = U.assign({}, d), cols = U.assign({}, d.colors || {}), touched = false;
+    function names(v, kind) {
+      var out = {}, list = typeof v === 'string' ? [v] : v;
+      list.forEach(function (n) {
+        var known = kind === 'air' ? L.AIR : L.CRITTERS, al = L.ALIASES[kind][n];
+        if (known.indexOf(n) >= 0) out[n] = 1;
+        else if (al) {
+          if (al[0]) out[al[0]] = 1; if (al[2]) out[al[2]] = 1;
+          if (al[0] && al[1]) { touched = true; if (kind === 'critters') cols.bird = al[1]; else if (AIR_COL[al[0]]) cols[AIR_COL[al[0]]] = al[1]; }
+        }
+        else out[n] = 1;       // unknown: kept, so L.validate reports it (the runtime ignores it)
+      });
+      return out;
+    }
+    if (typeof d.air === 'string' || Array.isArray(d.air)) r.air = names(d.air, 'air');
+    if (Array.isArray(d.critters)) r.critters = names(d.critters, 'critters');
+    if (d.water && typeof d.water === 'object') { ['waves', 'ripple', 'shimmer'].forEach(function (wk) { if (d.water[wk] !== undefined && r[wk] === undefined) r[wk] = d.water[wk]; }); delete r.water; }
+    else if (typeof d.water === 'string' || typeof d.water === 'number') {   // water: 'sea' | 'river' | 'calm' | 'toxic' | 'still' | a wave height 0..2
+      var W = typeof d.water === 'number' ? { waves: d.water } : (L.WATER[d.water] || {});
+      for (var wk in W) if (r[wk] === undefined) r[wk] = W[wk];
+      delete r.water;
+    }
+    if (Array.isArray(d.rim)) { r.rimColor = hexOf(d.rim); delete r.rim; }
+    if (Array.isArray(d.rimColor)) r.rimColor = hexOf(d.rimColor);
+    if (Array.isArray(d.shaftColor)) r.shaftColor = hexOf(d.shaftColor);
+    if (touched || d.colors) r.colors = cols;
+    return r;
+  };
+  /** The full def for a layout: BASE < theme < area < mood preset (null when switched off or for opts.life === false). */
+  L.resolve = function (layout, preset, opts) {
+    if (!layout || art.life === false || (opts && opts.life === false)) return null;
+    var d = merge(L.BASE, L.normalize(L.THEMES[layout.theme] || {}));
+    d = merge(d, L.normalize(L.AREAS[layout.areaId] || {}));
+    if (preset && preset.life) d = merge(d, L.normalize(preset.life));
+    if (opts && opts.life && typeof opts.life === 'object') d = merge(d, L.normalize(opts.life));
+    // clamp into the documented ranges (a typo never breaks an area; tests report it through L.validate)
+    for (var lk in L.LIMITS) {
+      if (lk === 'air' || lk === 'critters') { for (var j in d[lk]) d[lk][j] = clampN(d[lk][j], L.LIMITS[lk]); }
+      else if (d[lk] !== undefined && d[lk] !== null) d[lk] = clampN(d[lk], L.LIMITS[lk]);
+    }
+    d.theme = layout.theme; d.areaId = layout.areaId || null; d.preset = preset ? preset.id : null;
+    return d;
+  };
+  function clampN(v, lim) { v = +v; return isFinite(v) ? min(lim[1], max(lim[0], v)) : lim[0]; }
+  /** Problems with a (partial or full) def: unknown keys, numbers out of range, bad colours. [] when fine. */
+  L.validate = function (d) {
+    var errs = [], k, j;
+    if (!d || typeof d !== 'object') return ['not an object'];
+    d = L.normalize(d);
+    function num(name, v, lim) { if (typeof v !== 'number' || !isFinite(v) || v < lim[0] || v > lim[1]) errs.push(name + ' must be a number in ' + lim[0] + '..' + lim[1] + ' (got ' + JSON.stringify(v) + ')'); }
+    function colr(name, v) { if (typeof v !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(v)) errs.push(name + ' must be a #rrggbb colour (got ' + JSON.stringify(v) + ')'); }
+    for (k in d) {
+      if (!Object.prototype.hasOwnProperty.call(d, k)) continue;
+      var v = d[k];
+      if (k === 'theme' || k === 'areaId' || k === 'preset' || k === 'tint' || k === 'note') continue;   // tint, note: free for the preset's own use
+      if (k === 'air' || k === 'critters') {
+        var names = k === 'air' ? L.AIR : L.CRITTERS;
+        if (!v || typeof v !== 'object') { errs.push(k + ' must be an object'); continue; }
+        for (j in v) { if (names.indexOf(j) < 0) errs.push(k + '.' + j + ' is not one of ' + names.join(', ')); else num(k + '.' + j, v[j], L.LIMITS[k]); }
+      } else if (k === 'colors') {
+        if (!v || typeof v !== 'object') { errs.push('colors must be an object'); continue; }
+        for (j in v) {
+          if (L.COLOR_KEYS.indexOf(j) < 0) { errs.push('colors.' + j + ' is not one of ' + L.COLOR_KEYS.join(', ')); continue; }
+          if (Array.isArray(v[j])) { if (!v[j].length) errs.push('colors.' + j + ' is empty'); v[j].forEach(function (c, i) { colr('colors.' + j + '[' + i + ']', c); }); } else colr('colors.' + j, v[j]);
+        }
+      } else if (k === 'rimColor' || k === 'shaftColor') colr(k, v);
+      else if (L.LIMITS[k]) { if (!(k === 'windStrength' && v === null)) num(k, v, L.LIMITS[k]); }
+      else errs.push('unknown field ' + k);
+    }
+    return errs;
+  };
+  /** The theme with the life def's renderer fields on top (a new object). Read by applyEnv in 50_env_core.js. */
+  L.theme = function (theme, d) {
+    if (!d) return theme;
+    var tt = U.assign({}, theme), env = U.assign({}, theme.env || {});
+    var base = (E.applyEnvBase && E.applyEnvBase.windStrength) || 0.1;
+    if (typeof d.windStrength === 'number') env.windStrength = d.windStrength;
+    else env.windStrength = (env.windStrength !== undefined ? env.windStrength : base) * (typeof d.wind === 'number' ? d.wind : 1);
+    env.rimBack = d.rim; env.rimBackColor = d.rimColor;
+    env.waterRipple = d.ripple; env.waterWaves = d.waves * 0.04; env.waterShimmer = d.shimmer;
+    tt.env = env; tt.life = true;
+    return tt;
+  };
+  /** From a mood preset's dress(out, ctx): add a spot. Types: glow, shaft, perch, ground, rat, water, tree. */
+  L.SPOTS = ['glow', 'shaft', 'perch', 'ground', 'rat', 'water', 'tree'];
+  L.spot = function (out, type, rec) {
+    if (!out || L.SPOTS.indexOf(type) < 0 || !rec) return;
+    var s = out.lifeSpots || (out.lifeSpots = {});
+    (s[type] || (s[type] = [])).push(rec);
+  };
+
+  L.QUALITY = { low: 0.3, medium: 0.6, high: 1 };
+  L.quality = function () {
+    var q = KD.gfx && KD.gfx.quality, name = (q && q.name) || 'high', pk = (q && q.def && q.def.particles) || 1;
+    return { name: name, k: L.QUALITY[name] !== undefined ? L.QUALITY[name] : 1, particles: pk, low: name === 'low' };
+  };
+  /** Budget per quality level: most critters of each kind, glows and shafts handled at once. */
+  L.BUDGET = {
+    low: { birds: 1, crows: 2, rats: 1, frogs: 2, butterflies: 0, glows: 6, shafts: 0, flock: 3 },
+    medium: { birds: 2, crows: 4, rats: 3, frogs: 3, butterflies: 3, glows: 12, shafts: 3, flock: 4 },
+    high: { birds: 3, crows: 7, rats: 5, frogs: 5, butterflies: 6, glows: 20, shafts: 5, flock: 5 }
+  };
+  /** Which of its own effects a mood preset should leave to this system (grim farm: crows, motes, leaves, lantern halos). */
+  L.handles = function (asm, what) {
+    var d = asm && asm.life;
+    if (!d) return false;
+    if (what === 'glow') return d.glow > 0;
+    if (L.AIR.indexOf(what) >= 0) return (d.air[what] || 0) > 0;
+    if (L.CRITTERS.indexOf(what) >= 0) return (d.critters[what] || 0) > 0;
+    return false;
+  };
+
+  // ------------------------------------------------------------------ colours
+  function C(c) { return KD.gfx.color._get(c).slice(0, 3); }
+  function fireLike(c) { var a = C(c); return a[0] > 0.8 && a[2] < 0.6; }
+
+  // ------------------------------------------------------------------ critter models
+  function birdModel(col) {
+    var dark = '#3a2f28', beak = '#d9a640';
+    return { name: 'bird', children: [
+      { name: 'body', pos: [0, 0.07, 0], children: [
+        { mesh: 'sphere', size: [0.09, 0.08, 0.14], color: col },
+        { mesh: 'sphere', pos: [0, -0.012, 0.015], size: [0.075, 0.06, 0.1], color: '#e2d6bf' },
+        { name: 'tail', pos: [0, 0.01, -0.07], rot: [0.2, 0, 0], mesh: 'wedge', size: [0.06, 0.015, 0.08], offset: [0, 0, -0.03], color: dark },
+        { name: 'wing_l', pos: [0.04, 0.015, 0], children: [{ mesh: 'box_bevel', size: [0.02, 0.05, 0.11], offset: [0.005, 0, -0.015], color: dark }] },
+        { name: 'wing_r', pos: [-0.04, 0.015, 0], children: [{ mesh: 'box_bevel', size: [0.02, 0.05, 0.11], offset: [-0.005, 0, -0.015], color: dark }] },
+        { name: 'head', pos: [0, 0.05, 0.06], children: [
+          { mesh: 'sphere', size: [0.06, 0.06, 0.065], color: col },
+          { mesh: 'cone', pos: [0, -0.004, 0.045], rot: [PI / 2, 0, 0], size: [0.018, 0.04, 0.018], color: beak }
+        ] }
+      ] },
+      { mesh: 'box', pos: [0.018, 0.02, 0], size: [0.008, 0.04, 0.008], color: beak },
+      { mesh: 'box', pos: [-0.018, 0.02, 0], size: [0.008, 0.04, 0.008], color: beak }
+    ] };
+  }
+  function crowModel(eyes) {
+    var black = '#1d1a22', sheen = '#2c2838', beak = '#3a3530';
+    var head = [{ mesh: 'sphere', size: [0.1, 0.1, 0.11], color: black }, { mesh: 'cone', pos: [0, -0.005, 0.085], rot: [PI / 2, 0, 0], size: [0.035, 0.09, 0.035], color: beak }];
+    if (eyes) head.push({ mesh: 'box', pos: [0.042, 0.018, 0.03], size: [0.012, 0.016, 0.016], color: eyes, emissive: 1 }, { mesh: 'box', pos: [-0.042, 0.018, 0.03], size: [0.012, 0.016, 0.016], color: eyes, emissive: 1 });
+    return { name: 'crow', children: [
+      { name: 'body', pos: [0, 0.16, 0], children: [
+        { mesh: 'sphere', size: [0.17, 0.15, 0.27], color: black },
+        { name: 'tail', pos: [0, 0.02, -0.15], rot: [0.25, 0, 0], mesh: 'wedge', size: [0.1, 0.03, 0.15], offset: [0, 0, -0.06], color: black },
+        { name: 'wing_l', pos: [0.075, 0.04, 0.02], children: [{ mesh: 'box_bevel', size: [0.035, 0.1, 0.22], offset: [0.01, 0, -0.03], color: sheen }] },
+        { name: 'wing_r', pos: [-0.075, 0.04, 0.02], children: [{ mesh: 'box_bevel', size: [0.035, 0.1, 0.22], offset: [-0.01, 0, -0.03], color: sheen }] },
+        { name: 'head', pos: [0, 0.09, 0.12], children: head }
+      ] },
+      { mesh: 'box', pos: [0.035, 0.05, 0.01], size: [0.014, 0.1, 0.014], color: beak },
+      { mesh: 'box', pos: [-0.035, 0.05, 0.01], size: [0.014, 0.1, 0.014], color: beak }
+    ] };
+  }
+  function ratModel() {
+    var fur = '#5a4d45', pink = '#c99a92', dark = '#2a2320';
+    return { name: 'rat', children: [
+      { name: 'body', pos: [0, 0.05, 0], children: [
+        { mesh: 'sphere', size: [0.09, 0.075, 0.2], color: fur },
+        { name: 'head', pos: [0, 0.01, 0.1], children: [
+          { mesh: 'cone', rot: [PI / 2, 0, 0], pos: [0, 0, 0.03], size: [0.07, 0.09, 0.06], color: fur },
+          { mesh: 'sphere', pos: [0, 0, 0.08], size: [0.018, 0.018, 0.018], color: pink },
+          { mesh: 'sphere', pos: [0.025, 0.03, 0.0], size: [0.03, 0.03, 0.012], color: pink },
+          { mesh: 'sphere', pos: [-0.025, 0.03, 0.0], size: [0.03, 0.03, 0.012], color: pink },
+          { mesh: 'box', pos: [0.02, 0.018, 0.035], size: [0.01, 0.01, 0.01], color: dark },
+          { mesh: 'box', pos: [-0.02, 0.018, 0.035], size: [0.01, 0.01, 0.01], color: dark }
+        ] },
+        { name: 'tail', pos: [0, -0.01, -0.1], rot: [-0.25, 0, 0], children: [{ mesh: 'box', size: [0.012, 0.012, 0.2], offset: [0, 0, -0.1], color: pink }] }
+      ] }
+    ] };
+  }
+  function frogModel() {
+    var g = '#5c7a3a', belly = '#b8b27a', eye = '#e8d870';
+    return { name: 'frog', children: [
+      { name: 'body', pos: [0, 0.04, 0], rot: [-0.25, 0, 0], children: [
+        { mesh: 'sphere', size: [0.1, 0.06, 0.11], color: g },
+        { name: 'throat', pos: [0, -0.015, 0.035], children: [{ mesh: 'sphere', size: [0.06, 0.035, 0.05], color: belly }] },
+        { mesh: 'sphere', pos: [0.028, 0.03, 0.03], size: [0.028, 0.028, 0.028], color: eye },
+        { mesh: 'sphere', pos: [-0.028, 0.03, 0.03], size: [0.028, 0.028, 0.028], color: eye }
+      ] },
+      { mesh: 'sphere', pos: [0.045, 0.02, -0.03], size: [0.035, 0.03, 0.07], color: g },
+      { mesh: 'sphere', pos: [-0.045, 0.02, -0.03], size: [0.035, 0.03, 0.07], color: g }
+    ] };
+  }
+  function butterflyModel(col) {
+    return { name: 'butterfly', children: [
+      { mesh: 'box', size: [0.012, 0.012, 0.06], color: '#2a2320' },
+      { name: 'wing_l', children: [{ mesh: 'box', size: [0.07, 0.004, 0.06], offset: [0.037, 0, 0.005], color: col }] },
+      { name: 'wing_r', children: [{ mesh: 'box', size: [0.07, 0.004, 0.06], offset: [-0.037, 0, 0.005], color: col }] }
+    ] };
+  }
+  L.models = { bird: birdModel, crow: crowModel, rat: ratModel, frog: frogModel, butterfly: butterflyModel };
+
+  // ------------------------------------------------------------------ spots from the layout
+  var SOFT = { grass: 1, field: 1, dirt: 1, path: 1, forest: 1, marsh: 1, sand: 1, snow: 1, road_dirt: 1, gravel: 1, mud: 1 };
+  var TOWN = { plaza: 1, cobble: 1, road_cobble: 1, stone: 1, tile: 1, plank: 1, roof: 1, wood: 1, carpet: 1 };
+  var RAT_KINDS = { crate: 1, barrel: 1, haybale: 1, pile: 1, cart: 1, trough: 1, house: 1, shack: 1, barn: 1, shed: 1, warehouse: 1, stall: 1, wall: 1, table: 1, bookshelf: 1, rack: 1, pillar: 1, grate: 1 };
+  /** Gather the runtime spots of an area (pure: tests call it). */
+  L.collect = function (asm) {
+    var layout = asm.layout, pieces = layout.pieces || [], extra = asm.lifeSpots || {}, i, k;
+    var S = { glow: [], shaft: (extra.shaft || []).slice(), perch: (extra.perch || []).slice(), ground: (extra.ground || []).slice(), rat: (extra.rat || []).slice(), water: (extra.water || []).slice(), tree: (extra.tree || []).slice(), flames: [] };
+    var gw = layout.gw || layout.w, gd = layout.gd || layout.d, cell = layout.cell || 1, grid = layout.grid, surf = layout.surf, SN = [], SURF = KD.gen && KD.gen.SURF;
+    if (SURF) for (k in SURF) SN[SURF[k]] = k;
+    function walk(x, z) { var cx = floor(x / cell), cz = floor(z / cell); if (cx < 0 || cz < 0 || cx >= gw || cz >= gd) return false; return !grid || grid[cz * gw + cx] === 0; }
+    function sname(cx, cz) { if (!surf || cx < 0 || cz < 0 || cx >= gw || cz >= gd) return null; return SN[surf[cz * gw + cx]] || null; }
+    S.walk = walk; S.sname = function (x, z) { return sname(floor(x / cell), floor(z / cell)); };
+    function world(p, lx, lz) { var c = cos(p.rot || 0), s = sin(p.rot || 0); return [p.x + lx * c + lz * s, p.z - lx * s + lz * c]; }
+    for (i = 0; i < pieces.length; i++) {
+      var p = pieces[i];
+      if (p.kind === 'tree') S.tree.push({ x: p.x, z: p.z, h: 4 + 2 * (+p.size || 2), dead: p.species === 'dead' });
+      else if (p.kind === 'grove' || p.kind === 'thicket') S.tree.push({ x: p.x, z: p.z, h: 6, r: min(p.w || 4, p.d || 4) * 0.4, dead: p.species === 'dead' });
+      else if (p.kind === 'fence' && (+p.len || 1) >= 3 && U.hash(String(p.id) + ':lp') % 100 < 45) {
+        var u = ((U.hash(String(p.id) + ':lu') % 100) / 100 - 0.5) * (+p.len - 2), w = world(p, u, 0);
+        S.perch.push({ x: w[0], y: 1.08, z: w[1], yaw: (p.rot || 0) + PI / 2 });
+      } else if (p.kind === 'scarecrow') S.perch.push({ x: p.x, y: 1.86, z: p.z, yaw: (p.rot || 0) + PI / 2 });
+      else if (p.kind === 'cart' || p.kind === 'well' || p.kind === 'trough') S.perch.push({ x: p.x, y: p.kind === 'well' ? 1.0 : 0.95, z: p.z, yaw: (p.rot || 0) + PI / 2, loose: true });
+      if (RAT_KINDS[p.kind] && U.hash(String(p.id) + ':rat') % 100 < 40) {
+        var hw = (+p.w || 1) / 2 + 0.35, side = U.hash(String(p.id) + ':rs') % 2 ? 1 : -1, wr = world(p, side * hw, ((U.hash(String(p.id) + ':rz') % 100) / 100 - 0.5) * (+p.d || 1) * 0.8);
+        if (walk(wr[0], wr[1])) S.rat.push({ x: wr[0], z: wr[1], yaw: (p.rot || 0) + (side > 0 ? -PI / 2 : PI / 2) });
+      }
+    }
+    // ground for birds (open soft or paved walkable cells), water edges for frogs: a sample of the grid
+    if (surf && grid) {
+      var step = 3, seen = 0;
+      for (var cz = 1; cz < gd - 1; cz += step) for (var cx = 1 + (cz % 2); cx < gw - 1; cx += step) {
+        var nm = sname(cx, cz);
+        if (!nm || grid[cz * gw + cx] !== 0) continue;
+        if ((SOFT[nm] || TOWN[nm]) && ((cx * 7 + cz * 13) % 5 === 0)) S.ground.push({ x: (cx + 0.5) * cell, z: (cz + 0.5) * cell, town: !!TOWN[nm] });
+        if (sname(cx + 1, cz) === 'water' || sname(cx - 1, cz) === 'water' || sname(cx, cz + 1) === 'water' || sname(cx, cz - 1) === 'water') {
+          var wx = sname(cx + 1, cz) === 'water' ? 1 : (sname(cx - 1, cz) === 'water' ? -1 : 0), wz = wx ? 0 : (sname(cx, cz + 1) === 'water' ? 1 : -1);
+          if (seen++ % 2 === 0) S.water.push({ x: (cx + 0.5) * cell, z: (cz + 0.5) * cell, dx: wx, dz: wz });
+        }
+      }
+    }
+    // glows: every light of the area (layout, pieces, mood dressing) plus the spots; flames for embers
+    (asm.lights || []).forEach(function (l) {
+      var col = l.color || '#ffd27a';
+      S.glow.push({ x: l.x, y: l.y === undefined ? 2 : l.y, z: l.z, color: col, c: C(col), r: l.glowR || min(0.9, 0.35 + (l.r || 7) * 0.06), pool: l.pool !== undefined ? l.pool : min(3.2, (l.r || 7) * 0.35), y0: 0, fire: fireLike(col), ph: rnd() * TAU, acc: rnd() });
+    });
+    (extra.glow || []).forEach(function (g) {
+      var col = g.color || '#ffb25e';
+      S.glow.push({ x: g.x, y: g.y === undefined ? 2 : g.y, z: g.z, color: col, c: C(col), r: g.r || 0.5, pool: g.pool || 0, fire: g.flicker !== undefined ? g.flicker > 0.3 : fireLike(col), ph: rnd() * TAU, acc: rnd() });
+    });
+    (asm.flames || []).forEach(function (f) { S.flames.push({ x: f.x, y: f.y, z: f.z, acc: rnd() }); });
+    return S;
+  };
+
+  // ------------------------------------------------------------------ the runtime
+  L.runtime = function (asm, renderer, opts) {
+    var d = asm && asm.life;
+    if (!d || !renderer) return null;
+    opts = opts || {};
+    var quiet = !!opts.backdrop, parts = renderer.particles || null, env = renderer.env || {};
+    var S = L.collect(asm), air = d.air || {}, cr = d.critters || {}, col = d.colors || {};
+    var tenv = (asm.theme && asm.theme.env) || {}, windYaw = tenv.windYaw !== undefined ? tenv.windYaw : (env.windYaw !== undefined ? env.windYaw : 0.6), wx = sin(windYaw), wz = cos(windYaw);
+    var wind0 = tenv.windStrength !== undefined ? tenv.windStrength : (env.windStrength || 0);
+    var sun = tenv.sunDir || env.sunDir || [0.48, 0.74, 0.47];
+    var focus = [asm.layout.w / 2, 0, asm.layout.d / 2], time = 0;
+    var cMote = C(col.mote || '#fff4dc'), cEmber = C(col.ember || '#ffa040'), cEmber2 = C('#a8300c'), cPollen = C(col.pollen || '#fff6a8'), cFly = C(col.firefly || '#d8ff7a'), cFly2 = C('#6a9a20');
+    var cSnow = C(col.snow || '#f4f8ff'), cAsh = C(col.ash || '#6e6a68'), cMoth = C(col.moth || '#d8cbb0'), cShaft = C(d.shaftColor || '#fff0c8');
+    var leafCols = (col.leaves || [asm.theme.leafA, asm.theme.leafB, asm.theme.leafDead || '#8a6a3a']).map(function (c) { return C(c || '#7a8a3a'); });
+    var rt = { def: d, spots: S, stats: { glows: 0, critters: 0, emitted: 0, shafts: 0 }, actors: [] };
+    function players(world) {
+      var out = [];
+      if (world && world.players) for (var i = 0; i < world.players.length; i++) { var p = world.players[i]; if (p && !p.dead) out.push(p); }
+      return out;
+    }
+    function nearest(list, x, z) { var b = 1e9; for (var i = 0; i < list.length; i++) { var dx = list[i].x - x, dz = list[i].z - z, q = dx * dx + dz * dz; if (q < b) b = q; } return sqrt(b); }
+    function mk(def) { if (!KD.gfx || !KD.gfx.Actor) return null; try { var a = new KD.gfx.Actor(def); a.radius = 0.4; a.centerY = 0.1; return a; } catch (e) { return null; } }
+    function inView(r, x, y, z) { return r && r.sphereVisible ? r.sphereVisible(x, y, z, 0.5) : false; }
+    function pickSpot(list, hs, minD, maxD, used) {
+      if (!list.length) return null;
+      for (var tries = 0; tries < 14; tries++) {
+        var s = list[floor(rnd() * list.length)];
+        if (used && s.taken) continue;
+        var dF = sqrt((s.x - focus[0]) * (s.x - focus[0]) + (s.z - focus[2]) * (s.z - focus[2]));
+        if (dF > maxD) continue;
+        if (hs.length && nearest(hs, s.x, s.z) < minD) continue;
+        return s;
+      }
+      return null;
+    }
+    var B = L.BUDGET.high;
+    function budget(name, q) { var b = (L.BUDGET[q.name] || B)[name]; return b === undefined ? 0 : b; }
+
+    // ---- critters
+    var birdCol = col.bird || '#7a5a40', crowEyes = col.crowEyes || null, flyCols = col.butterfly || ['#f2d24a', '#f0f0e6', '#e88a3a', '#9ab8f0'];
+    var flocks = [], crows = [], rats = [], frogs = [], flies = [];
+    if (!quiet && KD.gfx && KD.gfx.Actor) {
+      var nF = min(B.birds, Math.round(B.birds * min(1, cr.birds || 0)) + (cr.birds > 1 ? 1 : 0)), i, j;
+      if ((cr.birds || 0) > 0 && S.ground.length) for (i = 0; i < max(1, nF); i++) {
+        var fl = { birds: [], state: 'gone', wait: rnd() * 3, x: 0, z: 0, t: 0 };
+        for (j = 0; j < B.flock; j++) { var ab = mk(birdModel(birdCol)); if (ab) { ab.visible = false; fl.birds.push({ a: ab, x: 0, y: 0, z: 0, yaw: 0, vx: 0, vy: 0, vz: 0, t: rnd() * 3, flap: 0, hop: 0, peck: 0, on: false }); } }
+        flocks.push(fl);
+      }
+      if ((cr.crows || 0) > 0 && S.perch.length) for (i = 0; i < min(B.crows, max(1, Math.round(B.crows * min(1.2, cr.crows) * 0.85))); i++) { var ac = mk(crowModel(crowEyes)); if (ac) { ac.visible = false; crows.push({ a: ac, state: 'gone', wait: i * 0.3, perch: null, x: 0, y: 0, z: 0, yaw: 0, vx: 0, vy: 0, vz: 0, t: 0, flap: 0, look: 0, peck: 0, next: 0 }); } }
+      if ((cr.rats || 0) > 0 && S.rat.length) for (i = 0; i < min(B.rats, max(1, Math.round(B.rats * min(1, cr.rats * 0.7)))); i++) { var ar = mk(ratModel()); if (ar) { ar.visible = false; rats.push({ a: ar, state: 'gone', wait: rnd() * 4, x: 0, z: 0, yaw: 0, tx: 0, tz: 0, t: 0, sp: 0, run: 0 }); } }
+      if ((cr.frogs || 0) > 0 && S.water.length) for (i = 0; i < min(B.frogs, max(1, Math.round(B.frogs * min(1, cr.frogs * 0.7)))); i++) { var af = mk(frogModel()); if (af) { af.visible = false; frogs.push({ a: af, state: 'gone', wait: rnd() * 3, x: 0, y: 0, z: 0, yaw: 0, t: 0, sx: 0, sz: 0, ex: 0, ez: 0, croak: 0 }); } }
+      if ((cr.butterflies || 0) > 0 && S.ground.length) for (i = 0; i < min(B.butterflies, max(1, Math.round(B.butterflies * min(1, cr.butterflies * 0.7)))); i++) { var abf = mk(butterflyModel(flyCols[i % flyCols.length])); if (abf) { abf.visible = false; abf.radius = 0.15; flies.push({ a: abf, state: 'gone', wait: rnd() * 2, x: 0, y: 0, z: 0, hx: 0, hz: 0, yaw: 0, t: rnd() * 9, flap: 0, ph: rnd() * TAU }); } }
+    }
+    rt.actors = [].concat.apply([], flocks.map(function (f) { return f.birds.map(function (b) { return b.a; }); })).concat(crows.map(function (c) { return c.a; }), rats.map(function (c) { return c.a; }), frogs.map(function (c) { return c.a; }), flies.map(function (c) { return c.a; }));
+
+    function emit(o) { parts.emit(o); rt.stats.emitted += o.count || 1; }
+
+    rt.update = function (dt, world, r) {
+      r = r || renderer;
+      var q = L.quality(), k = q.k, pk = q.particles, i, j, dx, dz, dd, a;
+      var F = r && r._f;
+      if (F && F.ready && F.focus) { focus[0] = F.focus[0]; focus[2] = F.focus[2]; }
+      else if (world && world.players && world.players[0]) { var fp = world.players[world.viewIndex || 0] || world.players[0]; focus[0] = fp.x; focus[2] = fp.z; }
+      var hs = players(world);
+      if (dt > 0) time += dt;
+      // ---- wind gusts: the foliage of the lit shader sways with renderer.env.windStrength
+      var gustK = 0;
+      if (d.gust > 0 && wind0 > 0) {
+        var gs = sin(time * 0.23) * 0.5 + sin(time * 0.61 + 1.3) * 0.3 + sin(time * 1.7 + 0.4) * 0.2;
+        gustK = max(0, gs) * d.gust;
+        if (r && r.env) r.env.windStrength = wind0 * (0.85 + 0.9 * gustK);
+      }
+      var windNow = min(2.5, wind0 * 10) * (0.6 + gustK);
+      // ---- glows: halos (soft additive particles) and warm pools on the ground, nearest first
+      var nG = 0;
+      if (d.glow > 0 && S.glow.length) {
+        var maxG = budget('glows', q), cand = [];
+        for (i = 0; i < S.glow.length; i++) { var g0 = S.glow[i]; dx = g0.x - focus[0]; dz = g0.z - focus[2]; dd = dx * dx + dz * dz; if (dd < 34 * 34) cand.push([dd, g0]); }
+        if (cand.length > maxG) cand.sort(function (x, y) { return x[0] - y[0]; });
+        for (i = 0; i < cand.length && i < maxG; i++) {
+          var G = cand[i][1];
+          var fl = G.fire ? 0.82 + 0.1 * sin(time * 9.1 + G.ph) + 0.08 * sin(time * 23.7 + G.ph * 2.3) : 0.94 + 0.06 * sin(time * 1.6 + G.ph);
+          if (G.pool > 0 && r.underlay) r.underlay(G.x, G.z, G.pool * (0.94 + 0.08 * fl), G.c, 0.16 * d.glow * fl);
+          if (parts && !quiet && dt > 0) {
+            G.acc += dt * (q.low ? 3 : 5);
+            while (G.acc >= 1) {
+              G.acc -= 1;
+              emit({ x: G.x, y: G.y, z: G.z, count: 1, speed: 0, life: [0.55, 0.75], size: [G.r * 0.9, G.r], sizeEnd: G.r * 1.05, color: G.c, alpha: 0.26 * min(1.4, d.glow) * fl, gravity: 0, additive: true, shape: 'soft' });
+            }
+            // moths flutter around the nearer lights
+            if ((cr.moths || 0) > 0 && i < (q.low ? 2 : 6) && G.y > 0.8) {
+              G.macc = (G.macc || 0) + dt * 1.6 * cr.moths * (q.low ? 0.5 : 1);
+              while (G.macc >= 1) {
+                G.macc -= 1;
+                var ma = rnd() * TAU;
+                emit({ x: G.x + cos(ma) * 0.35, y: G.y + (rnd() - 0.3) * 0.4, z: G.z + sin(ma) * 0.35, count: 1, spread: PI, speed: [0.6, 1.2], life: [0.8, 1.6], size: 0.022, sizeEnd: 0.018, color: cMoth, alpha: 0.95, gravity: -0.15, drag: 2.5, spin: 18, additive: false, shape: 'shard' });
+              }
+            }
+          }
+          nG++;
+        }
+      }
+      rt.stats.glows = nG;
+      // ---- critters (also drawn while paused)
+      var nC = 0;
+      nC += updFlocks(dt, r, hs, q); nC += updCrows(dt, r, hs, q); nC += updRats(dt, r, hs, q); nC += updFrogs(dt, r, hs, q); nC += updFlies(dt, r, hs, q);
+      rt.stats.critters = nC;
+      if (dt <= 0 || !parts || quiet && !opts.backdropAir) return;
+      var kk = k * pk;
+      // ---- dust motes in the light around the camera
+      if (air.motes > 0) {
+        rt.mote = (rt.mote || 0) + dt * 9 * air.motes * kk;
+        while (rt.mote >= 1) {
+          rt.mote -= 1;
+          a = rnd() * TAU; dd = sqrt(rnd()) * 13;
+          emit({ x: focus[0] + sin(a) * dd, y: 0.4 + rnd() * 3, z: focus[2] + cos(a) * dd, count: 1, dir: [wx, 0.3, wz], spread: 1.3, speed: [0.05, 0.22 + 0.2 * windNow], life: [4, 7], size: [0.018, 0.038], sizeEnd: 0.008, color: cMote, alpha: 0.38, gravity: -0.015, drag: 0.15, additive: true, shape: 'soft' });
+        }
+      }
+      // ---- pollen: slow, warm, catches the sun
+      if (air.pollen > 0) {
+        rt.pol = (rt.pol || 0) + dt * 6 * air.pollen * kk;
+        while (rt.pol >= 1) {
+          rt.pol -= 1;
+          a = rnd() * TAU; dd = sqrt(rnd()) * 14;
+          emit({ x: focus[0] + sin(a) * dd, y: 0.3 + rnd() * 2.2, z: focus[2] + cos(a) * dd, count: 1, dir: [wx, 0.15, wz], spread: 1.0, speed: [0.12, 0.3 + 0.4 * windNow], life: [5, 8], size: [0.024, 0.04], sizeEnd: 0.02, color: cPollen, alpha: 0.6, gravity: -0.01, drag: 0.08, additive: true, shape: 'soft' });
+        }
+      }
+      // ---- fireflies: low over the grass, blinking on and off
+      if (air.fireflies > 0) {
+        rt.ff = (rt.ff || 0) + dt * 4 * air.fireflies * kk;
+        while (rt.ff >= 1) {
+          rt.ff -= 1;
+          a = rnd() * TAU; dd = 3 + sqrt(rnd()) * 13;
+          emit({ x: focus[0] + sin(a) * dd, y: 0.3 + rnd() * 1.5, z: focus[2] + cos(a) * dd, count: 1, spread: PI, speed: [0.1, 0.35], life: [1.6, 3.2], size: 0.02, sizeEnd: 0.07, color: cFly, color2: cFly2, alpha: 0.95, gravity: 0, drag: 0.4, additive: true, shape: 'soft' });
+        }
+      }
+      // ---- snow and ash: falling flakes drifting with the wind
+      if (air.snow > 0 || air.ash > 0) {
+        rt.fall = (rt.fall || 0) + dt * 22 * (air.snow + air.ash * 0.6) * kk;
+        var pSnow = air.snow / (air.snow + air.ash * 0.6);
+        while (rt.fall >= 1) {
+          rt.fall -= 1;
+          var isSnow = rnd() < pSnow, hot = !isSnow && rnd() < 0.15;
+          a = rnd() * TAU; dd = sqrt(rnd()) * 17;
+          emit({ x: focus[0] + sin(a) * dd - wx * 2, y: 4 + rnd() * 4, z: focus[2] + cos(a) * dd - wz * 2, count: 1, dir: [wx, -0.4, wz], spread: 0.4, speed: [0.3, 0.6 + windNow * 0.8], life: [6, 9],
+            size: isSnow ? [0.025, 0.05] : [0.02, 0.035], sizeEnd: isSnow ? 0.03 : 0.015, color: isSnow ? cSnow : (hot ? cEmber : cAsh), color2: isSnow ? cSnow : cAsh, alpha: isSnow ? 0.85 : 0.75,
+            gravity: isSnow ? 0.18 : 0.12, drag: 0.35, spin: isSnow ? 0 : 3, additive: hot, shape: isSnow ? 'dot' : (hot ? 'soft' : 'shard'), bounce: 0 });
+        }
+      }
+      // ---- embers: out of every fire near the camera, a few in the air
+      if (air.embers > 0) {
+        for (i = 0; i < S.flames.length; i++) {
+          var fm = S.flames[i]; dx = fm.x - focus[0]; dz = fm.z - focus[2];
+          if (dx * dx + dz * dz > 30 * 30) continue;
+          fm.acc += dt * 2.4 * air.embers * kk;
+          while (fm.acc >= 1) {
+            fm.acc -= 1;
+            emit({ x: fm.x + (rnd() - 0.5) * 0.3, y: fm.y + 0.3, z: fm.z + (rnd() - 0.5) * 0.3, count: 1, dir: [wx * 0.4, 1, wz * 0.4], spread: 0.6, speed: [0.6, 1.4], life: [1.8, 3.2], size: [0.018, 0.032], sizeEnd: 0.004, color: cEmber, color2: cEmber2, alpha: 1, gravity: -0.25, drag: 0.6, additive: true, shape: 'soft' });
+          }
+        }
+        rt.emb = (rt.emb || 0) + dt * 1.2 * air.embers * kk;
+        while (rt.emb >= 1) {
+          rt.emb -= 1;
+          a = rnd() * TAU; dd = sqrt(rnd()) * 12;
+          emit({ x: focus[0] + sin(a) * dd, y: 0.3 + rnd() * 2.5, z: focus[2] + cos(a) * dd, count: 1, dir: [wx, 0.5, wz], spread: 1, speed: [0.15, 0.45], life: [3, 5], size: [0.016, 0.026], sizeEnd: 0.004, color: cEmber, color2: cEmber2, alpha: 0.9, gravity: -0.06, drag: 0.2, additive: true, shape: 'soft' });
+        }
+      }
+      // ---- leaves from the trees near the camera (more in a gust)
+      if (air.leaves > 0 && !q.low && S.tree.length) {
+        for (i = 0; i < S.tree.length; i++) {
+          var tr = S.tree[i]; dx = tr.x - focus[0]; dz = tr.z - focus[2];
+          if (dx * dx + dz * dz > 26 * 26) continue;
+          tr.acc = (tr.acc || 0) + dt * 0.16 * air.leaves * k * (0.6 + 1.6 * gustK);
+          while (tr.acc >= 1) {
+            tr.acc -= 1;
+            var la = rnd() * TAU, lr = (tr.r || 1.6) * (0.4 + rnd() * 0.8), lc = leafCols[floor(rnd() * leafCols.length)];
+            emit({ x: tr.x + sin(la) * lr, y: tr.h * (0.5 + rnd() * 0.35), z: tr.z + cos(la) * lr, count: 1, dir: [wx, -0.3, wz], spread: 0.8, speed: [0.3, 0.6 + windNow], life: [5, 8],
+              size: [0.05, 0.08], sizeEnd: 0.05, color: lc, alpha: 0.95, gravity: 0.28, drag: 1.8, spin: 3.5, additive: false, shape: 'shard', bounce: 0 });
+          }
+        }
+      }
+      // ---- light shafts: long soft streaks along the sun, slowly breathing in and out (not on low)
+      rt.stats.shafts = 0;
+      if (d.shafts > 0 && !q.low) {
+        var maxS = budget('shafts', q), sl = sqrt(sun[0] * sun[0] + sun[1] * sun[1] + sun[2] * sun[2]) || 1, sdx = sun[0] / sl, sdy = sun[1] / sl, sdz = sun[2] / sl;
+        rt.sh = (rt.sh || 0) + dt * maxS / 4.5 * min(1, d.shafts);
+        while (rt.sh >= 1) {
+          rt.sh -= 1;
+          var sp = null;
+          if (S.shaft.length && rnd() < 0.7) sp = pickSpot(S.shaft, [], 0, 30, false);
+          if (!sp && S.tree.length && rnd() < 0.8) { var tt = pickSpot(S.tree, [], 0, 24, false); if (tt) sp = { x: tt.x + (rnd() - 0.5) * 3, z: tt.z + (rnd() - 0.5) * 3, y: tt.h * 0.75 }; }
+          if (!sp) { a = rnd() * TAU; dd = 4 + rnd() * 14; sp = { x: focus[0] + sin(a) * dd, z: focus[2] + cos(a) * dd, y: 7 }; }
+          // the ray from its top (sp.y) down against the sun to the ground; a spark particle is a soft streak along its velocity
+          var top = sp.y || 7, half = top / max(0.35, sdy) * 0.5, wdt = (sp.w || 0.55) * (0.8 + rnd() * 0.5);
+          emit({ x: sp.x - sdx * half, y: top - sdy * half, z: sp.z - sdz * half, count: 1, dir: [sdx, sdy, sdz], spread: 0, speed: 0.001, life: [6, 9], size: wdt, sizeEnd: wdt * 1.15,
+            color: [0, 0, 0], color2: sp.color ? C(sp.color) : cShaft, alpha: 0.16 * d.shafts, gravity: 0, drag: 0, additive: true, shape: 'spark', stretch: half / wdt });
+          rt.stats.shafts++;
+        }
+      }
+    };
+
+    // ---- birds: a flock pecks on open ground, takes off when someone comes near, lands elsewhere later
+    function updFlocks(dt, r, hs, q) {
+      var n = 0, want = budget('birds', q);
+      for (var f = 0; f < flocks.length; f++) {
+        var fl = flocks[f], bi, b;
+        if (f >= want) { fl.birds.forEach(function (bb) { bb.a.visible = false; }); continue; }
+        if (dt > 0) {
+          fl.t += dt;
+          if (fl.state === 'gone') {
+            fl.wait -= dt;
+            if (fl.wait <= 0) {
+              var sp = pickSpot(S.ground, hs, 13, 34, false);
+              if (sp) {
+                fl.state = 'ground'; fl.x = sp.x; fl.z = sp.z; fl.t = 0;
+                var nb = q.low ? min(2, fl.birds.length) : fl.birds.length;
+                for (bi = 0; bi < fl.birds.length; bi++) {
+                  b = fl.birds[bi]; b.on = bi < nb; b.a.visible = b.on;
+                  var ba = rnd() * TAU, br = 0.3 + rnd() * 1.1;
+                  b.x = sp.x + cos(ba) * br; b.z = sp.z + sin(ba) * br; b.y = 0; b.yaw = rnd() * TAU; b.t = rnd() * 2; b.hop = 0; b.peck = 0; b.flap = 0;
+                }
+              } else fl.wait = 2;
+            }
+          } else if (fl.state === 'ground') {
+            var near = hs.length ? nearest(hs, fl.x, fl.z) : 99;
+            if (near < 5.5) {
+              fl.state = 'fly'; fl.t = 0;
+              var h0 = hs[0], best = 1e9;
+              hs.forEach(function (h) { var q2 = (h.x - fl.x) * (h.x - fl.x) + (h.z - fl.z) * (h.z - fl.z); if (q2 < best) { best = q2; h0 = h; } });
+              for (bi = 0; bi < fl.birds.length; bi++) {
+                b = fl.birds[bi]; var ex = b.x - h0.x, ez = b.z - h0.z, el = sqrt(ex * ex + ez * ez) || 1, spd = 3.5 + rnd() * 2, tw = (rnd() - 0.5) * 0.8;
+                var ux = ex / el, uz = ez / el, cx = ux * cos(tw) - uz * sin(tw), cz = ux * sin(tw) + uz * cos(tw);
+                b.vx = cx * spd; b.vz = cz * spd; b.vy = 2.2 + rnd() * 1.5; b.yaw = Math.atan2(b.vx, b.vz); b.t = -rnd() * 0.25;
+              }
+            } else if (nearest([{ x: focus[0], z: focus[2] }], fl.x, fl.z) > 48) { fl.state = 'gone'; fl.wait = 1; fl.birds.forEach(function (bb) { bb.a.visible = false; }); }
+          } else if (fl.state === 'fly') {
+            if (fl.t > 4) { fl.state = 'gone'; fl.wait = 9 + rnd() * 14; fl.birds.forEach(function (bb) { bb.a.visible = false; }); }
+          }
+        }
+        if (fl.state === 'gone') continue;
+        for (bi = 0; bi < fl.birds.length; bi++) {
+          b = fl.birds[bi];
+          if (!b.on) continue;
+          var a = b.a, body = a.joint('body'), head = a.joint('head'), wl = a.joint('wing_l'), wr = a.joint('wing_r');
+          if (fl.state === 'ground') {
+            if (dt > 0) {
+              b.t -= dt;
+              if (b.hop > 0) { b.hop -= dt; b.x += sin(b.yaw) * dt * 0.9; b.z += cos(b.yaw) * dt * 0.9; b.y = 0.06 * sin(PI * max(0, b.hop) / 0.18); if (b.hop <= 0) b.y = 0; }
+              if (b.t <= 0) {
+                var roll = rnd();
+                if (roll < 0.4) { b.peck = 0.45; b.t = 0.5 + rnd() * 0.8; }
+                else if (roll < 0.75) { b.yaw += (rnd() - 0.5) * 2.2; var tx = b.x + sin(b.yaw) * 0.16, tz = b.z + cos(b.yaw) * 0.16; if (S.walk(tx, tz) && abs(tx - fl.x) < 2.2 && abs(tz - fl.z) < 2.2) b.hop = 0.18; b.t = 0.3 + rnd() * 0.6; }
+                else { b.yaw += (rnd() - 0.5) * 1.2; b.t = 0.4 + rnd() * 1.2; }
+              }
+              if (b.peck > 0) b.peck = max(0, b.peck - dt);
+            }
+            head.rot[0] = b.peck > 0 ? 0.9 * sin(b.peck / 0.45 * PI * 2) * (b.peck > 0.2 ? 1 : 0.5) : 0;
+            body.rot[0] = b.peck > 0 ? 0.25 : 0; wl.rot[2] = 0; wr.rot[2] = 0;
+          } else {
+            if (dt > 0) {
+              b.t += dt;
+              if (b.t > 0) { b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt; b.vy += 0.5 * dt; }
+              b.flap += dt * 30;
+            }
+            var fa = sin(b.flap) * 1.2;
+            wl.rot[2] = -0.3 - fa; wr.rot[2] = 0.3 + fa; body.rot[0] = -0.35; head.rot[0] = 0;
+          }
+          a.setTransform(b.x, b.y, b.z, b.yaw, 1);
+          if (a.submit(r) !== false) n++;
+        }
+      }
+      return n;
+    }
+    // ---- crows on fences, scarecrows, carts and posts (the grim farm's crows, for every area)
+    function seatCrow(c, pc) { c.perch = pc; pc.taken = true; c.state = 'perch'; c.x = pc.x + (rnd() - 0.5) * 0.1; c.y = pc.y; c.z = pc.z; c.yaw = (pc.yaw || 0) + (rnd() - 0.5) * 0.8; c.t = rnd() * 5; c.next = 1 + rnd() * 3; c.a.visible = true; }
+    function updCrows(dt, r, hs, q) {
+      var n = 0, want = min(crows.length, budget('crows', q));
+      for (var i = 0; i < crows.length; i++) {
+        var c = crows[i], a = c.a, dx, dz;
+        if (i >= want) { a.visible = false; continue; }
+        if (dt > 0) {
+          c.t += dt;
+          if (c.state === 'perch') {
+            var near = hs.length ? nearest(hs, c.x, c.z) : 99;
+            if (near < 6.5) {
+              var h0 = hs[0], best = 1e9;
+              hs.forEach(function (h) { var q2 = (h.x - c.x) * (h.x - c.x) + (h.z - c.z) * (h.z - c.z); if (q2 < best) { best = q2; h0 = h; } });
+              dx = h0.x - c.x; dz = h0.z - c.z; var dl = sqrt(dx * dx + dz * dz) || 1;
+              c.state = 'fly'; c.t = 0; c.vx = -dx / dl * (3 + rnd() * 2); c.vz = -dz / dl * (3 + rnd() * 2); c.vy = 2.6 + rnd(); c.yaw = Math.atan2(c.vx, c.vz);
+              if (c.perch) { c.perch.taken = false; c.perch = null; }
+            } else if (c.t > c.next) { c.t = 0; c.next = 1.2 + rnd() * 3.5; c.look = (rnd() - 0.5) * 1.6; c.peck = rnd() < 0.3 ? 0.5 : 0; }
+            if (nearest([{ x: focus[0], z: focus[2] }], c.x, c.z) > 50) { if (c.perch) c.perch.taken = false; c.perch = null; c.state = 'gone'; a.visible = false; c.wait = 1; }
+          } else if (c.state === 'fly') {
+            c.x += c.vx * dt; c.y += c.vy * dt; c.z += c.vz * dt; c.vy += 0.6 * dt;
+            if (c.t > 4.5 || c.y > 16) { c.state = 'gone'; a.visible = false; c.wait = 14 + rnd() * 18; }
+          } else {
+            c.wait -= dt;
+            if (c.wait <= 0) { var pn = pickSpot(S.perch, hs, 14, 36, true); if (pn) seatCrow(c, pn); else c.wait = 3; }
+          }
+        }
+        if (c.state === 'gone') continue;
+        var body = a.joint('body'), head = a.joint('head'), wl = a.joint('wing_l'), wr = a.joint('wing_r');
+        if (c.state === 'fly') {
+          c.flap += dt * 22;
+          var fa = sin(c.flap) * 1.1;
+          wl.rot[2] = -0.4 - fa; wr.rot[2] = 0.4 + fa; body.rot[0] = -0.25; head.rot[0] = 0;
+        } else {
+          body.rot[0] = 0;
+          var pk = c.peck > 0 ? c.peck : 0; if (c.peck > 0) c.peck = max(0, c.peck - dt);
+          head.rot[1] = (head.rot[1] || 0) + ((c.look || 0) - (head.rot[1] || 0)) * min(1, dt * 8);
+          head.rot[0] = pk > 0 ? 0.6 * sin(pk * PI * 2) : 0.05 * sin(c.t * 2.1);
+          wl.rot[2] = -0.06 * sin(c.t * 1.3); wr.rot[2] = -wl.rot[2];
+        }
+        a.setTransform(c.x, c.y, c.z, c.yaw, 0.95);
+        if (a.submit(r) !== false) n++;
+      }
+      return n;
+    }
+    // ---- rats: sniff around by walls and crates, dash off and vanish when someone comes near
+    function updRats(dt, r, hs, q) {
+      var n = 0, want = min(rats.length, budget('rats', q));
+      for (var i = 0; i < rats.length; i++) {
+        var R = rats[i], a = R.a;
+        if (i >= want) { a.visible = false; continue; }
+        if (dt > 0) {
+          R.t += dt;
+          if (R.state === 'gone') {
+            R.wait -= dt;
+            if (R.wait <= 0) {
+              var sp = pickSpot(S.rat, hs, 11, 30, false);
+              if (sp && !inView(r, sp.x, 0.1, sp.z) || sp && rnd() < 0.3) { R.state = 'idle'; R.x = sp.x; R.z = sp.z; R.yaw = sp.yaw !== undefined ? sp.yaw + (rnd() - 0.5) : rnd() * TAU; R.t = 0; R.next = 0.5 + rnd(); R.home = sp; a.visible = true; }
+              else R.wait = 1.5;
+            }
+          } else {
+            var near = hs.length ? nearest(hs, R.x, R.z) : 99;
+            if (R.state !== 'flee' && near < 4.2) {
+              var h0 = hs[0], best = 1e9;
+              hs.forEach(function (h) { var q2 = (h.x - R.x) * (h.x - R.x) + (h.z - R.z) * (h.z - R.z); if (q2 < best) { best = q2; h0 = h; } });
+              R.state = 'flee'; R.t = 0; R.yaw = Math.atan2(R.x - h0.x, R.z - h0.z) + (rnd() - 0.5) * 0.9; R.sp = 3.2;
+            }
+            if (R.state === 'idle' && R.t > R.next) {
+              R.t = 0; R.next = 0.6 + rnd() * 1.6;
+              if (rnd() < 0.55) { R.yaw += (rnd() - 0.5) * 2.4; R.state = 'scurry'; R.run = 0.25 + rnd() * 0.45; R.sp = 1.4 + rnd() * 0.8; }
+            }
+            if (R.state === 'scurry' || R.state === 'flee') {
+              var nx = R.x + sin(R.yaw) * R.sp * dt, nz = R.z + cos(R.yaw) * R.sp * dt;
+              if (S.walk(nx, nz) && (R.state === 'flee' || (abs(nx - R.home.x) < 2.5 && abs(nz - R.home.z) < 2.5))) { R.x = nx; R.z = nz; }
+              else if (R.state === 'scurry') { R.yaw += PI * 0.7; }
+              else R.yaw += (rnd() - 0.5) * 2;
+              if (R.state === 'scurry') { R.run -= dt; if (R.run <= 0) { R.state = 'idle'; R.t = 0; } }
+              else if (R.t > 1.3) { R.state = 'gone'; a.visible = false; R.wait = 8 + rnd() * 12; }
+            }
+            if (nearest([{ x: focus[0], z: focus[2] }], R.x, R.z) > 44) { R.state = 'gone'; a.visible = false; R.wait = 1; }
+          }
+        }
+        if (R.state === 'gone') continue;
+        var body = a.joint('body'), head = a.joint('head'), tail = a.joint('tail'), moving = R.state === 'scurry' || R.state === 'flee';
+        body.pos[1] = 0.05 + (moving ? abs(sin(R.t * 26)) * 0.012 : 0);
+        head.rot[0] = moving ? 0 : 0.15 * sin(R.t * 11) * (sin(R.t * 1.7) > 0 ? 1 : 0);
+        head.rot[1] = moving ? 0 : 0.3 * sin(R.t * 1.3);
+        tail.rot[1] = sin(R.t * (moving ? 14 : 3)) * (moving ? 0.35 : 0.2);
+        a.setTransform(R.x, 0, R.z, R.yaw, 1);
+        if (a.submit(r) !== false) n++;
+      }
+      return n;
+    }
+    // ---- frogs: sit at the water's edge, croak, hop into the water with a splash when someone comes near
+    function updFrogs(dt, r, hs, q) {
+      var n = 0, want = min(frogs.length, budget('frogs', q));
+      for (var i = 0; i < frogs.length; i++) {
+        var Fr = frogs[i], a = Fr.a;
+        if (i >= want) { a.visible = false; continue; }
+        if (dt > 0) {
+          Fr.t += dt;
+          if (Fr.state === 'gone') {
+            Fr.wait -= dt;
+            if (Fr.wait <= 0) {
+              var sp = pickSpot(S.water, hs, 10, 30, false);
+              if (sp) { Fr.state = 'sit'; Fr.x = sp.x - sp.dx * 0.25; Fr.z = sp.z - sp.dz * 0.25; Fr.y = 0; Fr.yaw = Math.atan2(-sp.dx, -sp.dz) + (rnd() - 0.5) * 1.2; Fr.spot = sp; Fr.t = 0; Fr.croak = 0; a.visible = true; }
+              else Fr.wait = 2;
+            }
+          } else if (Fr.state === 'sit') {
+            if (hs.length && nearest(hs, Fr.x, Fr.z) < 4) {
+              Fr.state = 'hop'; Fr.t = 0; Fr.sx = Fr.x; Fr.sz = Fr.z; Fr.ex = Fr.spot.x + Fr.spot.dx * 1.2; Fr.ez = Fr.spot.z + Fr.spot.dz * 1.2; Fr.yaw = Math.atan2(Fr.spot.dx, Fr.spot.dz);
+            } else if (Fr.t > 2 + (i % 3) && rnd() < dt * 0.4) { Fr.croak = 0.6; Fr.t = 0; }
+            if (Fr.croak > 0) Fr.croak = max(0, Fr.croak - dt);
+            if (nearest([{ x: focus[0], z: focus[2] }], Fr.x, Fr.z) > 40) { Fr.state = 'gone'; a.visible = false; Fr.wait = 1; }
+          } else if (Fr.state === 'hop') {
+            var u = min(1, Fr.t / 0.45);
+            Fr.x = Fr.sx + (Fr.ex - Fr.sx) * u; Fr.z = Fr.sz + (Fr.ez - Fr.sz) * u; Fr.y = 0.45 * sin(PI * u) - 0.28 * u;
+            if (u >= 1) {
+              Fr.state = 'gone'; a.visible = false; Fr.wait = 10 + rnd() * 14;
+              if (parts) emit({ x: Fr.x, y: -0.22, z: Fr.z, count: q.low ? 4 : 8, dir: [0, 1, 0], spread: 0.7, speed: [0.6, 1.3], life: [0.3, 0.55], size: [0.02, 0.035], sizeEnd: 0.01, color: '#dfeef0', alpha: 0.85, gravity: 6, drag: 0.5, additive: false, shape: 'dot' });
+            }
+          }
+        }
+        if (Fr.state === 'gone') continue;
+        var th = a.joint('throat'), sc = 1 + (Fr.croak > 0 ? 0.7 * sin(Fr.croak / 0.6 * PI) : 0);
+        th.scale[0] = sc; th.scale[1] = sc; th.scale[2] = sc;
+        a.joint('body').rot[0] = Fr.state === 'hop' ? -0.7 : -0.25;
+        a.setTransform(Fr.x, Fr.y, Fr.z, Fr.yaw, 1);
+        if (a.submit(r) !== false) n++;
+      }
+      return n;
+    }
+    // ---- butterflies: wander over the grass in loose loops, drift away from people
+    function updFlies(dt, r, hs, q) {
+      var n = 0, want = min(flies.length, budget('butterflies', q));
+      for (var i = 0; i < flies.length; i++) {
+        var B2 = flies[i], a = B2.a;
+        if (i >= want) { a.visible = false; continue; }
+        if (dt > 0) {
+          B2.t += dt;
+          if (B2.state === 'gone') {
+            B2.wait -= dt;
+            if (B2.wait <= 0) { var sp = pickSpot(S.ground, hs, 5, 22, false); if (sp && !sp.town) { B2.state = 'fly'; B2.hx = sp.x; B2.hz = sp.z; B2.x = sp.x; B2.z = sp.z; B2.y = 0.6; a.visible = true; } else B2.wait = 1.5; }
+          } else {
+            var tx = B2.hx + 1.8 * sin(B2.t * 0.37 + B2.ph) + 0.8 * sin(B2.t * 1.1), tz = B2.hz + 1.8 * cos(B2.t * 0.29 + B2.ph * 1.3) + 0.8 * cos(B2.t * 0.9);
+            if (hs.length) { var nd = nearest(hs, B2.x, B2.z); if (nd < 2.5) { B2.hx += (B2.x - hs[0].x) * dt * 0.8; B2.hz += (B2.z - hs[0].z) * dt * 0.8; } }
+            var ox = B2.x, oz = B2.z;
+            B2.x += (tx - B2.x) * min(1, dt * 1.5); B2.z += (tz - B2.z) * min(1, dt * 1.5);
+            B2.y = 0.55 + 0.35 * sin(B2.t * 1.7 + B2.ph) + 0.12 * sin(B2.t * 7.3);
+            if (abs(B2.x - ox) + abs(B2.z - oz) > 1e-4) B2.yaw = Math.atan2(B2.x - ox, B2.z - oz);
+            B2.flap += dt * 24;
+            if (nearest([{ x: focus[0], z: focus[2] }], B2.x, B2.z) > 34) { B2.state = 'gone'; a.visible = false; B2.wait = 2; }
+          }
+        }
+        if (B2.state === 'gone') continue;
+        var wa = 0.25 + 0.95 * abs(sin(B2.flap));
+        a.joint('wing_l').rot[2] = wa; a.joint('wing_r').rot[2] = -wa;
+        a.setTransform(B2.x, B2.y, B2.z, B2.yaw, 1);
+        if (a.submit(r) !== false) n++;
+      }
+      return n;
+    }
+
+    rt.dispose = function () {
+      if (renderer.env && wind0) renderer.env.windStrength = wind0;
+      S.perch.forEach(function (p) { p.taken = false; });
+      rt.actors = []; flocks = []; crows = []; rats = []; frogs = []; flies = [];
+    };
+    return rt;
+  };
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
