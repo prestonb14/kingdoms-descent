@@ -3410,7 +3410,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.39';
+  KD.VERSION = '0.7.40';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -3430,10 +3430,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    *                   Ask KD.web.isTree(heroOrClassId), never read the switch directly. docs/TREE.md.
    *   online: { url } -> the online service (below).
    */
-  KD.config = KD.config || { oaths: false, events: false, potions: false, trees: { gravecaller: true } };
+  KD.config = KD.config || { oaths: false, events: false, potions: false, trees: { gravecaller: true, gloamblade: true } };
   if (KD.config.events === undefined) KD.config.events = false;
   if (KD.config.potions === undefined) KD.config.potions = false;
-  if (KD.config.trees === undefined) KD.config.trees = { gravecaller: true };
+  if (KD.config.trees === undefined) KD.config.trees = { gravecaller: true, gloamblade: true }; // [w8 gloamblade tree] owner turned it on
   // The online service (accounts, friends, invites, co-op rooms: the kd-online repository on Cloudflare Workers).
   // Fill in its address once it is deployed, e.g. 'https://kd-online.<your-subdomain>.workers.dev'. Empty = the game
   // says "Online play is not set up yet." (?online=<url> in the page address overrides it for testing.) docs/ONLINE.md.
@@ -10796,7 +10796,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     abil: function (name, mods, a, k, v) { return { name: name, mods: mods || [], abil: [{ a: a, k: k, v: v }] }; },
     /** Every fifth trunk node (T5, T10 .. T25) also gives TRUNK_DAG more Twin Daggers damage: the primary grows with the
      *  points like the class's other damage (the tree's own stats lean on backstabs, Stealth and statuses). */
-    TRUNK_DAG: 0.04, HUB_DAG: 0.05,
+    TRUNK_DAG: 0.045, HUB_DAG: 0.06,
     dagTrunk: function (tr) {
       [4, 9, 14, 19, 24].forEach(function (i) {
         var n = tr[i];
@@ -10843,7 +10843,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     S.nights_embrace = { off: 0.07, def: 0.03 };
   })();
 
-  /** A hub node: a named minor with two half-size mods and 5% more Twin Daggers damage (the primary keeps its share). */
+  /** A hub node: a named minor with two half-size mods and 6% more Twin Daggers damage (the primary keeps its share). */
   function dag(name, a, b) { return { name: name, mods: [a, b], abil: [{ a: 'twin_daggers', k: 'dmg', v: GB.HUB_DAG }] }; }
   // Version 1: the first tree (docs/TREE_GLOAMBLADE.md).
   T.define('gloamblade', {
@@ -10860,12 +10860,13 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       dag('Light Step', 'moveSpeed 0.75', 'dodgeCdr 0.75')        // step
     ],
     hubBonus: ['moveSpeed 1.5', 'resAll 1'],
-    // A new tree Gloamblade knows Twin Daggers and ONE skill where the Crownweb hero starts with two: until its first skill
-    // node it hits harder (the Gravecaller's rule, docs/TREE_BALANCE.md).
-    startBonus: { skills: 1, mods: ['dmg*30'], text: 'While you know only one skill besides Twin Daggers, you deal 30% more damage.' },
+    // A new tree Gloamblade knows Twin Daggers and ONE skill where the Crownweb hero starts with two: until its second skill
+    // node it hits harder and is a little tougher (the Gravecaller's rule, docs/TREE_BALANCE.md; a melee class needs the Health
+    // to live through the first boss).
+    startBonus: { skills: 2, mods: ['dmg*30', 'hp*15'], text: 'While you know two skills or fewer besides Twin Daggers, you deal 30% more damage and have 15% more Health.' },
     // Balance (docs/TREE_GLOAMBLADE.md section 5): most of this tree's damage stats want a backstab, Stealth or a status,
     // so the estimator rates them far above what they give a hero hitting a target from the front. Tune 0.7 / 0.6 keeps the
-    // estimate inside the caps; the primary's share (5% per hub node, 4% on every fifth trunk node) keeps real fights in band.
+    // estimate inside the caps; the primary's share (6% per hub node, 4.5% on every fifth trunk node) keeps real fights in band.
     tune: { off: 0.7, def: 0.6 },
     road: ['hp 1', 'moveSpeed 1', 'resAll 1'],
     // the owner's rule for class trees: links across the borders to the neighbouring arms only, no diagonals inside an arm
@@ -22451,6 +22452,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.40', date: '2026-10-10', title: 'The Gloamblade\'s own tree', notes: [
+      'The Gloamblade has its own talent tree now: The Undercity, with over 1,500 nodes',
+      'Pick from 10 recommended builds and follow them lit up on the tree',
+      'The main menu shows the real game version again'
+    ] },
     { version: '0.7.39', date: '2026-10-10', title: 'Act 1 areas restyled', notes: [
       'New area looks for the rest of Act 1: a sickly green fog over the Mire Swamp, a red sunset and torches at the Bandit Camp, golden dusk and flour dust at the Old Mill, and a sunny windy Crossroads'
     ] },
@@ -106624,7 +106630,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    * Nothing here touches the DOM at load time.
    */
   var F = KD.flow = KD.flow || {};
-  F.VERSION = '0.2';
+  F.VERSION = KD.VERSION; // was a stale '0.2'
   F.events = F.events || new KD.Emitter();
   /** Random roadside event cards are switched off by the owner (KD.config.events === false). */
   F.eventsOn = function () { return !!(KD.config && KD.config.events); };
