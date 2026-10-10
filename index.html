@@ -818,6 +818,28 @@ html,body{margin:0;height:100%;background:#0c0f0d;color:#e8e2d0;overflow:hidden}
 .kd-compact .coop-label { font-size: calc(12 * var(--u)); }
 .kd-compact .coop-down { max-width: calc(320 * var(--u)); white-space: normal; text-align: left; font-size: calc(12 * var(--u)); line-height: 1.2; padding: calc(4 * var(--u)) calc(10 * var(--u)); gap: calc(7 * var(--u)); }
 
+/* [combat juice] critical hit numbers: a hard pop with a small tilt, a settle, and a warm glow (src/ui/10_hud_juice.js) */
+.kd-float.kd-float-crit {
+  text-shadow: calc(1.4 * var(--u)) calc(1.4 * var(--u)) 0 #2a0c02, calc(-1.4 * var(--u)) calc(1.4 * var(--u)) 0 #2a0c02, calc(1.4 * var(--u)) calc(-1.4 * var(--u)) 0 #2a0c02, calc(-1.4 * var(--u)) calc(-1.4 * var(--u)) 0 #2a0c02,
+    0 calc(2 * var(--u)) 0 #2a0c02, 0 calc(-2 * var(--u)) 0 #2a0c02, calc(2 * var(--u)) 0 0 #2a0c02, calc(-2 * var(--u)) 0 0 #2a0c02, 0 0 calc(9 * var(--u)) rgba(255, 140, 30, .8);
+}
+@keyframes kd-float-crit-a {
+  0% { opacity: 1; transform: translate(-50%, -50%) scale(var(--kd-pop, 1.85)) rotate(-7deg); }
+  8% { opacity: 1; transform: translate(-50%, -50%) scale(.9) rotate(3deg); }
+  15% { opacity: 1; transform: translate(calc(-50% + var(--kd-dx, 0) * .12 * var(--u)), calc(-50% - var(--kd-rise, 46) * .2 * var(--u))) scale(1.08) rotate(-2deg); }
+  24% { opacity: 1; transform: translate(calc(-50% + var(--kd-dx, 0) * .22 * var(--u)), calc(-50% - var(--kd-rise, 46) * .34 * var(--u))) scale(1) rotate(-2deg); }
+  66% { opacity: 1; transform: translate(calc(-50% + var(--kd-dx, 0) * .66 * var(--u)), calc(-50% - var(--kd-rise, 46) * .86 * var(--u))) scale(1) rotate(-2deg); }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--kd-dx, 0) * var(--u)), calc(-50% - var(--kd-rise, 46) * var(--u))) scale(.96) rotate(-2deg); }
+}
+@keyframes kd-float-crit-b {
+  0% { opacity: 1; transform: translate(-50%, -50%) scale(var(--kd-pop, 1.85)) rotate(7deg); }
+  8% { opacity: 1; transform: translate(-50%, -50%) scale(.9) rotate(-3deg); }
+  15% { opacity: 1; transform: translate(calc(-50% + var(--kd-dx, 0) * .12 * var(--u)), calc(-50% - var(--kd-rise, 46) * .2 * var(--u))) scale(1.08) rotate(2deg); }
+  24% { opacity: 1; transform: translate(calc(-50% + var(--kd-dx, 0) * .22 * var(--u)), calc(-50% - var(--kd-rise, 46) * .34 * var(--u))) scale(1) rotate(2deg); }
+  66% { opacity: 1; transform: translate(calc(-50% + var(--kd-dx, 0) * .66 * var(--u)), calc(-50% - var(--kd-rise, 46) * .86 * var(--u))) scale(1) rotate(2deg); }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--kd-dx, 0) * var(--u)), calc(-50% - var(--kd-rise, 46) * var(--u))) scale(.96) rotate(2deg); }
+}
+
 /* On-screen controls for phones and tablets (src/ui/12_touch.js, docs/MOBILE.md). Only present while KD.device.touch. */
 html.kd-touch, html.kd-touch body { touch-action: none; overscroll-behavior: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
 html.kd-touch #kd-canvas { touch-action: none; }
@@ -3199,7 +3221,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.7';
+  KD.VERSION = '0.7.8';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -60743,7 +60765,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       if (d.kill) {
         if (rank === 2) { ctx.hitStop(ST.bossKill, true); ctx.shake(S.bossKill, t.x, t.z); }
         else if (rank === 1 || t.tier === 'elite') { ctx.hitStop(ST.eliteKill, true); ctx.shake(S.eliteKill, t.x, t.z); }
-        else { ctx.hitStop(ST.kill, d.crit); ctx.shake(S.kill, t.x, t.z); }
+        else { ctx.hitStop(d.crit ? ST.crit : (heavy ? ST.heavy : ST.kill), d.crit); ctx.shake(S.kill, t.x, t.z); }      // [combat juice] plain kills do not stop (TUNE.stop.kill 0), crit / heavy kills do
       } else if (d.broke) { /* the break event adds its own */ }
       else if (d.crit) { ctx.hitStop(ST.crit, true); ctx.shake(S.crit, t.x, t.z); }
       else if (heavy) { ctx.hitStop(ST.heavy, false); ctx.shake(S.heavy, t.x, t.z); }
@@ -63647,6 +63669,475 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
           if (A && A.stopAll) { try { A.stopAll(false); } catch (err) { /* audio is optional */ } }
           ctx.audio = null;
         }
+      };
+    }
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/gfx/44_fx_juice.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var FX = KD.fx = KD.fx || {};
+  var G = KD.gfx;
+
+  /**
+   * KD.fx.juice: combat impact ("juice") on top of the effects layer (docs/FX.md section 10). Render and sound only:
+   * nothing here reads or writes simulation state other than looking at it, so co-op stays in sync.
+   *
+   *   Screen shake setting   juice.shake() 'off' | 'low' | 'full', juice.setShake(v, { save }), juice.settingsRow(row, F)
+   *                          saved per browser (kd.screenShake); default 'low', 'off' when the system asks for reduced
+   *                          motion. Off zeroes every shake, also one already running (KD.gfx.Camera is wrapped).
+   *   Hit-stop               visual only: the game slows the drawn animation and effects (main.js), never the sim.
+   *                          Light hits and plain kills do not stop; on 'low' quality stops never stack.
+   *   Hit flash              every body flashes when hit (procedural rigs, restyled merged meshes, skinned art): white,
+   *                          tinted by the element; the hero flashes red. Real time, so it holds through a hit-stop.
+   *   Deaths                 by what the body is made of: bone, straw, stone, metal, wood and ice bodies break into their
+   *                          own parts (KD.fx.juice.DEATH), flesh crumbles to ash and embers, ghosts rise and fade,
+   *                          oozes melt; bosses glow and then burst.
+   *   Class trails           the hero's swings leave a crescent in the class colour, its shots a coloured trail (CLASS).
+   */
+  var J = FX.juice = FX.juice || {};
+  var PI = Math.PI, TAU = PI * 2;
+  function clamp(x, a, b) { return x < a ? a : (x > b ? b : x); }
+  function rnd() { return FX.rnd(); }
+  function now() { return FX.now ? FX.now() : Date.now() / 1000; }
+
+  // ------------------------------------------------------------------ setting: screen shake
+  J.KEY = 'kd.screenShake';
+  J.VALUES = ['off', 'low', 'full'];
+  J.FACTOR = { off: 0, low: 0.5, full: 1 };      // multiplies the camera trauma added (the camera squares it: Low is about a quarter of Full)
+  var _shake = null;
+  /** True when the system asks for reduced motion (prefers-reduced-motion). */
+  J.reduced = function () { try { return !!(root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; } };
+  J.shake = function () {
+    if (_shake) return _shake;
+    var v = null;
+    try {
+      var q = root.location && root.location.search ? /[?&]shake=(\w+)/.exec(root.location.search) : null;
+      if (q && J.VALUES.indexOf(q[1]) >= 0) v = q[1];
+      else if (root.localStorage) v = root.localStorage.getItem(J.KEY);
+    } catch (e) { /* storage blocked: the default */ }
+    _shake = J.VALUES.indexOf(v) >= 0 ? v : (J.reduced() ? 'off' : 'low');
+    return _shake;
+  };
+  J.shakeFactor = function () { return J.FACTOR[J.shake()] || 0; };
+  J.setShake = function (v, o) {
+    v = J.VALUES.indexOf(v) >= 0 ? v : 'low';
+    _shake = v;
+    if (!o || o.save !== false) { try { if (root.localStorage) root.localStorage.setItem(J.KEY, v); } catch (e) { /* storage blocked */ } }
+    var cam = KD.game && KD.game.camera;
+    if (cam && !(J.FACTOR[v] > 0)) cam._trauma = 0;
+    return v;
+  };
+  /** The "Screen shake: Off / Low / Full" row of the Settings window. */
+  J.settingsRow = function (row, F) {
+    if (!row || !F || !F.segmented) return null;
+    return row('Screen shake', F.segmented([{ id: 'off', label: 'Off' }, { id: 'low', label: 'Low' }, { id: 'full', label: 'Full' }], J.shake(), function (id) { J.setShake(id); }), 'the camera kick of heavy blows');
+  };
+  // every shake goes through Camera.shake: scale it, and Off clears any trauma (also one added before the switch)
+  if (G && G.Camera && !G.Camera.prototype._juiceWrapped) {
+    var CP = G.Camera.prototype, baseShake = CP.shake, baseCamUpdate = CP.update;
+    CP._juiceWrapped = true;
+    CP.shake = function (amount) {
+      var f = J.shakeFactor();
+      if (!(f > 0)) { this._trauma = 0; return this; }
+      return baseShake.call(this, (amount || 0) * f);
+    };
+    CP.update = function (dt, target, opts) {
+      if (this._trauma > 0 && !(J.shakeFactor() > 0)) this._trauma = 0;
+      return baseCamUpdate.call(this, dt, target, opts);
+    };
+  }
+
+  // ------------------------------------------------------------------ budgets by quality level
+  J.BUDGET = {
+    low: { pieces: 60, perBody: 10, ash: 0.5 },
+    medium: { pieces: 150, perBody: 18, ash: 0.75 },
+    high: { pieces: 240, perBody: 26, ash: 1 }
+  };
+  function qname() { var q = G && G.quality; return q && q.name && J.BUDGET[q.name] ? q.name : 'high'; }
+  J.budget = function () { return J.BUDGET[qname()]; };
+
+  // ------------------------------------------------------------------ hit-stop: only weighty blows, never stacked on phones
+  if (FX.TUNE && FX.TUNE.stop && !FX.TUNE.stop._juice) {
+    FX.TUNE.stop._juice = true;
+    FX.TUNE.stop.light = 0;      // ordinary hits: no stop at all
+    FX.TUNE.stop.kill = 0;       // plain kills: none either (crits and heavy kills use those stops, elites / bosses their own)
+  }
+  if (FX.Ctx && !FX.Ctx.prototype._juiceStop) {
+    var baseStop = FX.Ctx.prototype.hitStop;
+    FX.Ctx.prototype._juiceStop = true;
+    FX.Ctx.prototype.hitStop = function (seconds, big) {
+      if (!(seconds > 0)) return false;
+      if (qname() === 'low' && now() < this._stopAt - FX.TUNE.stop.gap) return false;     // a stop is still running: phones never stack them
+      return baseStop.call(this, seconds, big);
+    };
+  }
+
+  // ------------------------------------------------------------------ palettes
+  /** Per class: the swing crescent (hot, colour) and the motes along it (template key of KD.fx.T, colours). */
+  J.CLASS = {
+    ironbound: { hot: '#eef4ff', col: '#8eaad8', mote: 'spark', m1: '#ffffff', m2: '#9fb4d0' },
+    hexblade: { hot: '#e6d0ff', col: '#9a5ae8', mote: 'wisp', m1: '#c8a0ff', m2: '#3a1a66' },
+    thornwarden: { hot: '#e4ffc0', col: '#6fbf4a', mote: 'leaf', m1: '#8fd14f', m2: '#4a7a2a' },
+    gravecaller: { hot: '#d8fff0', col: '#4fd6a0', mote: 'mote', m1: '#8ff0c8', m2: '#2e8a68' },
+    emberscribe: { hot: '#fff0c0', col: '#ff8a3d', mote: 'ember', m1: '#ffd35a', m2: '#ff5a1a' },
+    gloamblade: { hot: '#d8e2ee', col: '#5a6a80', mote: 'wisp', m1: '#9aa6b8', m2: '#22282e' },
+    lanternbearer: { hot: '#fffbe0', col: '#f2c84a', mote: 'mote', m1: '#fff2b0', m2: '#e2b94a' },
+    bannerlord: { hot: '#ffe0c8', col: '#d8463a', mote: 'spark', m1: '#ffd070', m2: '#a8323a' },
+    wildmask: { hot: '#ffe8c8', col: '#e0904a', mote: 'ember', m1: '#ffc080', m2: '#a36a3a' },
+    clockwright: { hot: '#fff2c8', col: '#d0a84a', mote: 'spark', m1: '#ffe9a8', m2: '#b08d3c' },
+    _default: { hot: '#ffffff', col: '#cfd8e8', mote: 'spark', m1: '#ffffff', m2: '#cfd8e8' }
+  };
+  J.classOf = function (e) { var id = e && (e.defId || (e.model && e.model.classId)); return J.CLASS[id] || J.CLASS._default; };
+  /** Flash tints (multiplied into the body colour while it flashes). */
+  var HURT = [1, 0.32, 0.28], BLOCKC = [1, 0.86, 0.5];
+  var ELEM_TINT = { fire: [1, 0.62, 0.3], cold: [0.6, 0.88, 1], shock: [1, 0.96, 0.5], poison: [0.62, 1, 0.42], holy: [1, 0.95, 0.7], shadow: [0.78, 0.55, 1] };
+
+  /** What a body does when it dies, by hit material (KD.fx.materialOf). `at`: seconds after death it breaks. */
+  J.DEATH = {
+    bone: { style: 'shatter', at: 0.22, speed: 1.1, burst: 'bone' },
+    straw: { style: 'shatter', at: 0.35, speed: 1.5, burst: 'straw' },
+    stone: { style: 'shatter', at: 0.5, speed: 1, burst: 'stone' },
+    metal: { style: 'shatter', at: 0.55, speed: 1.1, burst: 'metal' },
+    ice: { style: 'shatter', at: 0.3, speed: 1.3, burst: 'ice' },
+    wood: { style: 'shatter', at: 0.5, speed: 1.2, burst: 'wood' },
+    construct: { style: 'shatter', at: 0.45, speed: 1.2, burst: 'metal' },
+    ghost: { style: 'fade', at: 0, dur: 0.9 },
+    goo: { style: 'melt', at: 0.15, dur: 0.9 },
+    flesh: { style: 'ash', at: 1.5, dur: 1.15, ash: ['#2a2228', '#4a3a44'], mote: ['#ffa060', '#c0341a'] },
+    armor: { style: 'ash', at: 1.5, dur: 1.15, ash: ['#2a2228', '#4a3a44'], mote: ['#ffa060', '#c0341a'] },
+    ichor: { style: 'ash', at: 1.4, dur: 1.1, ash: ['#2e2a1e', '#4e4a2a'], mote: ['#d8f06a', '#6f7a2a'] },
+    rot: { style: 'ash', at: 1.4, dur: 1.15, ash: ['#26262a', '#3e3a44'], mote: ['#8ff0c8', '#2e8a68'] },
+    plant: { style: 'ash', at: 1.3, dur: 1.1, ash: ['#3a4a22', '#5a6a2a'], mote: ['#c8f07a', '#4a7a2a'] }
+  };
+  J.BOSS = { prelude: 1.3, ash: ['#1e1a24', '#3a2a4a'], mote: ['#d8a8ff', '#6a2aa8'] };
+  J.FLASH_LIFE = 0.12;
+
+  // particle templates of this file
+  var mk = FX.template || function (o) { return o; };      // tests may load this file without the presets
+  var JT = J.T = {
+    ash: mk({ count: 1, speed: [0.3, 1.0], dir: [0, 1, 0], spread: 0.7, life: [0.7, 1.3], size: [0.05, 0.095], sizeEnd: 0.02, color: '#2a2228', color2: '#4a3a44', gravity: -1.4, drag: 1.1, spin: 6, additive: false, shape: 'shard' }),
+    soul: mk({ count: 1, speed: [0.5, 1.4], dir: [0, 1, 0], spread: 0.4, life: [0.6, 1.1], size: [0.04, 0.07], sizeEnd: 0, color: '#ffa060', color2: '#c0341a', gravity: -2.2, drag: 0.8, additive: true, shape: 'dot' }),
+    flare: mk({ count: 1, speed: [0, 0.1], spread: PI, life: [0.07, 0.1], size: [0.5, 0.65], sizeEnd: 0.95, color: '#fff8e8', color2: '#ffe0a0', alpha: 0.8, additive: true, shape: 'soft' }),
+    straw: mk({ count: 10, speed: [1.5, 4.5], dir: [0, 1, 0], spread: 1.2, life: [0.8, 1.4], size: [0.07, 0.13], color: '#e2c060', color2: '#a8873a', gravity: 7, drag: 2, spin: 10, additive: false, shape: 'shard' }),
+    chunk: mk({ count: 8, speed: [1.5, 4.5], dir: [0, 1, 0], spread: 1.1, life: [0.6, 1.1], size: [0.06, 0.12], color: '#e4dcc4', color2: '#b8b098', gravity: 15, drag: 0.4, bounce: 0.35, spin: 12, additive: false, shape: 'shard' }),
+    drip: mk({ count: 1, speed: [0.2, 1.2], dir: [0, 1, 0], spread: 1.2, life: [0.4, 0.8], size: [0.07, 0.12], sizeEnd: 0.04, color: '#7fc86a', color2: '#3f7a3a', gravity: 9, bounce: 0.05, additive: false, shape: 'dot' })
+  };
+
+  // ------------------------------------------------------------------ the swing crescent mesh
+  var SEG = 0.42;           // radians one crescent piece covers
+  var SWING = { swing: 1, cleave: 1, whirlwind: 1, sever: 1 };      // presets (also reached through an alias or keyword) that get the crescent
+  function arcMesh() {
+    if (!G || !G.registerMesh || !G.geom || G.hasMesh('jc_arc')) return;
+    var B = new G.geom._Bld('#ffffff'), n = 3, r0 = 0.8, r1 = 1.0, t = 0.012, i;
+    for (i = 0; i < n; i++) {
+      var a0 = -SEG / 2 + SEG * i / n, a1 = -SEG / 2 + SEG * (i + 1) / n;
+      var p0 = [Math.sin(a0) * r0, 0, Math.cos(a0) * r0], p1 = [Math.sin(a1) * r0, 0, Math.cos(a1) * r0];
+      var q0 = [Math.sin(a0) * r1, 0, Math.cos(a0) * r1], q1 = [Math.sin(a1) * r1, 0, Math.cos(a1) * r1];
+      // two faces (up and down) so the band reads from any side; the outer edge a hair higher than the inner
+      var u0 = [p0[0], -t, p0[2]], u1 = [p1[0], -t, p1[2]], v0 = [q0[0], t, q0[2]], v1 = [q1[0], t, q1[2]];
+      B.poly([u0, v0, v1, u1]); B.poly([u1, v1, v0, u0]);
+    }
+    G.registerMesh('jc_arc', B.done());
+  }
+  arcMesh();
+
+  // ------------------------------------------------------------------ flashes and deaths on the character visuals
+  var M = KD.models;
+  /** A dead body's state: style, timer, killer direction. */
+  function deathStyle(v, e) {
+    var key = FX.materialOf ? FX.materialOf(e) : 'flesh', d = J.DEATH[key] || J.DEATH.flesh, a = v.actor;
+    var skinned = !!(a && a.skins && a.skins.length);
+    if (d.style === 'shatter' && skinned) d = J.DEATH.flesh;
+    var rank = FX.bossRank ? FX.bossRank(e.tier) : 0;
+    var k = v._jKill || null;
+    return { t: 0, key: key, d: d, style: d.style, boss: rank === 2, big: rank > 0 || e.tier === 'elite', dx: k ? k.dx : 0, dz: k ? k.dz : 0, done: false, broke: false, acc: 0, bossDone: rank !== 2, y0: 0 };
+  }
+  /** A random point on the body (a node of the actor; valid after its last submit). */
+  var PT = [0, 0, 0];
+  function bodyPoint(v, e, out) {
+    var a = v.actor, n = a && a.count ? a.count : 0;
+    if (n > 1) {
+      var i = 1 + ((rnd() * (n - 1)) | 0), o = i * 16, W = a.world;
+      out[0] = W[o + 12]; out[1] = W[o + 13]; out[2] = W[o + 14];
+      if (out[0] === out[0] && Math.abs(out[0] - e.x) < 6 && Math.abs(out[2] - e.z) < 6) return out;
+    }
+    var r = (e.r || 0.45);
+    out[0] = e.x + (rnd() - 0.5) * r * 2; out[1] = (e.y || 0) + rnd() * (e.h || 1.8) * 0.4; out[2] = e.z + (rnd() - 0.5) * r * 2;
+    return out;
+  }
+  function deathTick(v, e, dt) {
+    var D = v._jD, a = v.actor, ctx = J.ctx && !J.ctx.disposed ? J.ctx : null, k = ctx ? ctx.vis(e.x, e.z) : 0, B = J.budget();
+    D.t += dt;
+    if (D.done) { a.visible = false; return; }
+    // bosses: the body glows and pulses, then bursts and goes the way of its material
+    if (!D.bossDone) {
+      var f = clamp(D.t / J.BOSS.prelude, 0, 1);
+      a.emissive += 0.55 * f;
+      a.flash = Math.max(a.flash, (0.18 + 0.22 * Math.abs(Math.sin(D.t * 11))) * f);
+      if (ctx && k > 0 && dt > 0) {
+        D.acc += dt * 40 * k;
+        while (D.acc >= 1) { D.acc -= 1; bodyPoint(v, e, PT); ctx.emit(JT.soul, PT[0], PT[1], PT[2], 1, J.BOSS.mote[0], J.BOSS.mote[1]); if (rnd() < 0.5) ctx.emit(JT.ash, PT[0], PT[1], PT[2], 1, J.BOSS.ash[0], J.BOSS.ash[1]); }
+      }
+      if (D.t < J.BOSS.prelude) return;
+      D.bossDone = true; D.t = D.d.at || 0;      // the material's moment, now
+      if (D.style !== 'shatter' && D.style !== 'fade' && D.style !== 'melt') { D.style = 'ash'; D.d = { style: 'ash', at: 0, dur: 1.4, ash: J.BOSS.ash, mote: J.BOSS.mote }; D.t = 0; }
+      if (ctx) bossBurst(ctx, v, e);
+    }
+    var d = D.d;
+    if (D.style === 'shatter') {
+      if (D.t < d.at) return;
+      if (!D.broke) {
+        D.broke = true;
+        var made = ctx && k > 0 && J.part ? J.part.shatter(v, e, D, B) : 0;
+        if (!made) { D.style = 'ash'; D.d = J.DEATH.flesh; D.t = J.DEATH.flesh.at; return; }      // too far or no budget: crumble instead
+        D.done = true; a.visible = false;
+      }
+      return;
+    }
+    if (D.style === 'fade') {           // ghosts: rise, thin out and are gone
+      var g = clamp(D.t / d.dur, 0, 1);
+      a.alpha *= 1 - g; a.y += g * 0.9; a.emissive += 0.4 * g;
+      if (ctx && k > 0 && dt > 0 && g < 1) { D.acc += dt * 26 * k; while (D.acc >= 1) { D.acc -= 1; bodyPoint(v, e, PT); ctx.emit(FX.T.wisp, PT[0], PT[1], PT[2], 1, '#d8f0ff', '#6f9fd0'); } }
+      if (g >= 1) { D.done = true; a.visible = false; }
+      return;
+    }
+    if (D.style === 'melt') {           // oozes: shrink into a puddle
+      if (D.t < d.at) return;
+      var m = clamp((D.t - d.at) / d.dur, 0, 1), c = goo(e);
+      a.scale *= 1 - 0.65 * m; a.y -= m * 0.2;
+      if (m > 0.6) a.alpha *= 1 - (m - 0.6) / 0.4;
+      if (ctx && k > 0 && dt > 0 && m < 1) { D.acc += dt * 30 * k; while (D.acc >= 1) { D.acc -= 1; bodyPoint(v, e, PT); ctx.emit(JT.drip, PT[0], PT[1], PT[2], 1, c, c); } }
+      if (m >= 1) { D.done = true; a.visible = false; }
+      return;
+    }
+    // ash: the body darkens, sinks a little and crumbles away in flakes and embers
+    if (D.t < d.at) return;
+    var s = clamp((D.t - d.at) / d.dur, 0, 1);
+    if (!D.ashStart) { D.ashStart = true; if (ctx && k > 0) { ctx.emit(FX.T.dust, e.x, (e.y || 0) + 0.25, e.z, k * 1.2, '#4a4048', '#2a2228'); } }
+    a.alpha *= 1 - s * s; a.y -= s * 0.28;
+    var tt = a._tint; tt[0] *= 1 - 0.6 * s; tt[1] *= 1 - 0.65 * s; tt[2] *= 1 - 0.55 * s;
+    if (ctx && k > 0 && dt > 0 && s < 1) {
+      var rate = (D.big ? 70 : 42) * k * B.ash * clamp((e.r || 0.45) / 0.45, 0.7, 2.2);
+      D.acc += dt * rate;
+      while (D.acc >= 1) {
+        D.acc -= 1; bodyPoint(v, e, PT);
+        if (rnd() < 0.62) ctx.emit(JT.ash, PT[0], PT[1], PT[2], 1, d.ash[0], d.ash[1]);
+        else ctx.emit(JT.soul, PT[0], PT[1], PT[2], 1, d.mote[0], d.mote[1]);
+      }
+    }
+    if (s >= 1) { D.done = true; a.visible = false; }
+  }
+  function goo(e) { var md = e.model || {}, m = FX.MATERIALS && FX.MATERIALS.goo; return (md.colors && md.colors.main) || (m && m.color) || '#7fc86a'; }
+  function bossBurst(ctx, v, e) {
+    var x = e.x, z = e.z, r = e.r || 1.2, y = (e.y || 0) + (e.h || 2.5) * 0.5, k = Math.max(0.4, ctx.vis(x, z));
+    ctx.emit(JT.flare, x, y, z, 1, '#ffffff', '#e0c8ff', undefined, clamp(r * 2.2, 2, 6));
+    ctx.ringBurst(JT.ash, x, y * 0.6, z, r * 0.8, 36, k, J.BOSS.ash[0], J.BOSS.ash[1], 2.4, 1.2);
+    ctx.ringBurst(JT.soul, x, y, z, r * 0.6, 28, k, J.BOSS.mote[0], J.BOSS.mote[1], 2, 1.6);
+    ctx.ringFx(x, z, r, r * 7 + 4, '#d8a8ff', 0.6, 0.7, 0.3, 0.05);
+    ctx.meshFx('torus_thin', x, 0.9, z, r * 2, r * 1.2, r * 2, r * 14 + 6, r * 0.4, r * 14 + 6, '#e0c8ff', 0.55, 0.6);
+    ctx.lightFx(x, y, z, '#c890ff', 16, 3, 0.7);
+    ctx.shake(FX.TUNE.shake.slam, x, z);
+    ctx.hitStop(0.12, true);
+  }
+  /** After Visual.update: the juice flash and the death styles. Cheap when neither applies. */
+  function post(v, e, dt) {
+    var a = v.actor; if (!a) return;
+    var rt = now(), rdt = v._jRt ? clamp(rt - v._jRt, 0, 0.25) : 0;
+    v._jRt = rt;
+    if (v._jFl > 0) {
+      var f = v._jFl = Math.max(0, v._jFl - (v._jFlNew ? 0 : rdt / (v._jFlL || J.FLASH_LIFE))), c = v._jFlC, tt = a._tint;
+      v._jFlNew = false;
+      if (e.kind === 'player') {
+        a.flash = Math.min(a.flash, 0.28) * f + 0.12 * f;
+        tt[0] *= 1 - f + HURT[0] * f; tt[1] *= 1 - f + HURT[1] * f; tt[2] *= 1 - f + HURT[2] * f;
+      } else {
+        a.flash = Math.max(a.flash, (c ? 0.55 : 0.95) * f);
+        if (c) { var m = f * 0.8; tt[0] *= 1 - m + c[0] * m; tt[1] *= 1 - m + c[1] * m; tt[2] *= 1 - m + c[2] * m; }
+      }
+    }
+    if (e.dead && e.kind !== 'player') {
+      if (!v._jD) v._jD = deathStyle(v, e);
+      deathTick(v, e, dt);
+    } else if (v._jD) { v._jD = null; a.visible = !e.hidden; }        // back on its feet (revived): drawn again
+  }
+  J.post = post;
+  if (M && M.Visual && !M.Visual.prototype._juiceWrapped) {
+    var VP = M.Visual.prototype, baseUpdate = VP.update;
+    VP._juiceWrapped = true;
+    VP.update = function (e, dt) {
+      baseUpdate.call(this, e, dt);
+      if (this._jFl > 0 || this._jD || (e && e.dead)) { try { post(this, e, dt); } catch (err) { if (!J._warned) { J._warned = true; if (typeof console !== 'undefined') console.error('KD.fx.juice: visual failed', err); } } }
+    };
+  }
+
+  // ------------------------------------------------------------------ the part: events, debris, trails
+  FX.parts = FX.parts || {};
+  FX.parts.juice = {
+    bind: function (ctx) {
+      var world = ctx.world, pieces = [], free = [], projAcc = new Map(), R3 = new Float64Array(9), MAT = new Float32Array(16);
+      MAT[15] = 1;
+      var part = { ctx: ctx, pieces: pieces };
+      J.ctx = ctx; J.part = part;
+
+      // ---- hit flash and the impact flare
+      ctx.on('damage', function (c, d) {
+        var t = d.target; if (!t || !d.hit || d.dot) return;
+        var v = c.visual(t);
+        if (v) {
+          var cl = null, s = 1, life = J.FLASH_LIFE;
+          if (d.blocked) { cl = BLOCKC; s = 0.7; }
+          else if (d.elem && d.elem !== 'phys' && ELEM_TINT[d.elem]) cl = ELEM_TINT[d.elem];
+          if (d.crit || d.kill) life = 0.16;
+          if (t.kind === 'player') { cl = HURT; s = 1; life = 0.16; }
+          v._jFl = Math.max(v._jFl || 0, s); v._jFlC = cl; v._jFlL = life; v._jFlNew = true;
+        }
+        // a quick bright flare on the blows that matter (heavy, crit, kill by this screen's hero; a boss hitting it)
+        var src = d.src, mine = FX.isLocal && FX.isLocal(c, src), onMe = FX.isLocal && FX.isLocal(c, t);
+        var heavy = d.poise > 0 && t.poiseMax > 0 && d.poise >= t.poiseMax * 0.3;
+        if (!(mine && (d.crit || heavy || d.kill)) && !(onMe && src && FX.bossRank(src.tier) === 2)) return;
+        var k = c.vis(t.x, t.z); if (k <= 0 || d.blocked) return;
+        var dx = 0, dz = 0;
+        if (src) { dx = t.x - src.x; dz = t.z - src.z; var l = Math.sqrt(dx * dx + dz * dz); if (l > 1e-3) { dx /= l; dz /= l; } }
+        var y = (t.y || 0) + (t.h || 1.8) * 0.62;
+        c.emit(JT.flare, t.x - dx * t.r * 0.6, y, t.z - dz * t.r * 0.6, 1, d.crit ? '#fff4c0' : '#ffffff', d.crit ? '#ffc850' : '#fff0d8', undefined, d.crit ? 1.3 : 1);
+      });
+      // ---- who killed whom (the direction the pieces fly)
+      ctx.on('death', function (c, ev) {
+        var e = ev.e; if (!e || e.kind === 'player') return;
+        var v = c.visual(e); if (!v) return;
+        var dx = 0, dz = 0, kl = ev.killer;
+        if (kl) { dx = e.x - kl.x; dz = e.z - kl.z; var l = Math.sqrt(dx * dx + dz * dz); if (l > 1e-3) { dx /= l; dz /= l; } else dx = dz = 0; }
+        v._jKill = { dx: dx, dz: dz };
+      });
+      // ---- swing crescents in the class colour
+      ctx.on('fx', function (c, ev) {
+        var src = ev.src;
+        if (!src || src.kind !== 'player' || ev.x === undefined || !ev.name) return;
+        var nm = SWING[ev.name] ? ev.name : (FX.resolve ? FX.resolve(ev.name, !!(ev.shape || ev.r > 0)).to : '');
+        if (!SWING[nm]) return;
+        var k = c.vis(ev.x, ev.z); if (k <= 0) return;
+        crescent(c, ev, src, k, nm === 'whirlwind' ? TAU : (nm === 'sever' ? Math.max(ev.arc || 2.4, 2.4) : Math.min(ev.arc || 1.75, TAU)));
+      });
+
+      /** Break a body into its own parts. Returns the number of pieces made. */
+      part.shatter = function (v, e, D, B) {
+        var a = v.actor; if (!a || !a.count) return 0;
+        a.update();
+        var nodes = a.nodes, n = a.count, W = a.world, end = a._end, cand = [], i;
+        for (i = 0; i < n; i++) {
+          var nd = nodes[i];
+          if (!nd.visible) { i = end[i] - 1; continue; }
+          if (nd.meshId < 0 || nd.alpha < 0.5) continue;
+          var o = i * 16, sz = nd.size, s0 = sz ? sz[0] : 1, s1 = sz ? sz[1] : 1, s2 = sz ? sz[2] : 1;
+          var c0 = Math.sqrt(W[o] * W[o] + W[o + 1] * W[o + 1] + W[o + 2] * W[o + 2]) * s0, c1 = Math.sqrt(W[o + 4] * W[o + 4] + W[o + 5] * W[o + 5] + W[o + 6] * W[o + 6]) * s1, c2 = Math.sqrt(W[o + 8] * W[o + 8] + W[o + 9] * W[o + 9] + W[o + 10] * W[o + 10]) * s2;
+          if (!(c0 * c1 * c2 > 1e-6)) continue;
+          cand.push({ i: i, vol: c0 * c1 * c2, he: Math.max(0.03, Math.min(c0, c1, c2) * 0.45) });
+        }
+        if (!cand.length) return 0;
+        cand.sort(function (p, q) { return q.vol - p.vol; });
+        var cap = Math.min(B.perBody, cand.length);
+        // the global budget: the oldest pieces give way
+        var over = pieces.length + cap - B.pieces;
+        for (i = 0; i < pieces.length && over > 0; i++) if (pieces[i].t < pieces[i].life - 0.35) { pieces[i].t = pieces[i].life - 0.35; over--; }
+        if (pieces.length + cap > B.pieces * 1.25) cap = Math.max(0, Math.floor(B.pieces * 1.25) - pieces.length);
+        if (cap <= 0) return 0;
+        var t = a._tint, sp = D.d.speed || 1, floor = e.y || 0, cx = e.x, cz = e.z, made = 0;
+        for (var j = 0; j < cap; j++) {
+          var cd = cand[j], nd2 = nodes[cd.i], o2 = cd.i * 16, sz2 = nd2.size, of = nd2.offset, p = free.pop() || { b: new Float32Array(9) };
+          var q0 = sz2 ? sz2[0] : 1, q1 = sz2 ? sz2[1] : 1, q2 = sz2 ? sz2[2] : 1, b = p.b;
+          b[0] = W[o2] * q0; b[1] = W[o2 + 1] * q0; b[2] = W[o2 + 2] * q0; b[3] = W[o2 + 4] * q1; b[4] = W[o2 + 5] * q1; b[5] = W[o2 + 6] * q1; b[6] = W[o2 + 8] * q2; b[7] = W[o2 + 9] * q2; b[8] = W[o2 + 10] * q2;
+          var px = W[o2 + 12], py = W[o2 + 13], pz = W[o2 + 14];
+          if (of) { px += W[o2] * of[0] + W[o2 + 4] * of[1] + W[o2 + 8] * of[2]; py += W[o2 + 1] * of[0] + W[o2 + 5] * of[1] + W[o2 + 9] * of[2]; pz += W[o2 + 2] * of[0] + W[o2 + 6] * of[1] + W[o2 + 10] * of[2]; }
+          if (!(px === px) || Math.abs(px - cx) > 8 || Math.abs(pz - cz) > 8) continue;
+          var ox = px - cx, oz = pz - cz, ol = Math.sqrt(ox * ox + oz * oz) || 1, out = (0.8 + rnd() * 1.6) * sp;
+          p.mesh = nd2.meshId; p.x = px; p.y = Math.max(py, floor + cd.he); p.z = pz; p.he = cd.he; p.floor = floor;
+          p.vx = ox / ol * out + D.dx * 1.4 * sp + (rnd() - 0.5) * 0.8; p.vz = oz / ol * out + D.dz * 1.4 * sp + (rnd() - 0.5) * 0.8; p.vy = (1 + rnd() * 2.6) * sp;
+          var ax = rnd() - 0.5, ay = rnd() - 0.5, az = rnd() - 0.5, al = Math.sqrt(ax * ax + ay * ay + az * az) || 1;
+          p.ax = ax / al; p.ay = ay / al; p.az = az / al; p.ang = 0; p.w = (4 + rnd() * 8) * (rnd() < 0.5 ? -1 : 1);
+          p.r = nd2.rgb[0] * t[0]; p.g = nd2.rgb[1] * t[1]; p.bl = nd2.rgb[2] * t[2]; p.em = nd2.emissive; p.metal = nd2.metal; p.fl = 0.7;
+          p.t = 0; p.life = 1.5 + rnd() * 0.7 + (D.big ? 0.6 : 0);
+          pieces.push(p); made++;
+        }
+        if (made) burst(e, D);
+        return made;
+      };
+      function burst(e, D) {
+        var k = ctx.vis(e.x, e.z), y = (e.y || 0) + (e.h || 1.8) * 0.45, kind = D.d.burst, big = clamp((e.r || 0.45) / 0.45, 0.8, 2.4);
+        if (kind === 'straw') { ctx.emit(JT.straw, e.x, y, e.z, k * big); ctx.emit(FX.T.dust, e.x, 0.3, e.z, k * big, '#d9c88a', '#a8987a'); }
+        else if (kind === 'bone') { ctx.emit(JT.chunk, e.x, y, e.z, k * big, '#e4dcc4', '#b8b098'); ctx.emit(FX.T.dust, e.x, 0.25, e.z, k * big, '#e4dcc4', '#b8b098'); }
+        else if (kind === 'stone') { ctx.emit(JT.chunk, e.x, y, e.z, k * big, '#9a968e', '#6f6c66'); ctx.emit(FX.T.dust, e.x, 0.3, e.z, k * 1.6 * big, '#b8b0a0', '#8a8478'); }
+        else if (kind === 'metal') { ctx.emit(FX.T.spark, e.x, y, e.z, k * 1.8 * big, undefined, undefined, [0, 1, 0]); ctx.emit(JT.chunk, e.x, y, e.z, k * 0.6 * big, '#8a8e96', '#4c5058'); }
+        else if (kind === 'ice') { ctx.emit(JT.chunk, e.x, y, e.z, k * big, '#dff4ff', '#7fd4ff'); ctx.emit(FX.T.frost, e.x, y, e.z, k * 6 * big); }
+        else if (kind === 'wood') { ctx.emit(FX.T.plank, e.x, y, e.z, k * big); ctx.emit(FX.T.dust, e.x, 0.3, e.z, k * big); }
+        if (D.big) { ctx.emit(JT.flare, e.x, y, e.z, 1, '#ffffff', '#ffe9c0', undefined, big * 1.4); ctx.ringFx(e.x, e.z, (e.r || 0.45), (e.r || 0.45) * 4 + 1.2, '#fff2c0', 0.5, 0.4, 0.12, 0.04); }
+      }
+      function crescent(c, ev, src, k, arc) {
+        var pal = J.classOf(src), elem = ev.elem && ev.elem !== 'phys' && FX.COL.elem[ev.elem] ? ev.elem : null;
+        var hot = pal.hot, cc = elem ? KD.gfx.color.toHex(KD.gfx.color.mix(pal.col, FX.COL.elem[elem], 0.45)) : pal.col;
+        var r = ev.r || 2.4, rr = clamp(r * 0.85, 1.2, 6), yaw = ev.yaw || 0, y = (src.y || 0) + (src.h || 1.8) * 0.55, n = clamp(Math.ceil(arc / SEG), 2, 15);
+        var sweep = arc >= TAU - 0.01 ? 0.16 : 0.07;
+        for (var i = 0; i < n; i++) {
+          var a = yaw - arc / 2 + arc * (i + 0.5) / n, last = i === n - 1;
+          var m = c.meshFx('jc_arc', ev.x, y - 0.1 + (i / n) * 0.2, ev.z, rr * 0.9, 1, rr * 0.9, rr * 1.06, 1, rr * 1.06, i > n * 0.6 ? hot : cc, 0.78, 0.16 + (last ? 0.04 : 0));
+          if (m) { m.ry = a; m.delay = sweep * i / n; m.emissive = 0.85; }
+        }
+        var T = FX.T[pal.mote] || FX.T.spark;
+        c.arcBurst(T, ev.x, y, ev.z, yaw, arc, rr * 0.85, rr * 1.05, clamp(Math.round(arc * 2.2), 3, 9), k, pal.m1, pal.m2, 0.25);
+      }
+      // ---- the hero's shots: a trail in the class colour on top of the projectile's own
+      function projTrails(dt) {
+        var list = world && world.projs; if (!list || !(dt > 0)) return;
+        for (var i = 0; i < list.length; i++) {
+          var p = list[i]; if (p.removed || !p.src || p.src.kind !== 'player' || !(p.t > 0.06)) continue;
+          var k = ctx.vis(p.x, p.z); if (k <= 0) continue;
+          var acc = (projAcc.get(p.id) || 0) + dt * 22 * k, pal = J.classOf(p.src);
+          if (acc >= 1) {
+            var nn = acc | 0; acc -= nn;
+            ctx.emit(FX.T.glow, p.x, p.y || 1.1, p.z, nn / (FX.T.glow.count || 1), pal.hot, pal.col, undefined, 0.6);
+          }
+          projAcc.set(p.id, acc);
+        }
+        if ((ctx.frame & 127) === 0 && projAcc.size) projAcc.forEach(function (val, id) { var e = world.get ? world.get(id) : null; if (!e || e.removed) projAcc.delete(id); });
+      }
+      // ---- debris: physics in effect time, drawn every frame
+      function rot(p) {
+        var x = p.ax, y = p.ay, z = p.az, c = Math.cos(p.ang), s = Math.sin(p.ang), t = 1 - c;
+        R3[0] = t * x * x + c; R3[1] = t * x * y + s * z; R3[2] = t * x * z - s * y;
+        R3[3] = t * x * y - s * z; R3[4] = t * y * y + c; R3[5] = t * y * z + s * x;
+        R3[6] = t * x * z + s * y; R3[7] = t * y * z - s * x; R3[8] = t * z * z + c;
+      }
+      function updPieces(dt) {
+        var r = ctx.renderer;
+        for (var i = pieces.length - 1; i >= 0; i--) {
+          var p = pieces[i];
+          if (dt > 0) {
+            p.t += dt; p.vy -= 16 * dt;
+            p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt; p.ang += p.w * dt;
+            if (p.fl > 0) p.fl = Math.max(0, p.fl - dt * 6);
+            if (p.y < p.floor + p.he) {
+              p.y = p.floor + p.he;
+              if (p.vy < 0) { p.vy = -p.vy * 0.28; if (p.vy < 0.5) p.vy = 0; p.vx *= 0.5; p.vz *= 0.5; p.w *= 0.45; }
+            }
+            if (p.t >= p.life) { pieces[i] = pieces[pieces.length - 1]; pieces.pop(); free.push(p); continue; }
+          }
+          var s = p.t > p.life - 0.4 ? Math.max(0, (p.life - p.t) / 0.4) : 1, b = p.b;
+          rot(p);
+          for (var col3 = 0; col3 < 3; col3++) {
+            var bx = b[col3 * 3] * s, by = b[col3 * 3 + 1] * s, bz = b[col3 * 3 + 2] * s, o = col3 * 4;
+            MAT[o] = R3[0] * bx + R3[3] * by + R3[6] * bz; MAT[o + 1] = R3[1] * bx + R3[4] * by + R3[7] * bz; MAT[o + 2] = R3[2] * bx + R3[5] * by + R3[8] * bz; MAT[o + 3] = 0;
+          }
+          MAT[12] = p.x; MAT[13] = p.y - (1 - s) * p.he; MAT[14] = p.z;
+          if (r.instance) r.instance(p.mesh, MAT, 0, p.r, p.g, p.bl, 1, p.fl, p.em, p.metal);
+        }
+      }
+      return {
+        update: function (dt) { updPieces(dt); projTrails(dt); },
+        dispose: function () { pieces.length = 0; free.length = 0; projAcc.clear(); if (J.ctx === ctx) { J.ctx = null; J.part = null; } }
       };
     }
   };
@@ -89309,6 +89800,37 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/ui/10_hud_juice.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  if (typeof document === 'undefined') return;       // browser only
+
+  /**
+   * [combat juice] Damage number polish (docs/FX.md section 10): critical hits pop harder, tilt and settle, with a warm
+   * glow (src/ui/10_hud_juice.css). The float text itself stays KD.ui.floatText (src/ui/01_kit.js); this only picks the
+   * crit animation. On a small landscape phone the pop is gentler so a burst of crits never covers the fight.
+   * "Interface motion: Off" (and prefers-reduced-motion) already stops every float animation.
+   */
+  var FT = KD.ui && KD.ui.floatText;
+  if (!FT || FT._juice) return;
+  FT._juice = true;
+  var base = FT.spawn;
+  FT.spawn = function (x, y, text, o) {
+    var n = base.call(FT, x, y, text, o), crit = !!(o && o.kind === 'crit');
+    if (!n) return n;
+    if (crit) {
+      var small = (root.innerHeight || 800) < 520;
+      n.classList.add('kd-float-crit');
+      n.style.setProperty('--kd-pop', small ? '1.5' : '1.85');
+      n.style.animationName = n._kdFlip ? 'kd-float-crit-a' : 'kd-float-crit-b';      // two names restart the animation without a reflow
+    } else if (n.classList.contains('kd-float-crit')) n.classList.remove('kd-float-crit');
+    return n;
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/ui/10_hud_kingdom.js
 (function (root) {
   'use strict';
@@ -93513,11 +94035,13 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         quality ? null : row('Shadows', F.segmented([{ id: 'off', label: 'Off' }, { id: 'low', label: 'Low' }, { id: 'high', label: 'High' }], v.shadows, function (id) { ST.set('shadows', id); })),
         quality ? null : row('Render scale', F.slider({ min: 50, max: 100, step: 5, value: Math.round(v.renderScale * 100), format: pct, label: 'render scale', onChange: function (x) { ST.set('renderScale', x / 100); } }), 'lower is faster'),
         KD.art && KD.art.settingsRow ? KD.art.settingsRow(row, F) : null,      // [art] Gravecaller look: New / Classic (src/gfx/48_hero_art.js)
+        KD.art && KD.art.settingsRowFor ? KD.art.settingsRowFor('gloamblade', row, F) : null,      // [gloamblade art] Gloamblade look: New / Classic
         KD.env && KD.env.mood && KD.env.mood.settingsRow ? KD.env.mood.settingsRow(row, F) : null,      // [mood presets] Area look: New / Classic (src/gfx/55_env_mood.js)
         KD.style && KD.style.settingsRow ? KD.style.settingsRow(row, F) : null,      // [enemy style] Enemy look: New / Classic (src/gfx/49_style_kit.js)
         row('Minimap', F.segmented([{ id: 'on', label: compact ? 'With the view' : 'Turns with the camera' }, { id: 'off', label: 'North up' }], ST.get('minimapRotate') ? 'on' : 'off', function (id) { ST.set('minimapRotate', id === 'on'); })),
         row('Minimap zoom', F.slider({ min: 50, max: 200, step: 10, value: Math.round(ST.get('minimapZoom') * 100), format: pct, label: 'minimap zoom', onInput: function (x) { ST.set('minimapZoom', x / 100); } })),
         row('Damage numbers', onoff(ST.get('damageNumbers'), function (on) { ST.set('damageNumbers', on); }), 'floating numbers and words'),
+        KD.fx && KD.fx.juice && KD.fx.juice.settingsRow ? KD.fx.juice.settingsRow(row, F) : null,      // [combat juice] Screen shake: Off / Low / Full (src/gfx/44_fx_juice.js)
         row('Enemy health bars', onoff(ST.get('healthBars'), function (on) { ST.set('healthBars', on); })),
         row('Loot name plates', onoff(ST.get('lootLabels'), function (on) { ST.set('lootLabels', on); }), 'Rare and better drops'),
         row('Low-health vignette', onoff(ST.get('vignette'), function (on) { ST.set('vignette', on); }), 'and the hit flash'),
@@ -102953,7 +103477,7 @@ P['gravecaller_tripo'] = 'Z2xURgIAAACoBQYAaBkAAEpTT057ImFzc2V0Ijp7InZlcnNpb24iOi
     G.events.emit('hero', { hero: G.hero });
   };
   G.pause = function (on) { G.paused = on === undefined ? !G.paused : !!on; G.events.emit('pause', { paused: G.paused }); };
-  /** Brief slow-motion for heavy hits (effects layer calls this). */
+  /** Brief slow-motion for heavy hits (effects layer calls this). [combat juice] Visual only: the drawn animation and effects slow down, the simulation never does (also in co-op, where it is local to this screen). */
   G.hitStop = function (seconds) { G.hitStopT = Math.max(G.hitStopT, Math.min(0.2, seconds || 0.06)); };
 
 
@@ -103280,7 +103804,7 @@ P['gravecaller_tripo'] = 'Z2xURgIAAACoBQYAaBkAAEpTT057ImFzc2V0Ijp7InZlcnNpb24iOi
         var sdt = 0;
         if (co) {
           // a shared world never pauses and never slows down: every client must run the same ticks
-          sdt = coSteps * G.STEP; G.time += sdt; G.hitStopT = 0;
+          sdt = coSteps * G.STEP; G.time += sdt; G.hitStopT -= dt;      // [combat juice] hit-stop is local and visual: the shared world never slows
           if (G.run && G.state === 'play') {
             KD.run.addPlayTime(G.run, dt);
             if (G.run.phase === 'camp' && G.layout && G.layout.points.camp && p && !p.dead && U.dist(p.x, p.z, G.layout.points.camp.x, G.layout.points.camp.z) > 20) { KD.run.leaveCamp(G.run); G.events.emit('leftCamp', {}); }
@@ -103297,7 +103821,7 @@ P['gravecaller_tripo'] = 'Z2xURgIAAACoBQYAaBkAAEpTT057ImFzc2V0Ijp7InZlcnNpb24iOi
           }
           world.setInput(0, input);
           if (G.god && p && !p.dead) { p.hp = p.hpMax; }
-          var scale = G.hitStopT > 0 ? 0.08 : G.timeScale;
+          var scale = G.timeScale;      // [combat juice] the simulation keeps its pace through a hit-stop (only vdt below slows)
           G.hitStopT -= dt;
           acc += dt * scale;
           var n = 0, maxSteps = G.timeScale > 1 ? 40 : 5;
@@ -103312,7 +103836,7 @@ P['gravecaller_tripo'] = 'Z2xURgIAAACoBQYAaBkAAEpTT057ImFzc2V0Ijp7InZlcnNpb24iOi
           }
           if (G.botOn && p) { cam.yaw = U.angLerp(cam.yaw, p.yaw, Math.min(1, dt * 1.5)); }
         }
-        var vdt = co ? dt : (paused ? 0 : dt * (G.hitStopT > 0 ? 0.08 : 1));
+        var vdt = paused ? 0 : dt * (G.hitStopT > 0 ? 0.08 : 1);      // [combat juice] hit-stop slows what is drawn, alone and in co-op
         // a pausing window is open: the scene is frozen, so redraw it only a few times a second
         var uiPaused = paused && G.state === 'play' && !G.paused;
         if (uiPaused) { G._slowT = (G._slowT || 0) + dt; if (G._slowT < 0.25 && G._drawnPaused) { G.events.emit('frame', { dt: dt, playing: true, world: world, skipped: true }); if (KD.input && KD.input.endFrame) KD.input.endFrame(); return; } G._slowT = 0; G._drawnPaused = true; } else G._drawnPaused = false;
