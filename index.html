@@ -3036,6 +3036,164 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 .kd-compact .tr-guide-t b { font-size: calc(12.5 * var(--u)); }
 .kd-compact .tr-guide-t > div > span, .kd-compact .tr-guide-next { font-size: calc(11.5 * var(--u)); }
 
+/* =====================================================================================================
+   Painted UI (task w8 painted UI). Owner: uikit paint pass. Documented in docs/UIKIT.md section 11.
+   Makes the kit match the hand-painted dark toon world: painted wood and iron window frames with filigree
+   corners, title rails, painted buttons and tabs, liquid gauges, painted slot rims with a lit cooldown edge,
+   the boss bar's iron end caps, the minimap's brass compass ring, and the health orb (src/ui/11_hud_paint.js).
+   Every rule is scoped under html.kd-paint (set by src/ui/02_paint_icons.js; ?paint=0 switches all of it off),
+   loads after every other sheet, never changes a box's size or position (only backgrounds, shadows and
+   pseudo elements that ignore the pointer), and uses no CSS filter on HUD pieces (docs/UIKIT.md section 9).
+   ===================================================================================================== */
+
+.kd-paint #kd-ui, .kd-paint .kd-root {
+  /* painted ornaments (inline SVG, drawn in code) */
+  --pt-corner: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cdefs%3E%3ClinearGradient id='i' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%239aa2ae'/%3E%3Cstop offset='.45' stop-color='%234d535d'/%3E%3Cstop offset='1' stop-color='%231d2024'/%3E%3C/linearGradient%3E%3CradialGradient id='b' cx='.35' cy='.3' r='.75'%3E%3Cstop offset='0' stop-color='%23fff3c4'/%3E%3Cstop offset='.4' stop-color='%23d4a24a'/%3E%3Cstop offset='1' stop-color='%234f330e'/%3E%3C/radialGradient%3E%3C/defs%3E %3Cpath d='M15 9.5C21.5 9 23.5 13.5 20.2 15.8C18 17.3 15.6 15.6 16.7 13.5' fill='none' stroke='%2307080a' stroke-width='3.4' stroke-linecap='round'/%3E %3Cpath d='M9.5 15C9 21.5 13.5 23.5 15.8 20.2C17.3 18 15.6 15.6 13.5 16.7' fill='none' stroke='%2307080a' stroke-width='3.4' stroke-linecap='round'/%3E %3Cpath d='M15 9.5C21.5 9 23.5 13.5 20.2 15.8C18 17.3 15.6 15.6 16.7 13.5' fill='none' stroke='url(%23i)' stroke-width='1.7' stroke-linecap='round'/%3E %3Cpath d='M9.5 15C9 21.5 13.5 23.5 15.8 20.2C17.3 18 15.6 15.6 13.5 16.7' fill='none' stroke='url(%23i)' stroke-width='1.7' stroke-linecap='round'/%3E %3Cpath d='M1.5 1.5H37L31.5 9H14Q9 9 9 14V31.5L1.5 37Z' fill='url(%23i)' stroke='%2307080a' stroke-width='1.6' stroke-linejoin='round'/%3E %3Cpath d='M3.4 33V3.4H33' fill='none' stroke='%23dfe4ea' stroke-width='.9' opacity='.65'/%3E %3Cpath d='M9.6 30.5V14.2Q9.6 9.6 14.2 9.6H30.5' fill='none' stroke='%23000' stroke-width='.8' opacity='.5'/%3E %3Ccircle cx='7.4' cy='7.4' r='4.3' fill='url(%23b)' stroke='%231a1004' stroke-width='1.1'/%3E%3Ccircle cx='6.2' cy='6.1' r='1.3' fill='%23fffbe6' opacity='.85'/%3E %3Ccircle cx='26' cy='5.4' r='1.5' fill='url(%23b)' stroke='%231a1004' stroke-width='.7'/%3E%3Ccircle cx='5.4' cy='26' r='1.5' fill='url(%23b)' stroke='%231a1004' stroke-width='.7'/%3E%3C/svg%3E");
+  --pt-cornerb: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23fff0bd'/%3E%3Cstop offset='.4' stop-color='%23c89a42'/%3E%3Cstop offset='1' stop-color='%235c3f12'/%3E%3C/linearGradient%3E%3C/defs%3E %3Cpath d='M12 7C17 6.6 18.6 10.2 16 12C14.3 13.2 12.4 11.9 13.2 10.2M7 12C6.6 17 10.2 18.6 12 16C13.2 14.3 11.9 12.4 10.2 13.2' fill='none' stroke='%232a1c08' stroke-width='2.8' stroke-linecap='round'/%3E %3Cpath d='M12 7C17 6.6 18.6 10.2 16 12C14.3 13.2 12.4 11.9 13.2 10.2M7 12C6.6 17 10.2 18.6 12 16C13.2 14.3 11.9 12.4 10.2 13.2' fill='none' stroke='url(%23g)' stroke-width='1.3' stroke-linecap='round'/%3E %3Cpath d='M1 1H28L23.5 6.5H10Q6.5 6.5 6.5 10V23.5L1 28Z' fill='url(%23g)' stroke='%232a1c08' stroke-width='1.4' stroke-linejoin='round'/%3E %3Cpath d='M2.6 25V2.6H25' fill='none' stroke='%23fff8dc' stroke-width='.9' opacity='.8'/%3E %3Cpath d='M5.2 2.6L7.8 5.2L5.2 7.8L2.6 5.2Z' fill='%237a1a14' stroke='%232a1c08' stroke-width='.7'/%3E%3Ccircle cx='4.7' cy='4.6' r='.8' fill='%23ffd2c0' opacity='.8'/%3E%3C/svg%3E");
+  --pt-cap: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 36'%3E%3Cdefs%3E%3ClinearGradient id='i' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%239aa2ae'/%3E%3Cstop offset='.45' stop-color='%234d535d'/%3E%3Cstop offset='1' stop-color='%231d2024'/%3E%3C/linearGradient%3E%3CradialGradient id='b' cx='.35' cy='.3' r='.75'%3E%3Cstop offset='0' stop-color='%23fff3c4'/%3E%3Cstop offset='.4' stop-color='%23d4a24a'/%3E%3Cstop offset='1' stop-color='%234f330e'/%3E%3C/radialGradient%3E %3CradialGradient id='r' cx='.4' cy='.35' r='.7'%3E%3Cstop offset='0' stop-color='%23ffd0c0'/%3E%3Cstop offset='.35' stop-color='%23e0402c'/%3E%3Cstop offset='1' stop-color='%233a0806'/%3E%3C/radialGradient%3E%3C/defs%3E %3Cpath d='M44 10L30 8L20 1L22 10L4 6L14 18L4 30L22 26L20 35L30 28L44 26Z' fill='url(%23i)' stroke='%2307080a' stroke-width='1.5' stroke-linejoin='round'/%3E %3Cpath d='M42 11.5L30 9.6L22.5 4.5L23.6 11.6L8.5 8.6' fill='none' stroke='%23dfe4ea' stroke-width='.8' opacity='.6'/%3E %3Cpath d='M44 13H34V23H44' fill='%23120c08' stroke='%2307080a' stroke-width='1'/%3E %3Ccircle cx='25' cy='18' r='6.4' fill='url(%23b)' stroke='%231a1004' stroke-width='1.2'/%3E %3Cpath d='M25 13.2L28.6 18L25 22.8L21.4 18Z' fill='url(%23r)' stroke='%232a0604' stroke-width='.8'/%3E%3Ccircle cx='24' cy='16.4' r='.9' fill='%23fff' opacity='.85'/%3E%3C/svg%3E");
+  --pt-ring: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E %3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23fff0bd'/%3E%3Cstop offset='.35' stop-color='%23c89a42'/%3E%3Cstop offset='.7' stop-color='%237a5520'/%3E%3Cstop offset='1' stop-color='%233a260a'/%3E%3C/linearGradient%3E %3ClinearGradient id='h' x1='1' y1='1' x2='0' y2='0'%3E%3Cstop offset='0' stop-color='%23fff0bd'/%3E%3Cstop offset='.4' stop-color='%23a77a30'/%3E%3Cstop offset='1' stop-color='%233a260a'/%3E%3C/linearGradient%3E%3C/defs%3E %3Ccircle cx='50' cy='50' r='47.6' fill='none' stroke='%230b0703' stroke-width='3.4'/%3E %3Ccircle cx='50' cy='50' r='47.6' fill='none' stroke='url(%23g)' stroke-width='2'/%3E %3Ccircle cx='50' cy='50' r='44.6' fill='none' stroke='%230b0703' stroke-width='1'/%3E %3Ccircle cx='50' cy='50' r='43.6' fill='none' stroke='url(%23h)' stroke-width='.9' opacity='.9'/%3E %3Crect x='49.2' y='3.2' width='1.6' height='2.2' fill='%232a1c08' transform='rotate(30 50 50)'/%3E%3Crect x='49.2' y='3.2' width='1.6' height='2.2' fill='%232a1c08' transform='rotate(60 50 50)'/%3E%3Crect x='49.2' y='3.2' width='1.6' height='2.2' fill='%232a1c08' transform='rotate(120 50 50)'/%3E%3Crect x='49.2' y='3.2' width='1.6' height='2.2' fill='%232a1c08' transform='rotate(150 50 50)'/%3E%3Crect x='49.2' y='3.2' width='1.6' height='2.2' fill='%232a1c08' transform='rotate(210 50 50)'/%3E%3Crect x='49.2' y='3.2' width='1.6' height='2.2' fill='%232a1c08' transform='rotate(240 50 50)'/%3E%3Crect x='49.2' y='3.2' width='1.6' height='2.2' fill='%232a1c08' transform='rotate(300 50 50)'/%3E%3Crect x='49.2' y='3.2' width='1.6' height='2.2' fill='%232a1c08' transform='rotate(330 50 50)'/%3E %3Cpath d='M50 0.6L54.6 7.4L50 10.6L45.4 7.4Z' fill='url(%23g)' stroke='%230b0703' stroke-width='1'/%3E%3Cpath d='M50 2.6L52.4 7.2L50 9L47.6 7.2Z' fill='%23a3271c'/%3E %3Cpath d='M99.4 50L92.8 53L91.2 50L92.8 47Z M0.6 50L7.2 53L8.8 50L7.2 47Z M50 99.4L47 92.8L50 91.2L53 92.8Z' fill='url(%23g)' stroke='%230b0703' stroke-width='.9'/%3E%3C/svg%3E");
+  --pt-wave: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 8' preserveAspectRatio='none'%3E%3Cpath d='M0 4Q10 0 20 4T40 4V8H0Z' fill='%23e24a3a'/%3E%3Cpath d='M0 4Q10 0 20 4T40 4' fill='none' stroke='%23ffb4a4' stroke-width='1.2' opacity='.8'/%3E%3C/svg%3E");
+  --pt-flour: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 12'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23fff0bd'/%3E%3Cstop offset='.4' stop-color='%23c89a42'/%3E%3Cstop offset='1' stop-color='%235c3f12'/%3E%3C/linearGradient%3E%3C/defs%3E %3Cpath d='M0 6H40M40 6C44 1 50 1 51 4C52 7 48 8.5 46.5 6.5M40 6C44 11 50 11 51 8' fill='none' stroke='%231c1206' stroke-width='3' stroke-linecap='round'/%3E %3Cpath d='M0 6H40M40 6C44 1 50 1 51 4C52 7 48 8.5 46.5 6.5M40 6C44 11 50 11 51 8' fill='none' stroke='url(%23g)' stroke-width='1.4' stroke-linecap='round'/%3E %3Cpath d='M55 2.6L58.4 6L55 9.4L51.6 6Z' fill='url(%23g)' stroke='%231c1206' stroke-width='.9'/%3E%3C/svg%3E");
+  --kd-bracket-iron: var(--pt-corner);
+  --kd-bracket-brass: var(--pt-cornerb);
+  /* painted wood: fibre noise, long plank streaks, warm light from the upper left, dark lower edge */
+  --pt-wood: var(--kd-tex-fibre),
+    repeating-linear-gradient(178deg, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0) calc(9 * var(--u)), rgba(0, 0, 0, .13) calc(10 * var(--u)), rgba(0, 0, 0, 0) calc(12 * var(--u)), rgba(255, 220, 160, .035) calc(17 * var(--u)), rgba(0, 0, 0, 0) calc(19 * var(--u))),
+    radial-gradient(ellipse 80% 60% at 18% 0%, rgba(255, 214, 150, .16), rgba(0, 0, 0, 0) 70%),
+    linear-gradient(180deg, #5b3b22 0%, #462c18 30%, #2f1d0f 100%);
+  --pt-iron: var(--kd-tex-grain), linear-gradient(180deg, #4c525c 0%, #30343b 40%, #1e2126 100%);
+  --pt-glass: radial-gradient(circle at 50% 30%, rgba(255, 255, 255, .07), rgba(0, 0, 0, 0) 60%), radial-gradient(circle at 50% 50%, #221c16, #0c0907 75%);
+}
+
+/* ------------------------------------------------------------------------------------------ frames */
+.kd-paint .kd-frame { background: var(--pt-wood); background-color: #3d2716;
+  box-shadow: 0 0 0 calc(1 * var(--u)) #050302, 0 0 0 calc(3 * var(--u)) #2a2d33, 0 0 0 calc(4 * var(--u)) #050302,
+    inset 0 var(--u) 0 var(--u) rgba(255, 220, 160, .18), inset 0 calc(-2 * var(--u)) 0 var(--u) rgba(0, 0, 0, .42), inset 0 0 calc(18 * var(--u)) rgba(0, 0, 0, .45), var(--kd-drop); }
+.kd-paint .kd-frame-round { box-shadow: 0 0 0 calc(1 * var(--u)) #050302, inset 0 var(--u) 0 var(--u) rgba(255, 220, 160, .18), inset 0 0 calc(10 * var(--u)) rgba(0, 0, 0, .5), var(--kd-drop); }
+.kd-paint .kd-corner { width: calc(34 * var(--u)); height: calc(34 * var(--u)); }
+.kd-paint .kd-corner-tl { left: calc(-7 * var(--u)); top: calc(-7 * var(--u)); }
+.kd-paint .kd-corner-tr { right: calc(-7 * var(--u)); top: calc(-7 * var(--u)); }
+.kd-paint .kd-corner-bl { left: calc(-7 * var(--u)); bottom: calc(-7 * var(--u)); }
+.kd-paint .kd-corner-br { right: calc(-7 * var(--u)); bottom: calc(-7 * var(--u)); }
+.kd-paint .kd-rivet { background: radial-gradient(circle at 35% 30%, #fff3c4, #c99a44 40%, #4f330e); border-color: #1a1004; box-shadow: 0 var(--u) calc(2 * var(--u)) rgba(0, 0, 0, .6); }
+/* the inside of a frame: a dark iron rebate around the reading surface */
+.kd-paint .kd-window.kd-frame > .kd-window-body { box-shadow: 0 0 0 calc(1 * var(--u)) #0a0603, 0 0 0 calc(3 * var(--u)) rgba(42, 45, 51, .9), 0 0 0 calc(4 * var(--u)) rgba(216, 178, 90, .35), inset 0 0 calc(24 * var(--u)) rgba(80, 50, 15, .38); }
+.kd-paint .kd-window.kd-frame > .kd-window-body:not(.kd-parchment) { box-shadow: 0 0 0 calc(1 * var(--u)) #0a0603, 0 0 0 calc(3 * var(--u)) rgba(42, 45, 51, .9), 0 0 0 calc(4 * var(--u)) rgba(216, 178, 90, .35); }
+
+/* title: brass filigree rails on either side of the name */
+.kd-paint .kd-window-title::before, .kd-paint .kd-window-title::after { height: calc(12 * var(--u)); border: 0; opacity: 1; min-width: calc(24 * var(--u));
+  background: var(--pt-flour) no-repeat right center / auto 100%, linear-gradient(180deg, rgba(0, 0, 0, 0) 33%, #1c1206 33%, #1c1206 42%, #c89a42 42%, #8c6424 58%, #1c1206 58%, #1c1206 67%, rgba(0, 0, 0, 0) 67%) no-repeat left center / calc(100% - 20 * var(--u)) 100%; }
+.kd-paint .kd-window-title::after { transform: scaleX(-1); }
+.kd-paint .kd-window-title > .kd-h2 { color: #f6dc98; text-shadow: 0 var(--u) 0 #000, 0 0 calc(2 * var(--u)) #000, 0 0 calc(10 * var(--u)) rgba(255, 190, 90, .25); }
+.kd-paint .kd-window-close { background: radial-gradient(circle at 36% 30%, #ffb59f 0, var(--kd-wax-400) 22%, var(--kd-wax-500) 50%, var(--kd-wax-800) 100%);
+  box-shadow: 0 0 0 calc(1.5 * var(--u)) #b88f3c, 0 0 0 calc(2.5 * var(--u)) #1a1004, inset 0 calc(-2 * var(--u)) calc(3 * var(--u)) rgba(0, 0, 0, .45), 0 calc(2 * var(--u)) calc(3 * var(--u)) rgba(0, 0, 0, .6); }
+
+/* surfaces */
+.kd-paint .kd-plate { background: var(--kd-tex-grain), radial-gradient(ellipse 90% 70% at 15% 0%, rgba(255, 210, 140, .10), rgba(0, 0, 0, 0) 70%), linear-gradient(180deg, rgba(40, 27, 16, .9), rgba(14, 9, 6, .93));
+  box-shadow: inset 0 0 0 var(--u) rgba(216, 178, 90, .42), inset 0 0 0 calc(2 * var(--u)) rgba(0, 0, 0, .55), inset 0 calc(2 * var(--u)) 0 calc(1 * var(--u)) rgba(255, 236, 190, .07), 0 calc(2 * var(--u)) calc(8 * var(--u)) rgba(0, 0, 0, .55); }
+.kd-paint .kd-panel { background: var(--kd-tex-fibre), radial-gradient(ellipse 70% 50% at 50% 0%, rgba(255, 210, 140, .06), rgba(0, 0, 0, 0) 70%), linear-gradient(180deg, #2a1a0e, #170e07);
+  box-shadow: inset 0 calc(2 * var(--u)) calc(9 * var(--u)) rgba(0, 0, 0, .8), inset 0 0 0 var(--u) rgba(0, 0, 0, .5), 0 var(--u) 0 rgba(255, 228, 170, .3), 0 calc(-1 * var(--u)) 0 rgba(0, 0, 0, .5); }
+.kd-paint .kd-parchment { background: var(--kd-tex-grain),
+    radial-gradient(ellipse 40% 30% at 82% 18%, rgba(150, 105, 40, .10), rgba(0, 0, 0, 0) 70%),
+    radial-gradient(ellipse 30% 22% at 12% 78%, rgba(150, 105, 40, .09), rgba(0, 0, 0, 0) 70%),
+    radial-gradient(ellipse at 18% 8%, rgba(255, 251, 232, .6), rgba(0, 0, 0, 0) 55%),
+    linear-gradient(180deg, var(--kd-parch-200), var(--kd-parch-300)); background-color: var(--kd-parch-200);
+  box-shadow: inset 0 0 calc(3 * var(--u)) rgba(70, 40, 10, .55), inset 0 0 calc(26 * var(--u)) rgba(120, 76, 24, .5), inset 0 0 0 var(--u) rgba(255, 248, 220, .45); }
+
+/* ----------------------------------------------------------------------------------------- buttons */
+.kd-paint .kd-btn { background: var(--kd-tex-grain), radial-gradient(ellipse 90% 80% at 30% 0%, rgba(255, 240, 210, .14), rgba(0, 0, 0, 0) 60%), linear-gradient(180deg, #474c55 0%, #2d3138 45%, #1b1d22 100%);
+  box-shadow: inset 0 0 0 var(--u) rgba(216, 178, 90, .7), inset 0 calc(2 * var(--u)) 0 var(--u) rgba(255, 255, 255, .07), inset 0 calc(-3 * var(--u)) 0 0 rgba(0, 0, 0, .35), 0 0 0 var(--u) #000, 0 calc(2 * var(--u)) calc(4 * var(--u)) rgba(0, 0, 0, .55);
+  transition: box-shadow .1s, transform .06s, filter .08s; }
+.kd-paint .kd-btn:hover { filter: none; background: var(--kd-tex-grain), radial-gradient(ellipse 90% 80% at 30% 0%, rgba(255, 240, 210, .22), rgba(0, 0, 0, 0) 60%), linear-gradient(180deg, #555b65 0%, #363a42 45%, #22252a 100%);
+  box-shadow: inset 0 0 0 var(--u) var(--kd-brass-300), inset 0 calc(2 * var(--u)) 0 var(--u) rgba(255, 255, 255, .09), inset 0 calc(-3 * var(--u)) 0 0 rgba(0, 0, 0, .35), 0 0 0 var(--u) #000, 0 0 calc(8 * var(--u)) rgba(236, 196, 110, .35), 0 calc(2 * var(--u)) calc(4 * var(--u)) rgba(0, 0, 0, .55); }
+.kd-paint .kd-btn:active { transform: translateY(var(--u)); filter: none; box-shadow: inset 0 0 0 var(--u) rgba(216, 178, 90, .6), inset 0 calc(3 * var(--u)) calc(5 * var(--u)) rgba(0, 0, 0, .65), 0 0 0 var(--u) #000; }
+.kd-paint .kd-btn-primary { background: var(--kd-tex-grain), radial-gradient(ellipse 90% 70% at 30% 0%, rgba(255, 252, 230, .5), rgba(0, 0, 0, 0) 60%), linear-gradient(180deg, #f2d48c 0%, #c99a44 46%, #8c6424 100%);
+  box-shadow: inset 0 0 0 var(--u) rgba(255, 246, 210, .8), inset 0 calc(-3 * var(--u)) 0 0 rgba(80, 50, 10, .4), 0 0 0 var(--u) #1c1206, 0 calc(2 * var(--u)) calc(4 * var(--u)) rgba(0, 0, 0, .55); }
+.kd-paint .kd-btn-primary:hover { background: var(--kd-tex-grain), radial-gradient(ellipse 90% 70% at 30% 0%, rgba(255, 252, 230, .65), rgba(0, 0, 0, 0) 60%), linear-gradient(180deg, #f8e0a2 0%, #d8aa52 46%, #9a6e2a 100%);
+  box-shadow: inset 0 0 0 var(--u) #fff6d6, inset 0 calc(-3 * var(--u)) 0 0 rgba(80, 50, 10, .4), 0 0 0 var(--u) #1c1206, 0 0 calc(10 * var(--u)) rgba(255, 210, 120, .5), 0 calc(2 * var(--u)) calc(4 * var(--u)) rgba(0, 0, 0, .55); }
+.kd-paint .kd-btn-primary:active { box-shadow: inset 0 0 0 var(--u) rgba(255, 246, 210, .7), inset 0 calc(3 * var(--u)) calc(5 * var(--u)) rgba(70, 40, 5, .6), 0 0 0 var(--u) #1c1206; }
+.kd-paint .kd-btn-danger { background: var(--kd-tex-grain), radial-gradient(ellipse 90% 70% at 30% 0%, rgba(255, 220, 200, .3), rgba(0, 0, 0, 0) 60%), linear-gradient(180deg, #d4503f 0%, #a02a20 46%, #5c1410 100%);
+  box-shadow: inset 0 0 0 var(--u) rgba(255, 190, 170, .55), inset 0 calc(-3 * var(--u)) 0 0 rgba(0, 0, 0, .35), 0 0 0 var(--u) #1a0503, 0 calc(2 * var(--u)) calc(4 * var(--u)) rgba(0, 0, 0, .55); }
+.kd-paint .kd-btn-danger:hover { background: var(--kd-tex-grain), radial-gradient(ellipse 90% 70% at 30% 0%, rgba(255, 220, 200, .42), rgba(0, 0, 0, 0) 60%), linear-gradient(180deg, #e0604c 0%, #b03226 46%, #6a1812 100%);
+  box-shadow: inset 0 0 0 var(--u) #ffc6b4, inset 0 calc(-3 * var(--u)) 0 0 rgba(0, 0, 0, .35), 0 0 0 var(--u) #1a0503, 0 0 calc(10 * var(--u)) rgba(240, 100, 80, .45), 0 calc(2 * var(--u)) calc(4 * var(--u)) rgba(0, 0, 0, .55); }
+.kd-paint .kd-btn[disabled], .kd-paint .kd-btn.kd-disabled { filter: none; opacity: .62; color: #a99d84; text-shadow: 0 var(--u) 0 #000; transform: none;
+  background: var(--kd-tex-grain), linear-gradient(180deg, #34373c, #1d1f22); box-shadow: inset 0 0 0 var(--u) rgba(150, 140, 120, .35), 0 0 0 var(--u) #000; }
+.kd-paint .kd-key { background: var(--kd-tex-grain), linear-gradient(180deg, #3e3a33, #15120e); box-shadow: inset 0 var(--u) 0 rgba(255, 255, 255, .24), inset 0 0 0 var(--u) rgba(216, 178, 90, .3), 0 var(--u) 0 rgba(0, 0, 0, .75); }
+
+/* -------------------------------------------------------------------------------------------- tabs */
+.kd-paint .kd-tab { background: var(--kd-tex-fibre), linear-gradient(180deg, #4a2f1a 0%, #2e1d10 60%, #21150b 100%);
+  box-shadow: inset 0 var(--u) 0 rgba(255, 220, 160, .16), inset 0 0 0 var(--u) rgba(216, 178, 90, .18), inset 0 calc(-4 * var(--u)) calc(5 * var(--u)) rgba(0, 0, 0, .35); }
+.kd-paint .kd-tab:hover { filter: none; color: var(--kd-brass-200); background: var(--kd-tex-fibre), linear-gradient(180deg, #5a3a20 0%, #3a2414 60%, #29190d 100%); box-shadow: inset 0 var(--u) 0 rgba(255, 220, 160, .22), inset 0 0 0 var(--u) rgba(216, 178, 90, .4); }
+.kd-paint .kd-tab-active, .kd-paint .kd-tab-active:hover { background: var(--kd-tex-grain), radial-gradient(ellipse at 30% 0%, rgba(255, 251, 232, .7), rgba(0, 0, 0, 0) 70%), linear-gradient(180deg, var(--kd-parch-100), var(--kd-parch-200));
+  box-shadow: inset 0 calc(2.5 * var(--u)) 0 var(--kd-brass-500), inset 0 calc(3.5 * var(--u)) 0 rgba(60, 40, 10, .5), inset 0 0 calc(8 * var(--u)) rgba(120, 82, 30, .25); }
+
+/* ------------------------------------------------------------------------------------------ gauges */
+/* the track is dark glass; fills are liquid: a lit surface band, a deep core and a darker bottom */
+.kd-paint .kd-bar-track { background: linear-gradient(180deg, #030202 0%, #17110c 70%, #241a12 100%);
+  box-shadow: 0 0 0 var(--u) rgba(216, 178, 90, .5), 0 0 0 calc(2 * var(--u)) rgba(0, 0, 0, .6), 0 calc(2 * var(--u)) calc(5 * var(--u)) rgba(0, 0, 0, .55), inset 0 calc(2 * var(--u)) calc(3 * var(--u)) rgba(0, 0, 0, .85); }
+.kd-paint .kd-bar-fill { background:
+    linear-gradient(180deg, rgba(255, 255, 255, .5) 0%, rgba(255, 255, 255, .16) 22%, rgba(255, 255, 255, 0) 34%, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, .38) 100%),
+    radial-gradient(ellipse 30% 120% at 20% 60%, rgba(255, 255, 255, .10), rgba(0, 0, 0, 0) 70%),
+    radial-gradient(ellipse 25% 110% at 65% 40%, rgba(0, 0, 0, .14), rgba(0, 0, 0, 0) 70%),
+    var(--kd-bar-color);
+  transition: transform .22s cubic-bezier(.3, .7, .4, 1); }
+.kd-paint .kd-bar-fill.kd-snap { transition: none; }
+.kd-paint .kd-bar-lag { background: linear-gradient(180deg, #fff6dc, #f3d9a4 50%, #b8955a); opacity: .7; }
+.kd-paint .kd-bar-health { --kd-bar-color: linear-gradient(90deg, #8a1712, #c5302a 55%, #e04a36); }
+.kd-paint .kd-bar-boss { --kd-bar-color: linear-gradient(90deg, #5c0e0a, #a52a21 50%, #cf4336); }
+.kd-paint .kd-bar-xp { --kd-bar-color: linear-gradient(90deg, #8c6424, #d8b25a 60%, #f2d48c); }
+.kd-paint .hud-mom-on .kd-bar-fill { background: linear-gradient(180deg, rgba(255, 255, 255, .6) 0%, rgba(255, 255, 255, .15) 45%, rgba(0, 0, 0, .15) 100%), #ffd24a; }
+
+/* the boss bar: iron end caps with a red gem, a heavier brass rim */
+.kd-paint .kd-bar-boss .kd-bar-track { box-shadow: 0 0 0 var(--u) #e6c470, 0 0 0 calc(2.5 * var(--u)) #140c06, 0 0 0 calc(3.5 * var(--u)) #8c6424, 0 0 0 calc(4.5 * var(--u)) #0a0603, 0 calc(3 * var(--u)) calc(9 * var(--u)) rgba(0, 0, 0, .65), inset 0 calc(2 * var(--u)) calc(3 * var(--u)) rgba(0, 0, 0, .85); }
+.kd-paint .hud-boss .kd-bar-boss::before, .kd-paint .hud-boss .kd-bar-boss::after { content: ""; position: absolute; top: 50%; width: calc(30 * var(--u)); height: calc(25 * var(--u)); margin-top: calc(-12.5 * var(--u)); background: var(--pt-cap) no-repeat center / 100% 100%; pointer-events: none; z-index: 1; }
+.kd-paint .hud-boss .kd-bar-boss::before { left: calc(-27 * var(--u)); }
+.kd-paint .hud-boss .kd-bar-boss::after { right: calc(-27 * var(--u)); transform: scaleX(-1); }
+.kd-paint .kd-compact .hud-boss .kd-bar-boss::before, .kd-paint .kd-compact .hud-boss .kd-bar-boss::after { width: calc(22 * var(--u)); height: calc(18 * var(--u)); margin-top: calc(-9 * var(--u)); }
+.kd-paint .kd-compact .hud-boss .kd-bar-boss::before { left: calc(-19 * var(--u)); }
+.kd-paint .kd-compact .hud-boss .kd-bar-boss::after { right: calc(-19 * var(--u)); }
+.kd-paint .hud-phase-pip { background: radial-gradient(circle at 35% 30%, #8a8f98, #393d45 60%, #1a1c20); box-shadow: 0 0 0 var(--u) #c99a44; }
+.kd-paint .hud-phase-pip.hud-on { background: radial-gradient(circle at 35% 30%, #ffd0c0, #e0402c 45%, #5a0c08); box-shadow: 0 0 0 var(--u) #ffd9cf, 0 0 calc(8 * var(--u)) calc(1 * var(--u)) rgba(240, 112, 92, .9); }
+
+/* -------------------------------------------------------------------------------------------- slots */
+.kd-paint .kd-slot { background: radial-gradient(circle at 50% 30%, rgba(255, 240, 210, .07), rgba(0, 0, 0, 0) 55%), var(--kd-tex-grain), radial-gradient(circle at 50% 40%, #2a2620, #12100d 70%, #080706); }
+/* the action bar: a brass outer rim around each skill, a lit edge on the cooldown sweep */
+.kd-paint .hud-slots > .kd-slot { box-shadow: 0 0 0 var(--u) #000, 0 0 0 calc(2.5 * var(--u)) #8c6424, 0 0 0 calc(3.5 * var(--u)) #1c1206, inset 0 0 0 var(--u) rgba(0, 0, 0, .85), inset 0 calc(3 * var(--u)) calc(6 * var(--u)) rgba(0, 0, 0, .55), 0 calc(3 * var(--u)) calc(5 * var(--u)) rgba(0, 0, 0, .55); }
+.kd-paint .hud-slots > .kd-slot.hud-casting { box-shadow: 0 0 0 var(--u) #000, 0 0 0 calc(2.5 * var(--u)) #fff6d2, 0 0 calc(10 * var(--u)) rgba(255, 240, 200, .6), inset 0 0 0 var(--u) rgba(0, 0, 0, .85); }
+.kd-paint .hud-slots > .kd-slot.kd-slot-selected { box-shadow: 0 0 0 var(--u) #000, 0 0 0 calc(2.5 * var(--u)) var(--kd-brass-300), 0 0 calc(10 * var(--u)) calc(2 * var(--u)) rgba(248, 220, 140, .55), inset 0 0 0 var(--u) rgba(0, 0, 0, .85); }
+.kd-paint .kd-slot-cd { background: conic-gradient(rgba(6, 5, 4, .74) 0 calc(var(--kd-cd) * 360deg), rgba(255, 226, 160, .9) calc(var(--kd-cd) * 360deg) calc(var(--kd-cd) * 360deg + 2.5deg), rgba(6, 5, 4, .14) 0); }
+.kd-paint .kd-slot-buff .kd-slot-cd, .kd-paint .kd-slot-debuff .kd-slot-cd { background: conic-gradient(rgba(6, 5, 4, .64) 0 calc(var(--kd-cd) * 360deg), rgba(255, 226, 160, .7) calc(var(--kd-cd) * 360deg) calc(var(--kd-cd) * 360deg + 3deg), rgba(6, 5, 4, 0) 0); }
+.kd-paint .tc-btn .tc-slot .kd-slot-cd { background: conic-gradient(rgba(6, 5, 4, .78) 0 calc(var(--kd-cd) * 360deg), rgba(255, 226, 160, .95) calc(var(--kd-cd) * 360deg) calc(var(--kd-cd) * 360deg + 2.5deg), rgba(6, 5, 4, .3) 0); }
+.kd-paint .kd-slot-cdtext { font-family: var(--kd-font-display); color: #fff3d6; }
+
+/* thumb buttons: a painted brass ring and dark glass, the state colours stay on the border */
+.kd-paint .tc-btn { background: var(--pt-glass); box-shadow: 0 0 0 calc(1 * var(--u)) rgba(0, 0, 0, .7), inset 0 0 0 calc(1.5 * var(--u)) rgba(0, 0, 0, .55), inset 0 calc(3 * var(--u)) calc(6 * var(--u)) rgba(255, 240, 210, .08), inset 0 calc(-6 * var(--u)) calc(10 * var(--u)) rgba(0, 0, 0, .5), 0 calc(3 * var(--u)) calc(8 * var(--u)) rgba(0, 0, 0, .45); }
+.kd-paint .tc-btn.tc-down { background: radial-gradient(circle at 50% 40%, rgba(255, 226, 150, .35), rgba(0, 0, 0, 0) 70%), var(--pt-glass); }
+.kd-paint .tc-btn.tc-primary { border-color: rgba(236, 208, 138, .7); }
+.kd-paint .tc-btn.tc-ultimate { border-color: rgba(255, 196, 96, .8); }
+
+/* ---------------------------------------------------------------------------------------- minimap */
+.kd-paint .hud-map::after { content: ""; position: absolute; inset: calc(-3 * var(--u)); border-radius: 50%; background: var(--pt-ring) no-repeat center / 100% 100%; pointer-events: none; z-index: 2; }
+.kd-paint .hud-map > .kd-rivet { display: none; }
+.kd-paint .hud-map > .kd-frame-inner { box-shadow: inset 0 0 calc(14 * var(--u)) rgba(0, 0, 0, .85), inset 0 0 0 calc(2 * var(--u)) rgba(0, 0, 0, .6); }
+
+/* ----------------------------------------------------------------------------------------- toasts */
+.kd-paint .kd-toast { background: var(--kd-tex-fibre), linear-gradient(90deg, rgba(40, 27, 16, .96), rgba(16, 11, 7, .9)); box-shadow: inset 0 0 0 var(--u) rgba(216, 178, 90, .32), inset calc(4 * var(--u)) 0 calc(8 * var(--u)) calc(-4 * var(--u)) var(--kd-toast), 0 calc(3 * var(--u)) calc(9 * var(--u)) rgba(0, 0, 0, .55); }
+
+/* ------------------------------------------------------------------------- the health orb (HUD) */
+.kd-paint .hud-medal.pt-orb-on .hud-portrait-in { position: relative; z-index: 1; background: none; }
+.pt-orb { position: absolute; inset: 0; border-radius: 50%; overflow: hidden; pointer-events: none; background: radial-gradient(circle at 50% 35%, #2c2a33, #0d0c10 75%); }
+.pt-orb-liq { position: absolute; left: 0; right: 0; top: 0; bottom: 0; transform: translateY(calc(var(--pt-empty, 0) * 100%)); transition: transform .45s cubic-bezier(.3, .7, .4, 1); will-change: transform;
+  background: radial-gradient(ellipse 60% 40% at 35% 30%, rgba(255, 170, 150, .35), rgba(0, 0, 0, 0) 70%), linear-gradient(180deg, #d8402f 0%, #a8231b 40%, #5e0c08 100%); }
+.pt-orb-wave { position: absolute; left: 0; top: calc(-5 * var(--u)); width: 200%; height: calc(7 * var(--u)); background: var(--pt-wave) repeat-x 0 0 / 50% 100%; animation: pt-wave 2.6s linear infinite; will-change: transform; }
+.pt-orb-glass { position: absolute; inset: 0; border-radius: 50%; pointer-events: none; z-index: 2;
+  background: radial-gradient(ellipse 52% 34% at 40% 22%, rgba(255, 255, 255, .34), rgba(255, 255, 255, 0) 70%), radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0) 58%, rgba(0, 0, 0, .55) 100%); }
+.pt-orb-low .pt-orb-liq { animation: pt-throb .8s ease-in-out infinite alternate; }
+.kd-no-motion .pt-orb-wave, .kd-no-motion .pt-orb-low .pt-orb-liq { animation: none; }
+@keyframes pt-wave { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@keyframes pt-throb { from { opacity: 1; } to { opacity: .72; } }
+@media (prefers-reduced-motion: reduce) { .pt-orb-wave, .pt-orb-low .pt-orb-liq { animation: none; } }
+
 </style>
 </head>
 <body>
@@ -3221,7 +3379,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.19';
+  KD.VERSION = '0.7.20';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -92588,6 +92746,247 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   I._itemPainter = function (ctx, color, accent) { return new ItemPainter(ctx, palette(color, accent)); };
   /** Forget every cached bitmap (after changing icons.res). */
   I.clearCache = function () { cache = {}; cacheN = 0; };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/ui/02_paint_icons.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var UI = KD.ui = KD.ui || {};
+  var I = UI.icons;
+  if (!I || !I.glyph || !I.GLYPHS) return;
+
+  /**
+   * KD.ui.paint: the painted look for every icon (task w8 painted UI; docs/UIKIT.md section 7b).
+   *
+   * Wraps KD.ui.icons.glyph / item so the same keys come out as small hand-painted pictures instead of flat
+   * one-colour shapes: each glyph gets a light-to-shadow body gradient, a rim light on its upper-left edges, a core
+   * shade on its lower-right edges, a faint brush texture and a dark ink outline; plates become painted medallions
+   * (tinted glow, vignette, bevel); item art gets the same light and ink. Everything is drawn once per key, size and
+   * colour and cached, so it costs nothing per frame. `KD.ui.paint.set(false)` (or `?paint=0` in the URL) brings back
+   * the flat icons (KD.ui.paint.flat holds the originals). Pure drawing: never touches the simulation.
+   */
+  var P = UI.paint = UI.paint || {};
+  var HAS_DOM = typeof document !== 'undefined';
+  var flat = P.flat = { glyph: I.glyph, item: I.item };
+  P.on = true;
+  try { if (typeof location !== 'undefined' && /[?&]paint=0\b/.test(location.search)) P.on = false; } catch (e) { /* no location */ }
+  var cache = {}, cacheN = 0;
+  function cached(k, make) {
+    var c = cache[k];
+    if (!c) { if (cacheN > 1200) { cache = {}; cacheN = 0; } c = cache[k] = make(); cacheN++; }
+    return c;
+  }
+  /** The painted frames, gauges and ornaments (src/ui/90_paint.css) are scoped under html.kd-paint. */
+  function mark() { if (HAS_DOM && document.documentElement) document.documentElement.classList.toggle('kd-paint', P.on); }
+  mark();
+  /** set(on): switch the painted look (icons, frames, gauges) on or off; icons made before keep their look. */
+  P.set = function (on) { P.on = !!on; cache = {}; cacheN = 0; if (I.clearCache) I.clearCache(); mark(); };
+
+  // ------------------------------------------------------------------------------------- helpers
+  function res() {
+    if (I.res > 0) return I.res;
+    var d = (typeof window !== 'undefined' && window.devicePixelRatio) || 1, s = (UI.scale && UI.scale.value) || 1;
+    return Math.min(3, Math.max(1, Math.ceil(d * s * 2) / 2));
+  }
+  function mk(px) { var c = document.createElement('canvas'); c.width = c.height = px; return c; }
+  function clone(master, size) {
+    var c = mk(master.width);
+    c.getContext('2d').drawImage(master, 0, 0);
+    c.style.width = c.style.height = 'calc(' + size + ' * var(--u, 1px))';
+    return c;
+  }
+  var mix = I.mix, rgba = I.rgba;
+  function lum(hex) { var c = mix(hex, hex, 0); var r = parseInt(c.substr(1, 2), 16), g = parseInt(c.substr(3, 2), 16), b = parseInt(c.substr(5, 2), 16); return (0.299 * r + 0.587 * g + 0.114 * b) / 255; }
+  var norm = {}, normG = null;
+  /** Any CSS colour -> '#rrggbb' (the canvas parses it; an invalid one gives the default parchment white). */
+  function safeHex(c) {
+    c = String(c || ''); if (/^#[0-9a-f]{6}$/i.test(c)) return c.toLowerCase();
+    if (norm[c]) return norm[c];
+    var out = I.DEFAULT_COLOR;
+    try {
+      normG = normG || mk(1).getContext('2d');
+      normG.fillStyle = '#010203'; normG.fillStyle = c; var v = normG.fillStyle;
+      if (v !== '#010203' || /^#?010203$/.test(c)) {
+        if (v[0] === '#') out = v;
+        else { var m = v.match(/[\d.]+/g); if (m && m.length >= 3) out = '#' + [0, 1, 2].map(function (i) { var x = Math.max(0, Math.min(255, Math.round(+m[i]))); return (x < 16 ? '0' : '') + x.toString(16); }).join(''); }
+      }
+    } catch (e) { /* keep the default */ }
+    return (norm[c] = out);
+  }
+
+  /** A small tile of soft brush dabs (painted grain), made once. */
+  var brushTile = null;
+  function brush() {
+    if (brushTile) return brushTile;
+    var c = mk(48), g = c.getContext('2d'), seed = 7;
+    function rnd() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+    g.lineCap = 'round';
+    for (var i = 0; i < 70; i++) {
+      var x = rnd() * 48, y = rnd() * 48, a = -0.7 + rnd() * 0.5, l = 3 + rnd() * 8, light = rnd() > 0.5;
+      g.strokeStyle = light ? 'rgba(255,248,228,' + (0.05 + rnd() * 0.08) + ')' : 'rgba(0,0,0,' + (0.06 + rnd() * 0.1) + ')';
+      g.lineWidth = 0.8 + rnd() * 1.6;
+      g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke();
+    }
+    return (brushTile = c);
+  }
+  /** White alpha mask of a glyph at n pixels, drawn inset by `pad` pixels on every side. */
+  function mask(key, n, pad) {
+    return cached('m|' + key + '|' + n + '|' + pad, function () {
+      var c = mk(n), g = c.getContext('2d'), k = (n - pad * 2) / 24;
+      g.translate(pad, pad); g.scale(k, k);
+      g.fillStyle = g.strokeStyle = '#fff'; g.lineCap = 'round'; g.lineJoin = 'round';
+      try { I.GLYPHS[key](I._painter(g)); } catch (e) { /* a broken glyph must never break the interface */ }
+      return c;
+    });
+  }
+  /** Edge band of a mask: the pixels whose neighbour at (-dx, -dy) is outside it. */
+  function edge(m, n, dx, dy, color) {
+    var c = mk(n), g = c.getContext('2d');
+    g.drawImage(m, 0, 0);
+    g.globalCompositeOperation = 'destination-out'; g.drawImage(m, dx, dy);
+    g.globalCompositeOperation = 'source-in'; g.fillStyle = color; g.fillRect(0, 0, n, n);
+    return c;
+  }
+  /** Ink outline under `art`: its silhouette stamped around it in 12 directions, then the art on top. */
+  function inked(art, n, t, ink) {
+    var sil = mk(n), sg = sil.getContext('2d');
+    sg.drawImage(art, 0, 0); sg.globalCompositeOperation = 'source-in'; sg.fillStyle = ink || 'rgba(12,8,5,.92)'; sg.fillRect(0, 0, n, n);
+    var out = mk(n), og = out.getContext('2d');
+    for (var i = 0; i < 12; i++) og.drawImage(sil, Math.cos(i * Math.PI / 6) * t, Math.sin(i * Math.PI / 6) * t);
+    og.drawImage(art, 0, 0);
+    return out;
+  }
+  /** Light pass shared by glyphs and items: rim light, core shade and brush grain, kept inside the shape. */
+  function light(g, m, n, strength) {
+    var d = Math.max(1, Math.round(n / 26));
+    if (n >= 18) {
+      g.globalCompositeOperation = 'source-atop';
+      var b = g.createPattern(brush(), 'repeat'); g.fillStyle = b; g.globalAlpha = Math.min(1, n / 48); g.fillRect(0, 0, n, n); g.globalAlpha = 1;
+      g.drawImage(edge(m, n, -d, -d, 'rgba(0,0,0,' + (0.42 * strength) + ')'), 0, 0);
+      g.drawImage(edge(m, n, d, d, 'rgba(255,250,232,' + (0.7 * strength) + ')'), 0, 0);
+    }
+    g.globalCompositeOperation = 'source-over';
+  }
+
+  // -------------------------------------------------------------------------------------- glyphs
+  /** The painted picture of a glyph: n pixels, body coloured `color`. */
+  function glyphArt(key, n, color) {
+    return cached('ga|' + key + '|' + n + '|' + color, function () {
+      var t = Math.max(1, n / 24), pad = Math.max(1, Math.round(t * 0.8)), m = mask(key, n, pad);
+      var c = mk(n), g = c.getContext('2d'), L = lum(color);
+      g.drawImage(m, 0, 0);
+      g.globalCompositeOperation = 'source-in';
+      var gr = g.createLinearGradient(0, pad, n * 0.25, n - pad);
+      gr.addColorStop(0, mix(color, '#ffffff', L > 0.8 ? 0.55 : 0.4));
+      gr.addColorStop(0.45, color);
+      gr.addColorStop(1, mix(color, '#120a04', L > 0.7 ? 0.32 : 0.42));
+      g.fillStyle = gr; g.fillRect(0, 0, n, n);
+      light(g, m, n, 1);
+      return inked(c, n, t, 'rgba(10,7,4,.9)');
+    });
+  }
+  function roundRect(g, x, y, w, h, r) {
+    g.beginPath(); g.moveTo(x + r, y); g.lineTo(x + w - r, y); g.quadraticCurveTo(x + w, y, x + w, y + r); g.lineTo(x + w, y + h - r); g.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    g.lineTo(x + r, y + h); g.quadraticCurveTo(x, y + h, x, y + h - r); g.lineTo(x, y + r); g.quadraticCurveTo(x, y, x + r, y); g.closePath();
+  }
+  function shapePath(g, px, round, inset) {
+    var i = inset || 0;
+    if (round) { g.beginPath(); g.arc(px / 2, px / 2, px / 2 - i, 0, 6.2832); g.closePath(); }
+    else roundRect(g, i, i, px - i * 2, px - i * 2, Math.max(1, px * 0.13 - i));
+  }
+  /** A painted medallion behind a glyph or an item: tinted glow, brush grain, vignette, bevel and a thin rim. */
+  function plate(g, px, tint, round, rim) {
+    tint = safeHex(tint);
+    g.save();
+    shapePath(g, px, round); g.clip();
+    g.fillStyle = '#120d09'; g.fillRect(0, 0, px, px);
+    var gr = g.createRadialGradient(px * 0.5, px * 0.4, px * 0.04, px * 0.5, px * 0.52, px * 0.78);
+    gr.addColorStop(0, rgba(mix(tint, '#ffffff', 0.12), 0.78)); gr.addColorStop(0.5, rgba(tint, 0.34)); gr.addColorStop(1, rgba(mix(tint, '#000000', 0.5), 0.12));
+    g.fillStyle = gr; g.fillRect(0, 0, px, px);
+    if (px >= 20) { g.globalAlpha = 0.9; g.fillStyle = g.createPattern(brush(), 'repeat'); g.fillRect(0, 0, px, px); g.globalAlpha = 1; }
+    var vg = g.createRadialGradient(px * 0.5, px * 0.45, px * 0.28, px * 0.5, px * 0.5, px * 0.74);
+    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.55)');
+    g.fillStyle = vg; g.fillRect(0, 0, px, px);
+    // sheen: a soft light from the upper left
+    var sh = g.createLinearGradient(0, 0, px * 0.45, px);
+    sh.addColorStop(0, 'rgba(255,246,220,.16)'); sh.addColorStop(0.4, 'rgba(255,246,220,0)'); sh.addColorStop(1, 'rgba(0,0,0,.22)');
+    g.fillStyle = sh; g.fillRect(0, 0, px, px);
+    if (rim) {
+      var w = Math.max(1, px * 0.045);
+      var rg = g.createLinearGradient(0, 0, 0, px);
+      rg.addColorStop(0, rgba(mix(tint, '#fff4d8', 0.55), 0.85)); rg.addColorStop(0.5, rgba(mix(tint, '#6e5220', 0.5), 0.55)); rg.addColorStop(1, 'rgba(10,6,3,.85)');
+      g.lineWidth = w; g.strokeStyle = rg; shapePath(g, px, round, w / 2); g.stroke();
+      g.lineWidth = Math.max(1, px * 0.02); g.strokeStyle = 'rgba(0,0,0,.6)'; shapePath(g, px, round, w + g.lineWidth / 2); g.stroke();
+    }
+    g.restore();
+  }
+  function glyphMaster(key, px, color, bg) {
+    var o = bg ? (typeof bg === 'object' ? bg : { color: bg === true ? '#3a342b' : bg }) : null;
+    return cached('g|' + key + '|' + px + '|' + color + '|' + (o ? JSON.stringify(o) : ''), function () {
+      if (!o) return glyphArt(key, px, color);
+      var c = mk(px), g = c.getContext('2d'), inner = Math.round(px * (o.pad === undefined ? 0.78 : 1 - o.pad * 2)), off = Math.round((px - inner) / 2);
+      plate(g, px, o.color || '#3a342b', !!o.round, px >= 22);
+      var art = glyphArt(key, inner, color);
+      // a soft glow in the glyph's own colour, then a drop shadow, then the picture
+      g.save(); g.shadowColor = rgba(color, 0.55); g.shadowBlur = px * 0.12; g.drawImage(art, off, off); g.restore();
+      g.save(); g.shadowColor = 'rgba(0,0,0,.8)'; g.shadowBlur = px * 0.05; g.shadowOffsetY = px * 0.03; g.drawImage(art, off, off); g.restore();
+      return c;
+    });
+  }
+  I.glyph = function (key, size, color, bg) {
+    if (!HAS_DOM || !P.on || color === 'currentColor') return flat.glyph.apply(I, arguments);
+    key = I.resolve(key); size = size || 24;
+    var px = Math.max(8, Math.round(size * res()));
+    var c = clone(glyphMaster(key, px, safeHex(color || I.DEFAULT_COLOR), bg), size);
+    c.setAttribute('data-glyph', key);
+    return c;
+  };
+
+  // --------------------------------------------------------------------------------------- items
+  function palette(color, accent) {
+    var m = safeHex(color), a = safeHex(accent || '#e2b94a');
+    return { m: m, h: mix(m, '#ffffff', 0.45), k: mix(m, '#0c0906', 0.45), a: a, e: mix(a, '#ffffff', 0.5), b: mix(a, '#0c0906', 0.45), w: '#7d5632', g: '#3a281a', i: '#15100b', p: '#eee3c4' };
+  }
+  function itemArt(sk, n, color, accent) {
+    return cached('ia|' + sk + '|' + n + '|' + color + '|' + accent, function () {
+      var t = Math.max(1, n / 28), pad = Math.ceil(t), raw = mk(n), g = raw.getContext('2d'), k = (n - pad * 2) / 24;
+      g.save(); g.translate(pad, pad); g.scale(k, k); g.lineCap = 'round'; g.lineJoin = 'round';
+      try { I.ITEM_SHAPES[sk](I._itemPainter(g, color, accent)); } catch (e) { /* never break the interface */ }
+      g.restore();
+      // light from the upper left over the whole object, then rim light, shade and grain
+      var m = mk(n), mg = m.getContext('2d');
+      mg.drawImage(raw, 0, 0); mg.globalCompositeOperation = 'source-in'; mg.fillStyle = '#fff'; mg.fillRect(0, 0, n, n);
+      g.globalCompositeOperation = 'source-atop';
+      var lg = g.createLinearGradient(0, 0, n, n);
+      lg.addColorStop(0, 'rgba(255,248,226,.26)'); lg.addColorStop(0.45, 'rgba(255,248,226,0)'); lg.addColorStop(0.6, 'rgba(0,0,0,0)'); lg.addColorStop(1, 'rgba(0,0,0,.3)');
+      g.fillStyle = lg; g.fillRect(0, 0, n, n);
+      light(g, m, n, 0.85);
+      return inked(raw, n, t, 'rgba(10,7,4,.95)');
+    });
+  }
+  I.item = function (icon, size, rarity) {
+    if (!HAS_DOM || !P.on) return flat.item.apply(I, arguments);
+    if (icon && icon.icon) { if (rarity === undefined) rarity = icon.rarity; icon = icon.icon; }
+    icon = icon || {}; size = size || 40;
+    var px = Math.max(12, Math.round(size * res())), sk = I.itemShape(icon.shape), color = safeHex(icon.color || '#b8b3a7'), accent = safeHex(icon.accent || '#e2b94a');
+    var tint = rarity === false ? null : (rarity ? (UI.rarityColor ? UI.rarityColor(rarity) : rarity) : '#6e675a');
+    var master = cached('i|' + sk + '|' + px + '|' + color + '|' + accent + '|' + tint, function () {
+      var c = mk(px), g = c.getContext('2d'), inner = Math.round(px * 0.84), off = Math.round((px - inner) / 2);
+      if (tint) plate(g, px, tint, false, false);
+      g.save(); g.shadowColor = 'rgba(0,0,0,.75)'; g.shadowBlur = px * 0.07; g.shadowOffsetY = px * 0.04;
+      g.drawImage(itemArt(sk, inner, color, accent), off, off); g.restore();
+      return c;
+    });
+    var out = clone(master, size);
+    out.setAttribute('data-shape', sk);
+    return out;
+  };
+  // test hooks
+  P._glyphArt = function (key, n, color) { return HAS_DOM ? glyphArt(I.resolve(key), n, safeHex(color)) : null; };
+  P._itemArt = function (shape, n, color, accent) { return HAS_DOM ? itemArt(I.itemShape(shape), n, safeHex(color), safeHex(accent)) : null; };
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
