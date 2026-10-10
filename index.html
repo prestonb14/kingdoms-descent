@@ -3221,7 +3221,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.10';
+  KD.VERSION = '0.7.11';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -17449,12 +17449,13 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     return a;
   }
 
+  // [act2-look] body.style: the hand-painted Act 2 look (src/gfx/49_style_recipes_act2.js); render only
   var LIST = [
     // =============================================================================================
     // MOUNTAIN TRAIL (hazard: rockfall)
     // =============================================================================================
     { id: 'crag_harpy', name: 'Crag Harpy', role: 'rusher', area: 'mountain_trail', hp: 0.9, speed: 1.05, r: 0.45, h: 1.7,
-      body: { plan: 'flyer', species: 'harpy', scale: 0.95, colors: { main: '#8b6f52', alt: '#d9c7a3', skin: '#c9a58a', glow: '#ffd35a' } },
+      body: { plan: 'flyer', species: 'harpy', scale: 0.95, colors: { main: '#8b6f52', alt: '#d9c7a3', skin: '#c9a58a', glow: '#ffd35a' } , style: 'a2_harpy' },
       weak: 'shock', resist: 'cold', ai: { packTactics: true, circle: true },
       teaches: 'Sidestep the swoop: it flies in a straight line and cannot turn once it starts.',
       attacks: [
@@ -17462,7 +17463,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         atk('crag_harpy_swoop', 'Swoop', 'swoop', 0.8, 0.7, [4, 9], [{ type: 'dash', dist: 9, speed: 19, width: 1.6, mult: 1.2, knockback: 1.5 }], { cooldown: 6, weight: 3, track: 0.5 })] },
     { id: 'scree_hurler', name: 'Scree Hurler', role: 'ranged', area: 'mountain_trail', r: 0.38, h: 1.3,
       body: { plan: 'humanoid', species: 'goblin', build: 'hunched', head: 'bandana', armor: 'leather', weapon: 'none', scale: 0.9,
-        colors: { main: '#6b5a44', alt: '#9a8a6a', skin: '#8a9a5b' }, extras: ['ears_pointed', 'backpack'] },
+        colors: { main: '#6b5a44', alt: '#9a8a6a', skin: '#8a9a5b' }, extras: ['ears_pointed', 'backpack'] , style: 'a2_hurler' },
       weak: 'fire', resist: 'shock',
       teaches: 'A circle on the ground means a rock is in the air: walk out of it.',
       attacks: [
@@ -17470,7 +17471,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         atk('scree_hurler_lob', 'Loose Scree', 'throw', 0.75, 0.6, [4, 13], [{ type: 'projectile', lob: 3, speed: 9, range: 13, explode: { radius: 2.4, mult: 1.3, status: { id: 'slow', dur: 1.5 } }, model: 'boulder' }],
           { cooldown: 7, weight: 2, delivery: 'ranged' })] },
     { id: 'ridge_tusker', name: 'Ridge Tusker', role: 'tank', area: 'mountain_trail', hp: 0.85, speed: 1.15, r: 0.65, h: 1.2, turn: 3.5,
-      body: { plan: 'quadruped', species: 'boar', scale: 1.25, colors: { main: '#5d4a3c', alt: '#3d3028', metal: '#e6dcc0' }, extras: ['tusks', 'mane'] },
+      body: { plan: 'quadruped', species: 'boar', scale: 1.25, colors: { main: '#5d4a3c', alt: '#3d3028', metal: '#e6dcc0' }, extras: ['tusks', 'mane'] , style: 'a2_tusker' },
       weak: 'cold', resist: 'phys', ai: { guard: null },
       teaches: 'It turns slowly: step aside from the charge and hit its flank while it recovers.',
       attacks: [
@@ -17479,7 +17480,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
           { cooldown: 7, weight: 4, armor: true, track: 0.55 })] },
     { id: 'cairn_whisperer', name: 'Cairn Whisperer', role: 'support', area: 'mountain_trail', r: 0.4, h: 1.4,
       body: { plan: 'humanoid', species: 'goblin', build: 'slim', head: 'skull', armor: 'robe', weapon: 'staff', scale: 0.95,
-        colors: { main: '#7f8791', alt: '#c9c2b2', skin: '#8a9a5b', glow: '#9fe0ff' }, extras: ['ears_pointed', 'glow_eyes'] },
+        colors: { main: '#7f8791', alt: '#c9c2b2', skin: '#8a9a5b', glow: '#9fe0ff' }, extras: ['ears_pointed', 'glow_eyes'] , style: 'a2_whisperer' },
       weak: 'phys', resist: 'holy',
       teaches: 'Kill the whisperer first: her stone skin makes the whole pack tougher.',
       attacks: [
@@ -17488,7 +17489,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         atk('cairn_whisperer_pebble', 'Skipping Pebble', 'cast_hand', 0.8, 0.5, [3, 12], [{ type: 'projectile', speed: 13, range: 15, mult: 0.8, model: 'stone' }], { weight: 1 })] },
     // elite
     { id: 'cragback_bear', name: 'Cragback Bear', role: 'rusher', tier: 'elite', area: 'mountain_trail', hp: 1.1, dmg: 1.15, speed: 0.95, r: 0.85, h: 1.6, turn: 5,
-      body: { plan: 'quadruped', species: 'bear', scale: 1.5, colors: { main: '#6e6a66', alt: '#4a4744', glow: '#bfe6ff' }, extras: ['spikes', 'glow_eyes'] },
+      body: { plan: 'quadruped', species: 'bear', scale: 1.5, colors: { main: '#6e6a66', alt: '#4a4744', glow: '#bfe6ff' }, extras: ['spikes', 'glow_eyes'] , style: 'a2_bear' },
       weak: 'fire', resist: 'cold',
       teaches: 'Its roar shakes rocks loose above you: when it rears up, keep moving.',
       attacks: [
@@ -17503,7 +17504,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     // =============================================================================================
     { id: 'river_reaver', name: 'River Reaver', role: 'rusher', area: 'river_road', r: 0.42,
       body: { plan: 'humanoid', species: 'human', build: 'normal', head: 'bandana', armor: 'leather', weapon: 'axe', offhand: 'buckler',
-        colors: { main: '#2f6f7a', alt: '#c7b08a', skin: '#c99a7a', metal: '#8d949c' }, extras: ['beard'] },
+        colors: { main: '#2f6f7a', alt: '#c7b08a', skin: '#c99a7a', metal: '#8d949c' }, extras: ['beard'] , style: 'a2_reaver' },
       weak: 'shock', resist: 'cold',
       teaches: 'Dodge the boarding leap: the reaver is wide open when it lands.',
       attacks: [
@@ -17511,7 +17512,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         atk('river_reaver_leap', 'Boarding Leap', 'leap', 0.75, 0.9, [4, 8], [{ type: 'dash', dist: 7.5, speed: 16, mult: 0.4, stopAtEnemy: true, onEnd: [{ type: 'aoe', radius: 2.3, mult: 1.2 }] }], { cooldown: 7, weight: 2 })] },
     { id: 'raider_harpooner', name: 'Raider Harpooner', role: 'ranged', area: 'river_road', r: 0.42,
       body: { plan: 'humanoid', species: 'human', build: 'heavy', head: 'cap', armor: 'leather', weapon: 'spear',
-        colors: { main: '#5a4636', alt: '#2f6f7a', skin: '#b98a6a', metal: '#9aa3ad' }, extras: ['quiver'] },
+        colors: { main: '#5a4636', alt: '#2f6f7a', skin: '#b98a6a', metal: '#9aa3ad' }, extras: ['quiver'] , style: 'a2_harpooner' },
       weak: 'fire', resist: 'phys',
       teaches: 'The barbed harpoon drags you into the pack: sidestep the long line or stand behind cover.',
       attacks: [
@@ -17519,14 +17520,14 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         atk('raider_harpooner_reel', 'Reel In', 'throw', 1.0, 0.8, [6, 12], [{ type: 'hook', range: 13, speed: 22, mult: 0.7, status: { id: 'slow', dur: 1.5 } }], { cooldown: 9, weight: 2, track: 0.5 }),
         atk('raider_harpooner_butt', 'Shaft Butt', 'thrust', 0.5, 0.5, 1.7, [{ type: 'melee', range: 2.1, arc: 90, mult: 0.6, knockback: 2.5 }], { cooldown: 4, weight: 2 })] },
     { id: 'shellback_crab', name: 'Shellback Crab', role: 'tank', area: 'river_road', hp: 0.8, speed: 1.1, r: 0.7, h: 0.9, turn: 4,
-      body: { plan: 'spider', species: 'crab', scale: 1.35, colors: { main: '#a5553a', alt: '#d9b38a', glow: '#ffe08a' }, extras: ['armor_shell'] },
+      body: { plan: 'spider', species: 'crab', scale: 1.35, colors: { main: '#a5553a', alt: '#d9b38a', glow: '#ffe08a' }, extras: ['armor_shell'] , style: 'a2_crab' },
       weak: 'shock', resist: 'phys', ai: { guard: { hits: 3, down: 4 } },
       teaches: 'Its shell stops blows from the front: crack the guard with a few hits or strike from behind.',
       attacks: [
         atk('shellback_crab_pinch', 'Pinch', 'claw', 0.7, 0.6, 1.8, [{ type: 'melee', range: 2.3, arc: 110, mult: 1.0 }], { weight: 3 }),
         atk('shellback_crab_slam', 'Claw Hammer', 'slam', 1.1, 0.9, 2.4, [{ type: 'aoe', at: 'front', dist: 1.8, radius: 2.6, mult: 1.5, status: { id: 'soak', dur: 5 } }], { cooldown: 7, weight: 2, heavy: true, armor: true })] },
     { id: 'silt_eel', name: 'Silt Eel', role: 'ambusher', area: 'river_road', hp: 1.0, r: 0.4, h: 0.5,
-      body: { plan: 'serpent', species: 'eel', segments: 9, scale: 0.95, colors: { main: '#3d4f5a', alt: '#c9d36a', glow: '#b7f0ff' }, extras: ['fins', 'glow_eyes'] },
+      body: { plan: 'serpent', species: 'eel', segments: 9, scale: 0.95, colors: { main: '#3d4f5a', alt: '#c9d36a', glow: '#b7f0ff' }, extras: ['fins', 'glow_eyes'] , style: 'a2_eel' },
       weak: 'cold', resist: 'shock', ai: { ambush: { reveal: 5.5 }, hitAndRun: 1.2 },
       teaches: 'It hides in the silt, strikes and slips away: hit it right after the lunge.',
       attacks: [
@@ -17534,7 +17535,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         atk('silt_eel_bite', 'Jolt Bite', 'bite', 0.5, 0.5, 1.4, [{ type: 'melee', range: 1.9, arc: 80, mult: 0.8, elem: 'shock', status: { id: 'shock', chance: 0.4 } }], { weight: 2 })] },
     // elite
     { id: 'wreckhauler', name: 'Wreckhauler', role: 'tank', tier: 'elite', area: 'river_road', hp: 0.47, dmg: 0.75, speed: 1.25, r: 0.8, h: 2.8, turn: 4.5,
-      body: { plan: 'brute', species: 'troll', weapon: 'anchor', armor: 'chains', scale: 1.05, colors: { main: '#4f6f6a', alt: '#2c3c3a', skin: '#6f8f86', metal: '#5a4a3a' }, extras: ['moss'] },
+      body: { plan: 'brute', species: 'troll', weapon: 'anchor', armor: 'chains', scale: 1.05, colors: { main: '#4f6f6a', alt: '#2c3c3a', skin: '#6f8f86', metal: '#5a4a3a' }, extras: ['moss'] , style: 'a2_hauler' },
       weak: 'shock', resist: 'cold', ai: { guard: null },
       teaches: 'The anchor chain drags you to it: after a hook lands, roll before the slam.',
       attacks: [
@@ -17545,12 +17546,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
           { use: 'self', cooldown: 16, weight: 1, cond: { alliesNear: 1, radius: 9 } })] },
     // minion of the Drowned Ferryman and the Tide Wyrm's brood
     { id: 'drowned_deckhand', name: 'Drowned Deckhand', role: 'rusher', tier: 'minion', area: 'river_road', r: 0.42, affixes: false,
-      body: { plan: 'humanoid', species: 'undead', build: 'hunched', head: 'bare', armor: 'rags', weapon: 'hook', colors: { main: '#3f5f5a', alt: '#8aa39a', skin: '#7fa39a' } },
+      body: { plan: 'humanoid', species: 'undead', build: 'hunched', head: 'bare', armor: 'rags', weapon: 'hook', colors: { main: '#3f5f5a', alt: '#8aa39a', skin: '#7fa39a' } , style: 'a2_deckhand' },
       weak: 'shock', resist: 'cold',
       teaches: 'Deckhands are slow and soft: cut them down before the next wave of water.',
       attacks: [atk('drowned_deckhand_hook', 'Boat Hook', 'swing_r', 0.6, 0.6, 1.8, [{ type: 'melee', range: 2.2, arc: 100, mult: 1.0 }])] },
     { id: 'wyrm_spawn', name: 'Wyrm Spawn', role: 'rusher', tier: 'minion', area: 'river_road', r: 0.35, h: 0.5, affixes: false,
-      body: { plan: 'serpent', species: 'wyrm', segments: 6, scale: 0.55, colors: { main: '#3a7f8a', alt: '#bfe6d8' }, extras: ['fins'] },
+      body: { plan: 'serpent', species: 'wyrm', segments: 6, scale: 0.55, colors: { main: '#3a7f8a', alt: '#bfe6d8' }, extras: ['fins'] , style: 'a2_spawn' },
       weak: 'shock', resist: 'cold',
       teaches: 'The brood is weak but keeps you Soaked: clear it before the next lightning or frost hits you.',
       attacks: [atk('wyrm_spawn_nip', 'Nip', 'bite', 0.5, 0.5, 1.3, [{ type: 'melee', range: 1.7, arc: 90, mult: 0.8, status: { id: 'soak', chance: 0.5, dur: 4 } }])] },
@@ -17560,7 +17561,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     // =============================================================================================
     { id: 'rimebound_pikeman', name: 'Rimebound Pikeman', role: 'rusher', area: 'frozen_outpost', speed: 0.9, r: 0.42,
       body: { plan: 'humanoid', species: 'undead', build: 'normal', head: 'helm', armor: 'mail', weapon: 'spear',
-        colors: { main: '#6f8fa8', alt: '#d6e6f0', skin: '#9fb7c4', metal: '#aebfcb', glow: '#bfe9ff' }, extras: ['glow_eyes'] },
+        colors: { main: '#6f8fa8', alt: '#d6e6f0', skin: '#9fb7c4', metal: '#aebfcb', glow: '#bfe9ff' }, extras: ['glow_eyes'] , style: 'a2_pikeman' },
       weak: 'fire', resist: 'cold',
       teaches: 'The pike thrust is long but narrow: step sideways, never straight back.',
       attacks: [
@@ -17568,14 +17569,14 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         atk('rimebound_pikeman_sweep', 'Butt Sweep', 'swing_l', 0.55, 0.5, 1.8, [{ type: 'melee', range: 2.3, arc: 130, mult: 0.8 }], { cooldown: 4, weight: 2 })] },
     { id: 'hoarfrost_arbalest', name: 'Hoarfrost Arbalest', role: 'ranged', area: 'frozen_outpost', r: 0.42,
       body: { plan: 'humanoid', species: 'ice_folk', build: 'slim', head: 'hood', armor: 'leather', weapon: 'crossbow',
-        colors: { main: '#4f6f8a', alt: '#e8f2f7', skin: '#b9dff0', glow: '#8fe0ff' }, extras: ['quiver'] },
+        colors: { main: '#4f6f8a', alt: '#e8f2f7', skin: '#b9dff0', glow: '#8fe0ff' }, extras: ['quiver'] , style: 'a2_arbalest' },
       weak: 'fire', resist: 'cold',
       teaches: 'Each frost bolt Chills and Chill slows your roll: fight from behind a wall or close the gap fast.',
       attacks: [
         atk('hoarfrost_arbalest_bolt', 'Frost Bolt', 'shoot_bow', 0.8, 0.6, [4, 14], [{ type: 'projectile', speed: 20, range: 18, mult: 1.0, elem: 'cold', status: { id: 'chill', chance: 0.6, dur: 3 } }], { weight: 3, lead: 0.2, delivery: 'ranged' }),
         atk('hoarfrost_arbalest_volley', 'Pinning Volley', 'shoot_bow', 1.0, 0.8, [4, 13], [{ type: 'projectile', count: 3, spread: 26, speed: 18, range: 16, mult: 0.7, elem: 'cold' }], { cooldown: 8, weight: 2, delivery: 'ranged' })] },
     { id: 'drift_stalker', name: 'Drift Stalker', role: 'ambusher', area: 'frozen_outpost', hp: 1.0, r: 0.45, h: 1.0,
-      body: { plan: 'quadruped', species: 'wolf', scale: 1.05, colors: { main: '#e6eef2', alt: '#9fb4c2', glow: '#7fd6ff' }, extras: ['glow_eyes', 'mane'] },
+      body: { plan: 'quadruped', species: 'wolf', scale: 1.05, colors: { main: '#e6eef2', alt: '#9fb4c2', glow: '#7fd6ff' }, extras: ['glow_eyes', 'mane'] , style: 'a2_stalker' },
       weak: 'fire', resist: 'cold', ai: { ambush: { reveal: 6 }, hitAndRun: 1.1 },
       teaches: 'It lies buried in the snowdrifts: hit the drift first and it loses its opening pounce.',
       attacks: [
@@ -17583,7 +17584,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         atk('drift_stalker_snap', 'Frost Snap', 'bite', 0.5, 0.5, 1.5, [{ type: 'melee', range: 1.9, arc: 90, mult: 0.85, elem: 'cold', status: { id: 'chill', chance: 0.4 } }], { weight: 2 })] },
     { id: 'garrison_bellringer', name: 'Garrison Bell-Ringer', role: 'summoner', area: 'frozen_outpost', r: 0.42,
       body: { plan: 'humanoid', species: 'undead', build: 'hunched', head: 'hood', armor: 'robe', weapon: 'bell',
-        colors: { main: '#3f4f66', alt: '#aebfcb', skin: '#9fb7c4', metal: '#c9a23b', glow: '#bfe9ff' }, extras: ['chains'] },
+        colors: { main: '#3f4f66', alt: '#aebfcb', skin: '#9fb7c4', metal: '#c9a23b', glow: '#bfe9ff' }, extras: ['chains'] , style: 'a2_ringer' },
       weak: 'fire', resist: 'shadow',
       teaches: 'Every toll of the bell wakes two frozen recruits: break the ringer during the long toll or kill it first.',
       attacks: [
@@ -17591,13 +17592,13 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         atk('garrison_bellringer_knell', 'Cold Knell', 'cast_hand', 0.9, 0.6, [2, 11], [{ type: 'aoe', at: 'aim', range: 11, radius: 2.5, delay: 1.1, mult: 1.2, elem: 'cold', status: { id: 'chill', dur: 3 }, persist: true, fx: 'frost_burst' }],
           { cooldown: 6, weight: 2, delivery: 'spell' })] },
     { id: 'frozen_recruit', name: 'Frozen Recruit', role: 'rusher', tier: 'minion', area: 'frozen_outpost', speed: 0.85, r: 0.4, affixes: false,
-      body: { plan: 'humanoid', species: 'skeleton', build: 'slim', head: 'cap', armor: 'rags', weapon: 'sword', colors: { main: '#8fa9ba', alt: '#dfeaf0', glow: '#bfe9ff' } },
+      body: { plan: 'humanoid', species: 'skeleton', build: 'slim', head: 'cap', armor: 'rags', weapon: 'sword', colors: { main: '#8fa9ba', alt: '#dfeaf0', glow: '#bfe9ff' } , style: 'a2_recruit' },
       weak: 'fire', resist: 'cold',
       teaches: 'Recruits fall in one or two hits: sweep them before they surround you.',
       attacks: [atk('frozen_recruit_slash', 'Stiff Slash', 'swing_r', 0.6, 0.6, 1.8, [{ type: 'melee', range: 2.2, arc: 100, mult: 1.0 }])] },
     // elite
     { id: 'glacier_sentinel', name: 'Glacier Sentinel', role: 'tank', tier: 'elite', area: 'frozen_outpost', hp: 0.5, dmg: 0.9, speed: 1.2, r: 0.85, h: 3.0, turn: 4,
-      body: { plan: 'brute', species: 'ice_golem', weapon: 'none', scale: 1.0, colors: { main: '#9fd0e6', alt: '#e8f6fb', glow: '#5fd0ff' }, extras: ['crystals', 'glow_core'] },
+      body: { plan: 'brute', species: 'ice_golem', weapon: 'none', scale: 1.0, colors: { main: '#9fd0e6', alt: '#e8f6fb', glow: '#5fd0ff' }, extras: ['crystals', 'glow_core'] , style: 'a2_sentinel' },
       weak: 'fire', resist: 'cold', ai: { guard: null },
       teaches: 'Stand close inside the frost ring or far outside it; the icicle row always runs straight ahead.',
       attacks: [
@@ -17611,14 +17612,14 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     // =============================================================================================
     { id: 'banner_footman', name: 'Broken-Banner Footman', role: 'tank', area: 'gatehouse_pass', hp: 0.75, speed: 1.15, r: 0.45,
       body: { plan: 'humanoid', species: 'human', build: 'heavy', head: 'helm', armor: 'mail', weapon: 'sword', offhand: 'shield',
-        colors: { main: '#7a2f33', alt: '#c9b98a', skin: '#c99a7a', metal: '#8d949c' }, extras: ['pauldrons'] },
+        colors: { main: '#7a2f33', alt: '#c9b98a', skin: '#c99a7a', metal: '#8d949c' }, extras: ['pauldrons'] , style: 'a2_footman' },
       weak: 'shock', resist: 'phys', ai: { guard: { hits: 2, down: 4 } },
       teaches: 'A raised shield turns blows from the front: break the guard with two hits or a heavy one, or go round.',
       attacks: [
         atk('banner_footman_cut', 'Drilled Cut', 'swing_r', 0.65, 0.6, 1.9, [{ type: 'melee', range: 2.3, arc: 100, mult: 1.0 }], { weight: 3 }),
         atk('banner_footman_bash', 'Shield Bash', 'block', 0.9, 0.8, 2.0, [{ type: 'melee', range: 2.4, arc: 90, mult: 1.3, knockback: 2.5, status: { id: 'stun', dur: 0.5 } }], { cooldown: 7, weight: 2, armor: true })] },
     { id: 'pass_ballista', name: 'Pass Ballista', role: 'ranged', area: 'gatehouse_pass', hp: 1.5, dmg: 1.0, speed: 0, r: 0.8, h: 1.5, turn: 2.2, unstoppable: true, mass: 20, packWeight: 0.6,
-      body: { plan: 'construct', species: 'ballista', scale: 1.0, colors: { main: '#6b4f33', alt: '#7a2f33', metal: '#8d949c' }, extras: ['chains'] },
+      body: { plan: 'construct', species: 'ballista', scale: 1.0, colors: { main: '#6b4f33', alt: '#7a2f33', metal: '#8d949c' }, extras: ['chains'] , style: 'a2_ballista' },
       weak: 'fire', resist: 'poison', ai: { keepRange: [0, 18], strafe: 0, aggro: 20, leash: 60 },
       teaches: 'The long red line is a ballista bolt: leave the line, then get behind the engine where it cannot turn fast enough.',
       attacks: [
@@ -17628,7 +17629,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
           { cooldown: 6, weight: 4, track: 0.6, delivery: 'ranged' })] },
     { id: 'fuse_sapper', name: 'Fuse Sapper', role: 'rusher', area: 'gatehouse_pass', hp: 0.9, speed: 1.05, r: 0.4,
       body: { plan: 'humanoid', species: 'human', build: 'slim', head: 'cap', armor: 'leather', weapon: 'torch',
-        colors: { main: '#4a4038', alt: '#d98f2e', skin: '#c99a7a', glow: '#ffb347' }, extras: ['backpack', 'apron'] },
+        colors: { main: '#4a4038', alt: '#d98f2e', skin: '#c99a7a', glow: '#ffb347' }, extras: ['backpack', 'apron'] , style: 'a2_sapper' },
       weak: 'cold', resist: 'fire',
       teaches: 'When the sapper lights its satchel, walk out of the circle: the blast is big but slow.',
       attacks: [
@@ -17638,7 +17639,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
           { type: 'dash', dir: 'back', dist: 5, speed: 12 }], { cooldown: 8, weight: 3, telegraph: false })] },
     { id: 'pass_standard_bearer', name: 'Standard Bearer', role: 'support', area: 'gatehouse_pass', r: 0.43,
       body: { plan: 'humanoid', species: 'human', build: 'normal', head: 'great_helm', armor: 'plate', weapon: 'banner',
-        colors: { main: '#c9a23b', alt: '#7a2f33', skin: '#c99a7a', metal: '#a7adb5' }, extras: ['crest'] },
+        colors: { main: '#c9a23b', alt: '#7a2f33', skin: '#c99a7a', metal: '#a7adb5' }, extras: ['crest'] , style: 'a2_bearer' },
       weak: 'shadow', resist: 'holy',
       teaches: 'While the standard flies the pack hits harder and holds firmer: cut the bearer down first.',
       attacks: [
@@ -17649,7 +17650,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     // elite
     { id: 'oathless_knight', name: 'Oathless Knight', role: 'tank', tier: 'elite', area: 'gatehouse_pass', hp: 0.45, dmg: 0.75, speed: 1.3, r: 0.5, h: 2.0, turn: 6,
       body: { plan: 'humanoid', species: 'human', build: 'heavy', head: 'great_helm', armor: 'plate', weapon: 'greatsword', scale: 1.15,
-        colors: { main: '#4a1f24', alt: '#b8a56a', metal: '#5f6670', glow: '#ff7a5a' }, extras: ['pauldrons', 'crest', 'shoulder_spikes'] },
+        colors: { main: '#4a1f24', alt: '#b8a56a', metal: '#5f6670', glow: '#ff7a5a' }, extras: ['pauldrons', 'crest', 'shoulder_spikes'] , style: 'a2_knight' },
       weak: 'shock', resist: 'fire', ai: { guard: null },
       teaches: 'Count the blows: two cuts, then the spinning whirl. Roll through the whirl, do not back away from it.',
       attacks: [
@@ -71288,6 +71289,912 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/gfx/49_style_recipes_act2.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var S = KD.style;
+  if (!S || !S.recipe) return;
+  var PI = Math.PI, HALF = PI / 2, TAU = PI * 2, sin = Math.sin, cos = Math.cos, abs = Math.abs;
+  var geo = S.geo, g = KD.gfx.geom, U = KD.util;
+
+  /**
+   * Stylized looks of the ACT II enemies (Mountain Trail, River Road, Frozen Outpost, Gatehouse Pass), built with KD.style
+   * (49_style_kit.js) in the hand-painted toon style of the Farm Village restyle (49_style_recipes.js) and the Tripo
+   * Gravecaller. Not everything is grim: each area has its own painted palette, and every enemy reads as belonging to it.
+   *
+   *   Mountain Trail  slate, pine green, ochre leather, bone, sky-blue glow     a2_harpy a2_hurler a2_tusker a2_whisperer a2_bear
+   *   River Road      teal, sand, reed green, driftwood, coral, river-green glow a2_reaver a2_harpooner a2_crab a2_eel a2_hauler a2_deckhand
+   *   Frozen Outpost  ice blue, navy, snow white, frost cyan glow, warm brass    a2_pikeman a2_arbalest a2_stalker a2_ringer a2_recruit a2_sentinel
+   *   Gatehouse Pass  oxblood, iron, brass, dark leather, torch orange           a2_footman a2_ballista a2_sapper a2_bearer a2_knight
+   *
+   * Bodies opt in with `body.style: '<recipe>'` (src/data/61_enemies_act2.js); the bosses of the act are matched by
+   * `body.unique` in 49_style_recipes_act2b.js. Render only: hit shapes, attacks, joints and animation are untouched.
+   * Shared helpers are exported as KD.style.a2 for the boss file.
+   */
+  var A2 = S.a2 = S.a2 || {};
+  var LOCAL = { local: true };
+  var BONE = '#e2d8bf', BONE_D = '#b9ad94';
+  /** The four area palettes (also used by the boss recipes). */
+  var PAL = A2.PAL = {
+    mountain: { tint: '#5a6878', slate: '#6b7480', slateD: '#434a55', pine: '#3f5a44', ochre: '#b08a4e', leather: '#6a4a34', rust: '#8a4a30', wool: '#c9bfa8', fur: '#7a6a5a', glow: '#9fe0ff', lichen: '#8a9a5a',
+      paint: { cool: [0.86, 0.88, 1.02], warm: [1.05, 1.01, 0.94] } },
+    river: { tint: '#4a6a6a', teal: '#2f6f7a', tealD: '#1f4a52', reed: '#7a8a4a', sand: '#cdb88a', drift: '#8a7660', coral: '#c0603e', rope: '#a08a5a', weed: '#4f6a3a', glow: '#8ff0d8',
+      paint: { cool: [0.84, 0.9, 1.0], warm: [1.04, 1.02, 0.94] } },
+    frozen: { tint: '#5a6a8a', ice: '#9fd0e6', iceD: '#4f6f8a', navy: '#2f3f5a', snow: '#eef4f8', fur: '#d8d0c0', furD: '#9a8e7e', brass: '#c9a23b', glow: '#7fe0ff',
+      paint: { cool: [0.84, 0.9, 1.08], warm: [1.02, 1.01, 0.98] } },
+    gate: { tint: '#6a4a50', crimson: '#7a2026', crimsonD: '#4a1418', iron: '#5f6670', ironL: '#9aa3ad', brass: '#c9a23b', leather: '#4a3426', cream: '#d8ccaa', torch: '#ffa040',
+      paint: { cool: [0.9, 0.84, 0.96], warm: [1.07, 0.99, 0.9] } }
+  };
+  function col(spec, k, d) { var c = spec && spec.colors && spec.colors[k]; return typeof c === 'string' && /^#[0-9a-fA-F]{6}$/.test(c) ? c : d; }
+  A2.col = col;
+  function fan(n, a0, a1, f) { var out = [], i; for (i = 0; i < n; i++) out.push(f(n > 1 ? a0 + (a1 - a0) * i / (n - 1) : a0, i)); return out; }
+  A2.fan = fan;
+  function quad(sp) { var P = KD.creature && KD.creature.PLANS && KD.creature.PLANS.quadruped; return (P && P.table[sp]) || null; }
+  A2.quad = quad;
+  /** A grade function for an area: gentle (these areas are not all dark), tinted toward the area's light. */
+  function GR(area, o) { o = o || {}; var t = PAL[area].tint; return function (c) { return S.grade(c, { sat: o.sat || 0.95, amount: o.amount === undefined ? 0.06 : o.amount, tint: t, value: o.value || 1, shadow: o.shadow === undefined ? 0.1 : o.shadow }); }; }
+  A2.GR = GR;
+  function paintFor(area, o) { return U.assign({ bottom: 0.58, top: 1.12, cool: PAL[area].paint.cool, warm: PAL[area].paint.warm }, o || {}); }
+  A2.paintFor = paintFor;
+  var HANDS = { hand_r: [1.3, 1.2, 1.28], hand_l: [1.3, 1.2, 1.28], foot_r: [1.16, 1.1, 1.1], foot_l: [1.16, 1.1, 1.1] };
+  var LIMBS = A2.LIMBS = U.assign({ arm_r: [1.14, 1, 1.14], arm_l: [1.14, 1, 1.14], forearm_r: [1.18, 1, 1.18], forearm_l: [1.18, 1, 1.18],
+    leg_r: [1.1, 1, 1.1], leg_l: [1.1, 1, 1.1], shin_r: [1.15, 1, 1.15], shin_l: [1.15, 1, 1.15] }, HANDS);
+  /** Only part of the dress: a view of `u` whose add() skips the given accessory keys (reuse a Farm Village recipe without its noose). */
+  function without(u, keys) { var v = Object.create(u); v.add = function (j, key, make, o) { if (keys.indexOf(key) >= 0) return; return u.add(j, key, make, o); }; return v; }
+  A2.without = without;
+
+  // ================================================================== small geometry helpers (all return geometry)
+  /** A crystal / rock shard from a (base, radius r) to b (tip): 5-sided, faceted. glow > 0 makes it shine. */
+  function shard(a, b, r, color, glow, tip) {
+    var m = g.lathe([[0.55, 0], [1, 0.3], [0.6, 0.72], [0, 1]], 5, { color: color });
+    if (tip) { var c0 = KD.gfx.color._get(color), tc = KD.gfx.color._get(tip); g.colorize(m, function (x, y) { var t = Math.min(1, Math.max(0, y)); return [c0[0] + (tc[0] - c0[0]) * t, c0[1] + (tc[1] - c0[1]) * t, c0[2] + (tc[2] - c0[2]) * t]; }); }
+    geo.place(m, a, b, r);
+    if (glow) g.setAux(m, { emissive: glow });
+    return m;
+  }
+  A2.shard = shard;
+  /** n shards fanned around `at` (pointing up and out), seeded. */
+  function shardCluster(at, n, r, h, color, glow, seed, spread, tip) {
+    var R = new KD.RNG(seed || 7), out = [], i;
+    for (i = 0; i < n; i++) {
+      var a = R.next() * TAU, s = (spread === undefined ? 0.45 : spread) * (0.4 + R.next() * 0.6), hh = h * (0.55 + R.next() * 0.45), rr = r * (0.7 + R.next() * 0.5);
+      var b = [at[0] + sin(a) * s * hh, at[1] + hh * cos(s), at[2] + cos(a) * s * hh];
+      out.push(shard([at[0] + sin(a) * r * 0.5, at[1] - r * 0.3, at[2] + cos(a) * r * 0.5], b, rr, color, glow, tip));
+    }
+    return out;
+  }
+  A2.shardCluster = shardCluster;
+  /** A lumpy stone (slate plate, river pebble, barnacle). */
+  function stone(at, r, color, seed, flat) { return g.translate(geo.blob({ r: [r, r * (flat || 0.7), r * 0.85], sides: 6, rings: 4, lump: 0.18, seed: seed || 3, color: color }), at[0], at[1], at[2]); }
+  A2.stone = stone;
+  /** A ring of points (for belts, collars, rims) at height y with radii rx / rz. */
+  function ring(rx, rz, y, n, wob) { var pts = [], i; for (i = 0; i <= n; i++) { var a = i / n * TAU; pts.push([sin(a) * rx, y + (wob ? cos(a * 3) * wob : 0), cos(a) * rz]); } return pts; }
+  A2.ring = ring;
+  /** A fur collar: tufts round the neck (chest space), pointing out and a little down. */
+  function furCollar(m, color, tip, n, len, seed, y) {
+    var k = m.k, yy = y === undefined ? m.neckY - 0.03 * k : y, rx = m.neckR * 2.1, rz = m.neckR * 1.9;
+    return fan(n, 0, TAU * (1 - 1 / n), function (a, i) {
+      return g.translate(geo.tuft({ n: 2, len: len * k * (0.85 + 0.3 * ((i * 37) % 5) / 5), r: len * k * 0.36, spread: 0.4, seed: seed + i, color: color, tip: tip, dir: [sin(a), -0.15, cos(a)] }), sin(a) * rx, yy, cos(a) * rz);
+    });
+  }
+  A2.furCollar = furCollar;
+  /** A belt (hips space) with a buckle at the front. */
+  function belt(m, color, buckle, y, w) {
+    var k = m.k, rx = m.pelvisW * 0.56, rz = m.pelvisD * 0.62;
+    return [geo.cord(ring(rx, rz, y, 14), (w || 0.024) * k, color, 4), geo.buckle({ w: 0.07 * k, h: 0.065 * k, at: [0, y, rz + 0.012 * k], color: buckle || '#8a7a5a' })];
+  }
+  A2.belt = belt;
+  /** A ragged skirt / coat tail (hips space). */
+  function skirt(m, color, inner, h, seed, o) {
+    o = o || {}; var r = m.pelvisW * (o.r || 0.56);
+    return g.translate(geo.hem({ r: r, rz: m.pelvisD / m.pelvisW * (o.rz || 1.15), rBottom: r * (o.flare || 1.22), h: h * m.k, sides: o.sides || 12, teeth: o.teeth === undefined ? 0.45 : o.teeth, seed: seed, color: color, inner: inner, arc: o.arc, a0: o.a0 }), 0, m.pelvisH * (o.y === undefined ? 0.42 : o.y), 0);
+  }
+  A2.skirt = skirt;
+  /** A tabard: torn cloth panels front and back (hips space), with a trim band. */
+  function tabard(m, color, trim, h, seed, back) {
+    var k = m.k, w = m.pelvisW * 0.72, y = m.pelvisH * 0.45, z = m.pelvisD * 0.6 + 0.012 * k, out = [];
+    out.push(g.translate(geo.tatter({ w: w, h: h * k, teeth: 3, depth: 0.3, seed: seed, color: color, bend: 0.1 }), 0, y, z));
+    if (trim) out.push(g.translate(geo.bevelBox({ w: w * 1.02, h: 0.035 * k, d: 0.02 * k, b: 0.3, color: trim }), 0, y - 0.01 * k, z + 0.004 * k));
+    if (back !== false) out.push(g.rotate(g.translate(geo.tatter({ w: w, h: h * k * 0.9, teeth: 3, depth: 0.35, seed: seed + 1, color: color, bend: 0.12 }), 0, y, z), 0, PI, 0));
+    return out;
+  }
+  A2.tabard = tabard;
+  /** A shoulder cape / cloak hanging behind (chest space): a half hem round the back. */
+  function cloak(m, color, inner, h, seed, o) {
+    o = o || {}; var k = m.k, r = m.torsoW * (o.r || 0.5);
+    var c = geo.hem({ r: r, rz: (m.torsoD / m.torsoW) * (o.rz || 1.35), rBottom: r * (o.flare || 1.3), h: h * k, sides: o.sides || 9, teeth: o.teeth === undefined ? 0.4 : o.teeth, seed: seed, color: color, inner: inner, arc: o.arc || PI * 1.15, a0: HALF - (o.arc ? (o.arc - PI) / 2 : 0.075 * PI) });
+    return g.translate(c, 0, m.shoulderY + (o.y || 0.06) * k, -(o.back || 0.01) * k);
+  }
+  A2.cloak = cloak;
+  /** A small pouch / satchel (blob with a flap). */
+  function pouch(at, w, color, seed, flap) {
+    var b = geo.blob({ r: [w, w * 1.15, w * 0.7], sides: 7, rings: 4, lump: 0.12, seed: seed || 9, color: color });
+    var out = [g.translate(b, at[0], at[1], at[2])];
+    if (flap) out.push(g.translate(geo.bevelBox({ w: w * 1.7, h: w * 0.8, d: w * 0.35, b: 0.3, color: flap }), at[0], at[1] + w * 0.6, at[2] + w * 0.45));
+    return out;
+  }
+  A2.pouch = pouch;
+  /**
+   * Eyes for the rig's head (head space). o.glow: a glowing colour (undead, ice, beasts) or null for painted toon eyes
+   * (dark with a bright glint) on living folk. o.r, o.gap, o.y, o.z, o.slant, o.socket, o.brow (a heavy brow colour).
+   */
+  function humEyes(u, o) {
+    var m = u.m; o = o || {};
+    u.hide(['eye_l', 'eye_r']);
+    // where the plan put its eyes (brutes and goblins differ from the rig's metrics): the eye boxes' own offsets
+    var er = u.named('eye_r'), ex = m.eyeX, ey = m.eyeY - 0.005, ez = m.faceZ + 0.006;
+    if (er && er.offset && er.size) { ex = Math.abs(er.offset[0]) || ex; ey = er.offset[1]; ez = er.offset[2] + er.size[2] * 0.5 - 0.004; }
+    u.add('head', 'eyes', function () {
+      var k = m.k, x = ex * (o.gap || 1.05), y = o.y === undefined ? ey : o.y, z = o.z === undefined ? ez : o.z, r = (o.r || 0.03) * k, out = [];
+      if (o.glow) out.push(geo.eyes({ x: x, y: y, z: z, r: r, color: o.glow, slant: o.slant === undefined ? 0.3 : o.slant, socket: o.socket === undefined ? '#120e12' : o.socket }));
+      else {
+        [1, -1].forEach(function (s) {
+          var e = g.scale(g.sphere({ r: 1, detail: 1, color: o.iris || '#1a1614' }), r * 0.95, r * 1.2, r * 0.45); g.translate(e, s * x, y, z); out.push(e);
+          var gl = g.scale(g.sphere({ r: 1, detail: 0, color: '#f4efe4' }), r * 0.3, r * 0.3, r * 0.2); g.translate(gl, s * x + r * 0.3, y + r * 0.42, z + r * 0.32); g.setAux(gl, { emissive: 0.35 }); out.push(gl);
+        });
+      }
+      if (o.brow) [1, -1].forEach(function (s) {
+        var b = geo.bevelBox({ w: m.headW * 0.36, h: 0.035 * k, d: 0.05 * k, b: 0.35, color: o.brow, smooth: true });
+        g.rotate(b, 0.15, 0, -s * (o.browTilt === undefined ? 0.22 : o.browTilt)); g.translate(b, s * x * 0.95, y + r * 1.6, z - 0.012 * k); out.push(b);
+      });
+      return out;
+    }, LOCAL);
+  }
+  A2.humEyes = humEyes;
+  /** A glowing slit behind a helmet visor (head space): the plan's visor stays, two glowing eyes sit in it. */
+  function visorGlow(u, glow, y, z) {
+    var m = u.m;
+    u.add('head', 'visorglow', function () {
+      var k = m.k;
+      return [geo.eyes({ x: m.eyeX * 0.95, y: y, z: z, r: 0.022 * k, color: glow, slant: 0.35, socket: null })];
+    }, LOCAL);
+  }
+  A2.visorGlow = visorGlow;
+  /** A plume / crest of tufts on a helmet top (head space). */
+  function plume(m, at, color, tip, n, len, seed, dir) {
+    var k = m.k;
+    return fan(n, -0.5, 0.5, function (a, i) {
+      return g.translate(geo.tuft({ n: 2, len: len * k * (1 - abs(a) * 0.5), r: 0.03 * k, spread: 0.3, seed: seed + i, color: color, tip: tip, dir: dir || [0, 0.8, -1] }), at[0], at[1], at[2] + a * 0.16 * k);
+    });
+  }
+  A2.plume = plume;
+  /** Frost crust: a few small pale shards on a joint (local space), glowing faintly. */
+  function frost(at, n, r, seed, color, glow) { return shardCluster(at, n, r, r * 4.2, color || '#dff2fb', glow === undefined ? 0.35 : glow, seed, 0.75, '#ffffff'); }
+  A2.frost = frost;
+
+  /**
+   * A humanoid recipe: palette in the spec, the area's grade and paint, chunky hands / feet, a bigger head, then the
+   * enemy's own dress. o = { area, colors, build, head, grow, paint, dress(u, spec, m, k, P) }.
+   */
+  function human(id, o) {
+    return S.recipe(id, {
+      spec: function (s) { s.colors = U.assign({}, s.colors || {}, o.colors || {}); if (o.build) s.build = o.build; return s; },
+      grade: GR(o.area, o.grade),
+      paint: paintFor(o.area, o.paint),
+      scale: { head: o.head || 1.14 },
+      grow: o.grow || LIMBS,
+      dress: function (u, spec) { var m = u.m; if (!m) return; o.dress(u, spec, m, m.k, PAL[o.area]); }
+    });
+  }
+  A2.human = human;
+  /** Drop the plan's flat cloth boxes (tabards, aprons: d <= 0.035) on these joints; the recipe hangs real cloth instead. */
+  function dropFlat(u, joints) { joints.forEach(function (j) { u.drop(j, function (n) { return n.mesh === 'box' && n.size && n.size[2] <= 0.035 && n.size[1] > 0.15; }); }); }
+  A2.dropFlat = dropFlat;
+
+  // ============================================================================================ MOUNTAIN TRAIL
+  // --- Crag Harpy (and the Gale Matriarch): a wild-haired hag of the crags, slate and ochre plumage, ragged feathered
+  //     wings and tail, a bone-beaded necklace, glowing amber eyes, bone talons.
+  A2.harpy = function (u, spec, o) {
+    o = o || {};
+    var P = PAL.mountain, boss = !!o.boss, main = S.grade(col(spec, 'main', '#7a6650')), alt = S.grade(col(spec, 'alt', '#d9c7a3')), skin = col(spec, 'skin', '#c9a58a'), glow = col(spec, 'glow', '#ffd35a');
+    var dark = S.shade(main, -0.35), hair = o.hair || S.mix(P.slateD, '#2a2630', 0.4), sheen = S.mix(main, alt, 0.45);
+    // face: glowing eyes under a scowl, a hooked bone beak-nose, wild hair and a crest of quills
+    u.drop('head', function (n) { return (n.mesh === 'sphere' && n.emissive > 0.2) || (n.mesh === 'spike' && n.size && n.size[1] < 0.2) || n.mesh === 'hemi'; });
+    u.add('head', 'face', function () {
+      var out = [geo.eyes({ x: 0.058, y: 0.12, z: 0.13, r: 0.024, color: glow, slant: 0.45, socket: '#120c0c' })];
+      [1, -1].forEach(function (s) { var b = geo.bevelBox({ w: 0.075, h: 0.024, d: 0.04, b: 0.35, color: S.shade(skin, -0.3) }); g.rotate(b, 0.2, 0, -s * 0.4); g.translate(b, s * 0.055, 0.16, 0.125); out.push(b); });
+      var bk = geo.lathe([[0, 0], [0.036, 0.02], [0.03, 0.07], [0.012, 0.12], [0, 0.15]], 5, BONE); g.scale(bk, 1, 1, 0.8); g.rotate(bk, HALF + 0.5, 0, 0); g.translate(bk, 0, 0.1, 0.12); out.push(bk);
+      // wild hair: a mane of quill-tufts from the crown down the back of the head
+      out.push(g.translate(geo.tuft({ n: 6, len: 0.2, r: 0.04, spread: 0.9, seed: 11, color: hair, tip: S.mix(hair, alt, 0.5), dir: [0, 0.7, -1] }), 0, 0.22, -0.02));
+      [1, -1].forEach(function (s) { out.push(g.translate(geo.tuft({ n: 3, len: 0.17, r: 0.035, spread: 0.5, seed: 12 + s, color: hair, tip: main, dir: [s * 0.8, -0.3, -0.8] }), s * 0.1, 0.12, -0.04)); });
+      if (boss) out.push(g.translate(geo.tuft({ n: 5, len: 0.3, r: 0.04, spread: 0.5, seed: 15, color: alt, tip: glow, dir: [0, 1, -0.4] }), 0, 0.26, 0.0));
+      return out;
+    }, LOCAL);
+    // a feather ruff and a bone-bead necklace
+    u.add('chest', 'ruff', function () {
+      var out = fan(8, -2.4, 2.4, function (a, i) { return g.translate(geo.tuft({ n: 2, len: 0.12, r: 0.035, spread: 0.3, seed: 20 + i, color: i % 2 ? main : sheen, tip: alt, dir: [sin(a), cos(a) * 0.6, -0.6] }), sin(a) * 0.13, 0.26 + cos(a) * 0.05, cos(a) * 0.08); });
+      var pts = [], i; for (i = 0; i <= 8; i++) { var a = -1.1 + i / 8 * 2.2; pts.push([sin(a) * 0.15, 0.16 - cos(a * 0.9) * 0.04 + 0.04, 0.1 + cos(a) * 0.05]); }
+      out.push(geo.cord(pts, 0.012, P.leather, 3, true));
+      out.push(geo.charm({ at: [0, 0.07, 0.17], kind: 'skull', r: boss ? 0.045 : 0.035, color: BONE }));
+      return out;
+    }, LOCAL);
+    // ragged wings: a covert and five primaries each, in slate and ochre
+    [['wing_l', 'wingtip_l', 1], ['wing_r', 'wingtip_r', -1]].forEach(function (w) {
+      var sd = w[2];
+      u.drop(w[0], function (n) { return n.mesh === 'box'; });
+      u.drop(w[1], function (n) { return n.mesh === 'box' || n.mesh === 'prism3'; });
+      u.add(w[0], 'covert', function () {
+        var out = [g.translate(geo.blob({ r: [0.28, 0.04, 0.17], sides: 8, rings: 4, lump: 0.08, seed: 30, color: main }), sd * 0.26, 0.012, 0.0)];
+        [0, 1, 2, 3, 4].forEach(function (k) {
+          var f = geo.feather(0.36 - k * 0.02, 0.12, k % 2 ? alt : main, dark, k === 2);
+          g.rotate(f, 0, HALF - 0.2 - k * 0.12, 0); if (sd < 0) g.scale(f, -1, 1, 1);
+          g.translate(f, sd * (0.04 + k * 0.11), -0.006, 0.02); out.push(f);
+        });
+        return out;
+      }, LOCAL);
+      u.add(w[1], 'primaries', function () {
+        var out = [], k;
+        for (k = 0; k < 6; k++) {
+          var f = geo.feather(0.62 - k * 0.05, 0.13, k % 2 ? main : sheen, dark, k === 1 || k === 4);
+          if (sd < 0) g.scale(f, -1, 1, 1);
+          g.rotate(f, 0, sd * (0.05 + k * 0.2), 0); g.translate(f, sd * (0.02 + 0.03 * k), -0.004 * k, 0.02 - k * 0.07); out.push(f);
+        }
+        return out;
+      }, LOCAL);
+    });
+    u.drop('tail', function (n) { return n.mesh === 'box'; });
+    u.add('tail', 'fan', function () { return fan(5, -0.45, 0.45, function (a, i) { var f = geo.feather(0.5 - abs(a) * 0.12, 0.13, i % 2 ? main : alt, dark, i === 1 || i === 4); g.rotate(f, 0, HALF + a, 0); g.translate(f, sin(a) * 0.03, -0.004 * abs(i - 2), 0); return f; }); }, LOCAL);
+    // bone talons
+    ['leg_l', 'leg_r'].forEach(function (lg) {
+      u.drop(lg, function (n) { return n.mesh === 'spike'; });
+      u.add(lg, 'talons', function () {
+        var out = fan(3, -0.5, 0.5, function (a) { return geo.spike([0, -0.5, 0.12], [sin(a) * 0.1, -0.53, 0.12 + cos(a) * 0.11], 0.018, BONE_D, BONE, 3); });
+        out.push(g.translate(geo.tuft({ n: 3, len: 0.1, r: 0.03, spread: 0.6, seed: 40, color: main, tip: alt, dir: [0, -1, 0.2] }), 0, -0.2, 0));
+        return out;
+      }, LOCAL);
+    });
+  };
+  S.recipe('a2_harpy', {
+    spec: function (s) { s.colors = U.assign({}, s.colors || {}, { main: '#7c6448', alt: '#d6c49e', skin: '#b89a84' }); return s; },
+    grade: GR('mountain', { sat: 1 }),
+    paint: { y0: 1.0, y1: 2.0, bottom: 0.72, top: 1.15, rim: 0.2 },
+    scale: { head: 1.25 },
+    grow: { chest: [1.12, 1.08, 1.08] },
+    dress: function (u, spec) { A2.harpy(u, spec, {}); }
+  });
+
+  // --- Scree Hurler: a hunched mountain goblin in a slate wool hood-scarf and patched leathers, a sack of rocks on his
+  //     back and a sling of rope across the chest, glowing yellow eyes.
+  human('a2_hurler', { area: 'mountain', colors: { main: '#6a5440', alt: '#7a8590', skin: '#8f9e62' }, head: 1.18,
+    dress: function (u, spec, m, k, P) {
+      var scarf = S.grade('#6c7783'), scarfD = S.shade(scarf, -0.3), skin = S.grade(col(spec, 'skin', '#8a9a5b'));
+      humEyes(u, { glow: '#ffd04a', r: 0.03, brow: S.shade(skin, -0.4), slant: 0.35 });
+      // the bandana becomes a wool hood-scarf wound round the head and neck
+      u.drop('head', function (n) { return n.mesh === 'box' || (n.mesh === 'box_bevel' && n.size && n.size[1] < 0.1); });
+      u.add('head', 'scarf', function () {
+        var top = m.headC + m.headH * 0.3, out = [];
+        out.push(g.translate(geo.hem({ r: m.headW * 0.56, rz: 1.05, rBottom: m.headW * 0.62, h: m.headH * 0.36, sides: 10, teeth: 0.3, seed: 50, color: scarf, inner: scarfD }), 0, top + 0.05 * k, m.headZ - 0.01 * k));
+        out.push(g.translate(geo.tatter({ w: 0.08 * k, h: 0.2 * k, teeth: 2, depth: 0.4, seed: 51, color: scarf, bend: -0.3 }), 0.02 * k, top, -m.headD * 0.52));
+        return out;
+      }, LOCAL);
+      u.add('chest', 'gear', function () {
+        var out = [geo.cord(ring(m.neckR * 2.2, m.neckR * 2.0, m.neckY - 0.05 * k, 10, 0.006 * k), 0.035 * k, scarf, 5)];
+        // rope sling across the chest
+        out.push(geo.cord([[m.torsoW * 0.45, m.torsoH * 0.95, m.torsoD * 0.4], [0, m.torsoH * 0.55, m.torsoD * 0.56], [-m.torsoW * 0.48, m.torsoH * 0.18, m.torsoD * 0.45]], 0.014 * k, P.ochre, 4, true));
+        // the rock sack on the back, rocks bulging out of the top
+        var sz = -m.torsoD * 0.5 - 0.1 * k;
+        out.push(g.translate(geo.blob({ r: [0.15 * k, 0.17 * k, 0.11 * k], sides: 8, rings: 5, lump: 0.14, seed: 52, color: S.grade('#8a7656') }), 0, m.torsoH * 0.5, sz));
+        out.push(geo.stitches([-0.08 * k, m.torsoH * 0.4, sz - 0.1 * k], [0.08 * k, m.torsoH * 0.42, sz - 0.1 * k], 3, 0.012 * k, '#d8c8a0', [0, 0, -1]));
+        [[-0.05, 0.66, 0.0, 0.06], [0.05, 0.7, 0.02, 0.05], [0.0, 0.74, -0.03, 0.055]].forEach(function (r, i) { out.push(stone([r[0] * k, m.torsoH * r[1] + 0.1 * k, sz + r[2] * k], r[3] * k, i % 2 ? P.slate : P.slateD, 53 + i)); });
+        out.push(geo.patch({ w: 0.09 * k, h: 0.08 * k, at: [m.torsoW * 0.18, m.torsoH * 0.4, m.torsoD * 0.5 + 0.004], color: S.grade('#5a6a4a'), rot: 0.2 }));
+        return out;
+      }, LOCAL);
+      u.drop('chest', function (n) { return n.mesh === 'box_bevel' && n.offset && n.offset[2] < -0.1; });      // the plan's backpack: the sack replaces it
+      u.drop('chest', function (n) { return n.mesh === 'cyl8' && n.size && n.size[1] > 0.2; });
+      u.add('hips', 'kilt', function () { return [skirt(m, S.grade('#5c4a38'), S.grade('#3c3028'), 0.16, 54, { teeth: 0.55 })].concat(belt(m, P.leather, P.rust, m.pelvisH * 0.42)); }, LOCAL);
+      // a pebble in each fist ready to throw
+      u.add('hand_r', 'pebble', function () { return [stone([0, -m.palm * 1.3, 0.02 * k], 0.045 * k, P.slate, 57)]; }, LOCAL);
+    }
+  });
+
+  // --- Ridge Tusker: the Farm Village boar's build in mountain colours, with slate plates grown into its hide and
+  //     lichen on its back (the grim_boar dress plus the mountain).
+  S.recipe('a2_tusker', {
+    spec: function (s) { s.colors = U.assign({}, s.colors || {}, { main: '#6a5646', alt: '#8a4a30', skin: '#9a7a6a' }); return s; },
+    grade: GR('mountain'),
+    paint: paintFor('mountain', { bottom: 0.6, top: 1.16 }),
+    scale: { head: 1.1 },
+    fold: { ear_l: 'head', ear_r: 'head', tail2: 'tail' },
+    grow: { leg_fl: [1.22, 1.03, 1.18], leg_fr: [1.22, 1.03, 1.18], leg_bl: [1.18, 1.03, 1.14], leg_br: [1.18, 1.03, 1.14],
+      paw_fl: [1.2, 1.2, 1.15], paw_fr: [1.2, 1.2, 1.15], paw_bl: [1.2, 1.2, 1.15], paw_br: [1.2, 1.2, 1.15] },
+    dress: function (u, spec) {
+      var boar = S.RECIPES.grim_boar, q = quad('boar'), P = PAL.mountain;
+      if (boar && boar.dress) boar.dress(u, U.assign({}, spec, { colors: U.assign({}, spec.colors, { glow: '#9fe0ff' }) }));
+      u.add('chest', 'slate', function () {
+        var out = [], i, R = new KD.RNG(61);
+        for (i = 0; i < 5; i++) {
+          var z = q.len * 0.32 - i * q.len * 0.22, sd = i % 2 ? 1 : -1, s = 0.075 + R.next() * 0.03;
+          var p = g.rotate(stone([0, 0, 0], s, i % 2 ? P.slate : P.slateD, 62 + i, 0.32), 0.2, R.next(), sd * 0.5);
+          out.push(g.translate(p, sd * q.cw * 0.3, q.cd * 0.5 - 0.01, z));
+        }
+        [1, -1].forEach(function (sd) { out.push(g.translate(geo.tuft({ n: 3, len: 0.07, r: 0.03, spread: 0.7, seed: 70 + sd, color: P.lichen, tip: '#c8d08a', dir: [sd * 0.5, 1, 0] }), sd * q.cw * 0.38, q.cd * 0.38, -q.len * 0.1)); });
+        return out;
+      }, LOCAL);
+    }
+  });
+
+  // --- Cairn Whisperer: a goblin shaman in a lichen-green hooded mantle over a slate robe, a bone mask, cairn stones
+  //     stacked on her staff round its sky-blue gem, glowing runes on hanging stones.
+  human('a2_whisperer', { area: 'mountain', colors: { main: '#6c7682', alt: '#d8d0bc', skin: '#8f9e62' }, head: 1.18,
+    dress: function (u, spec, m, k, P) {
+      var glow = col(spec, 'glow', '#9fe0ff'), robe = S.grade(col(spec, 'main', '#6c7682')), robeD = S.shade(robe, -0.32), mantle = S.grade('#5f6e46'), mantleD = S.shade(mantle, -0.35);
+      humEyes(u, { glow: glow, r: 0.026, socket: null, y: m.eyeY + 0.04 * k, z: m.faceZ + 0.02 * k });
+      // the skull mask stays; a lichen mantle with a hood rim over it
+      u.add('chest', 'mantle', function () {
+        var out = [cloak(m, mantle, mantleD, 0.38, 80, { r: 0.56, flare: 1.4, arc: PI * 1.7, teeth: 0.5 })];
+        out.push(g.translate(geo.hem({ r: m.neckR * 1.8, rBottom: m.torsoW * 0.62, h: 0.16 * k, sides: 11, teeth: 0.5, seed: 81, color: mantle, inner: mantleD }), 0, m.neckY + 0.02 * k, 0));
+        // three hanging rune stones on cords
+        fan(3, -0.35, 0.35, function (a, i) {
+          var x = sin(a) * m.torsoW * 0.5, y = m.torsoH * 0.55 - abs(a) * 0.06 * k, z = m.torsoD * 0.55 + 0.02 * k;
+          out.push(geo.cord([[x, m.neckY - 0.05 * k, z - 0.03 * k], [x, y + 0.04 * k, z]], 0.006 * k, P.leather, 3));
+          out.push(g.translate(geo.bevelBox({ w: 0.05 * k, h: 0.065 * k, d: 0.02 * k, b: 0.3, color: P.slateD }), x, y, z));
+          out.push(g.setAux(g.translate(geo.bevelBox({ w: 0.018 * k, h: 0.04 * k, d: 0.006 * k, b: 0.2, color: glow }), x, y, z + 0.011 * k), { emissive: 0.85 }));
+        });
+        return out;
+      }, LOCAL);
+      u.add('hips', 'robe', function () { return [skirt(m, robe, robeD, 0.42, 82, { flare: 1.45, teeth: 0.4, sides: 13 })].concat([geo.cord(ring(m.pelvisW * 0.56, m.pelvisD * 0.62, m.pelvisH * 0.42, 12), 0.016 * k, P.ochre, 4, true)]); }, LOCAL);
+      u.drop('hips', function (n) { return n.mesh === 'limb' || (n.mesh === 'cyl8' && n.offset && n.offset[1] < -0.1); });
+      // cairn stones stacked under the gem
+      if (u.has('weapon_model')) u.add('weapon_model', 'cairn', function () {
+        return [stone([0, 0.8, 0], 0.07, P.slate, 83, 0.5), stone([0.01, 0.87, 0], 0.055, P.slateD, 84, 0.5), stone([-0.005, 0.925, 0], 0.04, P.slate, 85, 0.5),
+          geo.cord([[0.03, 0.82, 0.05], [0.04, 0.7, 0.06], [0.03, 0.6, 0.05]], 0.008, P.leather, 3), geo.charm({ at: [0.035, 0.56, 0.05], kind: 'bone', r: 0.03 })];
+      }, LOCAL);
+    }
+  });
+
+  // --- Cragback Bear (elite): a huge slate-grey bear with plates of mountain rock grown through its hump, a shaggy ruff,
+  //     frost-blue eyes under a heavy brow, bone claws.
+  S.recipe('a2_bear', {
+    spec: function (s) { s.colors = U.assign({}, s.colors || {}, { main: '#6e665e', alt: '#4a4440' }); return s; },
+    grade: GR('mountain', { sat: 0.95 }),
+    paint: paintFor('mountain', { bottom: 0.56, top: 1.14 }),
+    scale: { head: 1.12 },
+    fold: { ear_l: 'head', ear_r: 'head' },
+    grow: { paw_fl: [1.25, 1.2, 1.15], paw_fr: [1.25, 1.2, 1.15], paw_bl: [1.2, 1.2, 1.12], paw_br: [1.2, 1.2, 1.12] },
+    dress: function (u, spec) {
+      var q = quad('bear'), P = PAL.mountain, main = col(spec, 'main', '#6e665e'), glow = '#4fc4ff', hd = q.hd, sn = q.sn, skullZ = hd[2] * 0.3;
+      var fur = S.grade(main, { sat: 0.8 }), furD = S.shade(fur, -0.38), furL = S.mix(fur, BONE, 0.3);
+      u.drop('head', function (n) { return n.mesh === 'box' && n.emissive > 0.5; });
+      u.drop('chest', function (n) { return n.mesh === 'spike'; });
+      u.add('head', 'face', function () {
+        var fz = skullZ + hd[2] * 0.5, out = [geo.eyes({ x: hd[0] * 0.27, y: hd[1] * 0.14, z: fz - 0.004, r: 0.032, color: glow, slant: 0.35, socket: '#100c10' })];
+        [1, -1].forEach(function (s) { var b = geo.bevelBox({ w: hd[0] * 0.44, h: 0.07, d: 0.11, b: 0.35, taper: [1, 0.7], color: furD, smooth: true }); g.rotate(b, 0.25, 0, -s * 0.28); g.translate(b, s * hd[0] * 0.22, hd[1] * 0.32, fz - 0.035); out.push(b); });
+        out.push(g.translate(geo.bevelBox({ w: sn[0] * 1.15, h: sn[1] * 0.6, d: sn[2] * 0.7, b: 0.3, smooth: true, color: furL }), 0, -hd[1] * 0.16, skullZ + hd[2] * 0.42 + sn[2] * 0.55));
+        [1, -1].forEach(function (s) { out.push(g.translate(geo.tuft({ n: 3, len: 0.14, r: 0.04, spread: 0.5, seed: 90 + s, color: fur, tip: furL, dir: [s, -0.3, -0.6] }), s * hd[0] * 0.5, -hd[1] * 0.1, skullZ)); });
+        return out;
+      }, LOCAL);
+      u.add('chest', 'rock', function () {
+        var out = [], R = new KD.RNG(95), i;
+        // slate plates through the hump, leaning back like a ridge of broken rock
+        for (i = 0; i < 6; i++) {
+          var z = 0.42 - i * 0.17, x = (R.next() - 0.5) * 0.22, hh = 0.2 + R.next() * 0.16 - abs(i - 2) * 0.02;
+          out.push(shard([x, 0.36 - abs(i - 2) * 0.02, z], [x * 1.4, 0.36 + hh, z - 0.12], 0.08 + R.next() * 0.04, i % 2 ? P.slate : P.slateD, 0, S.mix(P.slate, '#e8eef2', 0.4)));
+        }
+        out.push(g.translate(geo.tuft({ n: 4, len: 0.09, r: 0.035, spread: 0.8, seed: 96, color: P.lichen, tip: '#c8d08a', dir: [0.3, 1, 0] }), 0.18, 0.34, 0.1));
+        // a shaggy ruff round the shoulders
+        fan(10, -2.6, 2.6, function (a, j) { out.push(g.translate(geo.tuft({ n: 2, len: 0.2, r: 0.06, spread: 0.35, seed: 97 + j, color: fur, tip: furL, dir: [sin(a), cos(a) * 0.5, -0.4] }), sin(a) * 0.38, 0.05 + cos(a) * 0.3, 0.5)); });
+        return out;
+      }, LOCAL);
+      ['paw_fl', 'paw_fr', 'paw_bl', 'paw_br'].forEach(function (p) {
+        u.drop(p, function (n) { return n.mesh === 'box' && n.size && n.size[1] < 0.05; });
+        u.add(p, 'claws', function () { return fan(4, -0.09, 0.09, function (x) { return geo.spike([x, -0.06, 0.22], [x * 1.2, -0.11, 0.36], 0.025, BONE_D, BONE, 4); }); }, LOCAL);
+      });
+    }
+  });
+
+  // ============================================================================================ RIVER ROAD
+  // --- River Reaver: a river raider in a teal sash and a salt-stained leather jerkin, braided beard, fish-hook and
+  //     tooth charms, a ragged coat tail, painted toon eyes (living folk do not glow).
+  human('a2_reaver', { area: 'river', colors: { main: '#2f6f7a', alt: '#c7a878', skin: '#c48f6e', metal: '#8d949c' },
+    dress: function (u, spec, m, k, P) {
+      var skin = col(spec, 'skin', '#c48f6e'), sash = S.grade(P.teal), sashD = S.shade(sash, -0.35), leather = S.grade('#6a4a34');
+      humEyes(u, { r: 0.028, brow: S.shade(skin, -0.45) });
+      u.add('head', 'beard', function () {
+        var out = [g.translate(geo.blob({ r: [m.headW * 0.36, m.headH * 0.22, m.headD * 0.18], sides: 7, rings: 4, lump: 0.12, seed: 100, color: '#7a4a2a' }), 0, m.headC - m.headH * 0.32, m.faceZ - 0.01 * k)];
+        [1, -1].forEach(function (s) { out.push(geo.cord([[s * 0.04 * k, m.headC - m.headH * 0.42, m.faceZ], [s * 0.05 * k, m.headC - m.headH * 0.62, m.faceZ + 0.01 * k], [s * 0.045 * k, m.headC - m.headH * 0.78, m.faceZ]], 0.018 * k, '#6a3e22', 4, true)); });
+        out.push(geo.charm({ at: [0.05 * k, m.headC - m.headH * 0.84, m.faceZ], kind: 'ring', r: 0.014 * k, color: '#c9a23b' }));
+        return out;
+      }, LOCAL);
+      u.add('chest', 'sash', function () {
+        var out = [geo.cord([[m.torsoW * 0.5, m.torsoH * 0.92, 0], [m.torsoW * 0.15, m.torsoH * 0.6, m.torsoD * 0.55], [-m.torsoW * 0.35, m.torsoH * 0.12, m.torsoD * 0.5], [-m.torsoW * 0.5, 0, 0]], 0.03 * k, sash, 5)];
+        out.push(geo.charm({ cord: [-m.torsoW * 0.2, m.torsoH * 0.35, m.torsoD * 0.56], at: [-m.torsoW * 0.22, m.torsoH * 0.2, m.torsoD * 0.58], kind: 'tooth', r: 0.03 * k }));
+        out.push(geo.patch({ w: 0.08 * k, h: 0.07 * k, at: [m.torsoW * 0.2, m.torsoH * 0.3, m.torsoD * 0.5 + 0.004], color: S.grade(P.sand), rot: -0.2 }));
+        return out;
+      }, LOCAL);
+      u.add('hips', 'coat', function () { return [skirt(m, leather, S.shade(leather, -0.35), 0.24, 101, { teeth: 0.5, flare: 1.25 }), g.translate(geo.tatter({ w: 0.1 * k, h: 0.28 * k, teeth: 2, depth: 0.4, seed: 102, color: sash, bend: 0.15 }), m.pelvisW * 0.38, m.pelvisH * 0.42, m.pelvisD * 0.55)].concat(belt(m, '#3a2a20', '#9a8a6a', m.pelvisH * 0.42)); }, LOCAL);
+    }
+  });
+
+  // --- Raider Harpooner: a broad river raider in a fur-trimmed cap and an oilskin coat, a coil of rope at the hip, his
+  //     spear a barbed harpoon with a line.
+  human('a2_harpooner', { area: 'river', colors: { main: '#5a4a3a', alt: '#2f6f7a', skin: '#b98a6a', metal: '#9aa3ad' },
+    dress: function (u, spec, m, k, P) {
+      var skin = col(spec, 'skin', '#b98a6a'), oil = S.grade('#4f5a4a'), oilD = S.shade(oil, -0.35);
+      humEyes(u, { r: 0.028, brow: S.shade(skin, -0.45), browTilt: 0.32 });
+      u.add('head', 'cap', function () {
+        var y = m.headC + m.headH * 0.36, out = [g.translate(geo.blob({ r: [m.headW * 0.62, 0.07 * k, m.headD * 0.62], sides: 9, rings: 4, lump: 0.2, seed: 110, color: S.grade('#8a7a62') }), 0, y, m.headZ)];
+        out.push(g.translate(geo.blob({ r: [m.headW * 0.36, m.headH * 0.2, m.headD * 0.16], sides: 7, rings: 4, lump: 0.14, seed: 111, color: '#4a3a2a' }), 0, m.headC - m.headH * 0.3, m.faceZ - 0.01 * k));
+        return out;
+      }, LOCAL);
+      u.add('chest', 'coat', function () { return [cloak(m, oil, oilD, 0.42, 112, { r: 0.54, arc: PI * 1.25, flare: 1.35 })].concat(furCollar(m, S.grade('#8a7a62'), '#c8b896', 9, 0.1, 113)); }, LOCAL);
+      u.add('hips', 'rope', function () {
+        var out = [skirt(m, oil, oilD, 0.22, 114, { teeth: 0.4 })].concat(belt(m, '#3a2a20', '#9a8a6a', m.pelvisH * 0.42));
+        // a coil of rope on the left hip
+        var c = g.torus({ R: 0.075 * k, r: 0.022 * k, seg: 10, sides: 4, color: P.rope }); g.rotate(c, 0, 0, HALF); g.translate(c, m.pelvisW * 0.6, 0, 0.02 * k); out.push(c);
+        var c2 = g.torus({ R: 0.06 * k, r: 0.02 * k, seg: 10, sides: 4, color: S.shade(P.rope, -0.15) }); g.rotate(c2, 0.2, 0, HALF); g.translate(c2, m.pelvisW * 0.62, -0.01 * k, 0.03 * k); out.push(c2);
+        return out;
+      }, LOCAL);
+      if (u.has('weapon_model')) {
+        u.hide('weapon_blade');
+        u.add('weapon_model', 'harpoon', function () {
+          var top = 1.08, iron = '#7a828a', out = [geo.spike([0, top - 0.06, 0], [0, top + 0.26, 0], 0.035, iron, '#c8ccd0', 4)];
+          [1, -1].forEach(function (s) { out.push(geo.spike([0, top + 0.06, 0], [s * 0.08, top - 0.04, 0], 0.016, iron, '#c8ccd0', 3)); out.push(geo.spike([0, top - 0.02, 0], [s * 0.06, top - 0.1, 0], 0.014, iron, '#c8ccd0', 3)); });
+          out.push(geo.cord([[0, top - 0.08, 0.02], [0.02, top - 0.4, 0.05], [0.0, top - 0.7, 0.03]], 0.008, P.rope, 3));
+          out.push(geo.cord(ring(0.03, 0.03, top - 0.08, 8), 0.01, P.rope, 3));
+          return out;
+        }, LOCAL);
+      }
+    }
+  });
+
+  // --- Shellback Crab: a coral-red river crab under a barnacled, weed-hung shell, glowing eye stalks, a big crusher.
+  S.recipe('a2_crab', {
+    spec: function (s) { s.colors = U.assign({}, s.colors || {}, { main: '#b0563a', alt: '#e0c09a' }); return s; },
+    grade: GR('river', { sat: 1 }),
+    paint: paintFor('river', { y0: 0, y1: 0.75, bottom: 0.6, top: 1.2, rim: 0.2 }),
+    grow: { pincer_r: [1.12, 1.08, 1.12], pincer_l: [1.08, 1.05, 1.08] },
+    dress: function (u, spec) {
+      var P = PAL.river, glow = col(spec, 'glow', '#ffe08a'), main = S.grade(col(spec, 'main', '#b0563a'));
+      u.drop('chest', function (n) { return n.mesh === 'hemi'; });          // the plan's grey armour shell: a real shell below
+      u.drop('head', function (n) { return n.mesh === 'sphere'; });
+      u.add('chest', 'shell', function () {
+        var out = [], R = new KD.RNG(120), i;
+        var sh = geo.blob({ r: [0.5, 0.2, 0.4], sides: 12, rings: 5, lump: 0.06, seed: 121, color: S.mix(main, '#6a4a3a', 0.35) }); g.translate(sh, 0, 0.13, -0.02); out.push(sh);
+        out.push(g.translate(geo.bevelBox({ w: 0.08, h: 0.06, d: 0.6, b: 0.4, smooth: true, color: S.shade(main, -0.25) }), 0, 0.31, -0.02));
+        for (i = 0; i < 9; i++) {         // barnacles
+          var a = R.next() * TAU, d = 0.12 + R.next() * 0.26, x = sin(a) * d, z = cos(a) * d * 0.8;
+          var y = 0.13 + 0.19 * Math.sqrt(Math.max(0, 1 - (x * x) / 0.25 - (z * z) / 0.16));
+          out.push(g.translate(g.cylinder({ r: 0.035, rTop: 0.018, h: 0.05, sides: 6, color: '#d8d0bc' }), x, y + 0.02, z));
+        }
+        // river weed hanging off the shell rim
+        fan(5, -2.4, 2.4, function (a, j) { var x = sin(a) * 0.48, z = cos(a) * 0.36; out.push(g.rotate(g.translate(geo.tatter({ w: 0.08, h: 0.18, teeth: 2, depth: 0.4, seed: 123 + j, color: P.weed }), 0, 0, 0), 0, a, 0)); out[out.length - 1] = g.translate(out[out.length - 1], x, 0.1, z); });
+        return out;
+      }, LOCAL);
+      u.add('head', 'eyes', function () {
+        var out = [];
+        [1, -1].forEach(function (s) {
+          var e = g.scale(g.sphere({ r: 1, detail: 1, color: glow }), 0.045, 0.05, 0.045); g.translate(e, s * 0.13, 0.29, -0.06); g.setAux(e, { emissive: 1 }); out.push(e);
+          out.push(g.translate(g.scale(g.sphere({ r: 1, detail: 0, color: '#2a1612' }), 0.058, 0.03, 0.058), s * 0.13, 0.25, -0.07));
+        });
+        return out;
+      }, LOCAL);
+      ['pincer_r', 'pincer_l'].forEach(function (p, i) {
+        u.add(p, 'teeth', function () { return fan(3, -0.1, -0.24, function (y) { return geo.spike([i ? 0.03 : -0.04, y, 0.04], [i ? 0.05 : -0.06, y - 0.02, 0.09], 0.016, '#e8dcc0', '#ffffff', 3); }); }, LOCAL);
+      });
+    }
+  });
+
+  // --- Silt Eel (and its brood, and the Tide Wyrm through the boss file): a river eel with a ragged fin frill along the
+  //     back, glowing eyes and spark-lit flank spots, whisker barbels.
+  A2.eel = function (u, spec, o) {
+    o = o || {};
+    var P = PAL.river, main = S.grade(col(spec, 'main', '#3d4f5a')), alt = S.grade(col(spec, 'alt', '#c9d36a')), glow = col(spec, 'glow', '#b7f0ff'), fin = o.fin || S.mix(main, glow, 0.35), finD = S.shade(fin, -0.3), sc = o.scale || 1;
+    if (!o.keepEyes) u.drop('head', function (n) { return n.mesh === 'sphere' && n.emissive > 0.5; });
+    u.add('head', 'face', function () {
+      var out = [geo.eyes({ x: 0.088 * sc, y: 0.06 * sc, z: 0.13 * sc, r: 0.026 * sc, color: glow, slant: 0.5, socket: '#0a0e12' })];
+      [1, -1].forEach(function (s) {
+        out.push(geo.cord([[s * 0.06 * sc, -0.02 * sc, 0.28 * sc], [s * 0.14 * sc, -0.06 * sc, 0.3 * sc], [s * 0.2 * sc, -0.12 * sc, 0.24 * sc]], 0.009 * sc, S.shade(alt, -0.15), 3));
+        out.push(g.translate(geo.tuft({ n: 3, len: 0.12 * sc, r: 0.03 * sc, spread: 0.4, seed: 130 + s, color: fin, tip: finD, dir: [s, 0.3, -0.6] }), s * 0.09 * sc, 0.03 * sc, 0.02 * sc));
+      });
+      out.push(g.translate(geo.tuft({ n: 3, len: 0.16 * sc, r: 0.03 * sc, spread: 0.3, seed: 133, color: fin, tip: glow, dir: [0, 1, -0.8] }), 0, 0.09 * sc, 0.0));
+      return out;
+    }, LOCAL);
+    var segs = [];
+    (function walk(n) { if (n.name && /^seg\d+$|^chest$|^tail$/.test(n.name)) segs.push(n.name); (n.children || []).forEach(walk); })(u.built.model);
+    segs.forEach(function (sg, i) {
+      u.drop(sg, function (n) { return n.mesh === 'wedge'; });
+      // the segment's own body sphere gives its size (the frill sits on its back, the spots on its flanks)
+      var nd = u.named(sg), sz = [0.17, 0.3, 0.46];
+      (nd && nd.children || []).some(function (c) { if (c && !c.name && c.mesh === 'sphere' && c.size) { sz = c.size; return true; } return false; });
+      var top = sz[1] * 0.46, half = sz[0] * 0.5, len = sz[2] * 0.62;
+      u.add(sg, 'frill', function () {
+        var h = sz[1] * 0.55, out = [];
+        out.push(g.translate(g.rotate(geo.tatter({ w: len, h: h, teeth: 3, depth: 0.45, seed: 140 + i, color: fin, inner: finD }), PI, HALF, 0), 0, top - 0.01, 0));
+        if (i % 2 === 0) [1, -1].forEach(function (s) { var d = g.scale(g.sphere({ r: 1, detail: 0, color: glow }), sz[0] * 0.12, sz[0] * 0.12, sz[0] * 0.18); g.translate(d, s * half * 0.93, sz[1] * 0.1, 0); g.setAux(d, { emissive: 0.8 }); out.push(d); });
+        return out;
+      }, U.assign({ sig: [i, sc, sz] }, LOCAL));
+    });
+  };
+  S.recipe('a2_eel', {
+    spec: function (s) { s.colors = U.assign({}, s.colors || {}, { main: '#34505c', alt: '#c9c66a' }); return s; },
+    grade: GR('river', { sat: 1 }),
+    paint: paintFor('river', { y0: 0, y1: 0.6, bottom: 0.65, top: 1.2, rim: 0.2 }),
+    scale: { head: 1.15 },
+    dress: function (u, spec) { A2.eel(u, spec, {}); }
+  });
+
+  // --- Wreckhauler (elite): a river troll in barnacled chains, weed for hair, a rusted anchor; glowing yellow eyes.
+  A2.troll = function (u, spec, m, k, P, o) {
+    o = o || {};
+    var skin = S.grade(col(spec, 'skin', '#6f8f86')), glow = col(spec, 'glow', '#e8c23a'), weed = S.grade(P.weed || '#4f6a3a');
+    humEyes(u, { glow: glow, r: 0.03, brow: S.shade(skin, -0.4), slant: 0.4 });
+    u.drop('head', function (n) { return n.mesh === 'box' || (n.mesh === 'box_bevel' && n.offset && n.offset[1] > m.headH * 0.9); });
+    u.add('head', 'weed', function () {
+      var top = m.headC + m.headH * 0.48, out = [];
+      fan(7, -1.2, 1.2, function (a, i) { out.push(g.translate(geo.tatter({ w: 0.08 * k, h: (0.25 + (i % 3) * 0.06) * k, teeth: 2, depth: 0.45, seed: 150 + i, color: i % 2 ? weed : S.shade(weed, -0.2), bend: -0.2 }), sin(a) * m.headW * 0.4, top, -m.headD * 0.2 + cos(a) * m.headD * 0.3)); });
+      return out;
+    }, LOCAL);
+    u.add('chest', 'barnacles', function () {
+      var out = [], R = new KD.RNG(155), i;
+      for (i = 0; i < 10; i++) { var sd = i % 2 ? 1 : -1, x = sd * (m.shoulderX * 0.6 + R.next() * m.shoulderX * 0.4), y = m.shoulderY + (R.next() - 0.3) * 0.2 * k, z = (R.next() - 0.5) * m.torsoD * 0.6; out.push(g.translate(g.cylinder({ r: 0.04 * k, rTop: 0.02 * k, h: 0.05 * k, sides: 6, color: '#d8d0bc' }), x, y + 0.06 * k, z)); }
+      fan(4, -0.5, 0.5, function (a, j) { out.push(g.translate(geo.tatter({ w: 0.1 * k, h: 0.32 * k, teeth: 2, depth: 0.4, seed: 160 + j, color: weed, bend: 0.1 }), sin(a) * m.torsoW * 0.5, m.shoulderY + 0.05 * k, cos(a) * m.torsoD * 0.5)); });
+      return out;
+    }, LOCAL);
+  };
+  human('a2_hauler', { area: 'river', colors: { main: '#4f6f6a', alt: '#2c3c3a', skin: '#6f8f86', metal: '#6a4a3a' }, grow: {}, head: 1.08,
+    dress: function (u, spec, m, k, P) { A2.troll(u, spec, m, k, P); }
+  });
+
+  // --- Drowned Deckhand (minion): a bloated drowned sailor, weed-hung rags, barnacles, glowing river-green eyes.
+  human('a2_deckhand', { area: 'river', colors: { main: '#3f5f5a', alt: '#8aa39a', skin: '#86a69c' },
+    dress: function (u, spec, m, k, P) {
+      var rag = S.grade(col(spec, 'main', '#3f5f5a')), weed = S.grade(P.weed);
+      humEyes(u, { glow: P.glow, r: 0.028, slant: -0.1 });
+      u.add('hips', 'rags', function () { return [skirt(m, rag, S.shade(rag, -0.35), 0.26, 170, { teeth: 0.65 }), geo.cord(ring(m.pelvisW * 0.56, m.pelvisD * 0.62, m.pelvisH * 0.42, 12), 0.016 * k, P.rope, 4, true)]; }, LOCAL);
+      u.add('chest', 'weed', function () {
+        var out = [];
+        fan(4, -0.9, 0.9, function (a, j) { out.push(g.translate(geo.tatter({ w: 0.08 * k, h: 0.26 * k, teeth: 2, depth: 0.45, seed: 171 + j, color: weed, bend: 0.1 }), sin(a) * m.torsoW * 0.45, m.shoulderY + 0.04 * k, cos(a) * m.torsoD * 0.5)); });
+        out.push(g.translate(g.cylinder({ r: 0.035 * k, rTop: 0.018 * k, h: 0.04 * k, sides: 6, color: '#d8d0bc' }), m.shoulderX * 0.7, m.shoulderY + 0.06 * k, 0));
+        return out;
+      }, LOCAL);
+    }
+  });
+  S.recipe('a2_spawn', {
+    spec: function (s) { s.colors = U.assign({}, s.colors || {}, { main: '#2f7480', alt: '#bfe6d8', glow: '#8ff0d8' }); return s; },
+    grade: GR('river', { sat: 1 }),
+    paint: paintFor('river', { y0: 0, y1: 0.5, bottom: 0.65, top: 1.2, rim: 0.2 }),
+    scale: { head: 1.2 },
+    dress: function (u, spec) { A2.eel(u, spec, { scale: 0.85 }); }
+  });
+
+  // ============================================================================================ FROZEN OUTPOST
+  // --- Rimebound Pikeman: a frozen soldier of the garrison, frost crusting his helm and shoulders, icicle beard, a
+  //     ragged navy tabard, glowing frost eyes.
+  human('a2_pikeman', { area: 'frozen', colors: { main: '#5f7f98', alt: '#d6e6f0', skin: '#9fb7c4', metal: '#aebfcb' },
+    dress: function (u, spec, m, k, P) {
+      var glow = '#47c8ff', navy = S.grade(P.navy), navyD = S.shade(navy, -0.3);
+      humEyes(u, { glow: glow, r: 0.028, slant: 0.2 });
+      dropFlat(u, ['chest', 'hips']);
+      u.add('head', 'ice', function () {
+        var out = frost([0, m.headC + m.headH * 0.62, m.headZ - 0.03 * k], 4, 0.03 * k, 180);
+        fan(5, -0.6, 0.6, function (a, i) { out.push(shard([sin(a) * m.headW * 0.3, m.headC - m.headH * 0.38, m.faceZ - 0.02 * k], [sin(a) * m.headW * 0.34, m.headC - m.headH * (0.62 + (i % 2) * 0.1), m.faceZ], 0.016 * k, '#dff2fb', 0.3)); });
+        return out;
+      }, LOCAL);
+      u.add('chest', 'frost', function () { return frost([m.shoulderX * 0.85, m.shoulderY + 0.06 * k, 0], 3, 0.028 * k, 181).concat(frost([-m.shoulderX * 0.85, m.shoulderY + 0.06 * k, 0], 3, 0.028 * k, 182), [cloak(m, navy, navyD, 0.36, 183, { arc: PI * 0.9, flare: 1.2, teeth: 0.6 })]); }, LOCAL);
+      u.add('hips', 'tabard', function () { return tabard(m, navy, S.grade('#c9a23b'), 0.38, 184).concat(belt(m, '#3a3a40', '#aebfcb', m.pelvisH * 0.42)); }, LOCAL);
+    }
+  });
+
+  // --- Hoarfrost Arbalest: an ice-folk crossbowman in a fur-lined hood and a long white fur coat, a frost-blue scarf.
+  human('a2_arbalest', { area: 'frozen', colors: { main: '#4f6f8a', alt: '#e8f2f7', skin: '#b9dff0' },
+    dress: function (u, spec, m, k, P) {
+      var glow = '#47c8ff', coat = S.grade(P.fur), coatD = S.shade(coat, -0.3), scarf = S.grade('#3f6f9a');
+      humEyes(u, { glow: glow, r: 0.026, slant: 0.35 });
+      u.add('head', 'hoodfur', function () {
+        var out = [], y = m.headC + m.headH * 0.05, z = m.faceZ - 0.02 * k;
+        fan(9, -2.0, 2.0, function (a, i) { out.push(g.translate(geo.blob({ r: [0.045 * k, 0.045 * k, 0.035 * k], sides: 6, rings: 3, lump: 0.25, seed: 190 + i, color: i % 2 ? coat : S.shade(coat, 0.15) }), sin(a) * m.headW * 0.6, y + cos(a) * m.headH * 0.55, z)); });
+        return out;
+      }, LOCAL);
+      u.add('chest', 'scarf', function () { return [geo.cord(ring(m.neckR * 2.1, m.neckR * 1.9, m.neckY - 0.03 * k, 10, 0.006 * k), 0.035 * k, scarf, 5), g.translate(geo.tatter({ w: 0.08 * k, h: 0.3 * k, teeth: 2, depth: 0.3, seed: 195, color: scarf, bend: 0.2 }), m.torsoW * 0.2, m.neckY - 0.04 * k, m.torsoD * 0.5)]; }, LOCAL);
+      u.add('hips', 'coat', function () { return [skirt(m, coat, coatD, 0.42, 196, { flare: 1.3, teeth: 0.35, sides: 13 }), g.translate(geo.bevelBox({ w: m.pelvisW * 1.14, h: 0.05 * k, d: m.pelvisD * 1.26, b: 0.35, smooth: true, color: S.grade('#5a4636') }), 0, m.pelvisH * 0.42, 0)]; }, LOCAL);
+    }
+  });
+
+  // --- Drift Stalker: the Farm Village wolf build in snow-white fur with frost along its spine and frost-cyan eyes.
+  S.recipe('a2_stalker', {
+    spec: function (s) { s.colors = U.assign({}, s.colors || {}, { main: '#f2f6f8', alt: '#9ab0c2', glow: '#3fc4ff' }); return s; },
+    grade: GR('frozen', { sat: 1, amount: 0.0, shadow: 0 }),
+    paint: paintFor('frozen', { bottom: 0.7, top: 1.08, rim: 0.12, cool: [0.9, 0.94, 1.04] }),
+    scale: { head: 1.14 },
+    fold: { ear_l: 'head', ear_r: 'head', tail2: 'tail' },
+    grow: S.RECIPES.grim_wolf ? S.RECIPES.grim_wolf.grow : {},
+    dress: function (u, spec) {
+      var wolf = S.RECIPES.grim_wolf, q = quad('wolf');
+      if (wolf && wolf.dress) wolf.dress(without(u, ['noose']), spec);
+      u.add('chest', 'frost', function () {
+        var out = [], i;
+        for (i = 0; i < 5; i++) out = out.concat(frost([0, q.cd * 0.5 + 0.02, q.len * 0.36 - i * q.len * 0.18], 2, 0.022, 200 + i));
+        return out;
+      }, LOCAL);
+    }
+  });
+
+  // --- Garrison Bell-Ringer: a hooded frozen sexton in a long navy robe, frost on the hood, chains and a brass bell.
+  human('a2_ringer', { area: 'frozen', colors: { main: '#34445c', alt: '#aebfcb', skin: '#9fb7c4', metal: '#c9a23b' },
+    dress: function (u, spec, m, k, P) {
+      var glow = '#52d0ff', robe = S.grade(col(spec, 'main', '#34445c')), robeD = S.shade(robe, -0.35);
+      humEyes(u, { glow: glow, r: 0.03, gap: 1.1, socket: '#06080c', z: m.faceZ + 0.02 * k });
+      u.add('head', 'frost', function () { return frost([0, m.headC + m.headH * 0.62, m.headZ - 0.05 * k], 4, 0.026 * k, 210); }, LOCAL);
+      u.add('chest', 'mantle', function () { return [cloak(m, robe, robeD, 0.5, 211, { arc: PI * 1.3, flare: 1.35, teeth: 0.5 }), g.translate(geo.hem({ r: m.neckR * 1.8, rBottom: m.torsoW * 0.6, h: 0.14 * k, sides: 10, teeth: 0.5, seed: 212, color: robe, inner: robeD }), 0, m.neckY + 0.01 * k, 0)].concat(frost([m.shoulderX * 0.7, m.shoulderY + 0.07 * k, 0], 2, 0.024 * k, 213)); }, LOCAL);
+      u.add('hips', 'robe', function () { return [skirt(m, robe, robeD, 0.5, 214, { flare: 1.5, teeth: 0.4, sides: 13 }), geo.cord(ring(m.pelvisW * 0.56, m.pelvisD * 0.62, m.pelvisH * 0.42, 12), 0.016 * k, '#5a6068', 4, true)]; }, LOCAL);
+      u.drop('hips', function (n) { return n.mesh === 'limb'; });
+    }
+  });
+
+  // --- Frozen Recruit (minion): a frost-crusted skeleton recruit in a torn navy tabard.
+  human('a2_recruit', { area: 'frozen', colors: { main: '#7f99aa', alt: '#dfeaf0' },
+    dress: function (u, spec, m, k, P) {
+      var navy = S.grade(P.navy);
+      humEyes(u, { glow: '#52d0ff', r: 0.026, socket: '#0a0c10' });
+      u.add('hips', 'tabard', function () { return tabard(m, navy, null, 0.3, 220, false); }, LOCAL);
+      u.add('chest', 'frost', function () { return frost([m.shoulderX * 0.8, m.shoulderY + 0.04 * k, 0], 2, 0.024 * k, 221).concat(frost([-m.shoulderX * 0.6, m.shoulderY + 0.05 * k, 0.02 * k], 2, 0.022 * k, 222)); }, LOCAL);
+    }
+  });
+
+  // --- Glacier Sentinel (elite): a hulking ice golem, glacier-blue with snow caps on its shoulders, crystal spines with a
+  //     glowing heart, frost-cyan cracks. The plan's crystals and core stay (the core pulses), the body gets painted ice.
+  A2.icegolem = function (u, spec, m, k, P, o) {
+    o = o || {};
+    var glow = '#3fc4ff';
+    u.add('chest', 'snow', function () {
+      var out = [];
+      [1, -1].forEach(function (s) { out.push(g.translate(geo.blob({ r: [0.3 * k, 0.09 * k, 0.28 * k], sides: 8, rings: 4, lump: 0.15, seed: 230 + s, color: '#f2f6fa' }), s * m.shoulderX * 0.82, m.shoulderY + 0.1 * k, 0)); });
+      out.push(g.translate(geo.blob({ r: [0.42 * k, 0.08 * k, 0.3 * k], sides: 9, rings: 4, lump: 0.15, seed: 233, color: '#eef4f8' }), 0, m.torsoH * 0.98, -0.05 * k));
+      // glowing cracks across the chest
+      [[0.25, 0.7, 0.5], [-0.3, 0.4, -0.6], [0.35, 0.25, 0.9]].forEach(function (c, i) { out.push(g.setAux(g.translate(g.rotate(geo.bevelBox({ w: 0.02 * k, h: 0.26 * k, d: 0.012 * k, b: 0.2, color: glow }), 0, 0, c[2]), c[0] * m.torsoW * 0.5, c[1] * m.torsoH, m.torsoD * 0.5 + 0.004 * k), { emissive: 0.75 })); });
+      return out.concat(shardCluster([0, m.torsoH * 1.0, -m.torsoD * 0.3], o.boss ? 5 : 3, 0.06 * k, 0.4 * k, '#bfe6f6', 0.3, 234, 0.4, '#ffffff'));
+    }, LOCAL);
+    humEyes(u, { glow: glow, r: 0.034, socket: '#10202c', slant: 0.25 });
+  };
+  human('a2_sentinel', { area: 'frozen', colors: { main: '#8cc4de', alt: '#e8f6fb' }, grow: {}, head: 1.06, paint: { bottom: 0.66, top: 1.14 },
+    dress: function (u, spec, m, k, P) { A2.icegolem(u, spec, m, k, P); }
+  });
+
+  // ============================================================================================ GATEHOUSE PASS
+  // --- Broken-Banner Footman: a drilled soldier of the pass in an oxblood tabard with a brass trim, a crest of red
+  //     horsehair on his helm, dented shield with the broken banner, painted toon eyes.
+  human('a2_footman', { area: 'gate', colors: { main: '#7a2026', alt: '#c9a23b', skin: '#c48f6e', metal: '#8d949c' },
+    dress: function (u, spec, m, k, P) {
+      var red = S.grade(P.crimson), redD = S.shade(red, -0.35);
+      humEyes(u, { r: 0.027, brow: S.shade(col(spec, 'skin', '#c48f6e'), -0.45), browTilt: 0.3 });
+      dropFlat(u, ['chest', 'hips']);
+      u.add('head', 'crest', function () { return plume(m, [0, m.headC + m.headH * 0.62, m.headZ], red, S.shade(red, 0.2), 5, 0.16, 240, [0, 1, -0.6]); }, LOCAL);
+      u.add('chest', 'tabard', function () {
+        var out = [g.translate(geo.bevelBox({ w: m.torsoW * 0.62, h: m.torsoH * 0.82, d: 0.03 * k, b: 0.3, color: red }), 0, m.torsoH * 0.52, m.torsoD * 0.5 + 0.01 * k)];
+        out.push(g.translate(geo.bevelBox({ w: m.torsoW * 0.64, h: 0.03 * k, d: 0.034 * k, b: 0.3, color: S.grade(P.brass) }), 0, m.torsoH * 0.93, m.torsoD * 0.5 + 0.012 * k));
+        out.push(g.translate(g.rotate(geo.bevelBox({ w: 0.025 * k, h: m.torsoH * 0.55, d: 0.012 * k, b: 0.2, color: S.grade(P.cream) }), 0, 0, 0.5), 0, m.torsoH * 0.52, m.torsoD * 0.5 + 0.028 * k));
+        return out;
+      }, LOCAL);
+      u.add('hips', 'tabard', function () { return tabard(m, red, S.grade(P.brass), 0.34, 241).concat(belt(m, S.grade(P.leather), S.grade(P.brass), m.pelvisH * 0.42)); }, LOCAL);
+    }
+  });
+
+  // --- Pass Ballista: the siege engine dressed for the pass: an oxblood pavise with a broken-banner crest on the front,
+  //     a ragged canopy cloth, a rack of bolts, rope lashings and brass fittings.
+  S.recipe('a2_ballista', {
+    spec: function (s) { s.colors = U.assign({}, s.colors || {}, { main: '#6a4e34', alt: '#7a2026', metal: '#8d949c' }); return s; },
+    grade: GR('gate', { sat: 1 }),
+    paint: paintFor('gate', { y0: 0, y1: 1.4, bottom: 0.62, top: 1.12 }),
+    dress: function (u, spec) {
+      var P = PAL.gate, red = S.grade(P.crimson), wood = S.grade('#6a4e34');
+      u.add('turn', 'pavise', function () {
+        var out = [g.translate(geo.bevelBox({ w: 0.62, h: 0.42, d: 0.05, b: 0.25, color: red }), 0, 0.16, 0.86)];
+        out.push(g.translate(geo.bevelBox({ w: 0.66, h: 0.05, d: 0.06, b: 0.3, color: S.grade(P.brass) }), 0, 0.36, 0.86));
+        out.push(g.translate(g.rotate(geo.bevelBox({ w: 0.04, h: 0.36, d: 0.02, b: 0.3, color: S.grade(P.cream) }), 0, 0, 0.55), 0, 0.16, 0.89));
+        [1, -1].forEach(function (s) { out.push(geo.cord([[s * 0.28, 0.02, 0.84], [s * 0.15, 0.0, 0.62], [s * 0.08, 0.02, 0.4]], 0.014, P.leather, 3, true)); });
+        return out;
+      }, LOCAL);
+      u.add('turn', 'bolts', function () {
+        var out = [g.translate(geo.bevelBox({ w: 0.3, h: 0.08, d: 0.12, b: 0.3, color: wood }), 0.24, -0.08, -0.45)];
+        fan(4, -0.09, 0.09, function (x) { out.push(geo.rod([0.24 + x, -0.04, -0.6], [0.24 + x, -0.0, -0.1], 0.012, '#8a6a4a')); out.push(geo.spike([0.24 + x, 0.0, -0.1], [0.24 + x, 0.01, 0.0], 0.02, '#8d949c', '#c8ccd0', 4)); });
+        return out;
+      }, LOCAL);
+      u.add('upper', 'canopy', function () { return [g.translate(geo.tatter({ w: 0.7, h: 0.3, teeth: 4, depth: 0.4, seed: 250, color: red, bend: 0.2 }), 0, -0.02, -0.72)]; }, LOCAL);
+    }
+  });
+
+  // --- Fuse Sapper: a soot-blackened sapper in a scorched leather apron, goggles on his cap, a bandolier of round bombs
+  //     with lit fuses, a satchel; torch in hand.
+  human('a2_sapper', { area: 'gate', colors: { main: '#4a4038', alt: '#d98f2e', skin: '#b48a6a' },
+    dress: function (u, spec, m, k, P) {
+      var skin = col(spec, 'skin', '#b48a6a'), apron = S.grade('#5a4232'), fuse = col(spec, 'glow', '#ffb347');
+      humEyes(u, { r: 0.027, brow: S.shade(skin, -0.5), browTilt: 0.35 });
+      dropFlat(u, ['chest', 'hips']);
+      u.add('head', 'goggles', function () {
+        var y = m.headC + m.headH * 0.3, z = m.faceZ - 0.01 * k, out = [geo.cord(ring(m.headW * 0.55, m.headD * 0.55, y, 12), 0.016 * k, '#2a2420', 4)];
+        [1, -1].forEach(function (s) { var r = g.torus({ R: 0.04 * k, r: 0.014 * k, seg: 10, sides: 4, color: S.grade(P.brass) }); g.rotate(r, HALF, 0, 0); g.translate(r, s * 0.055 * k, y + 0.01 * k, z + 0.02 * k); out.push(r); out.push(g.setAux(g.translate(g.scale(g.sphere({ r: 1, detail: 0, color: '#ffcf8a' }), 0.03 * k, 0.03 * k, 0.01 * k), s * 0.055 * k, y + 0.01 * k, z + 0.02 * k), { emissive: 0.5 })); });
+        // soot smudges on the cheeks
+        [1, -1].forEach(function (s) { out.push(g.translate(g.scale(g.sphere({ r: 1, detail: 0, color: '#2a2220' }), 0.03 * k, 0.018 * k, 0.008 * k), s * 0.07 * k, m.eyeY - 0.05 * k, m.faceZ + 0.002 * k)); });
+        return out;
+      }, LOCAL);
+      u.add('chest', 'bombs', function () {
+        var out = [geo.cord([[m.torsoW * 0.5, m.torsoH * 0.95, 0], [m.torsoW * 0.1, m.torsoH * 0.55, m.torsoD * 0.56], [-m.torsoW * 0.4, m.torsoH * 0.1, m.torsoD * 0.5], [-m.torsoW * 0.5, 0, 0]], 0.022 * k, '#3a2a20', 4)];
+        [0.3, 0.55, 0.78].forEach(function (t, i) {
+          var x = m.torsoW * (0.4 - t * 0.85), y = m.torsoH * (0.95 - t * 0.8), z = m.torsoD * 0.56 + 0.04 * k;
+          out.push(g.translate(g.scale(g.sphere({ r: 1, detail: 1, color: '#2a2a30' }), 0.05 * k, 0.05 * k, 0.05 * k), x, y, z));
+          out.push(geo.cord([[x, y + 0.05 * k, z], [x + 0.02 * k, y + 0.09 * k, z + 0.01 * k]], 0.006 * k, '#c8b088', 3));
+          out.push(g.setAux(g.translate(g.scale(g.sphere({ r: 1, detail: 0, color: fuse }), 0.014 * k, 0.014 * k, 0.014 * k), x + 0.02 * k, y + 0.095 * k, z + 0.01 * k), { emissive: 1 }));
+        });
+        return out;
+      }, LOCAL);
+      u.add('hips', 'apron', function () {
+        return [g.translate(geo.tatter({ w: m.pelvisW * 0.85, h: 0.44 * k, teeth: 4, depth: 0.25, seed: 260, color: apron, bend: 0.1 }), 0, m.pelvisH * 0.45, m.pelvisD * 0.62),
+          g.translate(geo.tatter({ w: 0.08 * k, h: 0.12 * k, teeth: 2, depth: 0.5, seed: 261, color: '#2a2220', bend: 0.1 }), m.pelvisW * 0.15, m.pelvisH * 0.1, m.pelvisD * 0.66)]
+          .concat(belt(m, '#3a2a20', S.grade(P.brass), m.pelvisH * 0.42), pouch([-m.pelvisW * 0.6, m.pelvisH * 0.05, 0], 0.06 * k, S.grade('#6a5038'), 262, S.grade('#4a3426')));
+      }, LOCAL);
+    }
+  });
+
+  // --- Standard Bearer: a plate-armoured bearer of the broken banner, a brass-crested great helm with a red plume, a
+  //     short crimson cape, a glowing slit (the pass is held by oathbreakers).
+  human('a2_bearer', { area: 'gate', colors: { main: '#c9a23b', alt: '#7a2026', skin: '#c48f6e', metal: '#a7adb5' },
+    dress: function (u, spec, m, k, P) {
+      var red = S.grade(P.crimson), redD = S.shade(red, -0.35);
+      dropFlat(u, ['chest', 'hips']);
+      u.add('head', 'plume', function () { return plume(m, [0, m.headC + m.headH * 0.82, m.headZ - 0.02 * k], red, S.shade(red, 0.25), 6, 0.2, 270, [0, 0.7, -1]); }, LOCAL);
+      visorGlow(u, '#ffc070', m.headC + 0.03 * k, m.faceZ + 0.045 * k);
+      u.add('chest', 'cape', function () { return [cloak(m, red, redD, 0.5, 271, { arc: PI * 1.0, flare: 1.25, teeth: 0.5 })]; }, LOCAL);
+      u.add('hips', 'tabard', function () { return tabard(m, S.grade(P.brass), red, 0.32, 272).concat(belt(m, S.grade(P.leather), S.grade(P.brass), m.pelvisH * 0.42)); }, LOCAL);
+    }
+  });
+
+  // --- Oathless Knight (elite): a fallen knight in blackened plate, a torn oxblood cloak, spiked pauldrons, a broken
+  //     chain at the wrist, a smouldering red glow in his visor.
+  A2.knight = function (u, spec, m, k, P, o) {
+    o = o || {};
+    var red = S.grade(o.cloak || P.crimsonD), redD = S.shade(red, -0.3), glow = col(spec, 'glow', '#ff7a5a');
+    dropFlat(u, ['chest', 'hips']);
+    visorGlow(u, glow, m.headC + 0.03 * k, m.faceZ + 0.045 * k);
+    u.add('chest', 'cloak', function () { return [cloak(m, red, redD, o.len || 0.62, 280, { arc: PI * 1.1, flare: 1.4, teeth: 0.6, sides: 11 })]; }, LOCAL);
+    u.add('hips', 'faulds', function () { return tabard(m, red, S.grade('#3a3a40'), 0.36, 281).concat(belt(m, '#2a2626', S.grade('#8a7a5a'), m.pelvisH * 0.42)); }, LOCAL);
+    if (u.has('forearm_l')) u.add('forearm_l', 'chain', function () {
+      var y = -m.forearm * 0.8, out = [], i;
+      for (i = 0; i < 4; i++) { var t = g.torus({ R: 0.026 * k, r: 0.008 * k, seg: 8, sides: 4, color: '#4a4c52' }); g.rotate(t, i % 2 ? HALF : 0, 0, i % 2 ? 0 : HALF); g.translate(t, m.forearmR * 1.1, y - i * 0.04 * k, 0.02 * k); out.push(t); }
+      return out;
+    }, LOCAL);
+  };
+  human('a2_knight', { area: 'gate', colors: { main: '#3c1a1e', alt: '#9a8a5a', metal: '#4f555e' },
+    dress: function (u, spec, m, k, P) { A2.knight(u, spec, m, k, P); }
+  });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/gfx/49_style_recipes_act2b.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var S = KD.style;
+  if (!S || !S.recipe || !S.a2) return;
+  var PI = Math.PI, HALF = PI / 2, TAU = PI * 2, sin = Math.sin, cos = Math.cos;
+  var geo = S.geo, g = KD.gfx.geom, U = KD.util, A2 = S.a2, PAL = A2.PAL;
+  var LOCAL = { local: true };
+
+  /**
+   * The ACT II bosses and mini-bosses in the hand-painted style (49_style_recipes_act2.js has the kit and the regular
+   * enemies). Matched by `body.unique` through KD.style.UNIQUE, so the boss data files are untouched. Their unique looks
+   * (46_boss_looks_a.js) stay: the pass reshapes and paints the plan's body and the look's parts together, keeps every
+   * named part the look animates (phase glows, gullets, seams, orbs), and the recipes below add a few area touches.
+   *
+   *   rockjaw (Mountain Trail mini-boss)   lichen and slate on the shoulders      gale_matriarch (boss)  the harpy kit, storm-crowned
+   *   drowned_ferryman (River Road mini)   river weed and barnacles, a wet robe   tide_wyrm (boss)       the eel kit at wyrm scale
+   *   frostbitten_sergeant (Frozen mini)   frost crust, a navy tabard             ice_warden (boss)      a white fur mantle, frost
+   *   pass_marshal (Gatehouse mini)        crimson cape and plume                 general_varr (act boss) the oathless knight kit, gold
+   */
+  function boss(id, recipe, o) { S.recipe(recipe, o); S.UNIQUE[id] = recipe; }
+
+  // ------------------------------------------------------------------ Mountain Trail
+  boss('rockjaw', 'a2b_rockjaw', {
+    grade: A2.GR('mountain', { sat: 0.95 }),
+    paint: A2.paintFor('mountain', { bottom: 0.6, top: 1.12 }),
+    dress: function (u, spec) {
+      var m = u.m, P = PAL.mountain; if (!m) return;
+      var k = m.k;
+      u.add('chest', 'lichen', function () {
+        var out = [];
+        [1, -1].forEach(function (s) {
+          out.push(g.translate(geo.tuft({ n: 5, len: 0.16 * k, r: 0.05 * k, spread: 0.9, seed: 300 + s, color: P.lichen, tip: '#c8d08a', dir: [s * 0.3, 1, 0] }), s * m.shoulderX * 0.75, m.shoulderY + 0.16 * k, -0.08 * k));
+          out = out.concat(A2.shardCluster([s * m.shoulderX * 0.55, m.shoulderY + 0.1 * k, -0.2 * k], 3, 0.08 * k, 0.45 * k, P.slate, 0, 302 + s, 0.5, S.mix(P.slate, '#e8eef2', 0.35)));
+        });
+        return out;
+      }, LOCAL);
+    }
+  });
+  boss('gale_matriarch', 'a2b_matriarch', {
+    spec: function (s) { s.colors = U.assign({}, s.colors || {}, { main: '#566a86', alt: '#e2dccb' }); return s; },
+    grade: A2.GR('mountain', { sat: 1 }),
+    paint: { y0: 1.0, y1: 2.0, bottom: 0.72, top: 1.15, rim: 0.2 },
+    scale: { head: 1.12 },
+    dress: function (u, spec) { A2.harpy(u, spec, { boss: true, hair: '#2e3446' }); }
+  });
+
+  // ------------------------------------------------------------------ River Road
+  boss('drowned_ferryman', 'a2b_ferryman', {
+    grade: A2.GR('river', { sat: 1 }),
+    paint: A2.paintFor('river', { bottom: 0.6, top: 1.12 }),
+    dress: function (u, spec) {
+      var m = u.m, P = PAL.river; if (!m) return;
+      var k = m.k, weed = S.grade(P.weed), robe = S.grade(col(spec, 'main', '#2f5f66'));
+      u.add('chest', 'weed', function () {
+        var out = [];
+        A2.fan(6, -2.4, 2.4, function (a, j) { out.push(g.translate(geo.tatter({ w: 0.09 * k, h: (0.3 + (j % 3) * 0.08) * k, teeth: 2, depth: 0.45, seed: 310 + j, color: j % 2 ? weed : S.shade(weed, -0.2), bend: 0.1 }), sin(a) * m.torsoW * 0.5, m.shoulderY + 0.05 * k, cos(a) * m.torsoD * 0.5)); });
+        [1, -1].forEach(function (s) { out.push(g.translate(g.cylinder({ r: 0.04 * k, rTop: 0.02 * k, h: 0.05 * k, sides: 6, color: '#d8d0bc' }), s * m.shoulderX * 0.6, m.shoulderY + 0.08 * k, 0.04 * k)); });
+        return out;
+      }, LOCAL);
+      if (u.has('tail1')) u.add('tail1', 'robe', function () { return [g.translate(geo.hem({ r: m.pelvisW * 0.6, rz: 0.9, rBottom: m.pelvisW * 0.9, h: 0.5 * k, sides: 12, teeth: 0.5, seed: 312, color: robe, inner: S.shade(robe, -0.35) }), 0, 0.02 * k, 0)]; }, LOCAL);
+    }
+  });
+  function col(spec, k, d) { return A2.col(spec, k, d); }
+  boss('tide_wyrm', 'a2b_wyrm', {
+    grade: A2.GR('river', { sat: 1 }),
+    paint: A2.paintFor('river', { y0: 0, y1: 1.2, bottom: 0.65, top: 1.2, rim: 0.2 }),
+    dress: function (u, spec) {
+      // the wyrm keeps its own glowing eyes (its look drives them); the eel kit adds barbels, frills and flank lights
+      A2.eel(A2.without(u, ['face']), spec, { scale: 2.2, fin: '#4fa6b0', keepEyes: true });
+    }
+  });
+
+  // ------------------------------------------------------------------ Frozen Outpost
+  boss('frostbitten_sergeant', 'a2b_sergeant', {
+    grade: A2.GR('frozen'),
+    paint: A2.paintFor('frozen'),
+    scale: { head: 1.08 },
+    grow: A2.LIMBS,
+    dress: function (u, spec) {
+      var m = u.m, P = PAL.frozen; if (!m) return;
+      var k = m.k, navy = S.grade(P.navy);
+      A2.dropFlat(u, ['chest', 'hips']);
+      u.add('chest', 'frost', function () { return A2.frost([m.shoulderX * 0.85, m.shoulderY + 0.07 * k, 0], 3, 0.03 * k, 320).concat(A2.frost([-m.shoulderX * 0.85, m.shoulderY + 0.07 * k, 0], 3, 0.03 * k, 321), [A2.cloak(m, navy, S.shade(navy, -0.3), 0.5, 322, { arc: PI * 1.0, flare: 1.3, teeth: 0.6 })]); }, LOCAL);
+      u.add('hips', 'tabard', function () { return A2.tabard(m, navy, S.grade(P.brass), 0.42, 323).concat(A2.belt(m, '#3a3a40', '#aebfcb', m.pelvisH * 0.42)); }, LOCAL);
+    }
+  });
+  boss('ice_warden', 'a2b_warden', {
+    grade: A2.GR('frozen'),
+    paint: A2.paintFor('frozen', { bottom: 0.62, top: 1.12 }),
+    scale: { head: 1.06 },
+    grow: A2.LIMBS,
+    dress: function (u, spec) {
+      var m = u.m, P = PAL.frozen; if (!m) return;
+      var k = m.k, fur = S.grade(P.fur), furD = S.shade(fur, -0.3);
+      A2.dropFlat(u, ['chest', 'hips']);
+      u.add('chest', 'mantle', function () { return [A2.cloak(m, S.grade('#3e5a7a'), S.grade('#22344a'), 0.7, 330, { arc: PI * 1.15, flare: 1.4, teeth: 0.5, sides: 11 })].concat(A2.furCollar(m, fur, '#ffffff', 12, 0.12, 331)); }, LOCAL);
+      u.add('hips', 'skirt', function () { return [A2.skirt(m, fur, furD, 0.34, 332, { teeth: 0.35, flare: 1.3 })].concat(A2.belt(m, '#2a3442', S.grade(P.brass), m.pelvisH * 0.42, 0.03)); }, LOCAL);
+    }
+  });
+
+  // ------------------------------------------------------------------ Gatehouse Pass
+  boss('pass_marshal', 'a2b_marshal', {
+    grade: A2.GR('gate'),
+    paint: A2.paintFor('gate'),
+    scale: { head: 1.08 },
+    grow: A2.LIMBS,
+    dress: function (u, spec) {
+      var m = u.m, P = PAL.gate; if (!m) return;
+      var k = m.k, red = S.grade(P.crimson);
+      A2.dropFlat(u, ['chest', 'hips']);
+      u.add('chest', 'cape', function () { return [A2.cloak(m, red, S.shade(red, -0.35), 0.62, 340, { arc: PI * 1.05, flare: 1.35, teeth: 0.5 })]; }, LOCAL);
+      u.add('hips', 'tabard', function () { return A2.tabard(m, red, S.grade(P.brass), 0.38, 341).concat(A2.belt(m, S.grade(P.leather), S.grade(P.brass), m.pelvisH * 0.42)); }, LOCAL);
+    }
+  });
+  boss('general_varr', 'a2b_varr', {
+    grade: A2.GR('gate'),
+    paint: A2.paintFor('gate', { bottom: 0.58, top: 1.12 }),
+    scale: { head: 1.06 },
+    grow: A2.LIMBS,
+    dress: function (u, spec) {
+      var m = u.m, P = PAL.gate; if (!m) return;
+      var k = m.k, red = S.grade(P.crimson), gold = S.grade(P.brass);
+      A2.dropFlat(u, ['chest', 'hips']);
+      u.add('chest', 'cloak', function () { return [A2.cloak(m, red, S.shade(red, -0.4), 0.78, 350, { arc: PI * 1.2, flare: 1.45, teeth: 0.55, sides: 12 }),
+        g.translate(geo.bevelBox({ w: m.torsoW * 0.9, h: 0.04 * k, d: m.torsoD * 0.95, b: 0.3, color: gold }), 0, m.shoulderY + 0.05 * k, -0.02 * k)]; }, LOCAL);
+      u.add('hips', 'faulds', function () { return A2.tabard(m, red, gold, 0.42, 351).concat(A2.belt(m, '#2a2626', gold, m.pelvisH * 0.42, 0.03)); }, LOCAL);
+    }
+  });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/gfx/50_env_core.js
 (function (root) {
   'use strict';
@@ -75501,6 +76408,568 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     };
     return rt;
   };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/gfx/57_env_mood_act2.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var E = KD.env = KD.env || {};
+
+  /**
+   * Mood presets of ACT II (55_env_mood.js, docs/GFX.md "Mood presets"), in the painted style of the restyled Farm Village
+   * but not all dark: each area has its own light and identity. Purely visual: the layout, its colliders and everything
+   * the simulation reads stay as they are. On with the "Area look: New" setting (KD.config.art.env 'grim').
+   *
+   *   a2_mountain  Mountain Trail   crisp high air: a bright cold sun, deep blue zenith, slate rock and dark pine, lichen;
+   *                                 wind: pennants on the cairns, streaks of grit and snow on the gusts, cloud shadows
+   *                                 racing over the rock, two hawks circling above
+   *   a2_river     River Road       a golden morning on bright water: lush greens, warm sand banks, reeds; mist lying on
+   *                                 the banks, glitter and waves on the water, lily pads, drifting seed fluff, dragonflies
+   *   a2_frozen    Frozen Outpost   the blue hour in the snow: icy blue light, frost on every upward face, glowing frost
+   *                                 crystals on the rocks; snow falling, spindrift gusts, sparkles on the snow; the
+   *                                 braziers and fires burn warm (halos, embers), a faint light round the hero
+   *   a2_gate      Gatehouse Pass   late golden afternoon over a held fortress: warm stone, long shadows; oxblood war
+   *                                 banners hung on the stone walls, military torches on poles along the barricades, dust
+   *                                 in the light, smoke from the camp fires
+   * Every runtime effect scales with KD.env.mood.quality() (1 high, 0.6 medium, 0.25 low); the costly ones are off on low.
+   *
+   * Shared atmosphere (KD.env.life, 57_env_life.js, docs/ENV.md "Living world"): each preset's `life` def sets the area's
+   * rim light, wind (windStrength, absolute), gusts, water, air (motes, pollen, snow, embers), light glows and critters.
+   * Whatever life draws (KD.env.life.handles) the runtime here leaves out (rt.shared tells which); it keeps only what is
+   * the mood's own: cloud shadows, mist on the river banks, circling hawks, spindrift gusts, snow sparkles, frost-crystal
+   * glimmer, torch flames and camp smoke, jumping fish.
+   */
+  var M = E.mood;
+  if (!M) return;
+  var PI = Math.PI, TAU = PI * 2, sin = Math.sin, cos = Math.cos, sqrt = Math.sqrt, floor = Math.floor, min = Math.min, max = Math.max, abs = Math.abs;
+  function hsh(s, salt) { return (KD.util.hash(String(s) + ':' + (salt || '')) % 10000) / 10000; }
+  function C(c) { return KD.gfx.color._get(c).slice(0, 3); }
+  function copy(p, o) { var q = {}, k; for (k in p) q[k] = p[k]; for (k in o) q[k] = o[k]; return q; }
+  var A2 = M.act2 = M.act2 || {};
+
+  M.AREAS.mountain_trail = 'a2_mountain';
+  M.AREAS.river_road = 'a2_river';
+  M.AREAS.frozen_outpost = 'a2_frozen';
+  M.AREAS.gatehouse_pass = 'a2_gate';
+
+  // ================================================================== helpers for the set dressing
+  function world(p, lx, lz) { var c = cos(p.rot || 0), s = sin(p.rot || 0); return [p.x + lx * c + lz * s, p.z - lx * s + lz * c]; }
+  A2.world = world;
+  /** Ground occlusion toward the feet of every piece (k at the ground, 1 at `h`), as the Farm Village has. */
+  function groundAO(g, k0, h) {
+    var pos = g.pos, col = g.col, n = pos.length / 3, i;
+    for (i = 0; i < n; i++) {
+      var y = pos[i * 3 + 1]; if (y >= h) continue;
+      var sy = y <= 0 ? 0 : y / h, k = k0 + (1 - k0) * sy * sy * (3 - 2 * sy);
+      col[i * 3] *= k; col[i * 3 + 1] *= k; col[i * 3 + 2] *= k * 1.02;
+    }
+  }
+  A2.groundAO = groundAO;
+  /** Pale dusting on upward faces (frost, snow) above y0, sparing glowing vertices. */
+  function dust(g, c, amt, y0) {
+    var pos = g.pos, col = g.col, nrm = g.nrm, aux = g.aux, n = pos.length / 3, i;
+    if (!nrm) return;
+    for (i = 0; i < n; i++) {
+      if (pos[i * 3 + 1] < y0 || (aux && aux[i * 4] > 0.3)) continue;
+      var ny = nrm[i * 3 + 1]; if (ny < 0.55) continue;
+      var t = amt * min(1, (ny - 0.55) / 0.35);
+      col[i * 3] += (c[0] - col[i * 3]) * t; col[i * 3 + 1] += (c[1] - col[i * 3 + 1]) * t; col[i * 3 + 2] += (c[2] - col[i * 3 + 2]) * t;
+    }
+  }
+  A2.dust = dust;
+
+  /** A marker pole stuck in a cairn with a ragged pennant that moves in the wind (local frame: pole at the origin). */
+  function cairnFlag(P, seed, colr) {
+    var A = KD.env.arch, m = A.mesh(seed), R = new KD.RNG(seed), wd = A.mix(P.woodDark, [0.3, 0.28, 0.26], 0.3), i;
+    m.jit = 0.06;
+    var top = 2.3 + R.next() * 0.35, lean = (R.next() - 0.5) * 0.12;
+    m.rod(0, 0.55, 0, lean, top, lean * 0.5, 0.035, 5, wd, 0.026, 2);
+    var g0 = m.done();
+    // the pennant: a long torn strip in two pieces, swaying with the wind shader (aux.sway rises along its length)
+    var B = KD.gfx.geom, strips = [], len = 0.8 + R.next() * 0.3, fh = 0.26;
+    for (i = 0; i < 2; i++) {
+      var t = KD.style && KD.style.geo ? KD.style.geo.tatter({ w: fh, h: len * (1 - i * 0.25), teeth: 3, depth: 0.35, seed: seed + i, color: i ? A.shade(colr, 0.8) : colr, bend: 0.05 }) : null;
+      if (!t) break;
+      B.rotate(t, 0, 0, PI / 2);              // hang it sideways: from the pole along +X
+      B.translate(t, lean + 0.02, top - 0.1 - i * (fh + 0.04), lean * 0.5);
+      B.swayByHeight(t, 0, 1, 0);             // stiff at the pole ...
+      var au = t.aux, ps = t.pos, n = ps.length / 3;
+      for (var k = 0; k < n; k++) au[k * 4 + 1] = min(1, max(0, (ps[k * 3] - lean) / len)) * 0.9;   // ... free at the tip
+      strips.push(t);
+    }
+    return B.merge([g0].concat(strips));
+  }
+  /** Military torch: an iron pole with a caged fire basket on top (the fire itself is light and particles). */
+  function torchPole(P, seed) {
+    var A = KD.env.arch, m = A.mesh(seed), ic = A.shade(P.iron, 0.9), i;
+    m.jit = 0.05; m.metal = 0.4;
+    m.rod(0, 0, 0, 0, 2.05, 0, 0.045, 6, ic, 0.035, 2);
+    m.lathe(0, 0, [[0.16, 0], [0.15, 0.05], [0.07, 0.12], [0.05, 0.2]], 7, ic, 0);
+    m.lathe(0, 0, [[0.05, 2.0], [0.13, 2.05], [0.17, 2.22], [0.16, 2.26]], 8, ic, 0);
+    for (i = 0; i < 6; i++) { var a = i / 6 * TAU; m.rod(cos(a) * 0.15, 2.08, sin(a) * 0.15, cos(a) * 0.2, 2.4, sin(a) * 0.2, 0.012, 3, ic, 0.01, 0); }
+    m.metal = 0; m.emis = 0.9;
+    m.blob(0, 2.25, 0, 0.12, 0.07, 0.12, [1.0, 0.55, 0.2], 6);           // the glowing coals
+    m.emis = 0;
+    m.ao(0, 0.6, 0.2);
+    return { geom: m.done(), fire: [0, 2.3, 0] };
+  }
+  /** A war banner hung on a wall face (local: the wall's frame; the banner hangs on its +Z face at u along the length). */
+  function wallBanner(m, P, u, yTop, z, col, trim, seed) {
+    var A = KD.env.arch, R = new KD.RNG(seed), w = 0.9 + R.next() * 0.2, h = 1.6 + R.next() * 0.4;
+    A.banner(m, u, yTop, w, h, { z: z, col: col, stripe: trim, emblem: R.next() < 0.5 ? 'sword' : 'star', emblemCol: trim, tail: R.next() < 0.5 ? 'swallow' : 'point', rod: A.shade(P.iron, 0.8) });
+    return m;
+  }
+  /** A cluster of glowing frost crystals (local frame, on top of a rock of radius r). */
+  function frostCrystals(seed, r) {
+    var S = KD.style, out = [], B = KD.gfx.geom;
+    if (!S || !S.a2) return null;
+    var R = new KD.RNG(seed), n = 3 + floor(R.next() * 3);
+    out = S.a2.shardCluster([0, 0, 0], n, 0.07 + r * 0.05, 0.38 + r * 0.25, '#9fdcf2', 0.75, seed, 0.5, '#f4fdff');
+    var g = B.merge(out);
+    return g;
+  }
+  /** A lily pad (with a small white flower on some), flat at y = 0 of its own frame. */
+  function lilyPads(seed, n) {
+    var B = KD.gfx.geom, R = new KD.RNG(seed), out = [], i;
+    for (i = 0; i < n; i++) {
+      var r = 0.18 + R.next() * 0.14, x = (R.next() - 0.5) * 1.6, z = (R.next() - 0.5) * 1.6, notch = R.next() * TAU;
+      var pad = B.cylinder({ r: r, h: 0.012, sides: 9, color: R.next() < 0.5 ? '#4f7a36' : '#5f8a3e' });
+      B.translate(pad, x, 0.006, z); out.push(pad);
+      if (R.next() < 0.3) { var f = B.cone({ r: 0.06, h: 0.07, sides: 5, color: '#f2ece0' }); B.translate(f, x + 0.03, 0.045, z); out.push(f); }
+    }
+    return B.merge(out);
+  }
+
+  // ================================================================== presets
+  var MOUNTAIN = {
+    env: {
+      sunDir: [0.42, 0.62, 0.52], sunColor: [1.0, 0.95, 0.86], sunIntensity: 1.5,
+      skyColor: [0.56, 0.7, 1.0], skyIntensity: 0.55, groundColor: [0.5, 0.52, 0.56], groundIntensity: 0.36,
+      zenith: [0.12, 0.3, 0.72], horizon: [0.7, 0.8, 0.92],
+      fogDensity: 0.0044, fogStart: 20, fogMax: 0.8, sunGlow: 1.1,
+      exposure: 0.96, knee: 0.7, saturation: 1.02, rim: 0.42, clouds: true, cloudSpeed: 4.5,
+      windYaw: 0.9, windStrength: 0.26, windSpeed: 1.5,
+      paintFine: 0.08, paintBroad: 0.13, paintHue: 0.02,
+      mist: 0.18, mistDensity: 0.02, mistFalloff: 0.35, mistStart: 26, mistColor: [0.74, 0.8, 0.9],
+      grade: 0.75, contrast: 0.22, vignette: 0.22, vignetteRadius: 0.36, gradeShadow: [0.02, 0.03, 0.08], gradeHigh: [1.02, 1.0, 0.96],
+      rimBack: 0.35
+    },
+    palette: {
+      rock: '#6e757e', rockDark: '#4a515a', stoneWall: '#8a8e94', stoneDark: '#5c6168', grass: '#71874e', grassAlt: '#62783f', forest: '#4a5e3a',
+      path: '#9a8a6c', dirt: '#86735c', road_dirt: '#8f7c62', gravel: '#8a8a86', snow: '#eef3f8', plank: '#7a6448', void: '#4a5868',
+      leafA: '#2f5a42', leafB: '#3f6a48', leafC: '#24483a', bush: '#3f603e', moss: '#8a9a58', leafDead: '#7a6648', trunk: '#5a4434', trunkDark: '#3a2c24',
+      flowerA: '#ece6c8', flowerB: '#6f7ad8', woodDark: '#4a3a2e', woodLight: '#8a7458', canvas: '#b4a88a', rope: '#9a8662',
+      cloth: ['#a8582e', '#3e5a8a', '#c8a040', '#8a3a3a']
+    },
+    look: { scatter: { tuft: 0.8, flower: 0.5, pebble: 2.2, rubble: 0.9, lump: 0.3 } },
+    lineupGround: '#6a7078',
+    life: { windStrength: 0.26, gust: 0.8, rim: 0.5, rimColor: '#e4ecff', air: { motes: 0.7, leaves: 0.15 }, colors: { mote: '#d8d2c4' }, critters: { birds: 0.8, crows: 0, butterflies: 0.4 } },
+    piece: function (p) {
+      var h = hsh(p.id, 'a2m');
+      if (p.kind === 'tree' && (p.species === 'oak' || p.species === 'birch' || p.species === 'apple') && h < 0.6) return copy(p, { species: 'pine' });
+      if (p.kind === 'bush' && p.style === 'berry' && h < 0.5) return copy(p, { style: 'green' });
+      return null;
+    },
+    post: function (p, g) { if (p.kind !== 'cliff') groundAO(g, 0.82, 1.4); dust(g, [0.93, 0.95, 0.98], 0.18, 1.4); },
+    dress: function (out) {
+      var pieces = out.layout.pieces || [], P = KD.env.arch.pal(out.theme), mo = out.mood, i, n = 0, cols = out.theme.cloth;
+      mo.cairns = []; mo.fires = fires(pieces); mo.nests = [];
+      for (i = 0; i < pieces.length; i++) {
+        var p = pieces[i];
+        if (p.kind === 'cairn') {
+          mo.cairns.push({ x: p.x, z: p.z });
+          if (n < 10 && hsh(p.id, 'flag') < 0.8) {
+            var gm = cairnFlag(P, KD.util.hash(String(p.id) + ':flag'), cols[floor(hsh(p.id, 'c') * 4) % 4]);
+            out.statics.push({ geom: gm, pos: [p.x, 0, p.z], yaw: hsh(p.id, 'y') * TAU, tag: 'piece' });
+            out.stats.tris.pieces += gm.idx.length / 3; n++;
+          }
+        } else if (p.kind === 'nest') mo.nests.push({ x: p.x, z: p.z });
+      }
+    },
+    runtime: function (asm, renderer, opts) { return runtime(asm, renderer, opts, MOUNTAIN_RT); }
+  };
+
+  var RIVER = {
+    env: {
+      sunDir: [0.36, 0.52, 0.66], sunColor: [1.0, 0.88, 0.68], sunIntensity: 1.42,
+      skyColor: [0.62, 0.76, 0.96], skyIntensity: 0.56, groundColor: [0.5, 0.6, 0.42], groundIntensity: 0.4,
+      zenith: [0.2, 0.46, 0.84], horizon: [0.92, 0.86, 0.74],
+      fogDensity: 0.0062, fogStart: 14, fogMax: 0.85, sunGlow: 1.25,
+      exposure: 1.04, knee: 0.7, saturation: 1.08, rim: 0.38, clouds: true,
+      windYaw: 0.4, windStrength: 0.14,
+      paintFine: 0.08, paintBroad: 0.12, paintHue: 0.02,
+      mist: 0.32, mistDensity: 0.05, mistFalloff: 0.9, mistStart: 14, mistColor: [0.86, 0.88, 0.86],
+      grade: 0.7, contrast: 0.18, vignette: 0.2, vignetteRadius: 0.36, gradeShadow: [0.0, 0.04, 0.07], gradeHigh: [1.04, 1.0, 0.92],
+      rimBack: 0.4
+    },
+    palette: {
+      grass: '#5f9c44', grassAlt: '#4f8c3c', forest: '#45763a', dirt: '#8f7652', road_dirt: '#a68a5e', path: '#ae9468', sand: '#dcc690', mud: '#5e4c38',
+      water: '#2f8fb0', plank: '#8a6a46', cobble: '#8a847a', road_cobble: '#8e887c', rock: '#7e7c72', rockDark: '#58564e', moss: '#6a8a3e',
+      leafA: '#3a8a40', leafB: '#5aa848', leafC: '#2a6e42', bush: '#468e3e', flowerA: '#f2e070', flowerB: '#e88aa8', trunk: '#6a4c34',
+      woodDark: '#4e3a2c', woodLight: '#9a7a52', canvas: '#c8b890', rope: '#a48a5c', cloth: ['#2f7a86', '#c0603e', '#d8b048', '#3e5a8a']
+    },
+    look: { scatter: { tuft: 1.2, flower: 1.1, pebble: 0.8, reed: 2.8, fern: 0.4 } },
+    lineupGround: '#5a8a40',
+    life: { windStrength: 0.14, rim: 0.5, rimColor: '#ffdcaa', water: { waves: 0.7, ripple: 1.1, shimmer: 1.1 }, shafts: 0.6, air: { pollen: 0.8, motes: 0.3, leaves: 0.4 }, critters: { frogs: 1.5, butterflies: 1.2, birds: 1 } },
+    piece: function (p) {
+      var h = hsh(p.id, 'a2r');
+      if (p.kind === 'bush' && p.style === 'thorn' && h < 0.5) return copy(p, { style: 'green' });
+      return null;
+    },
+    post: function (p, g) { groundAO(g, 0.86, 1.2); },
+    dress: function (out) {
+      var L = out.layout, mo = out.mood, i, n = 0;
+      mo.fires = fires(L.pieces || []); mo.banks = waterEdges(L, 2.2, 90); mo.water = waterCells(L, 3.5, 60);
+      // lily pads in the calm water near the banks (no collider needed: water blocks walking already)
+      var picked = [];
+      for (i = 0; i < mo.water.length && n < 18; i++) {
+        var w = mo.water[i];
+        if (!w.calm || hsh(w.x * 31 + w.z, 'lily') > 0.45) continue;
+        var ok = true; for (var j = 0; j < picked.length; j++) { var dx = picked[j][0] - w.x, dz = picked[j][1] - w.z; if (dx * dx + dz * dz < 36) { ok = false; break; } }
+        if (!ok) continue;
+        var gm = lilyPads(KD.util.hash('lily' + i + ':' + L.seed), 3 + (i % 3));
+        out.statics.push({ geom: gm, pos: [w.x, (E.ground && E.ground.WATER_Y !== undefined ? E.ground.WATER_Y : -0.25) + 0.012, w.z], yaw: 0, tag: 'piece', castShadow: false });
+        out.stats.tris.pieces += gm.idx.length / 3; picked.push([w.x, w.z]); n++;
+      }
+    },
+    runtime: function (asm, renderer, opts) { return runtime(asm, renderer, opts, RIVER_RT); }
+  };
+
+  var FROZEN = {
+    env: {
+      sunDir: [0.62, 0.36, 0.48], sunColor: [0.86, 0.9, 1.0], sunIntensity: 1.02,
+      skyColor: [0.5, 0.62, 0.92], skyIntensity: 0.66, groundColor: [0.66, 0.74, 0.92], groundIntensity: 0.5,
+      zenith: [0.1, 0.16, 0.36], horizon: [0.58, 0.68, 0.84],
+      fogDensity: 0.0105, fogStart: 12, fogMax: 0.9, sunGlow: 0.7,
+      exposure: 1.0, knee: 0.66, saturation: 0.95, rim: 0.5, clouds: false,
+      windYaw: 1.3, windStrength: 0.18,
+      paintFine: 0.08, paintBroad: 0.12, paintHue: 0.02,
+      mist: 0.34, mistDensity: 0.04, mistFalloff: 0.5, mistStart: 16, mistColor: [0.7, 0.78, 0.92],
+      grade: 1, contrast: 0.26, vignette: 0.36, vignetteRadius: 0.32, gradeShadow: [0.0, 0.03, 0.12], gradeHigh: [0.98, 1.0, 1.04],
+      rimBack: 0.4
+    },
+    palette: {
+      snow: '#e6eef8', grass: '#d8e2ee', grassAlt: '#cbd8e6', path: '#c2cfdd', dirt: '#8e8682', mud: '#6e6662', cobble: '#7c8692', road_cobble: '#808a96', plaza: '#9aa4b0',
+      rock: '#7e8896', rockDark: '#545e6c', stoneWall: '#8c96a4', stoneDark: '#5c6674', water: '#5a90b8', plank: '#6e5a48', gravel: '#9aa2ac',
+      plaster: '#cfd2d6', plasterAlt: '#b8bcc4', timber: '#4a3a2e', roofA: '#4c5e7a', roofB: '#5e6e88', roofC: '#7a4a44', thatch: '#b0a888',
+      window: '#ffb15a', door: '#4a3a30', trim: '#dfe6ee', leafA: '#2a5a48', leafB: '#386a54', leafC: '#20483c', bush: '#3a6650', moss: '#7a9aa0',
+      woodDark: '#3e3430', woodLight: '#7a6a5a', canvas: '#c8c4b8', rope: '#8a7c66', iron: '#4a505a', fire: '#ff9a40',
+      cloth: ['#2f4a7a', '#8a2a34', '#c8a23a', '#3a6a6a']
+    },
+    look: { scatter: { tuft: 0.1, flower: 0, pebble: 0.4, lump: 1.8 } },
+    lineupGround: '#cdd8e4',
+    life: { windStrength: 0.18, gust: 0.7, rim: 0.55, rimColor: '#ffc890', glow: 1.4, air: { snow: 1.5, embers: 0.8, motes: 0, leaves: 0 }, colors: { snow: '#eef4ff' }, critters: { crows: 0, birds: 0, moths: 0, butterflies: 0, rats: 0.6 } },
+    piece: function (p) {
+      if (p.kind === 'bush' && (p.style === 'green' || p.style === 'berry' || !p.style)) return copy(p, { style: 'snow' });
+      if (p.kind === 'tree' && p.species === 'pine') return copy(p, { species: 'snowpine' });
+      return null;
+    },
+    post: function (p, g) { groundAO(g, 0.86, 1.2); if (p.kind !== 'brazier' && p.kind !== 'campfire' && p.kind !== 'forge') dust(g, [0.9, 0.94, 1.0], 0.42, 0.25); },
+    dress: function (out) {
+      var pieces = out.layout.pieces || [], mo = out.mood, i, n = 0;
+      mo.fires = fires(pieces); mo.crystals = [];
+      for (i = 0; i < pieces.length && n < 14; i++) {
+        var p = pieces[i];
+        if (p.kind !== 'rock' || (+p.size || 1) < 0.6 || hsh(p.id, 'frost') > 0.75) continue;
+        var r = +p.size || 1, gm = frostCrystals(KD.util.hash(String(p.id) + ':cr'), r);
+        if (!gm) break;
+        var a = hsh(p.id, 'ca') * TAU, d = r * 0.35, y = 1.1 * r * 0.82;
+        out.statics.push({ geom: gm, pos: [p.x + sin(a) * d, y, p.z + cos(a) * d], yaw: a, tag: 'piece' });
+        out.stats.tris.pieces += gm.idx.length / 3;
+        mo.crystals.push({ x: p.x + sin(a) * d, y: y + 0.3, z: p.z + cos(a) * d, acc: 0 }); n++;
+      }
+      // the garrison's fires burn warmer and reach further in the cold
+      out.lights = out.lights.map(function (l) { if (l.mood) return l; var c = C(l.color || '#ffd27a'); if (c[0] > c[2]) return copy(l, { r: (l.r || 6) * 1.2, intensity: (l.intensity || 1) * 1.15 }); return l; });
+    },
+    runtime: function (asm, renderer, opts) { return runtime(asm, renderer, opts, FROZEN_RT); }
+  };
+
+  var GATE = {
+    env: {
+      sunDir: [0.7, 0.4, 0.42], sunColor: [1.0, 0.8, 0.56], sunIntensity: 1.4,
+      skyColor: [0.56, 0.6, 0.82], skyIntensity: 0.5, groundColor: [0.56, 0.46, 0.38], groundIntensity: 0.38,
+      zenith: [0.16, 0.26, 0.56], horizon: [0.96, 0.76, 0.56],
+      fogDensity: 0.0068, fogStart: 16, fogMax: 0.86, sunGlow: 1.4,
+      exposure: 1.02, knee: 0.68, saturation: 1.0, rim: 0.46, clouds: true,
+      windYaw: 0.2, windStrength: 0.14,
+      paintFine: 0.09, paintBroad: 0.14, paintHue: 0.022,
+      mist: 0.16, mistDensity: 0.02, mistFalloff: 0.4, mistStart: 22, mistColor: [0.86, 0.72, 0.58],
+      grade: 0.9, contrast: 0.28, vignette: 0.32, vignetteRadius: 0.32, gradeShadow: [0.06, 0.02, 0.08], gradeHigh: [1.05, 0.99, 0.9],
+      rimBack: 0.5
+    },
+    palette: {
+      rock: '#857a70', rockDark: '#5a524c', stoneWall: '#9a9084', stoneDark: '#6a625a', grass: '#7a8a4a', grassAlt: '#6a7a40', dirt: '#8e7258', road_dirt: '#9a7e60',
+      path: '#a68c6c', cobble: '#827a70', gravel: '#8a8478', sand: '#c8b088', plank: '#7a5e44', mud: '#5e4a3a',
+      plaster: '#c8bca4', timber: '#4e3a28', roofA: '#7a3a30', roofB: '#4e5a70', door: '#3e2e24', window: '#ffb347', trim: '#d8ccb0',
+      woodDark: '#45342a', woodLight: '#8a6e50', canvas: '#c2b08c', rope: '#9a8460', iron: '#4a4c52', gold: '#c9a23b', fire: '#ff9a40',
+      leafA: '#3a6e3e', leafB: '#4e8444', leafC: '#2c5c3c', bush: '#4a7a3e', leafDead: '#7a6040',
+      cloth: ['#7a2026', '#2f3f5a', '#c9a23b', '#d8ccaa']
+    },
+    look: { scatter: { tuft: 0.6, flower: 0.15, pebble: 1.8, rubble: 1.0 } },
+    lineupGround: '#7a6a58',
+    life: { windStrength: 0.14, rim: 0.55, rimColor: '#ffc890', glow: 1.2, shafts: 0.5, air: { motes: 0.9, embers: 0.6 }, colors: { mote: '#ffd890' }, critters: { crows: 1.2, rats: 1, birds: 0.4 } },
+    piece: function () { return null; },
+    post: function (p, g) { groundAO(g, 0.78, 1.5); },
+    dress: function (out) {
+      var L = out.layout, pieces = L.pieces || [], P = KD.env.arch.pal(out.theme), mo = out.mood, i, j;
+      mo.fires = fires(pieces); mo.torches = [];
+      var red = C('#7a2026'), trim = C('#c9a23b');
+      // war banners on the stone walls (the +Z face and the back face, high up: above 2.2 m nothing can be walked into)
+      var nb = 0;
+      for (i = 0; i < pieces.length && nb < 16; i++) {
+        var p = pieces[i];
+        if (p.kind !== 'wall' || (p.style && p.style !== 'stone') || (+p.len || 0) < 4 || (+p.h || 4) < 3.2) continue;
+        var A = KD.env.arch, m = A.mesh(KD.util.hash(String(p.id) + ':ban')), len = +p.len, th = (+p.thick || 1) / 2, yTop = (+p.h || 4) - 0.35, cnt = len >= 9 ? 2 : 1;
+        for (j = 0; j < cnt; j++) { var u = cnt === 1 ? 0 : (j ? 1 : -1) * len * 0.25; wallBanner(m, P, u, yTop, th + 0.02, red, trim, KD.util.hash(String(p.id) + j)); }
+        if (hsh(p.id, 'back') < 0.5) { m.push(); m.rotY(PI); wallBanner(m, P, 0, yTop, th + 0.02, red, trim, KD.util.hash(String(p.id) + 'b')); m.pop(); }
+        var gm = m.done();
+        out.statics.push({ geom: gm, pos: [p.x, 0, p.z], yaw: p.rot || 0, tag: 'piece' });
+        out.stats.tris.pieces += gm.idx.length / 3; nb++;
+      }
+      // military torches at the ends of barricades and fences, inside their footprint, at least 11 m apart
+      var hosts = pieces.filter(function (q) { return (q.kind === 'wall' && q.style === 'barricade') || (q.kind === 'fence' && (+q.len || 0) >= 2); });
+      hosts.sort(function (a, b) { return hsh(a.id, 'tor') - hsh(b.id, 'tor'); });
+      var picked = [];
+      for (i = 0; i < hosts.length && picked.length < 14; i++) {
+        var f = hosts[i], ln = +f.len || 2, end = hsh(f.id, 'end') < 0.5 ? 1 : -1, w = world(f, end * (ln / 2 - 0.16), 0), ok = true;
+        for (j = 0; j < picked.length; j++) { var dx = picked[j][0] - w[0], dz = picked[j][1] - w[1]; if (dx * dx + dz * dz < 11 * 11) { ok = false; break; } }
+        if (!ok) continue;
+        var tp = torchPole(P, KD.util.hash(String(f.id) + ':torch'));
+        out.statics.push({ geom: tp.geom, pos: [w[0], 0, w[1]], yaw: f.rot || 0, tag: 'piece' });
+        out.stats.tris.pieces += tp.geom.idx.length / 3;
+        var rec = { x: w[0], y: tp.fire[1], z: w[1], color: '#ffa040', r: 7, intensity: 1.35, flicker: 0.6, acc: 0, torch: true };
+        mo.torches.push(rec); picked.push(w);
+        out.lights.push({ x: rec.x, y: rec.y, z: rec.z, color: rec.color, r: rec.r, intensity: rec.intensity, flicker: rec.flicker, mood: true });
+      }
+    },
+    runtime: function (asm, renderer, opts) { return runtime(asm, renderer, opts, GATE_RT); }
+  };
+
+  // ================================================================== spots
+  function fires(pieces) {
+    var out = [], i;
+    for (i = 0; i < pieces.length; i++) {
+      var p = pieces[i];
+      if (p.kind === 'brazier') out.push({ x: p.x, y: 1.12, z: p.z, s: 0.8, acc: 0, smoke: 0 });
+      else if (p.kind === 'campfire') out.push({ x: p.x, y: 0.32, z: p.z, s: 1.1, acc: 0, smoke: 0, camp: true });
+      else if (p.kind === 'forge') out.push({ x: p.x, y: 1.1, z: p.z, s: 0.9, acc: 0, smoke: 0 });
+    }
+    return out;
+  }
+  A2.fires = fires;
+  function surfId(name) { var S = KD.gen && KD.gen.SURF; if (!S) return -1; if (Array.isArray(S)) return S.indexOf(name); return S[name] !== undefined ? S[name] : -1; }
+  /** Walkable land cells next to water (the banks), thinned to at most `cap`, deterministic. */
+  function waterEdges(L, step, cap) {
+    var W = surfId('water'), out = [], gw = L.gw || L.w, gd = L.gd || L.d, s = max(1, floor(step)), x, z;
+    if (W < 0 || !L.surf) return out;
+    for (z = 1; z < gd - 1; z += s) for (x = 1; x < gw - 1; x += s) {
+      var i = z * gw + x; if (L.surf[i] === W) continue;
+      if (L.surf[i - 1] === W || L.surf[i + 1] === W || L.surf[i - gw] === W || L.surf[i + gw] === W) out.push({ x: x + 0.5, z: z + 0.5, acc: 0 });
+    }
+    if (out.length > cap) { out.sort(function (a, b) { return hsh(a.x * 977 + a.z, 'bank') - hsh(b.x * 977 + b.z, 'bank'); }); out.length = cap; }
+    return out;
+  }
+  /** Water cells (thinned); `calm` = within 3 cells of a bank (lily pads). */
+  function waterCells(L, step, cap) {
+    var W = surfId('water'), out = [], gw = L.gw || L.w, gd = L.gd || L.d, s = max(1, floor(step)), x, z;
+    if (W < 0 || !L.surf) return out;
+    for (z = 2; z < gd - 2; z += s) for (x = 2; x < gw - 2; x += s) {
+      var i = z * gw + x; if (L.surf[i] !== W) continue;
+      var land = 0, k; for (k = 1; k <= 3; k++) if (L.surf[i - k] !== W || L.surf[i + k] !== W || L.surf[i - k * gw] !== W || L.surf[i + k * gw] !== W) { land = k; break; }
+      out.push({ x: x + 0.5, z: z + 0.5, calm: land >= 2, acc: 0 });
+    }
+    if (out.length > cap) { out.sort(function (a, b) { return hsh(a.x * 977 + a.z, 'wat') - hsh(b.x * 977 + b.z, 'wat'); }); out.length = cap; }
+    return out;
+  }
+  A2.waterEdges = waterEdges; A2.waterCells = waterCells;
+
+  // ================================================================== the hawk (runtime actor, Mountain Trail)
+  function hawkModel() {
+    var brown = '#5a4a3c', light = '#c8b89a', dark = '#3a3028', beak = '#e0b84a';
+    return { name: 'hawk', children: [
+      { name: 'body', pos: [0, 0, 0], children: [
+        { mesh: 'sphere', size: [0.2, 0.17, 0.4], color: brown },
+        { mesh: 'sphere', pos: [0, -0.03, 0.04], size: [0.16, 0.12, 0.3], color: light },
+        { name: 'tail', pos: [0, 0.01, -0.22], mesh: 'wedge', size: [0.18, 0.03, 0.22], offset: [0, 0, -0.08], color: dark },
+        { name: 'wing_l', pos: [0.08, 0.04, 0.02], children: [{ mesh: 'wedge', size: [0.72, 0.03, 0.26], offset: [0.36, 0, -0.03], color: brown }] },
+        { name: 'wing_r', pos: [-0.08, 0.04, 0.02], children: [{ mesh: 'wedge', size: [0.72, 0.03, 0.26], offset: [-0.36, 0, -0.03], color: brown }] },
+        { name: 'head', pos: [0, 0.06, 0.2], children: [
+          { mesh: 'sphere', size: [0.12, 0.12, 0.13], color: light },
+          { mesh: 'cone', pos: [0, -0.01, 0.08], rot: [PI / 2, 0, 0], size: [0.04, 0.07, 0.04], color: beak }
+        ] }
+      ] }
+    ] };
+  }
+
+  // ================================================================== runtime
+  var MOUNTAIN_RT = { grit: true, gusts: true, cloudShadows: { n: 5, color: '#20283a', alpha: 0.16, r: [12, 20], speed: 2.4 }, hawks: 2, fires: true, flags: true };
+  var RIVER_RT = { pollen: true, banks: true, dragonflies: true, fish: true, fires: true, cloudShadows: { n: 3, color: '#22302a', alpha: 0.1, r: [12, 18], speed: 1.2 } };
+  var FROZEN_RT = { snow: true, gusts: true, sparkle: true, crystals: true, fires: true, heroLight: { color: '#ffe2c0', r: 7, intensity: 0.65 }, warm: 1.4 };
+  var GATE_RT = { dust: true, smoke: true, fires: true, torches: true, cloudShadows: { n: 3, color: '#2a2024', alpha: 0.12, r: [14, 22], speed: 1.6 } };
+  A2.RT = { mountain: MOUNTAIN_RT, river: RIVER_RT, frozen: FROZEN_RT, gate: GATE_RT };
+
+  /** What the shared KD.env.life system already draws for this build (so the mood never draws it twice). */
+  function shared(asm) {
+    var L = E.life, h = function (w) { try { return !!(L && L.handles && L.handles(asm, w)); } catch (e) { return false; } };
+    return { motes: h('motes'), pollen: h('pollen'), snow: h('snow'), embers: h('embers'), glow: h('glow'), butterflies: h('butterflies'), crows: h('crows'), air: h('motes') || h('pollen') };
+  }
+  A2.shared = shared;
+
+  function runtime(asm, renderer, opts, cfg) {
+    var parts = renderer.particles || null, mo = asm.mood || {}, theme = asm.theme, env = theme.env || {};
+    var wind = env.windYaw !== undefined ? env.windYaw : 0.6, wx = sin(wind), wz = cos(wind), rnd = Math.random;
+    var focus = [asm.layout.w / 2, 0, asm.layout.d / 2];
+    var rt = { lights: [], actors: [], shared: shared(asm), cfg: cfg };
+    var cWhite = C('#ffffff'), cSnow = C('#eef4ff'), cSnow2 = C('#b8cce8'), cGrit = C('#c8c0b0'), cGrit2 = C('#8a8478'), cPollen = C('#fff6dc'), cFly = C('#5ad8e8'), cFly2 = C('#1a6a7a');
+    var cMist = C('#e4e8e4'), cEmber = C('#ffa040'), cEmber2 = C('#7a2a10'), cHalo = C('#ffb050'), cSmoke = C('#6a625e'), cDust = C('#ffd8a0'), cFrost = C('#c8f4ff'), cSplash = C('#dff4ff');
+    var heroL = null;
+    if (cfg.heroLight && renderer.lights && renderer.lights.add) { heroL = renderer.lights.add({ x: focus[0], y: 2.6, z: focus[2], color: cfg.heroLight.color, r: cfg.heroLight.r, intensity: cfg.heroLight.intensity, flicker: 0 }); rt.lights.push(heroL); }
+    // cloud shadows: big soft dark underlays drifting with the wind
+    var clouds = [];
+    if (cfg.cloudShadows) {
+      var cs = cfg.cloudShadows, cc = C(cs.color);
+      for (var ci = 0; ci < cs.n; ci++) clouds.push({ x: focus[0] + (rnd() - 0.5) * 70, z: focus[2] + (rnd() - 0.5) * 70, r: cs.r[0] + rnd() * (cs.r[1] - cs.r[0]), c: cc, a: cs.alpha * (0.7 + rnd() * 0.3) });
+    }
+    // hawks circling high above (Mountain Trail), drawn unless the shared system brings its own critters
+    if (cfg.hawks && KD.gfx && KD.gfx.Actor) {
+      for (var hi = 0; hi < cfg.hawks; hi++) {
+        var a = null; try { a = new KD.gfx.Actor(hawkModel()); } catch (err) { break; }
+        a.radius = 0.8; a.centerY = 0;
+        rt.actors.push({ actor: a, ph: hi * PI + rnd(), r: 9 + hi * 4 + rnd() * 3, h: 13 + hi * 3, sp: 0.22 + rnd() * 0.08, cx: focus[0], cz: focus[2], flap: 0, glide: 0 });
+      }
+    }
+    var fireList = (mo.fires || []).concat((mo.torches || []).map(function (t) { return { x: t.x, y: t.y, z: t.z, s: 0.7, acc: 0, smoke: 0, torch: true }; }));
+
+    rt.update = function (dt, world, r) {
+      var F = r && r._f, q = M.quality(), k = q.k, low = q.name === 'low', i, dx, dz;
+      if (F && F.ready && F.focus) { focus[0] = F.focus[0]; focus[2] = F.focus[2]; }
+      var hero = null; if (world && world.players) hero = world.players[world.viewIndex || 0] || world.players[0];
+      var hx = hero ? hero.x : focus[0], hz = hero ? hero.z : focus[2];
+      if (heroL) { heroL.x = hx; heroL.z = hz; }
+      // ---- cloud shadows (also while paused, so the picture does not change when the pause opens)
+      var nCl = low ? min(1, clouds.length) : (q.name === 'medium' ? min(2, clouds.length) : clouds.length);
+      for (i = 0; i < nCl; i++) {
+        var cl = clouds[i];
+        if (dt > 0) { var sp = cfg.cloudShadows.speed; cl.x += wx * sp * dt; cl.z += wz * sp * dt; dx = cl.x - focus[0]; dz = cl.z - focus[2]; if (dx * dx + dz * dz > 48 * 48) { var ang = Math.atan2(-wx, -wz) + (rnd() - 0.5) * 1.6; cl.x = focus[0] + sin(ang) * 44; cl.z = focus[2] + cos(ang) * 44; } }
+        if (r && r.underlay) r.underlay(cl.x, cl.z, cl.r, cl.c, cl.a);
+      }
+      // ---- mist lying on the river banks (underlays near the camera)
+      if (cfg.banks && mo.banks && r && r.underlay) {
+        var nb = 0, cap = low ? 4 : (q.name === 'medium' ? 9 : 16), t = (r.time || 0);
+        for (i = 0; i < mo.banks.length && nb < cap; i++) { var b = mo.banks[i]; dx = b.x - focus[0]; dz = b.z - focus[2]; if (dx * dx + dz * dz > 30 * 30) continue; r.underlay(b.x, b.z, 3.2 + sin(t * 0.3 + i) * 0.6, cMist, 0.16 + 0.05 * sin(t * 0.21 + i * 1.7)); nb++; }
+      }
+      // ---- hawks
+      for (i = 0; i < rt.actors.length; i++) {
+        var hk = rt.actors[i], ha = hk.actor;
+        if (low && i > 0) { ha.visible = false; continue; }
+        ha.visible = true;
+        if (dt > 0) { hk.ph += hk.sp * dt; hk.cx += (focus[0] - hk.cx) * min(1, dt * 0.08); hk.cz += (focus[2] - hk.cz) * min(1, dt * 0.08); hk.glide -= dt; if (hk.glide < -2.5) hk.glide = 2 + rnd() * 4; }
+        var px = hk.cx + cos(hk.ph) * hk.r, pz = hk.cz + sin(hk.ph) * hk.r, yaw = Math.atan2(-sin(hk.ph), cos(hk.ph));
+        var flapping = hk.glide < 0; hk.flap += dt * (flapping ? 9 : 0);
+        var wl = ha.joint('wing_l'), wr = ha.joint('wing_r'), bd = ha.joint('body'), fa = flapping ? sin(hk.flap) * 0.6 : 0.08;
+        if (wl) wl.rot[2] = -fa; if (wr) wr.rot[2] = fa; if (bd) bd.rot[2] = -0.35;
+        ha.setTransform(px, hk.h + sin(hk.ph * 2) * 0.6, pz, yaw, 1.1);
+        ha.submit(r);
+      }
+      if (dt <= 0 || !parts) return;
+      var pk = (KD.gfx.quality && KD.gfx.quality.def && KD.gfx.quality.def.particles) || 1;
+      // ---- air: grit on the gusts (mountain), pollen fluff (river), golden dust (gate)
+      if (!rt.shared.motes && cfg.grit) {
+        rt.grit = (rt.grit || 0) + dt * 9 * k * pk;
+        while (rt.grit >= 1) { rt.grit -= 1; var ga = rnd() * TAU, gd = sqrt(rnd()) * 16;
+          parts.emit({ x: focus[0] + sin(ga) * gd - wx * 6, y: 0.2 + rnd() * 2.6, z: focus[2] + cos(ga) * gd - wz * 6, count: 1, dir: [wx, 0.05, wz], spread: 0.25, speed: [2.5, 5], life: [1.6, 2.8],
+            size: [0.016, 0.03], sizeEnd: 0.01, color: rnd() < 0.5 ? cGrit : cWhite, color2: cGrit2, alpha: 0.55, gravity: 0.05, drag: 0.05, additive: false, shape: 'soft' }); }
+      }
+      if (!rt.shared.pollen && cfg.pollen) {
+        rt.pol = (rt.pol || 0) + dt * 5 * k * pk;
+        while (rt.pol >= 1) { rt.pol -= 1; var pa = rnd() * TAU, pd = sqrt(rnd()) * 15;
+          parts.emit({ x: focus[0] + sin(pa) * pd, y: 0.4 + rnd() * 2.4, z: focus[2] + cos(pa) * pd, count: 1, dir: [wx, 0.15, wz], spread: 1.0, speed: [0.15, 0.45], life: [5, 8],
+            size: [0.025, 0.04], sizeEnd: 0.02, color: cPollen, color2: cPollen, alpha: 0.75, gravity: -0.01, drag: 0.2, additive: true, shape: 'soft' }); }
+      }
+      if (!rt.shared.motes && cfg.dust) {
+        rt.dst = (rt.dst || 0) + dt * 7 * k * pk;
+        while (rt.dst >= 1) { rt.dst -= 1; var da = rnd() * TAU, dd = sqrt(rnd()) * 14;
+          parts.emit({ x: focus[0] + sin(da) * dd, y: 0.3 + rnd() * 3.2, z: focus[2] + cos(da) * dd, count: 1, dir: [wx, 0.2, wz], spread: 1.2, speed: [0.06, 0.25], life: [4, 7],
+            size: [0.02, 0.04], sizeEnd: 0.008, color: cDust, color2: cDust, alpha: 0.5, gravity: -0.02, drag: 0.1, additive: true, shape: 'soft' }); }
+      }
+      // ---- snowfall round the camera (Frozen Outpost): the mood's own, also with the shared air (it is the weather)
+      if (cfg.snow && !rt.shared.snow) {
+        rt.snow = (rt.snow || 0) + dt * 34 * k * pk;
+        while (rt.snow >= 1) { rt.snow -= 1; var sa = rnd() * TAU, sd = sqrt(rnd()) * 18;
+          parts.emit({ x: focus[0] + sin(sa) * sd - wx * 2, y: 5 + rnd() * 4, z: focus[2] + cos(sa) * sd - wz * 2, count: 1, dir: [wx * 0.5, -1, wz * 0.5], spread: 0.3, speed: [0.6, 1.1], life: [6, 9],
+            size: [0.03, 0.055], sizeEnd: 0.03, color: cSnow, color2: cSnow2, alpha: 0.9, gravity: 0.04, drag: 0.15, additive: false, shape: 'soft' }); }
+      }
+      // ---- gusts: a streak of blowing snow / grit along the ground every few seconds (not on low)
+      if (cfg.gusts && !low) {
+        rt.gust = (rt.gust || 0) - dt;
+        if (rt.gust <= 0) {
+          rt.gust = 3 + rnd() * 4;
+          var ox = focus[0] + (rnd() - 0.5) * 18 - wx * 8, oz = focus[2] + (rnd() - 0.5) * 18 - wz * 8, ng = Math.round(16 * k);
+          for (var gi = 0; gi < ng; gi++) parts.emit({ x: ox + (rnd() - 0.5) * 3, y: 0.1 + rnd() * 0.5, z: oz + (rnd() - 0.5) * 3, count: 1, dir: [wx, 0.12, wz], spread: 0.2, speed: [3, 6], life: [1.2, 2.2],
+            size: [0.06, 0.12], sizeEnd: 0.35, color: cfg.snow ? cSnow : cGrit, color2: cfg.snow ? cSnow2 : cGrit2, alpha: 0.32, gravity: 0, drag: 0.4, additive: false, shape: 'soft' });
+        }
+      }
+      // ---- sparkles on the snow (tiny glints flashing near the camera)
+      if (cfg.sparkle) {
+        rt.spk = (rt.spk || 0) + dt * 10 * k * pk;
+        while (rt.spk >= 1) { rt.spk -= 1; var ka = rnd() * TAU, kd = sqrt(rnd()) * 12;
+          parts.emit({ x: focus[0] + sin(ka) * kd, y: 0.06, z: focus[2] + cos(ka) * kd, count: 1, speed: 0, life: [0.25, 0.5], size: [0.04, 0.06], sizeEnd: 0.0, color: cWhite, alpha: 0.9, gravity: 0, additive: true, shape: 'soft' }); }
+      }
+      // ---- frost crystals: a slow glimmer rising off them
+      if (cfg.crystals && mo.crystals) {
+        for (i = 0; i < mo.crystals.length; i++) { var cr = mo.crystals[i]; dx = cr.x - focus[0]; dz = cr.z - focus[2]; if (dx * dx + dz * dz > 30 * 30) continue;
+          cr.acc += dt * (low ? 0.6 : 1.6 * k);
+          while (cr.acc >= 1) { cr.acc -= 1; parts.emit({ x: cr.x + (rnd() - 0.5) * 0.4, y: cr.y, z: cr.z + (rnd() - 0.5) * 0.4, count: 1, dir: [0, 1, 0], spread: 0.5, speed: [0.1, 0.3], life: [1.5, 2.5], size: [0.04, 0.07], sizeEnd: 0.01, color: cFrost, color2: cSnow2, alpha: 0.8, gravity: -0.03, drag: 0.4, additive: true, shape: 'soft' }); } }
+      }
+      // ---- fires: a warm halo (the cheap stand-in for bloom), embers, and smoke from camp fires
+      if (cfg.fires) {
+        var warm = cfg.warm || 1;
+        for (i = 0; i < fireList.length; i++) {
+          var f = fireList[i]; dx = f.x - focus[0]; dz = f.z - focus[2]; if (dx * dx + dz * dz > 38 * 38) continue;
+          f.acc += dt * (low ? 2.5 : 5);
+          while (!rt.shared.glow && f.acc >= 1) { f.acc -= 1; parts.emit({ x: f.x, y: f.y + 0.12, z: f.z, count: 1, speed: 0, life: [0.5, 0.7], size: [0.6 * f.s * warm, 0.75 * f.s * warm], sizeEnd: 0.7 * f.s * warm, color: cHalo, alpha: 0.26, gravity: 0, additive: true, shape: 'soft' });
+            if (!rt.shared.embers && rnd() < 0.5 * k + 0.1) parts.emit({ x: f.x + (rnd() - 0.5) * 0.3, y: f.y + 0.2, z: f.z + (rnd() - 0.5) * 0.3, count: 1, dir: [wx * 0.3, 1, wz * 0.3], spread: 0.5, speed: [0.6, 1.4], life: [1.0, 1.8], size: [0.018, 0.03], sizeEnd: 0.004, color: cEmber, color2: cEmber2, alpha: 1, gravity: -0.25, drag: 0.6, additive: true, shape: 'soft' }); }
+          if (f.acc > 2) f.acc = 0;
+          if (cfg.smoke && f.camp && !low) {
+            f.smoke += dt * 1.2 * k;
+            while (f.smoke >= 1) { f.smoke -= 1; parts.emit({ x: f.x + (rnd() - 0.5) * 0.3, y: f.y + 0.6, z: f.z + (rnd() - 0.5) * 0.3, count: 1, dir: [wx * 0.25, 1, wz * 0.25], spread: 0.2, speed: [0.5, 0.8], life: [4, 6], size: [0.25, 0.35], sizeEnd: 1.6, color: cSmoke, color2: cSmoke, alpha: 0.14, gravity: -0.04, drag: 0.1, additive: false, shape: 'soft' }); }
+          }
+          if (f.torch && !low) {      // the torch flame itself (the coals are geometry)
+            f.fl = (f.fl || 0) + dt * 14 * k;
+            while (f.fl >= 1) { f.fl -= 1; parts.emit({ x: f.x + (rnd() - 0.5) * 0.12, y: f.y - 0.04, z: f.z + (rnd() - 0.5) * 0.12, count: 1, dir: [wx * 0.2, 1, wz * 0.2], spread: 0.25, speed: [0.5, 1.0], life: [0.35, 0.6], size: [0.12, 0.18], sizeEnd: 0.02, color: C('#ffd070'), color2: C('#ff5a1a'), alpha: 0.95, gravity: -0.4, drag: 0.5, additive: true, shape: 'soft' }); }
+          }
+        }
+      }
+      // ---- river life: dragonflies darting over the banks, a fish jumping now and then
+      if (cfg.dragonflies && !rt.shared.butterflies && mo.banks && mo.banks.length) {
+        rt.dfly = (rt.dfly || 0) + dt * 0.8 * k;
+        while (rt.dfly >= 1) { rt.dfly -= 1; var bk = mo.banks[floor(rnd() * mo.banks.length)]; dx = bk.x - focus[0]; dz = bk.z - focus[2]; if (dx * dx + dz * dz > 26 * 26) continue;
+          var da2 = rnd() * TAU; parts.emit({ x: bk.x, y: 0.5 + rnd() * 0.6, z: bk.z, count: 1, dir: [sin(da2), 0.05, cos(da2)], spread: 0.1, speed: [1.6, 2.6], life: [0.8, 1.4], size: [0.035, 0.05], sizeEnd: 0.03, color: cFly, color2: cFly2, alpha: 1, gravity: 0, drag: 0.6, additive: true, shape: 'soft' }); }
+      }
+      if (cfg.fish && !low && mo.water && mo.water.length) {
+        rt.fish = (rt.fish || 0) - dt;
+        if (rt.fish <= 0) {
+          rt.fish = 2.5 + rnd() * 4;
+          var wc = mo.water[floor(rnd() * mo.water.length)]; dx = wc.x - focus[0]; dz = wc.z - focus[2];
+          if (dx * dx + dz * dz < 28 * 28) parts.emit({ x: wc.x, y: -0.2, z: wc.z, count: Math.round(10 * k) + 2, dir: [0, 1, 0], spread: 0.6, speed: [1.2, 2.2], life: [0.5, 0.8], size: [0.03, 0.05], sizeEnd: 0.01, color: cSplash, alpha: 0.85, gravity: 3.5, drag: 0.2, additive: false, shape: 'soft' });
+        }
+      }
+    };
+    rt.dispose = function () {
+      rt.lights.forEach(function (h) { if (h && h.remove) h.remove(); });
+      rt.lights = []; rt.actors = [];
+    };
+    return rt;
+  }
+  A2.runtime = runtime;
+
+  M.register('a2_mountain', MOUNTAIN);
+  M.register('a2_river', RIVER);
+  M.register('a2_frozen', FROZEN);
+  M.register('a2_gate', GATE);
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
