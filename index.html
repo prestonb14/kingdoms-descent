@@ -3410,7 +3410,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.41';
+  KD.VERSION = '0.7.42';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -22452,6 +22452,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.42', date: '2026-10-10', title: 'Softer melee swings', notes: [
+      'Melee swings leave a softer, thinner streak instead of a bright solid arc',
+      'Fewer sparkles along each swing'
+    ] },
     { version: '0.7.41', date: '2026-10-10', title: 'A breezier, livelier world', notes: [
       'Grass, crops, trees, banners and pennants now sway in the wind, and gusts roll across the fields',
       'Campfires, braziers and torches flicker for real, and their warm light breathes',
@@ -66486,7 +66490,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   var SWING = { swing: 1, cleave: 1, whirlwind: 1, sever: 1 };      // presets (also reached through an alias or keyword) that get the crescent
   function arcMesh() {
     if (!G || !G.registerMesh || !G.geom || G.hasMesh('jc_arc')) return;
-    var B = new G.geom._Bld('#ffffff'), n = 3, r0 = 0.8, r1 = 1.0, t = 0.012, i;
+    var B = new G.geom._Bld('#ffffff'), n = 3, r0 = 0.9, r1 = 1.0, t = 0.012, i;   // [owner: melee effect too extreme] thinner band (was 0.8)
     for (i = 0; i < n; i++) {
       var a0 = -SEG / 2 + SEG * i / n, a1 = -SEG / 2 + SEG * (i + 1) / n;
       var p0 = [Math.sin(a0) * r0, 0, Math.cos(a0) * r0], p1 = [Math.sin(a1) * r0, 0, Math.cos(a1) * r0];
@@ -66737,11 +66741,13 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         var sweep = arc >= TAU - 0.01 ? 0.16 : 0.07;
         for (var i = 0; i < n; i++) {
           var a = yaw - arc / 2 + arc * (i + 0.5) / n, last = i === n - 1;
-          var m = c.meshFx('jc_arc', ev.x, y - 0.1 + (i / n) * 0.2, ev.z, rr * 0.9, 1, rr * 0.9, rr * 1.06, 1, rr * 1.06, i > n * 0.6 ? hot : cc, 0.78, 0.16 + (last ? 0.04 : 0));
-          if (m) { m.ry = a; m.delay = sweep * i / n; m.emissive = 0.85; }
+          // [owner: melee effect too extreme] a soft, thin streak that fades along the swing instead of a bright solid band
+          var fade = 0.25 + 0.75 * (i + 1) / n;
+          var m = c.meshFx('jc_arc', ev.x, y - 0.1 + (i / n) * 0.2, ev.z, rr * 0.95, 1, rr * 0.95, rr * 1.02, 1, rr * 1.02, i > n * 0.75 ? hot : cc, 0.34 * fade, 0.12 + (last ? 0.03 : 0));
+          if (m) { m.ry = a; m.delay = sweep * i / n; m.emissive = 0.45; }
         }
         var T = FX.T[pal.mote] || FX.T.spark;
-        c.arcBurst(T, ev.x, y, ev.z, yaw, arc, rr * 0.85, rr * 1.05, clamp(Math.round(arc * 2.2), 3, 9), k, pal.m1, pal.m2, 0.25);
+        c.arcBurst(T, ev.x, y, ev.z, yaw, arc, rr * 0.85, rr * 1.05, clamp(Math.round(arc * 1.0), 1, 4), k, pal.m1, pal.m2, 0.25);   // fewer motes (was arc*2.2, 3..9)
       }
       // ---- the hero's shots: a trail in the class colour on top of the projectile's own
       function projTrails(dt) {
