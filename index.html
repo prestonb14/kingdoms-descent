@@ -3410,7 +3410,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.30';
+  KD.VERSION = '0.7.31';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -77931,7 +77931,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         return out;
       }, LOCAL);
       u.add('chest', 'tabard', function () {
-        var out = tabard(m, white, 651, 1.35), cy = m.torsoH * 0.6, cz = m.torsoD * 0.58 + 0.008 * k;
+        var out = tabard(m, white, 651, 1.35, false), cy = m.torsoH * 0.6, cz = m.torsoD * 0.58 + 0.008 * k;
         out.push(T(R(g.cylinder({ r: 0.06 * k, h: 0.01 * k, sides: 10, color: gold }), HALF, 0, 0), 0, cy, cz));
         out.push(cape(m, wine, S.shade(wine, -0.35), 652, 1.1));
         out.push(geo.cord([[m.torsoW * 0.5, m.torsoH * 1.0, 0], [0, m.torsoH * 0.35, m.torsoD * 0.64], [-m.torsoW * 0.5, m.torsoH * 1.0, 0]], 0.012 * k, IRON, 4, true));
@@ -78224,7 +78224,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         return out;
       }, LOCAL);
       u.add('chest', 'tabard', function () {
-        var out = tabard(m, slate, 841, 1.35);
+        var out = tabard(m, slate, 841, 1.35, false);
         out.push(glow(geo.cord([[0.02 * k, m.torsoH * 0.82, m.torsoD * 0.6], [-0.04 * k, m.torsoH * 0.62, m.torsoD * 0.61], [0.03 * k, m.torsoH * 0.56, m.torsoD * 0.61], [-0.02 * k, m.torsoH * 0.36, m.torsoD * 0.6]], 0.012 * k, c, 3), 0.8));
         out.push(cape(m, white, S.shade(white, -0.3), 842, 1.25, 1.2));
         return out;
@@ -78250,7 +78250,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       area: area, rig: 'humanoid', colors: colors, eyes: 'glow', glow: GHOST, eyeOpt: { r: 0.024, slant: 0.2, socket: null, dz: 0.05 },
       dress: function (u, spec, k, m) {
         var tab = gradeIn(area, o.tabard, { sat: 1, amount: 0.03 }), capeC = gradeIn(area, o.cape, { sat: 1, amount: 0.03 }), gold = gradeIn(area, GOLD, { sat: 1 });
-        u.add('chest', 'tabard', function () { return tabard(m, tab, o.seed, 1.4).concat(crownSigil(m, gold), [cape(m, capeC, S.shade(capeC, -0.35), o.seed + 2, 1.2, 1.15)]); }, LOCAL);
+        u.add('chest', 'tabard', function () { return tabard(m, tab, o.seed, 1.4, false).concat(crownSigil(m, gold), [cape(m, capeC, S.shade(capeC, -0.35), o.seed + 2, 1.2, 1.15)]); }, LOCAL);
         if (o.plume) u.add('head', 'plume', function () { return [T(geo.tuft({ n: 6, len: 0.3 * k, r: 0.045 * k, spread: 0.3, seed: o.seed + 3, color: o.plume, tip: S.shade(o.plume, 0.3), dir: [0, 1, -0.7] }), 0, m.headC + m.headH * 0.66, m.headZ)]; }, LOCAL);
         u.add('arm_r', 'pauldron', function () { return pauldron(m, o.metal || '#b8a46a', -1, o.seed + 4, gold, 1.2); }, LOCAL);
         u.add('arm_l', 'pauldron', function () { return pauldron(m, o.metal || '#b8a46a', 1, o.seed + 5, gold, 1.2); }, LOCAL);
