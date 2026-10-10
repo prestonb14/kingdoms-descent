@@ -3221,7 +3221,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.15';
+  KD.VERSION = '0.7.16';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -72957,12 +72957,82 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   bossLook('a3_maw', 'maw_of_the_deep', { area: 'harbor', grow: null, scale: null, paint: { bottom: 0.56, top: 1.15, rim: 0.28 },
     dress: function (u) { u.add('seg3', 'barnacles', function () { return barnacles([[0.1, 0.3, 0], [-0.12, 0.28, 0.1], [0.0, 0.32, -0.12]], 2.2); }, LOCAL); } });
 
+  // =========================================================================================== ROOFTOPS
+  // Dusk purples and slate greys, soot black, ember orange glows, a little moonlight teal.
+  // Roof Runner: a lithe rooftop thief under a slate hood (the Gravecaller's shape), a long red scarf, wrapped limbs.
+  look('a3_runner', {
+    area: 'rooftops', rig: 'humanoid', colors: { main: '#3a3446', alt: '#b8402e', skin: '#b98f72', metal: '#a8adb2', glow: '#ffb070' }, noEyes: true,
+    dress: function (u, spec, k, m) {
+      var cl = S.grade(col(spec, 'main', '#3a3446'), { sat: 1, amount: 0.03 }), clD = S.shade(cl, -0.3), red = S.grade(col(spec, 'alt', '#b8402e'), { sat: 1, amount: 0.03 });
+      var fz = hood(u, cl, clD, 301, { tall: true });
+      eyesGlow(u, col(spec, 'glow', '#ffb070'), { r: 0.022, slant: 0.45, z: fz, socket: null });
+      u.add('chest', 'scarf', function () { return [cowl(m, cl, clD, 302)].concat(scarf(m, red, 303), [T(R(geo.tatter({ w: 0.09 * k, h: 0.5 * k, teeth: 3, depth: 0.4, seed: 304, color: red, bend: -0.3 }), 0.4, 0, 0), -m.neckR, m.neckY, -m.torsoD * 0.5)]); }, LOCAL);
+      u.add('hips', 'belt', function () { return belt(m, LEATHER_D, m.pelvisH * 0.44, IRON).concat(pouch(m, '#4a3a3a', 1, 305)); }, LOCAL);
+      ['forearm_r', 'forearm_l', 'shin_r', 'shin_l'].forEach(function (j) { var L = /shin/.test(j) ? m.shin : m.forearm, r0 = /shin/.test(j) ? m.shinR : m.forearmR; u.add(j, 'wraps', function () { return fan(3, 0.3, 0.75, function (t) { return geo.cord(ring(r0 * 1.22, r0 * 1.22, -L * t, 8), 0.012 * k, '#6a5a50', 3); }); }, LOCAL); });
+    }
+  });
+
+  // Soot Moth: a huge sooty moth: furry ruff, feathery antennae, ember eye spots on its wings.
+  look('a3_moth', {
+    area: 'rooftops', colors: { main: '#3a3436', alt: '#8a7468', glow: '#ffb04a' }, paint: { y0: 1.2, y1: 2.0, bottom: 0.7, top: 1.18, rim: 0.22 }, grow: null, scale: { head: 1.15 },
+    dress: function (u) {
+      u.add('chest', 'ruff', function () { return fan(7, -2.4, 2.4, function (a, i) { return T(geo.tuft({ n: 2, len: 0.12, r: 0.04, spread: 0.4, seed: 310 + i, color: '#5a5050', tip: '#a8988a', dir: [sin(a), cos(a) * 0.8, 0.6] }), sin(a) * 0.12, cos(a) * 0.1, 0.12); }); }, LOCAL);
+    }
+  });
+
+  // Hollow Sweep: an undead chimney sweep in a tall battered stovepipe hat, soot rags, a bundle of brushes on his back,
+  // ember eyes.
+  look('a3_sweep', {
+    area: 'rooftops', rig: 'humanoid', colors: { main: '#1e1c22', alt: '#4a4650', skin: '#8a8a86', glow: '#ff8a3c' }, eyes: 'glow', eyeOpt: { r: 0.026, slant: 0.25 },
+    dress: function (u, spec, k, m) {
+      dropHead(u);
+      u.add('head', 'hat', function () {
+        var hy = m.headC + m.headH * 0.4, hat = geo.lathe([[0, 0], [m.headW * 0.55, 0.0], [m.headW * 0.5, m.headH * 0.7], [m.headW * 0.58, m.headH * 1.35], [0, m.headH * 1.35]], 8, '#1a181c');
+        R(hat, -0.12, 0, -0.18); T(hat, 0, hy, m.headZ);
+        var brim = g.cylinder({ r: m.headW * 0.85, h: 0.022 * k, sides: 10, color: '#141216' }); R(brim, -0.12, 0, -0.18); T(brim, 0, hy + 0.01 * k, m.headZ);
+        return [hat, brim];
+      }, LOCAL);
+      u.add('chest', 'brushes', function () {
+        var out = [scarf(m, '#4a4650', 321)[0]];
+        [-0.08, 0, 0.08].forEach(function (x, i) { out.push(geo.rod([x * k, m.torsoH * 0.1, -m.torsoD * 0.6], [x * k + 0.05 * k, m.torsoH * 1.5, -m.torsoD * 0.7], 0.012 * k, '#5a4030', 0.012 * k, 4)); out.push(T(geo.tuft({ n: 6, len: 0.14 * k, r: 0.03 * k, spread: 1.0, seed: 322 + i, color: '#141214', tip: '#3a3436', dir: [0, 1, 0] }), x * k + 0.05 * k, m.torsoH * 1.5, -m.torsoD * 0.7)); });
+        return out;
+      }, LOCAL);
+      u.add('hips', 'rags', function () { return [skirt(m, '#2a282e', '#18161a', 323, 0.34, 0.65)].concat(ropeBelt(m, '#5a4a3a', m.pelvisH * 0.42)); }, LOCAL);
+    }
+  });
+
+  // Belfry Guard: a bell-tower guardian in slate plate, a teal tabard, a bell-rope sash with a small bronze bell.
+  look('a3_belfry', {
+    area: 'rooftops', rig: 'humanoid', colors: { main: '#5a6068', alt: '#2e6a5a', metal: '#9aa0a6', glow: '#7affc8' }, eyes: false,
+    dress: function (u, spec, k, m) {
+      var teal = S.grade(col(spec, 'alt', '#2e6a5a'), { sat: 1, amount: 0.03 });
+      u.add('chest', 'tabard', function () { return [T(geo.tatter({ w: m.torsoW * 0.6, h: m.torsoH * 1.2, teeth: 3, depth: 0.2, seed: 331, color: teal }), 0, m.torsoH * 0.95, m.torsoD * 0.58), geo.cord([[m.torsoW * 0.5, m.torsoH * 1.0, 0], [0, m.torsoH * 0.5, m.torsoD * 0.66], [-m.torsoW * 0.52, m.torsoH * 0.05, 0]], 0.026 * k, '#a8905a', 4, true)]; }, LOCAL);
+      u.add('hips', 'bell', function () { var b = metal(geo.lathe([[0, 0], [0.07 * k, 0.0], [0.06 * k, 0.03 * k], [0.04 * k, 0.1 * k], [0, 0.11 * k]], 8, '#b07a38'), 0.8); return [T(b, -m.pelvisW * 0.6, m.pelvisH * 0.0, 0.03 * k), geo.cord([[-m.pelvisW * 0.55, m.pelvisH * 0.45, 0], [-m.pelvisW * 0.6, m.pelvisH * 0.12, 0.03 * k]], 0.01 * k, '#a8905a', 3)]; }, LOCAL);
+      u.add('head', 'plume', function () { return [T(geo.tuft({ n: 5, len: 0.3 * k, r: 0.05 * k, spread: 0.3, seed: 332, color: teal, tip: '#9affd8', dir: [0, 1, -0.6] }), 0, m.headC + m.headH * 0.66, m.headZ)]; }, LOCAL);
+    }
+  });
+
+  // Eaves Stalker: a slate-grey roof spider with a pale bone-striped back and magenta eyes.
+  look('a3_stalker', {
+    area: 'rooftops', colors: { main: '#3a3a4a', alt: '#8a8a9a', glow: '#ff5ad0' }, paint: { bottom: 0.58, top: 1.15, rim: 0.2 }, grow: null, scale: null,
+    dress: function (u) { if (u.has('abdomen')) u.add('abdomen', 'stripes', function () { return [0, 1, 2].map(function (i) { return T(R(g.torus({ R: 0.18 - i * 0.03, r: 0.02, seg: 10, sides: 3, color: '#c8c0b0' }), 0.4, 0, 0), 0, 0.05 + i * 0.02, -0.1 - i * 0.12); }); }, LOCAL); }
+  });
+
+  look('a3_drake', { area: 'rooftops', colors: { main: '#4a5262', alt: '#8a3a2a', glow: '#ff9a3c' }, paint: { y0: 1.0, y1: 2.7, bottom: 0.6, top: 1.15, rim: 0.2 }, grow: null, scale: { head: 1.1 } });
+  look('a3_gargoyle', { area: 'rooftops', colors: { main: '#6a6a72', alt: '#4a5a4a', glow: '#7affd8' }, paint: { y0: 0.6, y1: 2.6, bottom: 0.6, top: 1.12, rim: 0.2 }, grow: null, scale: { head: 1.08 },
+    dress: function (u) { u.add('chest', 'moss', function () { return [T(geo.blob({ r: [0.18, 0.05, 0.14], sides: 7, rings: 3, lump: 0.2, seed: 341, color: '#4a6a3a' }), 0.1, 0.3, -0.05)]; }, LOCAL); } });
+  look('a3_sprite', { area: 'rooftops', colors: { main: '#1e1c22', alt: '#4a4650', glow: '#ff8a3c' }, paint: { y0: 0.4, y1: 1.4, bottom: 0.7, top: 1.15 }, grow: null, scale: null });
+
+  bossLook('a3_gargoyle_pair', 'gargoyle_pair', { area: 'rooftops', paint: { y0: 0.6, y1: 2.9, bottom: 0.6, top: 1.12, rim: 0.2 }, grow: null, scale: null });
+  bossLook('a3_bell_ringer', 'bell_ringer', { area: 'rooftops', rig: 'humanoid', eyes: 'glow', glow: '#ff9a3c', eyeOpt: { r: 0.026, slant: 0.3 } });
+
   // =========================================================================================== enemy id -> recipe
   var BY_ID = S.ACT3_BY_ID = {
     gutter_rat: 'a3_rat', crooked_watchman: 'a3_watchman', alley_knifer: 'a3_knifer', firebottle_urchin: 'a3_urchin', rat_piper: 'a3_piper', debt_collector: 'a3_collector',
     stall_cutpurse: 'a3_cutpurse', guild_arbalist: 'a3_arbalist', counting_golem: 'a3_golem', tonic_peddler: 'a3_peddler', gilded_bravo: 'a3_bravo',
     sludge_heap: 'a3_sludge', sovereign_spawn: 'a3_sludge', canal_eel: 'a3_eel', drain_tick: 'a3_tick', sluice_fungus: 'a3_fungus', cistern_gulper: 'a3_gulper', sewer_skulker: 'a3_skulker',
-    dock_smuggler: 'a3_smuggler', powder_gunner: 'a3_gunner', tide_crab: 'a3_crab', harbor_siren: 'a3_siren', bilge_revenant: 'a3_revenant', press_gang_bosun: 'a3_bosun'
+    dock_smuggler: 'a3_smuggler', powder_gunner: 'a3_gunner', tide_crab: 'a3_crab', harbor_siren: 'a3_siren', bilge_revenant: 'a3_revenant', press_gang_bosun: 'a3_bosun',
+    roof_runner: 'a3_runner', soot_moth: 'a3_moth', chimney_sweep: 'a3_sweep', belfry_guard: 'a3_belfry', eaves_stalker: 'a3_stalker', slate_drake: 'a3_drake', gargoyle_twin: 'a3_gargoyle', soot_sprite: 'a3_sprite'
   };
   /** Give the city bodies their recipe (only when the data has no style of its own). */
   S.act3Assign = function () {
@@ -78638,7 +78708,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   M.register('city_rooftops', ROOFS);
   M.register('city_siege', SIEGE);
   /** Areas switched on so far (they ship one at a time; the rest stay classic until their look is done). */
-  M.ACT3_READY = ['lower_town', 'market_district', 'sewers', 'harbor'];
+  M.ACT3_READY = ['lower_town', 'market_district', 'sewers', 'harbor', 'rooftops'];
   M.ACT3_READY.forEach(function (a) { if (!M.AREAS[a]) M.AREAS[a] = ACT3[a]; });
   M.act3 = { rectOf: rectOf, facingPairs: facingPairs, openFaces: openFaces, birdModel: birdModel };
 })(typeof window !== 'undefined' ? window : globalThis);
