@@ -3221,7 +3221,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.16';
+  KD.VERSION = '0.7.17';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -73026,13 +73026,103 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   bossLook('a3_gargoyle_pair', 'gargoyle_pair', { area: 'rooftops', paint: { y0: 0.6, y1: 2.9, bottom: 0.6, top: 1.12, rim: 0.2 }, grow: null, scale: null });
   bossLook('a3_bell_ringer', 'bell_ringer', { area: 'rooftops', rig: 'humanoid', eyes: 'glow', glow: '#ff9a3c', eyeOpt: { r: 0.026, slant: 0.3 } });
 
+  // =========================================================================================== CITY GATES
+  // Crimson and steel, gold trim, soot and fire: the army at the gate.
+  var CRIMSON = '#9c2a2e', GOLD = '#d8a838';
+  function surcoat(m, c, trim, seed, len) {
+    var k = m.k, w = m.torsoW * 0.66, z = m.torsoD * 0.6;
+    return [T(geo.tatter({ w: w, h: m.torsoH * (len || 1.3), teeth: 3, depth: 0.15, seed: seed, color: c }), 0, m.torsoH * 0.98, z),
+      T(geo.bevelBox({ w: w * 0.18, h: m.torsoH * 0.9, d: 0.008 * k, b: 0.3, color: trim }), 0, m.torsoH * 0.5, z + 0.012 * k)];
+  }
+
+  // Wall Pikeman: a city-wall soldier in steel with a crimson surcoat striped gold and a crimson plume.
+  look('a3_pikeman', {
+    area: 'city_gates', rig: 'humanoid', colors: { main: '#5a6068', alt: '#9c2a2e', skin: '#c79a76', metal: '#a8adb2' }, eyeOpt: { brow: '#3a2a20', browTilt: -0.2 },
+    dress: function (u, spec, k, m) {
+      u.add('chest', 'surcoat', function () { return surcoat(m, S.grade(CRIMSON, { sat: 1, amount: 0.03 }), GOLD, 401); }, LOCAL);
+      u.add('head', 'plume', function () { return [T(geo.tuft({ n: 5, len: 0.26 * k, r: 0.05 * k, spread: 0.35, seed: 402, color: '#a8202a', tip: '#e8504a', dir: [0, 1, -0.8] }), 0, m.headC + m.headH * 0.6, m.headZ)]; }, LOCAL);
+      u.add('hips', 'belt', function () { return belt(m, LEATHER, m.pelvisH * 0.46, GOLD); }, LOCAL);
+    }
+  });
+
+  // Powder Sapper: a goblin sapper with a powder keg on his back (lit fuse), goggles, soot all over.
+  look('a3_sapper', {
+    area: 'city_gates', rig: 'humanoid', colors: { main: '#5a4a36', alt: '#2f2a2a', skin: '#8a9a5a', glow: '#ff8a2c' }, eyeOpt: { brow: '#2a2a1a', browTilt: 0.4 },
+    dress: function (u, spec, k, m) {
+      u.add('head', 'goggles', function () { return [geo.cord(ring(m.headW * 0.56, m.headD * 0.56, m.headC + m.headH * 0.28, 12), 0.016 * k, LEATHER_D, 4)].concat([1, -1].map(function (sd) { return T(R(metal(g.cylinder({ r: 0.045 * k, h: 0.04 * k, sides: 8, color: BRASS }), 0.8), HALF, 0, 0), sd * m.eyeX * 1.1, m.headC + m.headH * 0.32, m.faceZ + 0.01 * k); }), [1, -1].map(function (sd) { return T(R(glow(g.cylinder({ r: 0.034 * k, h: 0.01 * k, sides: 8, color: '#ffb060' }), 0.5), HALF, 0, 0), sd * m.eyeX * 1.1, m.headC + m.headH * 0.32, m.faceZ + 0.032 * k); })); }, LOCAL);
+      u.add('chest', 'keg', function () {
+        var keg = geo.lathe([[0, 0], [0.12 * k, 0.0], [0.14 * k, 0.12 * k], [0.12 * k, 0.24 * k], [0, 0.24 * k]], 9, '#7a5634'); R(keg, HALF, 0, 0); T(keg, 0, m.torsoH * 0.55, -m.torsoD * 0.55 - 0.24 * k);
+        var hoops = [0.04, 0.2].map(function (z) { return T(R(metal(g.torus({ R: 0.13 * k, r: 0.012 * k, seg: 10, sides: 3, color: IRON }), 0.6), HALF, 0, 0), 0, m.torsoH * 0.55, -m.torsoD * 0.55 - z * k); });
+        return [keg].concat(hoops, [geo.cord([[0.04 * k, m.torsoH * 0.62, -m.torsoD * 0.55 - 0.12 * k], [0.08 * k, m.torsoH * 0.9, -m.torsoD * 0.5 - 0.14 * k], [0.12 * k, m.torsoH * 1.0, -m.torsoD * 0.4]], 0.008 * k, '#3a2a20', 3),
+          T(glow(geo.tuft({ n: 3, len: 0.05 * k, r: 0.014 * k, spread: 0.6, seed: 411, color: '#ff9a3c', tip: '#ffe08a' }), 0.95), 0.12 * k, m.torsoH * 1.0, -m.torsoD * 0.4),
+          geo.cord([[m.torsoW * 0.45, m.torsoH, 0], [m.torsoW * 0.3, m.torsoH * 0.5, m.torsoD * 0.5], [m.torsoW * 0.4, 0, 0]], 0.014 * k, LEATHER, 3), geo.cord([[-m.torsoW * 0.45, m.torsoH, 0], [-m.torsoW * 0.3, m.torsoH * 0.5, m.torsoD * 0.5], [-m.torsoW * 0.4, 0, 0]], 0.014 * k, LEATHER, 3)]);
+      }, LOCAL);
+    }
+  });
+
+  // Siege Engineer: a sapper-engineer in a scorched leather apron with a tool belt (wrench, chisel), a cap with goggles
+  // and rolled plans in a tube on his back.
+  look('a3_engineer', {
+    area: 'city_gates', rig: 'humanoid', colors: { main: '#6a5a3a', alt: '#3a4a5a', skin: '#c79a76', metal: '#8f969c' }, eyeOpt: { brow: '#5a4a3a', browTilt: -0.1 },
+    dress: function (u, spec, k, m) {
+      u.add('head', 'goggles', function () { return [geo.cord(ring(m.headW * 0.56, m.headD * 0.56, m.headC + m.headH * 0.36, 12), 0.016 * k, LEATHER_D, 4)].concat([1, -1].map(function (sd) { return T(R(metal(g.cylinder({ r: 0.04 * k, h: 0.04 * k, sides: 8, color: BRASS }), 0.8), 1.1, 0, 0), sd * m.eyeX * 1.1, m.headC + m.headH * 0.46, m.faceZ - 0.01 * k); })); }, LOCAL);
+      u.add('chest', 'plans', function () { return [T(R(g.cylinder({ r: 0.05 * k, h: 0.5 * k, sides: 7, color: '#6a3a2a' }), 0, 0, 0.6), 0, m.torsoH * 0.7, -m.torsoD * 0.62), T(R(g.cylinder({ r: 0.04 * k, h: 0.06 * k, sides: 7, color: '#e0d4b0' }), 0, 0, 0.6), -0.16 * k, m.torsoH * 0.92, -m.torsoD * 0.62)]; }, LOCAL);
+      u.add('hips', 'tools', function () {
+        var out = belt(m, LEATHER, m.pelvisH * 0.46, IRON);
+        out.push(T(R(metal(geo.bevelBox({ w: 0.03 * k, h: 0.18 * k, d: 0.015 * k, b: 0.3, color: '#8a8e94' }), 0.7), 0, 0, 0.2), m.pelvisW * 0.6, m.pelvisH * 0.15, m.pelvisD * 0.2));
+        out.push(T(R(metal(g.torus({ R: 0.03 * k, r: 0.01 * k, seg: 8, sides: 3, color: '#8a8e94' }), 0.7), HALF, 0, 0), m.pelvisW * 0.6, m.pelvisH * 0.3, m.pelvisD * 0.2));
+        out.push(T(R(geo.bevelBox({ w: 0.025 * k, h: 0.16 * k, d: 0.025 * k, b: 0.3, color: '#6a4a2a' }), 0, 0, -0.3), -m.pelvisW * 0.6, m.pelvisH * 0.1, m.pelvisD * 0.25));
+        return out.concat(pouch(m, '#7a5a3a', -1, 421));
+      }, LOCAL);
+    }
+  });
+
+  // Siege Standard-Bearer: a heavy in mail under a crimson and gold surcoat, a tall crimson plume.
+  look('a3_bearer', {
+    area: 'city_gates', rig: 'humanoid', colors: { main: '#8a2a2a', alt: '#c9a23a', skin: '#c79a76', metal: '#8f969c', glow: '#ffd24a' }, eyes: false,
+    dress: function (u, spec, k, m) {
+      u.add('chest', 'surcoat', function () { return surcoat(m, S.grade(CRIMSON, { sat: 1, amount: 0.03 }), GOLD, 431, 1.5).concat([T(geo.hem({ r: m.neckR * 1.8, rBottom: m.torsoW * 0.66, h: 0.12 * k, sides: 10, teeth: 0.2, seed: 432, color: GOLD }), 0, m.neckY + 0.02 * k, 0)]); }, LOCAL);
+      u.add('head', 'plume', function () { return [T(geo.tuft({ n: 6, len: 0.34 * k, r: 0.05 * k, spread: 0.3, seed: 433, color: '#a8202a', tip: '#ff5a4a', dir: [0, 1, -0.5] }), 0, m.headC + m.headH * 0.66, m.headZ)]; }, LOCAL);
+    }
+  });
+
+  // Pitch Archer: a hooded archer (the Gravecaller's shape) with ember eyes, a smoking pitch pot on the belt.
+  look('a3_pitch', {
+    area: 'city_gates', rig: 'humanoid', colors: { main: '#34322c', alt: '#b5482e', skin: '#c79a76', glow: '#ff8a2c' }, noEyes: true,
+    dress: function (u, spec, k, m) {
+      var cl = S.grade(col(spec, 'main', '#34322c')), clD = S.shade(cl, -0.3);
+      var fz = hood(u, cl, S.grade('#7a2a22'), 441, {});
+      eyesGlow(u, col(spec, 'glow', '#ff8a2c'), { r: 0.022, slant: 0.35, z: fz, socket: null });
+      u.add('chest', 'cowl', function () { return [cowl(m, cl, clD, 442)]; }, LOCAL);
+      u.add('hips', 'pot', function () {
+        var pot = geo.lathe([[0, 0], [0.06 * k, 0.0], [0.075 * k, 0.06 * k], [0.06 * k, 0.11 * k], [0, 0.11 * k]], 8, '#2a2624');
+        return [T(pot, -m.pelvisW * 0.62, -m.pelvisH * 0.1, 0.03 * k), T(glow(g.cylinder({ r: 0.055 * k, h: 0.01 * k, sides: 8, color: '#ff7a2a' }), 0.85), -m.pelvisW * 0.62, -m.pelvisH * 0.1 + 0.112 * k, 0.03 * k), skirt(m, cl, clD, 443, 0.3, 0.5)].concat(belt(m, LEATHER, m.pelvisH * 0.44, IRON));
+      }, LOCAL);
+    }
+  });
+
+  // Ram-Breaker (elite): an armoured ogre with an iron collar and chain, a crimson war sash and soot war paint.
+  look('a3_rambreaker', {
+    area: 'city_gates', rig: 'brute', colors: { main: '#5a5048', alt: '#8a2a2a', skin: '#9a8a6a', metal: '#7a7f85', glow: '#ffb04a' }, eyes: 'glow', eyeOpt: { r: 0.02, slant: 0.45, brow: '#3a2a20' },
+    dress: function (u, spec, k, m) {
+      u.add('chest', 'collar', function () { return [metal(T(g.torus({ R: m.neckR * 2.3, r: 0.04 * k, seg: 12, sides: 5, color: IRON }), 0, m.neckY - 0.02 * k, 0), 0.5), geo.cord([[m.neckR * 2, m.neckY - 0.04 * k, m.neckR], [m.torsoW * 0.3, m.torsoH * 0.6, m.torsoD * 0.7], [m.torsoW * 0.45, m.torsoH * 0.2, m.torsoD * 0.4]], 0.025 * k, IRON, 4, true),
+        geo.cord([[m.torsoW * 0.5, m.torsoH * 1.0, 0], [0, m.torsoH * 0.5, m.torsoD * 0.78], [-m.torsoW * 0.52, m.torsoH * 0.05, 0]], 0.05 * k, S.grade(CRIMSON), 5)]; }, LOCAL);
+      u.add('head', 'paint', function () { return [T(geo.bevelBox({ w: m.headW * 0.9, h: 0.04 * k, d: 0.02 * k, b: 0.4, color: '#1a1416' }), 0, m.eyeY, m.faceZ + 0.002 * k)]; }, LOCAL);
+    }
+  });
+  look('a3_ballista', { area: 'city_gates', colors: { main: '#6a5236', alt: '#3a3f45', metal: '#8f969c' }, paint: { bottom: 0.6, top: 1.1 }, grow: null, scale: null });
+
+  bossLook('a3_foreman', 'siege_foreman', { area: 'city_gates', rig: 'humanoid', eyes: 'paint', eyeOpt: { brow: '#2a2020' } });
+  bossLook('a3_iron_warden', 'iron_warden', { area: 'city_gates', rig: 'brute', eyes: false, paint: { bottom: 0.56, top: 1.12, rim: 0.18 } });
+
   // =========================================================================================== enemy id -> recipe
   var BY_ID = S.ACT3_BY_ID = {
     gutter_rat: 'a3_rat', crooked_watchman: 'a3_watchman', alley_knifer: 'a3_knifer', firebottle_urchin: 'a3_urchin', rat_piper: 'a3_piper', debt_collector: 'a3_collector',
     stall_cutpurse: 'a3_cutpurse', guild_arbalist: 'a3_arbalist', counting_golem: 'a3_golem', tonic_peddler: 'a3_peddler', gilded_bravo: 'a3_bravo',
     sludge_heap: 'a3_sludge', sovereign_spawn: 'a3_sludge', canal_eel: 'a3_eel', drain_tick: 'a3_tick', sluice_fungus: 'a3_fungus', cistern_gulper: 'a3_gulper', sewer_skulker: 'a3_skulker',
     dock_smuggler: 'a3_smuggler', powder_gunner: 'a3_gunner', tide_crab: 'a3_crab', harbor_siren: 'a3_siren', bilge_revenant: 'a3_revenant', press_gang_bosun: 'a3_bosun',
-    roof_runner: 'a3_runner', soot_moth: 'a3_moth', chimney_sweep: 'a3_sweep', belfry_guard: 'a3_belfry', eaves_stalker: 'a3_stalker', slate_drake: 'a3_drake', gargoyle_twin: 'a3_gargoyle', soot_sprite: 'a3_sprite'
+    roof_runner: 'a3_runner', soot_moth: 'a3_moth', chimney_sweep: 'a3_sweep', belfry_guard: 'a3_belfry', eaves_stalker: 'a3_stalker', slate_drake: 'a3_drake', gargoyle_twin: 'a3_gargoyle', soot_sprite: 'a3_sprite',
+    wall_pikeman: 'a3_pikeman', powder_sapper: 'a3_sapper', siege_engineer: 'a3_engineer', standard_bearer: 'a3_bearer', pitch_archer: 'a3_pitch', ram_breaker: 'a3_rambreaker', field_ballista: 'a3_ballista'
   };
   /** Give the city bodies their recipe (only when the data has no style of its own). */
   S.act3Assign = function () {
@@ -78708,7 +78798,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   M.register('city_rooftops', ROOFS);
   M.register('city_siege', SIEGE);
   /** Areas switched on so far (they ship one at a time; the rest stay classic until their look is done). */
-  M.ACT3_READY = ['lower_town', 'market_district', 'sewers', 'harbor', 'rooftops'];
+  M.ACT3_READY = ['lower_town', 'market_district', 'sewers', 'harbor', 'rooftops', 'city_gates'];
   M.ACT3_READY.forEach(function (a) { if (!M.AREAS[a]) M.AREAS[a] = ACT3[a]; });
   M.act3 = { rectOf: rectOf, facingPairs: facingPairs, openFaces: openFaces, birdModel: birdModel };
 })(typeof window !== 'undefined' ? window : globalThis);
