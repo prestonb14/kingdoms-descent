@@ -3410,7 +3410,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.31';
+  KD.VERSION = '0.7.32';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -22451,6 +22451,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.32', date: '2026-10-10', title: 'Moonlit Dark Forest', notes: [
+      'The Dark Forest is now a moonlit night: fireflies, drifting wisps and glowing mushrooms',
+      'New looks for the goblins, spiders, trolls and the other regular foes of the Dark Forest, Mire Swamp, Bandit Camp, Old Mill and Crossroads'
+    ] },
     { version: '0.7.30', date: '2026-10-10', title: 'What\'s new window', notes: [
       'New What\'s new window on the main menu and the pause menu, with the story of every update so far.',
       'After an update you now get a small banner the first time you open the game.'
@@ -83720,7 +83724,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   var ACT1 = M.ACT1 = { dark_forest: 'act1_forest', mire_swamp: 'act1_mire', bandit_camp: 'act1_camp', old_mill: 'act1_mill', crossroads: 'act1_crossroads' };
   /* Areas whose look is finished and live. The others stay registered (lineups, tests) but are only used with
      ?act1all=1 in the page address (preview while they are being reviewed). */
-  var READY = M.ACT1_READY = { dark_forest: 1 };
+  var READY = M.ACT1_READY = { dark_forest: 1, mire_swamp: 1, bandit_camp: 1, old_mill: 1, crossroads: 1 };
   var preview = false;
   try { preview = !!(root.location && /[?&]act1all=1/.test(root.location.search || '')); } catch (e) { preview = false; }
   for (var aid in ACT1) if (READY[aid] || preview) M.AREAS[aid] = ACT1[aid];
@@ -84082,18 +84086,18 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   // ================================================================== MIRE SWAMP: sickly green fog
   var MIRE = {
     env: {
-      sunDir: [0.5, 0.62, 0.56], sunColor: [0.9, 0.96, 0.58], sunIntensity: 1.0,
+      sunDir: [0.5, 0.62, 0.56], sunColor: [0.9, 0.96, 0.58], sunIntensity: 0.9,
       skyColor: [0.48, 0.58, 0.42], skyIntensity: 0.58, groundColor: [0.3, 0.34, 0.2], groundIntensity: 0.32,
-      zenith: [0.17, 0.23, 0.16], horizon: [0.5, 0.58, 0.38], fogDensity: 0.0135, fogStart: 7, fogMax: 0.93, sunGlow: 0.7,
-      exposure: 1.08, knee: 0.68, saturation: 0.92, rim: 0.45, clouds: false, windStrength: 0.06,
+      zenith: [0.17, 0.23, 0.16], horizon: [0.5, 0.58, 0.38], fogDensity: 0.011, fogStart: 9, fogMax: 0.93, sunGlow: 0.7,
+      exposure: 1.0, knee: 0.68, saturation: 0.95, rim: 0.45, clouds: false, windStrength: 0.06,
       paintFine: 0.09, paintBroad: 0.15, paintHue: 0.024,
-      mist: 0.68, mistDensity: 0.055, mistFalloff: 0.5, mistStart: 8, mistColor: [0.5, 0.64, 0.28],
+      mist: 0.58, mistDensity: 0.045, mistFalloff: 0.55, mistStart: 11, mistColor: [0.48, 0.62, 0.28],
       grade: 1, contrast: 0.26, vignette: 0.44, vignetteRadius: 0.3, gradeShadow: [0.02, 0.075, 0.07], gradeHigh: [1.0, 1.04, 0.84]
     },
     palette: {
       grass: '#58643a', grassAlt: '#4c5833', marsh: '#4a5a34', mud: '#3e3826', dirt: '#544a35', path: '#625840', plank: '#584a36', water: '#3a4c2a', forest: '#3c4a2c', rock: '#5a5c50',
       plaster: '#9e9878', plasterAlt: '#8a8466', timber: '#352c20', thatch: '#7a7044', roofA: '#5a4430', roofB: '#3e4a40', roofC: '#4e5a30', door: '#2e261c', window: '#ffb347',
-      leafA: '#485a30', leafB: '#5a6a34', leafC: '#38482c', leafDead: '#6a5a34', trunk: '#4a3e2c', trunkDark: '#2a241a', bush: '#485630', moss: '#6a7c2c',
+      leafA: '#3e5430', leafB: '#5a6a30', leafC: '#2e463a', leafDead: '#6a5a34', trunk: '#4a3e2c', trunkDark: '#2a241a', bush: '#485630', moss: '#6a7c2c',
       flowerA: '#d8e070', flowerB: '#9a7ab8', woodDark: '#382f24', woodLight: '#6a5c44', canvas: '#888266', rope: '#7a6c4c', bone: '#d8d0b0', iron: '#45484a',
       rockDark: '#40423a', stoneWall: '#6e6e62', stoneDark: '#4a4a40',
       cloth: ['#5a3a2c', '#2e4a40', '#6e6430', '#3e3e5a']
@@ -84126,7 +84130,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   // ================================================================== BANDIT CAMP: red sunset and firelight
   var CAMP = {
     env: {
-      sunDir: [0.74, 0.42, 0.52], sunColor: [1.0, 0.6, 0.36], sunIntensity: 1.3,
+      sunDir: [0.74, 0.42, 0.52], sunColor: [1.0, 0.68, 0.42], sunIntensity: 1.3,
       skyColor: [0.42, 0.38, 0.62], skyIntensity: 0.5, groundColor: [0.38, 0.26, 0.2], groundIntensity: 0.3,
       zenith: [0.14, 0.12, 0.27], horizon: [0.86, 0.5, 0.34], fogDensity: 0.0082, fogStart: 13, fogMax: 0.88, sunGlow: 1.35,
       exposure: 1.05, knee: 0.68, saturation: 1.02, rim: 0.42, clouds: false, windStrength: 0.1,
@@ -84135,7 +84139,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       grade: 1, contrast: 0.28, vignette: 0.4, vignetteRadius: 0.32, gradeShadow: [0.07, 0.03, 0.09], gradeHigh: [1.06, 0.97, 0.86]
     },
     palette: {
-      grass: '#66763c', grassAlt: '#586836', dirt: '#785c42', road_dirt: '#866648', path: '#8e6e4c', sand: '#a8926c', mud: '#4e3a2c', forest: '#42542e',
+      grass: '#66763c', grassAlt: '#586836', dirt: '#6e5a46', road_dirt: '#7c6650', path: '#86705a', sand: '#a8926c', mud: '#4e3a2c', forest: '#42542e',
       plaster: '#b4a286', plasterAlt: '#9c886a', timber: '#3a281e', thatch: '#94784a', roofA: '#783226', roofB: '#3c424e', roofC: '#545832', door: '#2e2018', window: '#ffb347',
       leafA: '#385630', leafB: '#4a6634', leafC: '#2a4630', leafDead: '#7a5634', trunk: '#4a3424', trunkDark: '#2a1e18', bush: '#3e5a32', moss: '#5a6a34',
       canvas: '#a68e6e', woodLight: '#86663f', woodDark: '#36281e', rope: '#866c4c', iron: '#46464c', bone: '#e2d6ba', fire: '#ffa040', stoneWall: '#786e64', rock: '#6a6058', rockDark: '#4a4440',
@@ -84247,15 +84251,15 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   // ================================================================== CROSSROADS: open sunny road in the wind
   var CROSS = {
     env: {
-      sunDir: [0.45, 0.76, 0.46], sunColor: [1.0, 0.94, 0.8], sunIntensity: 1.5,
+      sunDir: [0.45, 0.76, 0.46], sunColor: [1.0, 0.93, 0.8], sunIntensity: 1.36,
       skyColor: [0.6, 0.76, 1.0], skyIntensity: 0.56, groundColor: [0.62, 0.6, 0.42], groundIntensity: 0.46,
       zenith: [0.16, 0.42, 0.86], horizon: [0.78, 0.88, 0.98], fogDensity: 0.0042, fogStart: 18, fogMax: 0.85, sunGlow: 1,
-      exposure: 1.0, knee: 0.72, saturation: 1.05, rim: 0.26, clouds: true, cloudSpeed: 3.2, windStrength: 0.17, windSpeed: 1.3,
+      exposure: 1.0, knee: 0.72, saturation: 1.0, rim: 0.26, clouds: true, cloudSpeed: 3.2, windStrength: 0.17, windSpeed: 1.3,
       paintFine: 0.09, paintBroad: 0.14, paintHue: 0.024,
       grade: 1, contrast: 0.14, vignette: 0.16, vignetteRadius: 0.36, gradeShadow: [0.05, 0.035, 0.1], gradeHigh: [1.03, 1.01, 0.96]
     },
     palette: {
-      grass: '#74a44a', grassAlt: '#66963f', dirt: '#a6865a', road_dirt: '#b6966a', path: '#bea072', field: '#8a6a3a', plaza: '#ada692', cobble: '#928c80',
+      grass: '#68904a', grassAlt: '#5a8442', dirt: '#a6865a', road_dirt: '#b6966a', path: '#bea072', field: '#8a6a3a', plaza: '#ada692', cobble: '#928c80',
       leafA: '#44a03e', leafB: '#64b84a', leafC: '#30864a', bush: '#48a242', moss: '#6a9a3a',
       flowerA: '#ffd84c', flowerB: '#ff76a0', plaster: '#ece0c0', plasterAlt: '#dccaa2', roofA: '#b8483a', roofB: '#4a6a9a', roofC: '#7a9a4a', thatch: '#dab45a',
       cloth: ['#b83a3c', '#3a5eae', '#e0aa3a', '#4e9a5c']
