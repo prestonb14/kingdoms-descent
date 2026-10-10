@@ -3221,7 +3221,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.12';
+  KD.VERSION = '0.7.13';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -72609,9 +72609,150 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   bossLook('a3_gutter_king', 'gutter_king', { area: 'lower_town', rig: 'humanoid', eyes: 'glow', glow: '#ff5a3c', eyeOpt: { r: 0.026, slant: 0.35 } });
   bossLook('a3_beggar_prince', 'beggar_prince', { area: 'lower_town', rig: 'humanoid', eyes: 'glow', glow: '#ffd27a', eyeOpt: { r: 0.024, slant: 0.25 } });
 
+  // =========================================================================================== MARKET DISTRICT
+  // Warm, rich colour: teal, royal blue, gold, wine red, violet; brass and gilt.
+  /** A plume of feathers rising from p toward dir (any space). */
+  function plume(p, dir, len, c1, c2, n, seed) { return T(geo.tuft({ n: n || 4, len: len, r: len * 0.18, spread: 0.35, seed: seed || 5, color: c1, tip: c2, dir: dir }), p[0], p[1], p[2]); }
+  /** A soft beret / feathered cap (head space). */
+  function beret(m, color, tilt) {
+    var k = m.k, hy = m.headC + m.headH * 0.44, cap = geo.blob({ r: [m.headW * 0.78, m.headH * 0.2, m.headD * 0.76], sides: 10, rings: 4, color: color, seed: 7 });
+    R(cap, -0.1, 0, tilt || 0.22); T(cap, 0.03 * k, hy, m.headZ - 0.01 * k);
+    return [cap, T(g.torus({ R: m.headW * 0.56, r: 0.018 * k, seg: 10, sides: 4, color: S.shade(color, -0.3) }), 0, hy - m.headH * 0.12, m.headZ - 0.01 * k)];
+  }
+  function dropHead(u, extra) { u.drop('head', function (n) { return n.mesh === 'box_bevel' || n.mesh === 'cyl12' || n.mesh === 'box_taper' || n.mesh === 'cyl8' || (extra && extra(n)); }); }
+
+  // Stall Cutpurse: a nimble pickpocket in a teal half-cape and a jaunty feathered beret, a striped scarf, a red sash
+  // hung with stolen purses.
+  look('a3_cutpurse', {
+    area: 'market_district', rig: 'humanoid', colors: { main: '#5a4232', alt: '#2a8a7a', skin: '#c79a76', metal: '#b0b4b8' },
+    eyeOpt: { brow: '#3a2418', browTilt: 0.35, slant: 0.35 },
+    dress: function (u, spec, k, m) {
+      var teal = S.grade(col(spec, 'alt', '#2a8a7a')), tealD = S.shade(teal, -0.3), red = S.grade('#b8302e');
+      dropHead(u);
+      u.add('head', 'beret', function () { return beret(m, teal, 0.28).concat([plume([m.headW * 0.4, m.headC + m.headH * 0.55, m.headZ - m.headD * 0.2], [0.5, 1, -0.9], 0.22 * k, '#e8c040', '#c83a2a', 3, 11)]); }, LOCAL);
+      u.add('chest', 'cape', function () {
+        return [T(geo.hem({ r: m.neckR * 1.6, rBottom: m.torsoW * 0.66, rz: 1.1, h: 0.3 * k, sides: 10, teeth: 0.5, seed: 112, color: teal, inner: tealD, arc: PI * 1.1, a0: PI * 0.55 }), 0, m.neckY + 0.03 * k, 0),
+          // a striped scarf: alternating rings
+          T(geo.hem({ r: m.neckR * 1.4, rBottom: m.neckR * 2.1, h: 0.07 * k, sides: 9, teeth: 0.2, seed: 113, color: '#e8d8a8' }), 0, m.neckY + 0.04 * k, 0.01 * k),
+          T(geo.hem({ r: m.neckR * 1.45, rBottom: m.neckR * 1.8, h: 0.03 * k, sides: 9, teeth: 0, seed: 114, color: red }), 0, m.neckY + 0.02 * k, 0.012 * k)];
+      }, LOCAL);
+      u.add('hips', 'sash', function () {
+        var out = [geo.cord(ring(m.pelvisW * 0.58, m.pelvisD * 0.66, m.pelvisH * 0.42, 14), 0.035 * k, red, 5), T(R(geo.tatter({ w: 0.08 * k, h: 0.24 * k, teeth: 2, depth: 0.3, seed: 115, color: red }), 0, 0, 0.2), m.pelvisW * 0.45, m.pelvisH * 0.42, m.pelvisD * 0.55)];
+        [-0.45, -0.15, 0.2].forEach(function (x, i) {
+          var px = x * m.pelvisW * 1.2, py = m.pelvisH * 0.42 - 0.1 * k;
+          out.push(geo.cord([[px, m.pelvisH * 0.42, m.pelvisD * 0.6], [px, py + 0.04 * k, m.pelvisD * 0.64]], 0.006 * k, ROPE, 3));
+          out.push(T(geo.blob({ r: [0.04 * k, 0.05 * k, 0.035 * k], sides: 6, rings: 4, lump: 0.12, seed: 116 + i, color: i === 1 ? '#7a3a5a' : '#9a7a40' }), px, py, m.pelvisD * 0.66));
+          out.push(T(metal(g.sphere({ r: 0.012 * k, detail: 0, color: '#f0c040' }), 0.9), px + 0.012 * k, py + 0.04 * k, m.pelvisD * 0.7));
+        });
+        return out;
+      }, LOCAL);
+    }
+  });
+
+  // Guild Arbalist: a guild marksman in a royal blue and gold quartered tabard, a broad hat with a tall white plume,
+  // gold trim and a brass guild badge, a bandolier of bolts.
+  look('a3_arbalist', {
+    area: 'market_district', rig: 'humanoid', colors: { main: '#2c4a8c', alt: '#d8a830', skin: '#c79a76', metal: '#9aa0a6' },
+    eyeOpt: { brow: '#3a2a1e', browTilt: -0.1 },
+    dress: function (u, spec, k, m) {
+      var blue = S.grade(col(spec, 'main', '#2c4a8c')), gold = S.grade(col(spec, 'alt', '#d8a830')), goldD = S.shade(gold, -0.25);
+      dropHead(u);
+      u.add('head', 'hat', function () {
+        var hy = m.headC + m.headH * 0.36;
+        var brim = g.cylinder({ r: m.headW * 1.08, h: 0.03 * k, sides: 12, color: '#2a2a3a' }); R(brim, -0.12, 0, -0.1); T(brim, 0, hy, m.headZ - 0.01 * k);
+        var crown = geo.lathe([[0, 0], [m.headW * 0.6, 0], [m.headW * 0.56, m.headH * 0.4], [m.headW * 0.3, m.headH * 0.5], [0, m.headH * 0.5]], 9, '#2a2a3a'); R(crown, -0.12, 0, -0.1); T(crown, 0, hy, m.headZ - 0.01 * k);
+        var band = geo.cord(ring(m.headW * 0.6, m.headW * 0.6, 0, 12), 0.02 * k, gold, 4); R(band, -0.12, 0, -0.1); T(band, 0, hy + 0.04 * k, m.headZ - 0.01 * k);
+        return [brim, crown, band, plume([-m.headW * 0.45, hy + 0.05 * k, m.headZ - m.headD * 0.1], [-0.4, 1, -1.1], 0.34 * k, '#f2ece0', '#c8c0b0', 4, 21)];
+      }, LOCAL);
+      u.add('chest', 'tabard', function () {
+        var w = m.torsoW * 0.8, h = m.torsoH * 0.95, z = m.torsoD * 0.52 + 0.012 * k;
+        return [T(geo.bevelBox({ w: w / 2, h: h / 2, d: 0.016 * k, b: 0.2, color: blue }), -w / 4, m.torsoH * 0.73, z), T(geo.bevelBox({ w: w / 2, h: h / 2, d: 0.016 * k, b: 0.2, color: gold }), w / 4, m.torsoH * 0.73, z),
+          T(geo.bevelBox({ w: w / 2, h: h / 2, d: 0.016 * k, b: 0.2, color: gold }), -w / 4, m.torsoH * 0.26, z), T(geo.bevelBox({ w: w / 2, h: h / 2, d: 0.016 * k, b: 0.2, color: blue }), w / 4, m.torsoH * 0.26, z),
+          T(R(metal(g.cylinder({ r: 0.045 * k, h: 0.012 * k, sides: 8, color: '#e8c040' }), 0.85), HALF, 0, 0), 0, m.torsoH * 0.5, z + 0.014 * k),
+          T(geo.hem({ r: m.neckR * 1.6, rBottom: m.torsoW * 0.6, h: 0.1 * k, sides: 10, teeth: 0.2, seed: 121, color: goldD }), 0, m.neckY + 0.02 * k, 0)];
+      }, LOCAL);
+      u.add('hips', 'skirt', function () { return [skirt(m, blue, S.shade(blue, -0.3), 122, 0.26, 0.25)].concat(belt(m, LEATHER, m.pelvisH * 0.46, '#e8c040')); }, LOCAL);
+    }
+  });
+
+  // Counting-House Golem: a walking brass strongbox: an abacus across its belly, coin stacks on its shoulders, a huge
+  // wind-up key turning slowly in its back (it does not turn: rigid), glowing gold eye slit, iron bands.
+  look('a3_golem', {
+    area: 'market_district', colors: { main: '#9a7238', alt: '#3a3f45', metal: '#d8b040', glow: '#ffd24a' },
+    paint: { bottom: 0.6, top: 1.1, rim: 0.2 }, grow: null, scale: null,
+    dress: function (u, spec) {
+      var brass = '#c8a040', iron = '#3e4248';
+      u.add('upper', 'counting', function () {
+        var out = [], i, j;
+        // the abacus on the belly (root space; the body box spans y 0.5..1.1, front at z 0.25)
+        out.push(T(geo.bevelBox({ w: 0.56, h: 0.04, d: 0.05, b: 0.3, color: '#5a3a24' }), 0, 0.88, 0.3), T(geo.bevelBox({ w: 0.56, h: 0.04, d: 0.05, b: 0.3, color: '#5a3a24' }), 0, 0.6, 0.3));
+        out.push(T(geo.bevelBox({ w: 0.04, h: 0.32, d: 0.05, b: 0.3, color: '#5a3a24' }), -0.28, 0.74, 0.3), T(geo.bevelBox({ w: 0.04, h: 0.32, d: 0.05, b: 0.3, color: '#5a3a24' }), 0.28, 0.74, 0.3));
+        for (j = 0; j < 4; j++) {
+          var y = 0.65 + j * 0.065;
+          out.push(geo.rod([-0.27, y, 0.31], [0.27, y, 0.31], 0.006, '#c8c0a8', 0.006, 3));
+          for (i = 0; i < 4; i++) out.push(T(g.sphere({ r: 0.022, detail: 0, color: ['#c83a2a', '#e8c040', '#2a6aa8', '#e8e0d0'][(i + j) % 4] }), -0.2 + i * 0.07 + ((j * 37) % 5) * 0.012, y, 0.315));
+        }
+        // coin stacks on the shoulders
+        [1, -1].forEach(function (sd) { for (i = 0; i < 4; i++) out.push(T(metal(g.cylinder({ r: 0.06 - i * 0.004, h: 0.02, sides: 8, color: '#e8c040' }), 0.9), sd * (0.25 + i * 0.006), 1.12 + i * 0.022, -0.05 + i * 0.004)); });
+        // the wind-up key on the back
+        out.push(T(R(metal(g.cylinder({ r: 0.035, h: 0.24, sides: 6, color: brass }), 0.8), HALF, 0, 0), 0, 0.85, -0.36));
+        [1, -1].forEach(function (sd) { var lobe = metal(geo.blob({ r: [0.13, 0.1, 0.025], sides: 8, rings: 3, color: brass }), 0.8); T(lobe, sd * 0.12, 0.85, -0.5); out.push(lobe); });
+        // iron bands and rivets
+        [0.62, 1.0].forEach(function (y) { out.push(metal(geo.cord(ring(0.37, 0.27, y, 12), 0.02, iron, 4), 0.5)); });
+        return out;
+      });
+    }
+  });
+
+  // Tonic Peddler: a quack in a violet frock coat and a floppy feathered hat, round green spectacles, a bandolier of
+  // glowing teal tonics, a pack bristling with bottles.
+  look('a3_peddler', {
+    area: 'market_district', rig: 'humanoid', colors: { main: '#6a3a7a', alt: '#2aa88a', skin: '#c79a76', glow: '#7affc8' },
+    eyeOpt: { brow: '#5a5050', browTilt: 0.1 },
+    dress: function (u, spec, k, m) {
+      var vio = S.grade(col(spec, 'main', '#6a3a7a')), vioD = S.shade(vio, -0.3), teal = col(spec, 'glow', '#7affc8');
+      dropHead(u);
+      u.add('head', 'hat', function () {
+        var hy = m.headC + m.headH * 0.38;
+        var brim = geo.hem({ r: m.headW * 0.6, rBottom: m.headW * 1.1, h: 0.08 * k, sides: 12, teeth: 0.15, seed: 131, color: '#4a3a4a' }); R(brim, -0.2, 0, 0.15); T(brim, 0, hy + 0.06 * k, m.headZ);
+        var crown = geo.blob({ r: [m.headW * 0.6, m.headH * 0.32, m.headD * 0.6], sides: 9, rings: 4, color: '#4a3a4a', seed: 132 }); R(crown, -0.2, 0, 0.3); T(crown, 0.02 * k, hy + 0.08 * k, m.headZ);
+        // round green spectacles
+        var sp = [1, -1].map(function (sd) { return T(R(g.torus({ R: 0.03 * k, r: 0.006 * k, seg: 8, sides: 3, color: '#c8a040' }), HALF, 0, 0), sd * m.eyeX * 1.02, m.eyeY, m.faceZ + 0.015 * k); });
+        var gl = [1, -1].map(function (sd) { return T(R(glow(g.cylinder({ r: 0.026 * k, h: 0.004 * k, sides: 8, color: '#8ae8b0' }), 0.4), HALF, 0, 0), sd * m.eyeX * 1.02, m.eyeY, m.faceZ + 0.013 * k); });
+        return [brim, crown, plume([m.headW * 0.4, hy + 0.12 * k, -m.headD * 0.2], [0.8, 0.7, -0.8], 0.24 * k, '#2aa88a', '#e8e0a0', 3, 133)].concat(sp, gl);
+      }, LOCAL);
+      u.add('chest', 'vials', function () {
+        var a = [-m.torsoW * 0.5, m.torsoH * 0.95, m.torsoD * 0.45], b = [m.torsoW * 0.5, m.torsoH * 0.1, m.torsoD * 0.45], out = [geo.cord([a, [0, m.torsoH * 0.52, m.torsoD * 0.58], b], 0.022 * k, LEATHER, 4)], i;
+        for (i = 0; i < 4; i++) { var t = 0.18 + i * 0.2, p = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t - 0.04 * k, m.torsoD * 0.6]; out.push(T(bottle(0.022 * k, 0.09 * k, i % 2 ? teal : '#c8f080', null, 0.75), p[0], p[1], p[2])); }
+        return out.concat([T(geo.hem({ r: m.neckR * 1.8, rBottom: m.torsoW * 0.62, h: 0.12 * k, sides: 10, teeth: 0.25, seed: 134, color: vioD }), 0, m.neckY + 0.02 * k, 0)]);
+      }, LOCAL);
+      u.add('hips', 'coat', function () { return [skirt(m, vio, vioD, 135, 0.5, 0.35, true)].concat(belt(m, LEATHER, m.pelvisH * 0.46, BRASS), pouch(m, '#8a6a40', 1, 136)); }, LOCAL);
+    }
+  });
+
+  // Gilded Bravo (elite): a duellist in a gilded breastplate, a tall crimson plume on a gold helm, a wine-red half cape
+  // over one shoulder, a gold sash.
+  look('a3_bravo', {
+    area: 'market_district', rig: 'humanoid', colors: { main: '#d0a838', alt: '#7a2238', skin: '#c79a76', metal: '#e8d090', glow: '#ffe08a' },
+    eyes: 'glow', eyeOpt: { r: 0.022, slant: 0.3 },
+    dress: function (u, spec, k, m) {
+      var wine = S.grade(col(spec, 'alt', '#7a2238')), wineD = S.shade(wine, -0.3), gold = '#e0b040';
+      u.add('head', 'plume', function () { return [plume([0, m.headC + m.headH * 0.62, m.headZ - m.headD * 0.05], [0, 1, -0.7], 0.38 * k, '#c8202a', '#ff6a4a', 6, 141)]; }, LOCAL);
+      u.add('chest', 'cape', function () {
+        return [T(geo.hem({ r: m.neckR * 1.8, rBottom: m.torsoW * 0.75, rz: 1.1, h: 0.42 * k, sides: 10, teeth: 0.4, seed: 142, color: wine, inner: '#d8b040', arc: PI * 1.2, a0: PI * 0.1 }), 0, m.neckY + 0.04 * k, 0),
+          geo.cord([[m.torsoW * 0.5, m.torsoH * 0.95, 0], [0, m.torsoH * 0.5, m.torsoD * 0.6], [-m.torsoW * 0.5, m.torsoH * 0.05, 0]], 0.03 * k, gold, 4)];
+      }, LOCAL);
+      u.add('hips', 'sash', function () { return [geo.cord(ring(m.pelvisW * 0.58, m.pelvisD * 0.66, m.pelvisH * 0.44, 14), 0.032 * k, wine, 5), T(R(geo.tatter({ w: 0.09 * k, h: 0.26 * k, teeth: 2, depth: 0.3, seed: 143, color: wine, inner: wineD }), 0, 0, -0.15), -m.pelvisW * 0.4, m.pelvisH * 0.44, m.pelvisD * 0.58)]; }, LOCAL);
+    }
+  });
+
+  bossLook('a3_auctioneer', 'auctioneer', { area: 'market_district', rig: 'humanoid', eyes: 'paint', eyeOpt: { brow: '#2a2020' } });
+  bossLook('a3_silverhand', 'madam_silverhand', { area: 'market_district', rig: 'humanoid', eyes: 'glow', glow: '#d8f0ff', eyeOpt: { r: 0.022, slant: 0.35 } });
+
   // =========================================================================================== enemy id -> recipe
   var BY_ID = S.ACT3_BY_ID = {
-    gutter_rat: 'a3_rat', crooked_watchman: 'a3_watchman', alley_knifer: 'a3_knifer', firebottle_urchin: 'a3_urchin', rat_piper: 'a3_piper', debt_collector: 'a3_collector'
+    gutter_rat: 'a3_rat', crooked_watchman: 'a3_watchman', alley_knifer: 'a3_knifer', firebottle_urchin: 'a3_urchin', rat_piper: 'a3_piper', debt_collector: 'a3_collector',
+    stall_cutpurse: 'a3_cutpurse', guild_arbalist: 'a3_arbalist', counting_golem: 'a3_golem', tonic_peddler: 'a3_peddler', gilded_bravo: 'a3_bravo'
   };
   /** Give the city bodies their recipe (only when the data has no style of its own). */
   S.act3Assign = function () {
@@ -78287,7 +78428,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   M.register('city_rooftops', ROOFS);
   M.register('city_siege', SIEGE);
   /** Areas switched on so far (they ship one at a time; the rest stay classic until their look is done). */
-  M.ACT3_READY = ['lower_town'];
+  M.ACT3_READY = ['lower_town', 'market_district'];
   M.ACT3_READY.forEach(function (a) { if (!M.AREAS[a]) M.AREAS[a] = ACT3[a]; });
   M.act3 = { rectOf: rectOf, facingPairs: facingPairs, openFaces: openFaces, birdModel: birdModel };
 })(typeof window !== 'undefined' ? window : globalThis);
