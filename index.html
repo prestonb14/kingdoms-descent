@@ -3467,7 +3467,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.43';
+  KD.VERSION = '0.7.44';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -22509,6 +22509,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.44', date: '2026-10-10', title: 'Controller polish', notes: [
+      'New controller option: Confirm with Circle (or B / A) for menus, Japanese style',
+      'Phones and tablets: the on-screen controls step aside more cleanly while a controller plays',
+      'Two controllers plugged in? The one you press a button on takes over'
+    ] },
     { version: '0.7.43', date: '2026-10-10', title: 'Controllers are here', notes: [
       'Plug in a PlayStation or Xbox controller and just play: sticks, triggers and buttons all work, on PC, Mac, phones and tablets',
       'The action bar and prompts show your controller\'s buttons, and switch back the moment you touch the mouse or keys',
@@ -100796,6 +100801,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   D.refresh = function () {
     if (!HAS_DOM) return D;
     var c = measure(), changed = false, k;
+    if (D.padHide && c.touch) c.touch = false;      // [pad-play] a controller is playing: no on-screen controls, the phone layout stays (docs/CONTROLLER.md)
     for (k in c) if (D[k] !== c[k]) { D[k] = c[k]; changed = true; }
     var sa = false; try { sa = !!(window.navigator.standalone || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || (window.matchMedia && window.matchMedia('(display-mode: fullscreen)').matches)); } catch (e) { sa = false; }
     var fr = false; try { fr = window.self !== window.top; } catch (e2) { fr = true; }
@@ -103561,6 +103567,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    *   KD.input.pad.value[i]      the same as 0..1 values (triggers are analogue)
    *   KD.input.pad.pressedRaw(i) / releasedRaw(i)   edges for this frame
    *   KD.input.pad.active        true while the pad was the last device used (mouse, keys or a finger set it false)
+   *   KD.input.pad.confirmIndex / backIndex   the menu confirm / back buttons: 0 / 1, or 1 / 0 with Settings > "Confirm with
+   *                              Circle" on (Japanese style; Switch pads read it the same way). Menus should use these, not 0 / 1.
    *   KD.input.pad.capturing     true while the Controller window waits for a button to remap (other layers should ignore the pad)
    *   KD.input.pad.rumble(strength 0..1, ms)        vibration (silently nothing when the pad or browser cannot, or it is Off)
    *   KD.input.on('padConnected' | 'padDisconnected' | 'padActive' | 'padButton', fn)
@@ -103711,7 +103719,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   P.buttonOf = function (action, map) {
     map = map || P.map;
     if (typeof action === 'number') return action;
-    var alias = { confirm: 0, back: 1, west: 2, north: 3, tabLeft: 4, tabRight: 5, menu: 9, view: 8, start: 9, select: 8, up: 12, down: 13, left: 14, right: 15, home: 16, touchpad: 17 };
+    var sw = P.settings && P.settings.swapConfirm ? 1 : 0;
+    var alias = { confirm: sw, back: 1 - sw, west: 2, north: 3, tabLeft: 4, tabRight: 5, menu: 9, view: 8, start: 9, select: 8, up: 12, down: 13, left: 14, right: 15, home: 16, touchpad: 17 };
     if (alias[action] !== undefined) return alias[action];
     var i = P.BTN.indexOf(action); if (i >= 0) return i;
     return map && map[action] !== undefined ? map[action] : -1;
@@ -103792,13 +103801,13 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   // ---------------------------------------------------------------------------------------------
   P.STORAGE_KEY = 'kd.pad';
   P.ASSIST = { off: 0, light: 0.45, strong: 0.85 };
-  P.DEFAULTS = { vibration: true, sens: 1, invertY: false, dead: 0.15, assist: 'strong' };
-  P.settings = { vibration: true, sens: 1, invertY: false, dead: 0.15, assist: 'strong' };
+  P.DEFAULTS = { vibration: true, sens: 1, invertY: false, dead: 0.15, assist: 'strong', swapConfirm: false };
+  P.settings = { vibration: true, sens: 1, invertY: false, dead: 0.15, assist: 'strong', swapConfirm: false };
   P.map = P.mergeMap(null);
   function storage() { try { return root.localStorage || null; } catch (e) { return null; } }
   P.save = function () {
     var s = storage(); if (!s) return;
-    try { s.setItem(P.STORAGE_KEY, JSON.stringify({ v: 1, map: P.map, vibration: P.settings.vibration, sens: P.settings.sens, invertY: P.settings.invertY, dead: P.settings.dead, assist: P.settings.assist })); } catch (e) { /* storage full or blocked */ }
+    try { s.setItem(P.STORAGE_KEY, JSON.stringify({ v: 1, map: P.map, vibration: P.settings.vibration, sens: P.settings.sens, invertY: P.settings.invertY, dead: P.settings.dead, assist: P.settings.assist, swapConfirm: P.settings.swapConfirm })); } catch (e) { /* storage full or blocked */ }
   };
   P.load = function (raw) {
     var d = raw;
@@ -103811,8 +103820,16 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (typeof d.invertY === 'boolean') S.invertY = d.invertY;
     if (typeof d.dead === 'number') S.dead = U.clamp(d.dead, 0.05, 0.4);
     if (P.ASSIST[d.assist] !== undefined) S.assist = d.assist;
+    if (typeof d.swapConfirm === 'boolean') S.swapConfirm = d.swapConfirm;
+    syncConfirm();
   };
-  P.set = function (k, v) { if (Object.prototype.hasOwnProperty.call(P.DEFAULTS, k)) { P.settings[k] = v; P.save(); } };
+  P.set = function (k, v) {
+    if (!Object.prototype.hasOwnProperty.call(P.DEFAULTS, k)) return;
+    P.settings[k] = v; P.save();
+    if (k === 'swapConfirm') { syncConfirm(); if (IN.events) { IN.events.emit('padConfirm', { confirm: IN.pad.confirmIndex, back: IN.pad.backIndex }); IN.events.emit('bindings', IN.bindings); } if (HAS_DOM) decorateAll(); }
+  };
+  /** The menu confirm / back buttons on KD.input.pad (swapped for the Circle-confirms style). */
+  function syncConfirm() { var p = IN.pad; if (!p) return; var sw = P.settings.swapConfirm ? 1 : 0; p.confirmIndex = sw; p.backIndex = 1 - sw; }
   P.resetMap = function () { P.map = P.mergeMap(null); P.save(); IN.events && IN.events.emit('bindings', IN.bindings); };
 
   // ---------------------------------------------------------------------------------------------
@@ -103821,6 +103838,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   var pad = IN.pad = IN.pad || { connected: false, x: 0, y: 0, lx: 0, ly: 0, buttons: {} };
   pad.type = pad.type || 'generic'; pad.index = -1; pad.id = ''; pad.mapping = '';
   pad.raw = []; pad.value = []; pad.rx = 0; pad.ry = 0; pad.active = false; pad.capturing = false;
+  syncConfirm();
   var prevRaw = [], norm = { v: [], ax: [0, 0, 0, 0] }, cal = {}, ps = { latch: false, lastYaw: null, seen: false, toastT: 0, lastId: '', rumbleUntil: 0, rumbleS: 0 };
   for (var bi = 0; bi < P.NB; bi++) { pad.raw[bi] = false; pad.value[bi] = 0; prevRaw[bi] = false; }
   pad.pressedRaw = function (i) { return !!pad.raw[i] && !prevRaw[i]; };
@@ -103830,9 +103848,15 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
   function emit(name, data) { if (IN.events) IN.events.emit(name, data); }
   function now() { return HAS_DOM && root.performance && performance.now ? performance.now() : Date.now(); }
+  /** navigator.getGamepads() or null (also in Node when a test puts a fake navigator on the global). */
+  function gamepads() {
+    var nav = root.navigator;
+    if (!nav || typeof nav.getGamepads !== 'function') return null;
+    try { return nav.getGamepads() || null; } catch (e) { return null; }
+  }
   function livePad() {
-    if (!HAS_DOM || !navigator.getGamepads || pad.index < 0) return null;
-    try { var a = navigator.getGamepads(); return a ? a[pad.index] : null; } catch (e) { return null; }
+    if (pad.index < 0) return null;
+    var a = gamepads(); return a ? a[pad.index] : null;
   }
   /** rumble(strength 0..1, ms): dual-rumble where the browser can, else the older haptic pulse; Off in Settings means never. */
   pad.rumble = P.rumble = function (strength, ms) {
@@ -103902,9 +103926,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     for (k in pad.buttons) st.padPrev[k] = pad.buttons[k];
     for (i = 0; i < P.NB; i++) prevRaw[i] = pad.raw[i];
     ps.polls = (ps.polls || 0) + 1;
-    if (!HAS_DOM || !navigator.getGamepads) return;
-    var list; try { list = navigator.getGamepads(); } catch (e) { return; }
-    var g = list ? choosePad(list) : null;
+    var list = gamepads();
+    if (!list) { if (pad.connected) setDisconnected(); return; }
+    var g = choosePad(list);
     if (!g) { setDisconnected(); return; }
     if (!pad.connected || g.index !== pad.index || String(g.id || '') !== pad.id) setConnected(g);
     P.normalize(g, cal, norm);
@@ -104061,8 +104085,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   var tswap = { on: false, prev: null };
   function touchSwap(on) {
     var D = KD.device; if (!D || !D.force) return;
-    if (on && !tswap.on && D.touch) { tswap.on = true; tswap.prev = D.forced; D.padHide = true; D.force(false); }
-    else if (!on && tswap.on) { tswap.on = false; D.padHide = false; D.force(tswap.prev); }
+    if (on && !tswap.on && D.touch) { tswap.on = true; D.padHide = true; D.refresh(); }
+    else if (!on && tswap.on) { tswap.on = false; D.padHide = false; D.refresh(); }
   }
   P._touchSwap = tswap;
 
@@ -104139,6 +104163,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       row('Stick sensitivity', F.slider({ min: 1, max: 20, step: 1, value: sensToStep(S.sens), label: 'stick sensitivity', onInput: function (n) { S.sens = stepToSens(n); }, onChange: function () { P.save(); } }), 'how fast the right stick turns the camera'),
       row('Invert stick look', onoff(S.invertY, function (on) { P.set('invertY', on); })),
       row('Stick dead zone', F.slider({ min: 5, max: 35, step: 1, value: Math.round(S.dead * 100), format: function (x) { return Math.round(x) + '%'; }, label: 'stick dead zone', onInput: function (x) { S.dead = x / 100; }, onChange: function () { P.save(); } }), 'raise it if the hero drifts'),
+      row('Confirm with ' + (pad.type === 'xbox' || pad.type === 'generic' ? 'B' : (pad.type === 'switch' ? 'A' : 'Circle')), onoff(S.swapConfirm, function (on) { P.set('swapConfirm', on); }), 'menus: ' + (pad.type === 'xbox' || pad.type === 'generic' ? 'B confirms, A goes back' : (pad.type === 'switch' ? 'A confirms, B goes back' : 'Circle confirms, Cross goes back'))),
       row('Aim assist', F.segmented([{ id: 'off', label: 'Off' }, { id: 'light', label: 'Light' }, { id: 'strong', label: 'Strong' }], S.assist, function (id) { P.set('assist', id); }), 'leans your aim toward the enemy in front'),
       row('Buttons', UI.button('Controller layout', { small: true, icon: 'key', onClick: function () { P.openLayout(game); } }))
     ];
