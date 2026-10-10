@@ -3199,7 +3199,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.5';
+  KD.VERSION = '0.7.6';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -33095,13 +33095,17 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     }
   };
 
-  /** Ground pickup. kind: 'gold'|'ash'|'item'|'health'|'resource'|'potion'. data: { amount, item, life } */
+  /**
+   * Ground pickup. kind: 'gold'|'ash'|'item'|'health'|'resource'|'potion'. data: { amount, item, life, forP }
+   * forP: the playerIndex of the only hero who can take it (co-op loot and merc gear; undefined = anybody).
+   */
   Sp.pickup = function (world, kind, x, z, data) {
     data = data || {};
     var it = data.item || null;
     var p = { id: world._nextId++, kind: 'pickup', team: 2, defId: kind, name: it ? it.name : kind, x: x, z: z, y: 0, yaw: 0, r: 0.3, h: 0, vx: 0, vz: 0,
       removed: false, isChar: false, amount: data.amount === undefined ? 1 : data.amount, item: it, t: 0, life: data.life || 0, fullT: 0,
       model: { kind: kind, rarity: it ? it.rarity : null, icon: it ? it.icon : null, slot: it ? it.slot : null } };
+    if (data.forP !== undefined) p.forP = data.forP;
     return world.add(p);
   };
 
@@ -33347,6 +33351,16 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     return S.nav.nearestFree(world, x, z, r || 0.5, 16) || { x: x, z: z };
   };
 
+  /**
+   * Co-op loot (docs/COOP.md "Loot"): items and potion drops belong to the hero they were rolled for (the killer, the
+   * one who opened or smashed the container) and only that hero can take them; other clients do not draw them.
+   * Coin and Ash stay shared: whoever picks them up, every living hero is paid (shareWith).
+   * forOf(world, owner) -> the pickup's forP, or undefined (single player, or nobody's: no player made the drop).
+   */
+  function forOf(world, owner) { return owner && owner.kind === 'player' && world.players.length > 1 ? owner.playerIndex : undefined; }
+  Sp.forOf = forOf;
+  /** True when pickup pk is reserved for a hero other than player index i (the UI hides those). */
+  Sp.othersLoot = function (pk, i) { return !!pk && pk.forP !== undefined && pk.forP !== (i || 0); };
   /** Co-op: coin and Ash picked up by one hero are paid to every other living hero as well. */
   function shareWith(world, p, fn) { var ps = world.players; if (ps.length < 2) return; for (var i = 0; i < ps.length; i++) if (ps[i] !== p && !ps[i].dead) fn(ps[i]); }
   function collect(world, pk, p) {
@@ -33477,13 +33491,13 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         S.player.addMomentum(world, kp, B.MOMENTUM.perKill * kp.stats.momentumGain);
         if (world.rulesOf(kp).killHeal > 0) S.heal(world, kp, S.lifePool(kp) * world.rulesOf(kp).killHeal, null, { noScale: true });
       }
-      var bloom = inBloomAt(world, e.x, e.z);
-      Sp.dropLoot(world, e.x, e.z, { source: rank === 2 ? 'boss' : (rank === 1 ? 'miniboss' : 'enemy'), tier: e.tier, level: e.level, player: kp, bloom: bloom, enemy: e, mult: def.drops && def.drops.mult });
+      var bloom = inBloomAt(world, e.x, e.z), own = killer && killer.kind === 'player' ? killer : null;      // co-op: the killer's items are the killer's
+      Sp.dropLoot(world, e.x, e.z, { source: rank === 2 ? 'boss' : (rank === 1 ? 'miniboss' : 'enemy'), tier: e.tier, level: e.level, player: kp, owner: own, bloom: bloom, enemy: e, mult: def.drops && def.drops.mult });
       if (Sp.mercDrop) Sp.mercDrop(world, e, kp);      // [mercs] a rare piece of gear for a hired mercenary (src/sim/29_mercs.js)
       var rules = world.rules, pkind = e.spawnId && world.packs[e.spawnId] ? world.packs[e.spawnId].kind : null;
-      if (pkind === 'boss' && rules.bossExtraItems > 0) for (i = 0; i < rules.bossExtraItems; i++) Sp.dropLoot(world, e.x, e.z, { source: 'chest', tier: 'large', chestTier: 'large', level: e.level, player: kp, itemsOnly: true });
+      if (pkind === 'boss' && rules.bossExtraItems > 0) for (i = 0; i < rules.bossExtraItems; i++) Sp.dropLoot(world, e.x, e.z, { source: 'chest', tier: 'large', chestTier: 'large', level: e.level, player: kp, owner: own, itemsOnly: true });
       if (rules.plagueSigilDrop > 0 && e.affixes && e.affixes.indexOf('plague_touched') >= 0 && KD.items && KD.items.makeSigil && world.lootRng.next() < rules.plagueSigilDrop) {
-        try { var sg = KD.items.makeSigil(null, 0, world.lootRng, e.level, { hero: kp ? kp.hero : null, run: world.run, rules: rules }); if (sg) { Sp.pickup(world, 'item', e.x, e.z, { item: sg }); world.events.emit('loot', { x: e.x, z: e.z, source: 'plague', tier: e.tier, gold: 0, ash: 0, items: [sg], player: kp }); } }
+        try { var sg = KD.items.makeSigil(null, 0, world.lootRng, e.level, { hero: kp ? kp.hero : null, run: world.runOf(kp), rules: rules }); if (sg) { Sp.pickup(world, 'item', e.x, e.z, { item: sg, forP: forOf(world, own) }); world.events.emit('loot', { x: e.x, z: e.z, source: 'plague', tier: e.tier, gold: 0, ash: 0, items: [sg], player: kp }); } }
         catch (err) { world.lootErrors = (world.lootErrors || 0) + 1; }
       }
     }
@@ -33519,7 +33533,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
   var CHEST_GOLD = { normal: 8, large: 16, cursed: 20, cache: 10, barrel: 0.8 };
   /**
-   * Rolls and drops loot at a point. o: { source:'enemy'|'boss'|'miniboss'|'chest'|'bloomchest'|'cache'|'barrel', tier, level, player, bloom, chestTier }
+   * Rolls and drops loot at a point. o: { source:'enemy'|'boss'|'miniboss'|'chest'|'bloomchest'|'cache'|'barrel', tier, level, player, owner, bloom, chestTier }
+   * player: the hero the roll is made for (its run, rules, Item Find; default player 0). owner: the hero who made the
+   * drop; in co-op its items and potions are reserved for it (forOf), gold and Ash are not.
    * Items, gold and ash come from KD.items.rollDrop when that module exists; without it only gold drops,
    * sized by KD.balance.enemyGold.
    */
@@ -33527,7 +33543,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var rng = world.lootRng, drops = [], p = o.player || world.players[0] || null, hero = p ? p.hero : null, i;
     if (KD.items && KD.items.rollDrop && hero) {
       try {
-        drops = KD.items.rollDrop({ source: o.source, tier: o.tier, level: o.level, rng: rng, hero: hero, run: world.run, rules: world.rules, bloom: !!o.bloom, stats: p.stats, itemFind: p.stats.itemFind }) || [];
+        drops = KD.items.rollDrop({ source: o.source, tier: o.tier, level: o.level, rng: rng, hero: hero, run: world.runOf(p), rules: world.rulesOf(p), bloom: !!o.bloom, stats: p.stats, itemFind: p.stats.itemFind }) || [];
       } catch (err) { drops = []; world.lootErrors = (world.lootErrors || 0) + 1; KD.log('rollDrop failed', err); }
     }
     var gold = 0, ash = 0, items = [], other = [], hasGold = !!(KD.items && KD.items.rollDrop && hero);   // the items module owns gold when it exists
@@ -33556,9 +33572,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var q;
     if (gold > 0) { q = pos(); Sp.pickup(world, 'gold', q.x, q.z, { amount: gold }); }
     if (ash > 0) { q = pos(); Sp.pickup(world, 'ash', q.x, q.z, { amount: ash }); }
-    for (i = 0; i < items.length; i++) { q = pos(); Sp.pickup(world, 'item', q.x, q.z, { item: items[i] }); }
-    for (i = 0; i < other.length; i++) { q = pos(); Sp.pickup(world, other[i].kind, q.x, q.z, { amount: other[i].amount }); }
-    if (n > 0) world.events.emit('loot', { x: x, z: z, source: o.source, tier: o.tier, gold: gold, ash: ash, items: items, player: p });
+    var forP = forOf(world, o.owner);
+    for (i = 0; i < items.length; i++) { q = pos(); Sp.pickup(world, 'item', q.x, q.z, { item: items[i], forP: forP }); }
+    for (i = 0; i < other.length; i++) { q = pos(); Sp.pickup(world, other[i].kind, q.x, q.z, { amount: other[i].amount, forP: forP }); }
+    if (n > 0) world.events.emit('loot', { x: x, z: z, source: o.source, tier: o.tier, gold: gold, ash: ash, items: items, player: p, forP: forP });
     return { gold: gold, ash: ash, items: items };
   };
 
@@ -33592,9 +33609,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     it.used = true; it.model.used = true;
     as.cleared.interact[rec.id] = true;
     var tier = data.tier || 'normal', t = rec.t === undefined ? 0.5 : rec.t;
-    if (rec.type === 'chest' && world.rules.firstChestTierBonus && !as.events.firstChest) { as.events.firstChest = true; if (tier === 'normal') tier = 'large'; }
+    var fk = p && p.kind === 'player' && p.playerIndex ? 'firstChest' + p.playerIndex : 'firstChest';      // co-op: Lucky Find is every hero's own
+    if (rec.type === 'chest' && world.rulesOf(p).firstChestTierBonus && !as.events[fk]) { as.events[fk] = true; if (tier === 'normal') tier = 'large'; }
     var src = rec.type === 'chest' ? (data.bloom ? 'bloomchest' : 'chest') : rec.type;
-    var loot = rec.type === 'crystal' ? null : Sp.dropLoot(world, it.x, it.z, { source: src, tier: tier, chestTier: tier, level: B.slotLevel(world.slot, t), player: p, bloom: !!data.bloom || inBloomAt(world, it.x, it.z) });
+    var loot = rec.type === 'crystal' ? null : Sp.dropLoot(world, it.x, it.z, { source: src, tier: tier, chestTier: tier, level: B.slotLevel(world.slot, t), player: p, owner: p, bloom: !!data.bloom || inBloomAt(world, it.x, it.z) });
     if (BREAKABLE[rec.type]) {
       clearPiece(world, rec);
       world.events.emit('fx', { name: rec.type === 'crystal' ? 'crystal_break' : 'barrel_break', x: it.x, y: 0.5, z: it.z, style: data.style || rec.type, piece: data.piece || null });
@@ -33852,8 +33870,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var h = rng.pick(recs), c = M.classOf(h); if (!c) return null;
     var act = KD.balance && KD.balance.actOf ? KD.balance.actOf(world.slot || 1) : Math.ceil((world.slot || 1) / 4);
     var item = M.makeGear(rng, c.id, null, M.rollGearRarity(rng, t.DROP_RARITY, act), e.level);
-    var pk = KD.sim.spawn.pickup(world, 'item', e.x + 0.6, e.z - 0.4, { item: item });
-    pk.forP = kp.playerIndex;
+    KD.sim.spawn.pickup(world, 'item', e.x + 0.6, e.z - 0.4, { item: item, forP: kp.playerIndex });
     world.events.emit('loot', { x: e.x, z: e.z, source: 'merc', tier: e.tier, gold: 0, ash: 0, items: [item], player: kp });
     world.events.emit('msg', { text: 'Mercenary gear dropped: ' + item.name + ' (' + c.name + ')', kind: 'loot', player: kp });
     return item;
@@ -34108,6 +34125,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   // ---------------------------------------------------------------------------------------------
   function wantPickup(p, pk) {
     if (pk.fullT > 0) return false;                       // it just refused to be picked up (full bag or full stores)
+    if (pk.forP !== undefined && pk.forP !== p.playerIndex) return false;      // co-op: another hero's loot
     if (pk.defId === 'item') return KD.hero.bagHasRoom(p.hero) || pk.item.slot === 'consumable';
     if (pk.defId === 'health') return p.hp < p.hpMax * 0.95;
     if (pk.defId === 'resource') return p.res < p.resMax * 0.9;
@@ -63186,9 +63204,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         }
       }
       function updatePickups(dt) {
-        var list = world.pickups;
+        var list = world.pickups, me = world.viewIndex || 0;
         for (var i = 0; i < list.length; i++) {
           var pk = list[i]; if (pk.removed) continue;
+          if (pk.forP !== undefined && pk.forP !== me) continue;      // co-op: another hero's loot is not drawn here
           var rec = ents.get(pk.id);
           if (!rec) {
             rec = entRec(pk, 'pickup');
@@ -63489,6 +63508,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       });
       ctx.on('loot', function (c, ev) {
         var items = ev.items || [];
+        if (ev.forP !== undefined && !local(ev.player)) return;          // co-op: another hero's loot makes no fanfare here
         for (var i = 0; i < items.length; i++) if (items[i].rarity === 'storied' || items[i].rarity === 'cursed' || items[i].rarity === 'rare') { play(SND.event.lootRare, ev.x, ev.z, 1, 1, 'big'); return; }
       });
       ctx.on('potion', function (c, ev) { if (ev.refill) return; var p = ev.player; if (mine(p)) play(SND.event.potion, null, null, 1, 1, 'world'); else play(SND.event.potion, p.x, p.z, 0.7, 1, 'world'); });
@@ -89671,6 +89691,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     for (i = 0; i < pk.length; i++) {
       e = pk[i];
       if (e.removed || e.defId !== 'item' || !e.item || H.rarityRank(e.item.rarity) < 2) continue;
+      if (e.forP !== undefined && e.forP !== (world.viewIndex || 0)) continue;      // co-op: another hero's loot
       dx = e.x - px; dz = e.z - pz; x = (-dx * cs + dz * sn) * s; y = -(dx * sn + dz * cs) * s;
       if (x * x + y * y > rim * rim) continue;
       g.save(); g.translate(half + x, half + y); g.rotate(0.7854);
@@ -90303,8 +90324,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       case N.ash: FT.spawn(pr.x, pr.y, KD.util.fmt(v) + ' ash', { kind: 'gold', color: '#d6d0c0', size: fs('gold') }); break;
     }
   }
-  function lootLabel(e) {
+  function lootLabel(e, me) {
     if (!H.settings.lootLabels || !e || e.kind !== 'pickup' || e.defId !== 'item' || !e.item || H.rarityRank(e.item.rarity) < 2) return;
+    if (e.forP !== undefined && e.forP !== (me || 0)) return;          // co-op: another hero's loot
     for (var i = 0; i < W.loot.length; i++) if (W.loot[i].e === e) return;
     var l = W.lootFree.pop();
     if (!l) {
@@ -90347,7 +90369,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       while (W.loot.length) { var l = W.loot.pop(); l.node.classList.add('kd-hidden'); l.shown = false; l.e = null; W.lootFree.push(l); }
       m.drain(null); W.words.clear(); W.promptId = null;
       if (KD.ui.floatText && KD.ui.floatText.clear) KD.ui.floatText.clear();
-      (world.pickups || []).forEach(lootLabel);
+      (world.pickups || []).forEach(function (e) { lootLabel(e, world.viewIndex); });
       ev.on('damage', function (d) {
         var p = ctx.player, t = d && d.target;
         if (!p || !t || !H.settings.damageNumbers || !ctx.visible) return;
@@ -90388,7 +90410,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         var d = KD.data.statuses && KD.data.statuses[s.id];
         if (d && d.kind === 'cc') word(ctx, p, d.name, 'status', null, d.color, 0.8);
       });
-      ev.on('spawn', function (s) { if (s && s.e) lootLabel(s.e); });
+      ev.on('spawn', function (s) { if (s && s.e) lootLabel(s.e, world.viewIndex); });
     },
     end: function () { if (W.merger) W.merger.drain(null); W.promptId = null; if (W.promptUp) W.promptUp(); if (W.promptShown) { W.prompt.classList.add('kd-hidden'); W.promptShown = false; } },
     device: function (ctx) {
@@ -90399,7 +90421,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     },
     setting: function (ctx, s) {
       if (s.key === 'healthBars' && !s.value) for (var i = 0; i < W.bars.length; i++) if (W.bars[i].e) release(W.bars[i]);
-      if (s.key === 'lootLabels' && s.value && ctx.world) (ctx.world.pickups || []).forEach(lootLabel);
+      if (s.key === 'lootLabels' && s.value && ctx.world) (ctx.world.pickups || []).forEach(function (e) { lootLabel(e, ctx.world.viewIndex); });
     },
     frame: function (ctx) {
       var world = ctx.world, p = ctx.player, r = ctx.renderer, pr = ctx.proj, UI = KD.ui, i, e, b;
