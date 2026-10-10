@@ -3379,7 +3379,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.23';
+  KD.VERSION = '0.7.24';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -63916,6 +63916,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         }
         var r = ctx.renderer, ws = r && r.env && typeof r.env.windStrength === 'number' ? r.env.windStrength : 0;
         if (ws > 0 && (!amb.w0 || ws < amb.w0)) amb.w0 = ws;                  // the calm level is the lowest seen
+        var Q = KD.gfx && KD.gfx.quality, A2 = KD.audio;                  // phones on 'low': fewer effect voices
+        if (A2 && A2.maxVoices) { var cap = Q && Q.name === 'low' ? 14 : 24; if (cap !== amb.cap) { amb.cap = cap; A2.maxVoices(cap); } }
         var want = st.bossFight ? 0.75 : (st.combat ? 0.5 : 0);
         amb.duck += (want - amb.duck) * Math.min(1, (dt || 0) * 1.5);
         AM.update({ wind: amb.w0 > 0 ? ws / amb.w0 : 1, duck: amb.duck });
@@ -91026,6 +91028,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   A.has = function (name) { return !!A.defs[name]; };
   /** { name, cat, desc } for every sound (for tools and docs). */
   A.describe = function () { return A.list().map(function (n) { var d = A.defs[n]; return { name: n, cat: d.cat, desc: d.desc }; }); };
+  /** [w8 sound] Voice cap: 24 by default, fewer on phones (the effects layer sets 14 on quality 'low'). Returns the cap. */
+  A.maxVoices = function (n) { if (n != null && isFinite(+n)) MAX_VOICES = Math.max(6, Math.min(32, Math.round(+n))); return MAX_VOICES; };
   A.voiceCount = function () { var n = 0; for (var i = 0; i < st.voices.length; i++) if (!st.voices[i].dead) n++; return n; };
 
   /**
