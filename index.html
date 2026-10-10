@@ -3410,7 +3410,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.33';
+  KD.VERSION = '0.7.34';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -22451,6 +22451,13 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.34', date: '2026-10-10', title: 'Act 1 bosses repainted', notes: [
+      'All ten Act 1 bosses got a new hand-painted look to match the rest of the act',
+      'The Webmother is fat and hairy, the Treant has deep bark and leafy crowns, the Leech Queen glistens',
+      'The Bog Mother wears a shawl of rotten weed, Hookjaw hides behind a cracked bone mask',
+      'Captain Redtooth has a beard and a long red coat, the Miller\'s Shade a dark face under his cap',
+      'Grindwell wears a stitched sack, the Toll Warden blackened steel, the Crowned Stag a shaggy mane'
+    ] },
     { version: '0.7.33', date: '2026-10-10', title: 'Farm Village enemy fixes', notes: [
       'The Blackbristle Boar\'s head is fixed: no more floating ears and brows, and its tusks no longer cover its eyes',
       'The Carrion Crow is back to its classic look, now with the new painted shading',
@@ -72783,6 +72790,719 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     }
     return data;
   };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/gfx/49_style_bosses_act1.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var S = KD.style = KD.style || {};
+  var PI = Math.PI, HALF = PI / 2, TAU = PI * 2, sin = Math.sin, cos = Math.cos;
+
+  /**
+   * [w8 act1-bosses] The hand-painted grim looks of the Act I bosses and mini-bosses (all but Greymaw and the Scarecrow
+   * Reeve, which 49_style_recipes.js restyles): matched by their look id (`body.unique`) through KD.style.UNIQUE, so the
+   * boss data and the boss looks (46_boss_looks_a.js) stay untouched. Shown while Settings > Display > "Enemy look" is
+   * New (KD.config.art.enemies === 'grim'); Classic shows the old bodies.
+   *
+   *   Dark Forest   act1_boss_webmother (Webmother's Brood)     act1_boss_treant (The Hollow Treant)
+   *   Mire Swamp    act1_boss_leech (Leech Queen)              act1_boss_bogmother (Bog Mother)
+   *   Bandit Camp   act1_boss_hookjaw (Hookjaw the Fence)       act1_boss_redtooth (Captain Redtooth)
+   *   Old Mill      act1_boss_shade (The Miller's Shade)        act1_boss_grindwell (Grindwell)
+   *   Crossroads    act1_boss_warden (Toll Warden)             act1_boss_stag (The Crowned Stag)
+   *
+   * Each recipe builds on the area's species recipe (49_style_recipes_act1.js: palette, eyes, fur, rags) and adds the
+   * boss's own painted pieces. Every part of the boss look stays: unnamed look parts are graded, painted and merged like
+   * the body (some crude ones are swapped for painted versions of the same thing), named ones (the phase parts `bl_*`,
+   * glowing cores, weapons) are left exactly as the look drives them. Render only: joints, hit shapes, attack data and
+   * the simulation are untouched (tests/style_bosses_act1.test.js plays a fight with and without the look).
+   *
+   * Load order: this file sorts before 49_style_kit.js, so it only fills KD.style.RECIPES / UNIQUE (kept by the kit)
+   * and reaches the kit (S.geo, S.grade, the species recipes) when a body is built.
+   */
+  S.RECIPES = S.RECIPES || {};
+  S.UNIQUE = S.UNIQUE || {};
+  var BONE = '#e2d8bf', BONE_D = '#b9ad94', ROPE = '#8a7656', RUST = '#7a4a34', LEATHER = '#5a3e2c', GOLD = '#d8a838';
+  var LOCAL = { local: true };
+  var GRADE = {
+    forest: { sat: 0.9, tint: '#3e5a6a', amount: 0.1, value: 0.97, shadow: 0.14 },
+    mire: { sat: 0.85, tint: '#5a6a3a', amount: 0.12, value: 0.96, shadow: 0.12 },
+    camp: { sat: 0.95, tint: '#7a4a3a', amount: 0.08, value: 0.98, shadow: 0.1 },
+    mill: { sat: 0.9, tint: '#7a6440', amount: 0.08, value: 0.98, shadow: 0.1 },
+    cross: { sat: 1.0, tint: '#4a5a7a', amount: 0.05, value: 1.0, shadow: 0.08 }
+  };
+  var PAINT = {
+    forest: { bottom: 0.56, top: 1.12, cool: [0.82, 0.86, 1.04], warm: [1.0, 1.02, 0.96] },
+    mire: { bottom: 0.56, top: 1.12, cool: [0.86, 0.9, 0.86], warm: [1.04, 1.04, 0.9] },
+    camp: { bottom: 0.58, top: 1.16, cool: [0.84, 0.78, 0.96], warm: [1.08, 1.0, 0.9] },
+    mill: { bottom: 0.6, top: 1.16, cool: [0.86, 0.8, 0.96], warm: [1.08, 1.02, 0.9] },
+    cross: { bottom: 0.64, top: 1.12, cool: [0.86, 0.84, 1.0], warm: [1.05, 1.02, 0.94] }
+  };
+  function paintOf(area, o) { var out = {}, k; for (k in PAINT[area]) out[k] = PAINT[area][k]; if (o) for (k in o) out[k] = o[k]; return out; }
+  function gr(c, area) { return S.grade(c, GRADE[area]); }
+  function col(spec, k, d) { var c = spec && spec.colors && spec.colors[k]; return typeof c === 'string' && /^#[0-9a-fA-F]{6}$/.test(c) ? c : d; }
+  function setColors(s, o) { var c = {}, k; for (k in (s.colors || {})) c[k] = s.colors[k]; for (k in o) c[k] = o[k]; s.colors = c; return s; }
+  function fan(n, a0, a1, f) { var out = [], i; for (i = 0; i < n; i++) out.push(f(n > 1 ? a0 + (a1 - a0) * i / (n - 1) : a0, i)); return out; }
+  function gm() { return KD.gfx.geom; }
+  function T(m, x, y, z) { return gm().translate(m, x, y, z); }
+  function R(m, x, y, z) { return gm().rotate(m, x, y, z); }
+  function Sc(m, x, y, z) { return gm().scale(m, x, y, z); }
+  function glowing(m, k) { return gm().setAux(m, { emissive: k === undefined ? 1 : k }); }
+  function metal(m, k) { return gm().setAux(m, { metal: k === undefined ? 0.6 : k }); }
+  /** A shape registered once under `name` (unit sized, white): a plan part swapped to it is baked with it. */
+  function shape(name, make) { var G = KD.gfx; if (G.meshId(name) < 0) G.registerMesh(name, make()); return name; }
+  function sz(n) { return typeof n.size === 'number' ? [n.size, n.size, n.size] : (n.size || [1, 1, 1]); }
+
+
+  // ------------------------------------------------------------------ humanoid helpers (rig metrics u.m, joint space)
+  var HANDS = { hand_r: [1.3, 1.2, 1.28], hand_l: [1.3, 1.2, 1.28], foot_r: [1.16, 1.1, 1.1], foot_l: [1.16, 1.1, 1.1] };
+  var LIMBS = { arm_r: [1.14, 1, 1.14], arm_l: [1.14, 1, 1.14], forearm_r: [1.18, 1, 1.18], forearm_l: [1.18, 1, 1.18],
+    leg_r: [1.1, 1, 1.1], leg_l: [1.1, 1, 1.1], shin_r: [1.16, 1, 1.16], shin_l: [1.16, 1, 1.16] };
+  for (var hk in HANDS) LIMBS[hk] = HANDS[hk];
+  /** The rig's eye boxes become glowing eyes (they stay named parts, merged into the head) or dark sockets. */
+  function eyeGlow(u, color, o) {
+    o = o || {};
+    ['eye_l', 'eye_r'].forEach(function (j) { var n = u.named(j); if (n && n.mesh) { n.color = color; n.emissive = o.dark ? 0 : 1; if (o.size) n.size = o.size; n.mesh = o.mesh || 'sphere'; } });
+  }
+  function paintParts(u, names, color) { names.forEach(function (j) { var n = u.named(j); if (n && n.mesh) n.color = color; }); }
+  /** A ragged hem round a joint (skirts, coat tails, mantles): r / rb radii, h height, at y, joint space. */
+  function hemAt(m, color, inner, o) {
+    var h = S.geo.hem({ r: o.r, rBottom: o.rb, rz: o.rz || 1, h: o.h, sides: o.sides || 12, teeth: o.teeth === undefined ? 0.5 : o.teeth, seed: o.seed || 5, color: color, inner: inner, arc: o.arc, a0: o.a0 });
+    return T(h, 0, o.y, o.z || 0);
+  }
+  /**
+   * boss(unique, id, def): a recipe for one boss look on top of the species recipe `def.base` (spec, grade, dress;
+   * def.baseDress === false skips the species dress). def.spec / def.dress run after the base's.
+   */
+  /** The looks that are live (finished and checked); the others are registered as recipes but not matched yet. */
+  var LIVE = { webmothers_brood: 1, hollow_treant: 1, leech_queen: 1, bog_mother: 1, hookjaw: 1, captain_redtooth: 1, millers_shade: 1, grindwell: 1, toll_warden: 1, crowned_stag: 1 };
+  S.ACT1_BOSSES_LIVE = LIVE;
+  var ALL = S.ACT1_BOSSES = {};      // every look of this file: unique id -> recipe id (live or not)
+  var PREVIEW = false;      // ?abprev=1 in the address shows the looks still in the works (tools/act1_boss_shots.py)
+  try { PREVIEW = !!(root.location && /[?&]abprev=1/.test(root.location.search || '')); } catch (e) { PREVIEW = false; }
+  function boss(unique, id, def) {
+    var r = {
+      id: id, base: def.base, area: def.area,
+      spec: function (s) { var b = S.RECIPES[def.base]; if (b && b.spec) s = b.spec(s); return def.spec ? def.spec(s) : s; },
+      grade: def.grade || function (c, n) { return S.grade(c, GRADE[def.area]); },
+      paint: def.paint || paintOf(def.area), scale: def.scale, fold: def.fold, grow: def.grow, top: def.top, after: def.after,
+      dress: function (u, spec, built) {
+        var b = S.RECIPES[def.base];
+        if (def.baseDress !== false && b && b.dress) b.dress(u, spec, built);
+        if (def.dress) def.dress(u, spec, built);
+      }
+    };
+    S.RECIPES[id] = r;
+    ALL[unique] = id;
+    if (LIVE[unique] || PREVIEW) S.UNIQUE[unique] = id;
+    return r;
+  }
+
+  // ===================================================================================================== DARK FOREST
+  // --------------------------------------------------------------------------------------------- Webmother's Brood
+  // A bloated plum-black brood mother: a huge hairy abdomen with a pale death's-head mark and ochre chevrons, thick
+  // banded legs with bone claws, a bristling ruff round the head, bigger bone fangs; her glowing egg sacs, crest, wrapped
+  // meal, spinner and riding brood (the boss look) all stay.
+  boss('webmothers_brood', 'act1_boss_webmother', {
+    base: 'act1_spider', area: 'forest',
+    spec: function (s) { return setColors(s, { main: '#2a2230', alt: '#4a3428', glow: '#c8ff5a' }); },
+    paint: paintOf('forest', { bottom: 0.6, top: 1.3, rim: 0.22 }),
+    grow: (function () { var o = {}; for (var i = 0; i < 8; i++) { o['leg' + i] = [1.7, 1, 1.7]; o['shin' + i] = [1.55, 1, 1.55]; } return o; })(),
+    dress: function (u, spec) {
+      var g = gm(), geo = S.geo;
+      var main = gr(col(spec, 'main', '#2a2230'), 'forest'), alt = gr(col(spec, 'alt', '#4a3428'), 'forest'), glow = col(spec, 'glow', '#c8ff5a');
+      var hair = S.shade(main, 0.2), hairT = S.mix(main, '#b8a8b4', 0.5), ochre = gr('#a8823a', 'forest'), bone = gr(BONE, 'forest');
+      // the species eyes sit on the first head part, here a mandible: her own eyes are on the head plate below
+      u.adds = u.adds.filter(function (q) { return !(q.joint === 'head' && q.key === 'eyes'); });
+      var ab = u.find('abdomen', function (n) { return n.mesh === 'sphere' && !n.name; })[0];
+      var A = ab ? sz(ab) : [0.8, 0.69, 0.97], O = ab ? (ab.pos || [0, 0.14, -0.42]) : [0, 0.14, -0.42];
+      var ax = A[0] * 0.5, ay = A[1] * 0.5, az = A[2] * 0.5;
+      // the abdomen: bigger and lumpier, plum-black on top with the brown below showing through
+      if (ab) { ab.mesh = shape('ab_spider_abdomen', function () { return geo.blob({ r: [0.5, 0.5, 0.5], sides: 11, rings: 7, lump: 0.05, seed: 7 }); }); ab.size = [A[0] * 1.08, A[1] * 1.1, A[2] * 1.06]; ab.color = S.mix(main, alt, 0.35); }
+      function onAb(th, ph, k) {           // a point on the abdomen surface: th round the long axis, ph from the top
+        k = k || 1;
+        return [O[0] + sin(ph) * sin(th) * ax * 1.08 * k, O[1] + cos(ph) * ay * 1.1 * k, O[2] + sin(ph) * cos(th) * az * 1.06 * k];
+      }
+      u.add('abdomen', 'hide', function () {
+        var out = [];
+        // a pale death's-head on the back, ochre chevrons behind it
+        var sk = geo.skull({ at: [0, 0, 0], r: ax * 0.28, color: S.mix(bone, ochre, 0.45), eye: S.shade(main, -0.4) });
+        Sc(sk, 1.25, 1.1, 0.42); R(sk, -0.5, PI, 0); var p = onAb(PI, 1.3, 1.0); T(sk, p[0], p[1], p[2] - az * 0.04); out.push(sk);
+        [0.55, 0.8].forEach(function (ph, i) {
+          var w = ax * (0.62 - i * 0.12);
+          [1, -1].forEach(function (sd) {
+            var a = onAb(PI + sd * 0.05, ph, 1.0), b = onAb(PI + sd * 0.42, ph - 0.16, 1.0);
+            out.push(geo.cord([[a[0] * 0.2, a[1], a[2]], [sd * w * 0.55, (a[1] + b[1]) / 2 + 0.01, (a[2] + b[2]) / 2], [sd * w, b[1], b[2]]], 0.022 + 0.004 * (2 - i), ochre, 4));
+          });
+        });
+        // bristle tufts all over the top and the flanks
+        for (var i = 0; i < 10; i++) {
+          var th = (i % 5) / 5 * TAU + 0.3 + (i > 4 ? 0.6 : 0), ph = i > 4 ? 1.25 : 0.75;
+          if (Math.abs(((th % TAU) + TAU) % TAU - PI) < 0.5) continue;         // keep the death's-head clear
+          var q = onAb(th, ph, 0.98), n = [sin(ph) * sin(th), cos(ph), sin(ph) * cos(th)];
+          out.push(T(geo.tuft({ n: 2, len: ax * 0.4, r: ax * 0.07, spread: 0.55, seed: 60 + i, color: hair, tip: hairT, dir: [n[0], n[1] + 0.3, n[2] - 0.4] }), q[0], q[1], q[2]));
+        }
+        return out;
+      }, LOCAL);
+      // her egg sacs (the phase-lit part `bl_sacs`): smooth, veined eggs bound with silk instead of the faceted balls
+      var sacs = u.named('bl_sacs'), ap = u.at('abdomen') || [0, 0.48, -0.16];
+      if (sacs) sacs.mesh = shape('ab_webmother_sacs', function () {
+        var out = [], egg = S.shade(glow, -0.12), eggD = S.mix(glow, '#3a4a20', 0.45), silk = gr('#d9d6c8', 'forest');
+        [1, -1].forEach(function (sd) {
+          [[0.38, 0.6, -0.42, 0.11], [0.4, 0.74, -0.62, 0.12], [0.36, 0.52, -0.76, 0.1], [0.3, 0.84, -0.84, 0.09]].forEach(function (q, i) {
+            var e = geo.blob({ r: [q[3], q[3] * 1.12, q[3]], sides: 6, rings: 4, lump: 0.06, seed: 20 + i, color: egg });
+            g.colorize(e, function (x, y) { var t = Math.max(0, Math.min(1, 0.5 - y / q[3] * 0.6)); return KD.gfx.color._get(S.mix(egg, eggD, t)); });
+            out.push(T(glowing(e, 0.35), sd * q[0] - ap[0], q[1] - ap[1], q[2] - ap[2]));
+          });
+          out.push(geo.cord([[sd * 0.3, 0.9, -0.4], [sd * 0.46, 0.66, -0.6], [sd * 0.42, 0.45, -0.8]].map(function (v) { return [v[0] - ap[0], v[1] - ap[1], v[2] - ap[2]]; }), 0.012, silk, 3));
+          out.push(geo.cord([[sd * 0.34, 0.5, -0.35], [sd * 0.44, 0.72, -0.5], [sd * 0.36, 0.92, -0.86]].map(function (v) { return [v[0] - ap[0], v[1] - ap[1], v[2] - ap[2]]; }), 0.012, silk, 3));
+        });
+        return g.merge(out);
+      });
+      // the wrapped meal on her back: a silk-bound body with a dented helm and two boots sticking out
+      if (u.drop('abdomen', function (n) { return n.mesh === 'bla_webmothers_brood_cocoon'; }, { deep: true })) {
+        u.add('abdomen', 'cocoon', function () {
+          var silk = S.mix(gr('#cfc8b4', 'forest'), '#c8b890', 0.5), silkD = S.shade(silk, -0.3), boot = gr('#3a2a22', 'forest'), out = [];
+          var body = geo.blob({ r: [0.15, 0.14, 0.4], sides: 8, rings: 6, lump: 0.08, seed: 5, color: silk });
+          out.push(body);
+          for (var w = 0; w < 3; w++) { var z0 = -0.24 + w * 0.2, pts = fan(5, 0, TAU, function (a) { return [sin(a) * 0.155, cos(a) * 0.145, z0 + a * 0.012]; }); out.push(geo.cord(pts, 0.014, silkD, 3)); }
+          out.push(T(Sc(g.sphere({ r: 1, detail: 0, color: gr('#7a7e86', 'forest') }), 0.1, 0.09, 0.1), 0, 0.02, 0.38));
+          [1, -1].forEach(function (sd) { out.push(T(geo.bevelBox({ w: 0.08, h: 0.1, d: 0.17, b: 0.3, color: boot }), sd * 0.055, 0.0, -0.44)); });
+          var m0 = g.merge(out);
+          metal(m0, 0);
+          R(m0, -0.18, 0.3, 0); T(m0, 0.04 - ap[0], 1.04 - ap[1], -0.56 - ap[2]);
+          return [m0, geo.cord([[0.04 - ap[0], 1.0 - ap[1], -0.3 - ap[2]], [0.2 - ap[0], 0.86 - ap[1], -0.32 - ap[2]], [0.3 - ap[0], 0.7 - ap[1], -0.3 - ap[2]]], 0.01, silk, 3)];
+        }, LOCAL);
+      }
+      // a real head: a hairy, rounded head plate with two big glowing eyes and two pairs of small ones
+      u.add('head', 'skull', function () {
+        var hd = T(geo.blob({ r: [0.17, 0.13, 0.16], sides: 8, rings: 5, lump: 0.06, seed: 9, color: S.shade(main, 0.08) }), 0, 0.05, 0.02), out = [hd];
+        [[0.065, 0.085, 0.165, 0.045], [0.125, 0.12, 0.13, 0.028], [0.1, 0.03, 0.15, 0.022]].forEach(function (q) {
+          [1, -1].forEach(function (sd) { out.push(glowing(T(Sc(g.sphere({ r: 1, detail: 0, color: glow }), q[3], q[3], q[3] * 0.6), sd * q[0], q[1], q[2]))); });
+        });
+        out.push(T(geo.tuft({ n: 4, len: 0.12, r: 0.02, spread: 0.7, seed: 41, color: hair, tip: hairT, dir: [0, 1, -0.4] }), 0, 0.15, 0.0));
+        return out;
+      }, LOCAL);
+      // the plan's eye spheres give way to the eyes on the head plate above
+      u.drop('head', function (n) { return n.mesh === 'sphere' && n.emissive > 0.5; });
+      // a bristling ruff where the head meets the body, and a hairy brow over the eye cluster
+      u.add('chest', 'ruff', function () {
+        var out = [];
+        fan(9, -2.0, 2.0, function (a, i) {
+          var x = sin(a) * 0.26, y = 0.06 + cos(a) * 0.12, z = 0.24;
+          out.push(T(geo.tuft({ n: 2, len: 0.13 + 0.03 * (i % 2), r: 0.022, spread: 0.4, seed: 80 + i, color: hair, tip: hairT, dir: [sin(a) * 0.8, cos(a) * 0.6 + 0.2, -0.4] }), x, y, z));
+        });
+        return out;
+      }, LOCAL);
+      // banded legs: a knee knob, pale bands down the shins and a bone claw at every tip
+      for (var i = 0; i < 8; i++) (function (i) {
+        var sh = u.find('shin' + i, function (n) { return n.mesh === 'limb' && !n.name; })[0];
+        if (!sh) return;
+        var s0 = sz(sh), L = s0[1] * 0.97, r = s0[0] * 0.5;
+        sh.color = S.mix(main, alt, 0.3);
+        u.add('shin' + i, 'claw', function () {
+          var out = [T(geo.blob({ r: [r * 1.25, r * 1.25, r * 1.25], sides: 6, rings: 3, color: main }), 0, -0.02, 0)];
+          [0.42].forEach(function (t, q) { out.push(T(g.torus({ R: r * (1.0 - t * 0.3), r: r * 0.42, seg: 6, sides: 3, color: S.mix(ochre, bone, 0.3) }), 0, -L * t, 0)); });
+          out.push(T(geo.tuft({ n: 2, len: r * 2.4, r: r * 0.35, spread: 0.5, seed: 70 + i, color: S.shade(main, 0.2), tip: S.mix(main, '#b8a8b4', 0.5), dir: [0, -0.2, 1] }), 0, -L * 0.22, r * 0.8));
+          out.push(geo.spike([0, -L * 0.92, 0], [0, -L * 1.16, r * 0.6], r * 0.75, BONE_D, bone, 5));
+          return out;
+        }, { local: true, sig: i < 4 ? 1 : 2 });
+      })(i);
+    }
+  });
+
+  // --------------------------------------------------------------------------------------------- The Hollow Treant
+  // An old oak that walked: deep bark ridges on every limb, lumpy leaf crowns instead of the plan's balls, moss beards,
+  // vines twisting round the arms, deep glowing eyes under a split brow, big gnarled fists. The glowing core in its
+  // chest maw, the fungus shelves, the stump crown, the woodsmen's axes still stuck in it and the glowing seed pods (the
+  // boss look) all stay.
+  boss('hollow_treant', 'act1_boss_treant', {
+    base: 'act1_treant', area: 'forest', baseDress: false,
+    spec: function (s) { return setColors(s, { main: '#8e6e4e', alt: '#3e5832', skin: '#9a7c58', glow: '#c8ff5a' }); },
+    paint: paintOf('forest', { bottom: 0.62, top: 1.22, rim: 0.24, cool: [0.94, 0.88, 0.96], warm: [1.1, 1.02, 0.9] }),
+    scale: { head: 1.25 },
+    grow: { hand_r: [1.3, 1.15, 1.3], hand_l: [1.3, 1.15, 1.3], forearm_r: [1.12, 1, 1.12], forearm_l: [1.12, 1, 1.12], foot_r: [1.12, 1.1, 1.1], foot_l: [1.12, 1.1, 1.1] },
+    dress: function (u, spec) {
+      var m = u.m; if (!m) return;
+      var g = gm(), geo = S.geo, k = m.k;
+      var bark = gr(col(spec, 'main', '#8e6e4e'), 'forest'), barkD = S.shade(bark, -0.42), barkL = S.mix(bark, '#a89a86', 0.3);
+      var moss = gr('#3e6a30', 'forest'), mossL = gr('#7aa040', 'forest'), mossD = gr('#2a4424', 'forest'), vine = gr('#3a5a2a', 'forest');
+      var leaf = [gr('#4a7034', 'forest'), gr('#5e8a3a', 'forest'), gr('#6e7a34', 'forest')];
+      // the plan's leaf balls become lumpy leaf crowns
+      var crown = shape('ab_treant_crown', function () {
+        return geo.blob({ r: [0.5, 0.44, 0.5], sides: 7, rings: 5, lump: 0.26, seed: 3 });
+      });
+      ['head', 'chest', 'arm_r', 'arm_l'].forEach(function (j) {
+        u.find(j, function (n) { return n.mesh === 'ico' && !n.name; }).forEach(function (n, i) { n.mesh = crown; n.color = leaf[i % 3]; });
+      });
+      // the head: deep sockets with glowing eyes under a split bark brow, a crooked splintered mouth
+      u.hide(['eye_l', 'eye_r']);
+      var mo = u.named('mouth'); if (mo) mo.color = '#0e0a08';
+      u.add('head', 'face', function () {
+        var fz = m.headZ + m.headD * 0.5, my = mo && mo.offset ? mo.offset[1] : m.headC - m.headH * 0.3, out = [geo.eyes({ x: m.eyeX * 1.05, y: m.eyeY - 0.01 * k, z: fz + 0.005, r: 0.03 * k, color: '#d8ff6a', slant: 0.45, socket: '#0a0806' })];
+        [1, -1].forEach(function (sd) {
+          var b = geo.bevelBox({ w: m.headW * 0.56, h: 0.07 * k, d: 0.1 * k, b: 0.35, taper: [1, 0.7], color: barkD, smooth: true });
+          R(b, 0.2, 0, -sd * 0.4); T(b, sd * m.headW * 0.24, m.eyeY + 0.06 * k, fz - 0.02 * k); out.push(b);
+        });
+        // splinter teeth round the mouth slit
+        fan(5, -0.4, 0.4, function (x, i) { out.push(geo.spike([x * m.headW * 0.55, my + (i % 2 ? 0.02 : -0.02) * k, fz + 0.01], [x * m.headW * 0.6, my + (i % 2 ? -0.05 : 0.05) * k, fz + 0.03 * k], 0.02 * k, barkL, BONE_D, 3)); });
+        // bark ridges up the face and a knot on the cheek
+        fan(3, -0.4, 0.4, function (x) { out.push(geo.cord([[x * m.headW, m.headC - m.headH * 0.5, fz - 0.03 * k], [x * m.headW * 1.08, m.headC, fz - 0.02 * k], [x * m.headW * 0.9, m.headC + m.headH * 0.5, fz - 0.06 * k]], 0.022 * k, barkD, 3)); });
+        out.push(T(geo.blob({ r: [0.05 * k, 0.05 * k, 0.03 * k], sides: 6, rings: 4, color: barkD, lump: 0.2, seed: 4 }), m.headW * 0.36, m.headC - m.headH * 0.12, fz));
+        return out;
+      }, LOCAL);
+      // bark ridges down every limb and the trunk (dark grooves between pale ridges)
+      function ridges(j, len, r, n, y0, seed) {
+        u.add(j, 'bark', function () {
+          return fan(n, 0, TAU * (n - 1) / n, function (a, i) {
+            var tw = 0.35 * ((i * 37 + seed) % 5 - 2) / 2, a1 = a + tw;
+            return geo.cord([[sin(a) * r, y0, cos(a) * r], [sin((a + a1) / 2) * r * 1.06, y0 - len * 0.5, cos((a + a1) / 2) * r * 1.06], [sin(a1) * r * 0.95, y0 - len, cos(a1) * r * 0.95]], r * 0.16, i % 2 ? barkD : S.shade(bark, 0.12), 3);
+          });
+        }, { local: true, sig: seed });
+      }
+      ridges('arm_r', m.upperArm * 0.95, m.armR * 0.98, 5, 0.0, 1); ridges('arm_l', m.upperArm * 0.95, m.armR * 0.98, 5, 0.0, 1);
+      ridges('forearm_r', m.forearm * 0.95, m.forearmR * 1.0, 5, 0.0, 2); ridges('forearm_l', m.forearm * 0.95, m.forearmR * 1.0, 5, 0.0, 2);
+      ridges('leg_r', m.thigh * 0.9, m.thighR * 0.98, 5, 0.0, 3); ridges('leg_l', m.thigh * 0.9, m.thighR * 0.98, 5, 0.0, 3);
+      ridges('shin_r', m.shin * 0.92, m.shinR * 1.0, 5, 0.0, 4); ridges('shin_l', m.shin * 0.92, m.shinR * 1.0, 5, 0.0, 4);
+      // the trunk: ridges round the back and sides (the front is the maw), a mossy collar, hanging moss
+      u.add('chest', 'trunk', function () {
+        var out = [], rx = m.torsoW * 0.5, rz = m.torsoD * 0.52, y0 = m.chestY * 0 + 0.02 * k, y1 = m.torsoH * 1.0;
+        fan(7, 0.8, TAU - 0.8, function (a, i) {
+          var tw = 0.18 * ((i * 53) % 5 - 2) / 2;
+          out.push(geo.cord([[sin(a) * rx, y0, cos(a) * rz], [sin(a + tw) * rx * 1.04, (y0 + y1) / 2, cos(a + tw) * rz * 1.04], [sin(a) * rx * 0.92, y1, cos(a) * rz * 0.92]], 0.045 * k, i % 2 ? barkD : S.shade(bark, 0.1), 3));
+        });
+        out.push(T(geo.blob({ r: [m.torsoW * 0.42, m.torsoH * 0.1, m.torsoD * 0.5], sides: 8, rings: 4, lump: 0.25, seed: 8, color: moss }), 0, m.torsoH * 1.0, -m.torsoD * 0.06));
+        // a cluster of glowing pale-blue mushrooms on the left shoulder (the forest's cold light)
+        [[0.34, 0.98, 0.0, 1.0], [0.41, 0.9, 0.08, 0.8], [0.28, 0.92, 0.12, 0.65]].forEach(function (q) {
+          var x = m.torsoW * q[0], y = m.torsoH * q[1], z = m.torsoD * q[2], s2 = q[3] * k;
+          out.push(T(geo.rounded({ r: 0.022 * s2, h: 0.12 * s2, sides: 4, rings: 1, color: BONE }), x, y + 0.05 * s2, z));
+          out.push(glowing(T(geo.blob({ r: [0.075 * s2, 0.035 * s2, 0.075 * s2], sides: 6, rings: 3, color: '#86e4ff' }), x, y + 0.11 * s2, z), 0.85));
+        });
+        [1, -1].forEach(function (sd) {
+          out.push(T(geo.tuft({ n: 3, len: 0.42 * k, r: 0.03 * k, spread: 0.35, seed: 90 + sd, color: moss, tip: mossD, dir: [sd * 0.2, -1, -0.15] }), sd * m.torsoW * 0.36, m.torsoH * 0.95, -m.torsoD * 0.35));
+          out.push(T(geo.tuft({ n: 2, len: 0.3 * k, r: 0.026 * k, spread: 0.3, seed: 94 + sd, color: mossL, tip: moss, dir: [sd * 0.1, -1, 0.1] }), sd * m.torsoW * 0.46, m.torsoH * 0.75, m.torsoD * 0.2));
+        });
+        return out;
+      }, LOCAL);
+      // vines twisting round the arms, with a few leaves
+      ['arm_r', 'arm_l'].forEach(function (j, q) {
+        u.add(j, 'vine', function () {
+          var pts = [], i, n = 8, r = m.armR * 1.12;
+          for (i = 0; i <= n; i++) { var t = i / n, a = t * TAU * 1.4 + q; pts.push([sin(a) * r, -t * m.upperArm * 0.9, cos(a) * r]); }
+          var out = [geo.cord(pts, 0.022 * k, vine, 3)];
+          [3, 7].forEach(function (i, z) { var p = pts[i], f = geo.feather(0.16 * k, 0.08 * k, leaf[z % 3], leaf[(z + 1) % 3], 0); R(f, 0, 0, -0.8); R(f, 0, Math.atan2(p[0], p[2]) - HALF, 0); out.push(T(f, p[0], p[1], p[2])); });
+          return out;
+        }, { local: true, sig: q });
+      });
+      // gnarled knuckles and twig claws on the fists
+      ['hand_r', 'hand_l'].forEach(function (j, q) {
+        u.add(j, 'knuckles', function () {
+          var out = [];
+          fan(4, -0.32, 0.32, function (z, i) { out.push(geo.spike([0, -m.handL * 0.85, z * m.handD], [(q ? 1 : -1) * 0.02 * k, -m.handL * 1.25 - 0.03 * k * (i % 2), z * m.handD * 1.25], 0.04 * k, barkD, barkL, 4)); });
+          out.push(T(geo.blob({ r: [m.handW * 0.55, m.handL * 0.25, m.handD * 0.55], sides: 7, rings: 4, lump: 0.25, seed: 30 + q, color: barkD }), 0, -m.handL * 0.15, 0));
+          return out;
+        }, { local: true, sig: q });
+      });
+      // root toes curling out of the feet
+      ['foot_r', 'foot_l'].forEach(function (j, q) {
+        u.add(j, 'toes', function () {
+          return fan(3, -0.5, 0.5, function (x, i) { return geo.cord([[x * m.footW * 0.6, -0.02 * k, m.footL * 0.35], [x * m.footW * 0.9, -0.04 * k, m.footL * 0.7], [x * m.footW * 1.1, -m.ankle * 0.5, m.footL * 0.9]], 0.05 * k, bark, 4); });
+        }, { local: true, sig: q });
+      });
+    }
+  });
+
+  // ===================================================================================================== MIRE SWAMP
+  // --------------------------------------------------------------------------------------------- Leech Queen
+  // A gorged queen leech: slick olive-black rings with a pale stripe down the back and a blood-red belly, glowing blood
+  // pustules, a fleshy lamprey lip ringed with bone teeth, a cluster of small red eyes. Her bone crown and gold circlet,
+  // the spears and the pitchfork stuck in her, the leechlings riding her, the tail ring and the pulsing blood sacs (the
+  // boss look's phase parts) all stay.
+  boss('leech_queen', 'act1_boss_leech', {
+    base: 'act1_leech', area: 'mire',
+    spec: function (s) { return setColors(s, { main: '#343a26', alt: '#a8261e', glow: '#ff4a3a' }); },
+    paint: paintOf('mire', { bottom: 0.62, top: 1.3, rim: 0.32 }),
+    dress: function (u, spec) {
+      var g = gm(), geo = S.geo, C = KD.gfx.color._get;
+      var top = gr('#3a4228', 'mire'), flank = gr('#5a6238', 'mire'), stripe = gr('#a8a456', 'mire'), belly = gr('#9a2a22', 'mire'), bellyD = gr('#5a1612', 'mire');
+      // every ring: the same slick segment (dark back, pale stripe, red belly, darker where the rings overlap)
+      var seg = shape('ab_leech_seg', function () {
+        var m = geo.blob({ r: [0.5, 0.5, 0.5], sides: 10, rings: 7, lump: 0.03, seed: 4 });
+        return g.colorize(m, function (x, y, z) {
+          var c = y < -0.12 ? S.mix(belly, bellyD, Math.min(1, (-y - 0.12) * 2.5)) : (y > 0.36 && Math.abs(x) < 0.2 ? stripe : S.mix(flank, top, Math.min(1, Math.max(0, (y + 0.1) * 1.6))));
+          var a = C(c), k = Math.abs(z) > 0.36 ? 0.72 : 1;
+          return [a[0] * k, a[1] * k, a[2] * k];
+        });
+      });
+      var segs = ['head', 'seg1', 'chest'].concat(fan(9, 3, 11, function (x) { return 'seg' + x; }));
+      segs.forEach(function (j) {
+        var n = u.find(j, function (q) { return q.mesh === 'sphere' && !q.name && !(q.emissive > 0.3); })[0];
+        if (n && (n.pos || [0])[0] === 0) { n.mesh = seg; n.color = '#ffffff'; }
+      });
+      // the plan's flat mouth disc becomes a fleshy lip ring
+      var lip = u.find('head', function (q) { return q.mesh === 'cyl8' && !q.name; })[0];
+      if (lip) { lip.mesh = shape('ab_leech_lip', function () { return g.torus({ R: 0.4, r: 0.1, seg: 14, sides: 6 }); }); lip.color = gr('#b0645a', 'mire'); }
+      // small red eyes in a crescent over the mouth
+      u.add('head', 'eyes', function () {
+        var out = [];
+        fan(5, -0.9, 0.9, function (a, i) { out.push(glowing(T(Sc(g.sphere({ r: 1, detail: 0, color: col(spec, 'glow', '#ff4a3a') }), 0.022, 0.022, 0.014), sin(a) * 0.17, 0.1 + cos(a) * 0.05, 0.13 + cos(a) * 0.03))); });
+        return out;
+      }, LOCAL);
+      // her blood sacs (`bl_sac0..2`, pulsing with the phase): glossy veined sacs instead of the faceted balls
+      var sac = shape('ab_leech_sac', function () {
+        var out = [], blood = gr('#c0302a', 'mire'), dark = gr('#5a1410', 'mire');
+        [[0.3, 0.02, 0, 0.13], [-0.3, 0.02, 0, 0.13], [0.26, 0.14, 0.1, 0.08], [-0.25, 0.13, -0.1, 0.08]].forEach(function (q, i) {
+          var b = geo.blob({ r: [q[3], q[3] * 0.92, q[3] * 1.1], sides: 7, rings: 5, lump: 0.05, seed: 30 + i });
+          g.colorize(b, function (x, y) { return C(S.mix(blood, dark, Math.max(0, Math.min(1, 0.45 - y / q[3] * 0.6)))); });
+          out.push(T(glowing(b, 0.3), q[0], q[1], q[2]));
+        });
+        return g.merge(out);
+      });
+      ['bl_sac0', 'bl_sac1', 'bl_sac2'].forEach(function (nm) { var n = u.named(nm); if (n) { n.mesh = sac; n.color = '#ffffff'; } });
+    }
+  });
+
+  // --------------------------------------------------------------------------------------------- Bog Mother
+  // The swamp got up: a heaving mound of peat and black mud with a mossy back, a ragged shawl of rotten weed, a drape
+  // of hanging moss, glowing slime seeping from cracks, lily pads and a slick on the mud round her, glowing eyes under
+  // a brow of mud. The drowned tree, the sunk boat and the mill wheel, the reeds, the ribcage and the skull, her tar
+  // arms, the toothy maw, the crown and her glowing spawn (the boss look) all stay.
+  boss('bog_mother', 'act1_boss_bogmother', {
+    base: 'act1_sludge', area: 'mire',
+    spec: function (s) { return setColors(s, { main: '#3a3a28', alt: '#6a7a3a', glow: '#c9ff5a' }); },
+    paint: paintOf('mire', { bottom: 0.6, top: 1.28, rim: 0.3 }),
+    dress: function (u, spec) {
+      var g = gm(), geo = S.geo, C = KD.gfx.color._get;
+      var mud = gr('#3a3428', 'mire'), peat = gr('#2a2620', 'mire'), moss = gr('#4e6a2e', 'mire'), mossL = gr('#7a9a3e', 'mire'), weed = gr('#3e4a26', 'mire'), glow = col(spec, 'glow', '#c9ff5a');
+      // the mound: lumpy mud, mossy on top (the lumps too)
+      var mound = shape('ab_bog_mound', function () {
+        var m = geo.blob({ r: [0.5, 0.5, 0.5], sides: 14, rings: 8, lump: 0.1, seed: 12 });
+        return g.colorize(m, function (x, y, z) { var t = Math.max(0, Math.min(1, (y + 0.05) * 2.2)), n = 0.5 + 0.5 * sin(x * 13 + z * 9); return C(S.mix(S.mix(peat, mud, n), S.mix(moss, mossL, n * 0.6), t * t)); });
+      });
+      (u.named('body').children || []).forEach(function (n) { if (n && n.mesh === 'sphere' && !n.name) { n.mesh = mound; n.color = '#ffffff'; } });
+      // the puddle: a ragged black slick instead of a round disc
+      var pd = u.find('puddle', function (q) { return q.mesh === 'cyl12' && !q.name; })[0];
+      if (pd) { pd.mesh = shape('ab_bog_slick', function () { var m = geo.blob({ r: [0.5, 0.5, 0.5], sides: 16, rings: 4, lump: 0.16, seed: 21 }); return m; }); pd.color = gr('#24261c', 'mire'); pd.size = [pd.size[0] * 1.05, 0.06, pd.size[2] * 1.05]; }
+      // eyes: the plan's glowing slits get rounder and sit in dark mud sockets under a heavy brow
+      ['eye_l', 'eye_r'].forEach(function (j) { u.find(j, function (q) { return q.mesh === 'box' && !q.name; }).forEach(function (n) { n.mesh = 'sphere'; n.size = [0.16, 0.075, 0.05]; }); });
+      u.add('head', 'brow', function () {
+        var out = [];
+        [1, -1].forEach(function (sd) {
+          out.push(T(Sc(g.sphere({ r: 1, detail: 0, color: '#0e0c0a' }), 0.12, 0.07, 0.03), sd * 0.15, 0.0, -0.04));
+          var b = geo.blob({ r: [0.14, 0.04, 0.06], sides: 7, rings: 4, lump: 0.15, seed: 40 + sd, color: peat }); R(b, 0, 0, -sd * 0.3); out.push(T(b, sd * 0.16, 0.085, -0.05));
+        });
+        return out;
+      }, LOCAL);
+      // a ragged shawl of rotten weed over the top of the mound, hanging moss, glowing seeps, lily pads on the slick
+      u.add('body', 'shawl', function () {
+        var out = [], h = geo.hem({ r: 0.42, rBottom: 0.96, rz: 0.92, h: 0.32, sides: 11, teeth: 0.6, seed: 52, color: weed, inner: S.shade(weed, -0.4), arc: TAU * 0.62, a0: PI - TAU * 0.31 });
+        out.push(T(h, 0, 0.53, -0.02));
+        fan(9, 0.6, TAU - 0.6, function (a, i) {
+          out.push(T(geo.tuft({ n: 2, len: 0.2 + 0.06 * (i % 3), r: 0.022, spread: 0.25, seed: 60 + i, color: moss, tip: S.shade(weed, -0.2), dir: [sin(a) * 0.3, -1, cos(a) * 0.3] }), sin(a) * 0.74, 0.3, cos(a) * 0.7));
+        });
+        [[0.42, 0.42, 0.32], [-0.36, 0.42, 0.36], [0.58, 0.2, -0.1], [-0.6, 0.18, 0.1]].forEach(function (q, i) {
+          out.push(glowing(T(geo.blob({ r: [0.05, 0.03, 0.05], sides: 5, rings: 3, lump: 0.2, seed: 70 + i, color: glow }), q[0], q[1], q[2]), 0.8));
+          out.push(glowing(T(Sc(g.sphere({ r: 1, detail: 0, color: glow }), 0.02, 0.06, 0.02), q[0] * 1.03, q[1] - 0.07, q[2] * 1.03), 0.7));
+        });
+        [[0.86, 0.02, 0.3, 0.12], [-0.8, 0.02, 0.5, 0.1], [0.3, 0.02, 0.9, 0.09], [-0.5, 0.02, -0.8, 0.11]].forEach(function (q, i) {
+          var pad = g.cylinder({ r: q[3], h: 0.012, sides: 8, color: moss }); out.push(T(pad, q[0], q[1], q[2]));
+          if (i % 2) out.push(T(geo.blob({ r: [0.03, 0.04, 0.03], sides: 5, rings: 3, color: gr('#d8c8e0', 'mire') }), q[0], q[1] + 0.04, q[2]));
+        });
+        return out;
+      }, LOCAL);
+    }
+  });
+
+  // ===================================================================================================== BANDIT CAMP
+  // --------------------------------------------------------------------------------------------- Hookjaw the Fence
+  // A hulking fence in a long, patched leather coat with a ragged hood, a bone plague mask with ember eyes over his iron
+  // jaw, a fur collar, heavy gloves and boots. His iron jaw, the loot rack with its scales, sack and lantern on his
+  // back, the stolen keys, the cooking pot pauldron, the chain coil and the iron toecap (the boss look) all stay.
+  boss('hookjaw', 'act1_boss_hookjaw', {
+    base: 'act1_bandit', area: 'camp',
+    spec: function (s) { return setColors(s, { main: '#4a3626', alt: '#a8823a', skin: '#b88a68', metal: '#7a7e84' }); },
+    scale: { head: 1.1 }, grow: LIMBS,
+    dress: function (u, spec) {
+      var m = u.m; if (!m) return;
+      var g = gm(), geo = S.geo, k = m.k;
+      var coat = gr('#4a3424', 'camp'), coatD = S.shade(coat, -0.4), hood = gr('#3a2c24', 'camp'), hoodD = gr('#141010', 'camp'), mask = gr('#d8ccb0', 'camp'), strap = gr('#2a1e16', 'camp'), rust = gr(RUST, 'camp');
+      eyeGlow(u, '#ffa040', { size: [0.05 * k, 0.036 * k, 0.03 * k] });
+      // the crossed chains over the chest: a lighter ring mesh
+      var ring = shape('ab_torus_lo', function () { return g.torus({ R: 0.4, r: 0.1, seg: 9, sides: 4 }); });
+      u.find('chest', function (n) { return n.mesh === 'torus' && !n.name; }).forEach(function (n) { n.mesh = ring; });
+      paintParts(u, ['leg_r', 'leg_l'], gr('#3a3430', 'camp'));
+      paintParts(u, ['shin_r', 'shin_l', 'foot_r', 'foot_l'], gr('#2e2018', 'camp'));
+      // the mask: bone white and cracked; the cap goes under a ragged hood
+      u.find('head', function (n) { return !n.name && n.color && /^#d|^#c|^#b[c-f]/i.test(n.color) && (n.mesh === 'box_bevel' || n.mesh === 'box_taper'); }).forEach(function (n) { n.color = mask; });
+      u.add('head', 'hood', function () {
+        var top = m.headC + m.headH * 0.62, out = [];
+        var h = geo.hem({ r: m.headW * 0.42, rBottom: m.headW * 0.86, rz: 1.1, h: m.headH * 1.25, sides: 10, teeth: 0.25, arc: TAU * 0.68, a0: TAU * 0.16, seed: 61, color: hood, inner: hoodD });
+        out.push(T(h, 0, top + 0.02 * k, m.headZ - m.headD * 0.12));
+        out.push(T(geo.blob({ r: [m.headW * 0.5, m.headH * 0.2, m.headD * 0.52], sides: 9, rings: 4, color: hood, lump: 0.06, seed: 3 }), 0, top, m.headZ - m.headD * 0.08));
+        // a crack and stitches across the mask
+        out.push(geo.stitches([-m.headW * 0.3, m.headC + m.headH * 0.3, m.faceZ + 0.02 * k], [-m.headW * 0.1, m.headC + m.headH * 0.05, m.faceZ + 0.02 * k], 3, 0.018 * k, '#2a1e18'));
+        return out;
+      }, LOCAL);
+      // the long coat: tattered tails all round, a high collar, patches and stitched seams, buckled straps
+      u.add('hips', 'coat', function () {
+        var r = m.pelvisW * 0.56;
+        return [geo.patch({ w: 0.1 * k, h: 0.12 * k, at: [r * 0.6, -0.08 * k, m.pelvisD * 0.62], color: gr('#5a4a34', 'camp'), rot: 0.2, stitch: '#c8b890' })];
+      }, LOCAL);
+      u.add('chest', 'coat', function () {
+        var out = [hemAt(m, coat, coatD, { r: m.torsoW * 0.36, rb: m.torsoW * 0.62, rz: m.torsoD / m.torsoW * 1.25, h: 0.22 * k, y: m.neckY + 0.06 * k, teeth: 0.5, sides: 10, seed: 121 })];
+        out.push(geo.patch({ w: 0.12 * k, h: 0.1 * k, at: [-m.torsoW * 0.22, m.torsoH * 0.5, m.torsoD * 0.52], color: gr('#6a5038', 'camp'), rot: -0.25, stitch: '#c8b890' }));
+        out.push(geo.stitches([m.torsoW * 0.05, m.torsoH * 0.1, m.torsoD * 0.53], [m.torsoW * 0.1, m.torsoH * 0.7, m.torsoD * 0.53], 4, 0.016 * k, '#c8b890'));
+        return out;
+      }, LOCAL);
+      // heavy gauntlet cuffs
+      ['forearm_r', 'forearm_l'].forEach(function (j) {
+        u.add(j, 'cuff', function () { return [T(geo.rounded({ r: m.forearmR * 1.25, rTop: m.forearmR * 1.4, h: m.forearm * 0.42, sides: 7, color: strap }), 0, -m.forearm * 0.72, 0)]; }, LOCAL);
+      });
+    }
+  });
+
+  // --------------------------------------------------------------------------------------------- Captain Redtooth
+  // The bandit captain: a long crimson coat with tattered tails and gold-trimmed cuffs, a pale scarred face with ember
+  // eyes and a black, braided beard under his red iron bite, gold buttons, black gloves and boots. The cocked hat with
+  // its skull and plume, the iron bite, the collar, the brace of pistols, the epaulettes, the bombs and the sword on
+  // his back (the boss look) all stay.
+  boss('captain_redtooth', 'act1_boss_redtooth', {
+    base: 'act1_bandit', area: 'camp',
+    spec: function (s) { return setColors(s, { main: '#6a1e1e', alt: '#2a2024', skin: '#c8a088', metal: '#c09838' }); },
+    scale: { head: 1.1 }, grow: LIMBS,
+    dress: function (u, spec) {
+      var m = u.m; if (!m) return;
+      var g = gm(), geo = S.geo, k = m.k;
+      var coat = gr('#6a1c1e', 'camp'), coatD = S.shade(coat, -0.45), gold = gr('#c09838', 'camp'), beard = gr('#1e1a1c', 'camp'), beardL = gr('#3a3236', 'camp'), glove = gr('#221a1a', 'camp'), skin = gr('#c8a088', 'camp');
+      eyeGlow(u, '#ffc85a', { size: [0.048 * k, 0.03 * k, 0.03 * k] });
+      paintParts(u, ['chest', 'arm_r', 'arm_l'], coat);
+      paintParts(u, ['hand_r', 'hand_l'], glove);
+      paintParts(u, ['leg_r', 'leg_l'], gr('#2e2a2c', 'camp'));
+      paintParts(u, ['shin_r', 'shin_l', 'foot_r', 'foot_l'], gr('#1e1816', 'camp'));
+      u.find('chest', function (n) { return !n.name && n.color && n.mesh === 'box'; }).forEach(function (n) { n.color = coatD; });
+      u.add('head', 'face', function () {
+        var out = [], cy = m.headC - m.headH * 0.42, fz = m.faceZ;
+        // the beard: a black bush under the bite, two braids with gold rings
+        out.push(T(geo.blob({ r: [m.headW * 0.42, m.headH * 0.24, m.headD * 0.26], sides: 8, rings: 4, lump: 0.18, seed: 7, color: beard }), 0, cy, fz - m.headD * 0.18));
+        out.push(T(geo.tuft({ n: 6, len: 0.16 * k, r: 0.03 * k, spread: 0.55, seed: 8, color: beard, tip: beardL, dir: [0, -1, 0.35] }), 0, cy - 0.02 * k, fz - 0.03 * k));
+        [1, -1].forEach(function (sd) {
+          out.push(geo.cord([[sd * 0.05 * k, cy - 0.06 * k, fz], [sd * 0.06 * k, cy - 0.14 * k, fz + 0.01 * k], [sd * 0.05 * k, cy - 0.22 * k, fz]], 0.018 * k, beard, 4, true));
+          out.push(T(g.torus({ R: 0.022 * k, r: 0.007 * k, seg: 6, sides: 3, color: gold }), sd * 0.055 * k, cy - 0.18 * k, fz + 0.005 * k));
+        });
+        // a pale scar down over the left eye and a heavy brow
+        out.push(geo.cord([[m.eyeX * 1.05, m.eyeY + 0.07 * k, fz + 0.012], [m.eyeX * 0.95, m.eyeY - 0.01 * k, fz + 0.022], [m.eyeX * 0.7, m.eyeY - 0.08 * k, fz + 0.02]], 0.008 * k, S.shade(skin, 0.25), 3));
+        out.push(T(geo.bevelBox({ w: m.headW * 0.8, h: 0.035 * k, d: 0.05 * k, b: 0.35, color: S.shade(skin, -0.4) }), 0, m.eyeY + 0.045 * k, fz - 0.01));
+        return out;
+      }, LOCAL);
+      // gold buttons down the coat, gold-trimmed cuffs over black gloves
+      u.add('chest', 'buttons', function () {
+        var out = [];
+        [0.25, 0.55].forEach(function (t) { [1, -1].forEach(function (sd) { out.push(metal(T(Sc(g.sphere({ r: 1, detail: 0, color: gold }), 0.016 * k, 0.016 * k, 0.01 * k), sd * m.torsoW * 0.2, m.torsoH * t, m.torsoD * 0.56), 0.8)); }); });
+        return out;
+      }, LOCAL);
+      ['forearm_r', 'forearm_l'].forEach(function (j) {
+        u.add(j, 'cuff', function () {
+          return [T(geo.rounded({ r: m.forearmR * 1.3, rTop: m.forearmR * 1.55, h: m.forearm * 0.36, sides: 7, color: coat }), 0, -m.forearm * 0.76, 0),
+            metal(T(g.torus({ R: m.forearmR * 1.5, r: 0.014 * k, seg: 9, sides: 3, color: gold }), 0, -m.forearm * 0.6, 0), 0.8)];
+        }, LOCAL);
+      });
+      // long coat tails behind, over the skirt
+      u.add('hips', 'tails', function () {
+        var r = m.pelvisW * 0.56;
+        return [hemAt(m, coat, coatD, { r: r * 1.05, rb: r * 1.5, rz: m.pelvisD / m.pelvisW * 1.2, h: 0.7 * k, y: m.pelvisH * 0.5, teeth: 0.45, sides: 9, seed: 131, arc: TAU * 0.5, a0: PI * 0.5 })];
+      }, LOCAL);
+    }
+  });
+
+  // ===================================================================================================== OLD MILL
+  // --------------------------------------------------------------------------------------------- The Miller's Shade
+  // The drowned miller's ghost: flour-pale and faintly violet in the shadows, a ragged smock and torn sleeves, a long
+  // tattered trail of a body that ends in wisps, a flour-white scarf, a dark face under his cap with two lamp-yellow
+  // eyes. The millstone on his back and its broken wheel, the flour sacks, the apron, the nailed board, the shackles,
+  // the dragged chain and gear and the swirling flour dust (the boss look) all stay.
+  boss('millers_shade', 'act1_boss_shade', {
+    base: 'act1_shade', area: 'mill',
+    grade: function (c) { return S.grade(c, { sat: 0.85, tint: '#7a6a8a', amount: 0.06, value: 0.98, shadow: 0.14 }); },
+    paint: paintOf('mill', { bottom: 0.5, top: 1.18, cool: [0.82, 0.8, 1.0] }),
+    grow: { hand_r: [1.2, 1.12, 1.2], hand_l: [1.2, 1.12, 1.2] },
+    dress: function (u, spec) {
+      var m = u.m; if (!m) return;
+      var g = gm(), geo = S.geo, k = m.k;
+      // the plan fades the whole body (alpha 0.72): the painted shade is solid (one merged mesh per joint, no see-through
+      // seams); the held hammer and lantern keep their own alpha
+      (function solid(n) { if (!n || n.name === 'weapon_model' || n.name === 'offhand_model' || n.name === 'aura') return; if (n.alpha !== undefined) delete n.alpha; (n.children || []).forEach(solid); })(u.built.model);
+      var pale = S.grade('#d8d0bc', { sat: 0.85, tint: '#7a6a8a', amount: 0.06 }), paleD = S.mix(pale, '#4a4058', 0.45), smock = S.grade('#b8ae98', { sat: 0.8, tint: '#7a6a8a', amount: 0.08 }), flour = '#efe9da';
+      eyeGlow(u, col(spec, 'glow', '#ffd27a'), { size: [0.06 * k, 0.04 * k, 0.03 * k] });
+      var ring = shape('ab_torus_lo', function () { return g.torus({ R: 0.4, r: 0.1, seg: 9, sides: 4 }); });
+      u.find('chest', function (n) { return n.mesh === 'torus' && !n.name; }).forEach(function (n) { n.mesh = ring; });
+      // a ragged smock over the chest and a flour-white scarf with a trailing end
+      u.add('chest', 'smock', function () {
+        return [hemAt(m, smock, paleD, { r: m.torsoW * 0.5, rb: m.torsoW * 0.66, rz: m.torsoD / m.torsoW * 1.3, h: m.torsoH * 0.62, y: m.torsoH * 0.52, teeth: 0.5, sides: 12, seed: 150 }),
+          hemAt(m, flour, paleD, { r: m.neckR * 1.4, rb: m.torsoW * 0.4, rz: 1.1, h: 0.12 * k, y: m.neckY + 0.02 * k, teeth: 0.4, sides: 9, seed: 151 }),
+          T(R(geo.tatter({ w: 0.08 * k, h: 0.3 * k, teeth: 2, depth: 0.4, seed: 152, color: flour, inner: paleD, bend: -0.2 }), 0, PI, 0), m.torsoW * 0.18, m.neckY - 0.02 * k, -m.torsoD * 0.5)];
+      }, LOCAL);
+      // the trail: a tattered robe round the hips falling over the ghost tail, wisps at its end
+      u.add('hips', 'trail', function () {
+        return [hemAt(m, smock, paleD, { r: m.pelvisW * 0.6, rb: m.pelvisW * 0.85, rz: m.pelvisD / m.pelvisW * 1.2, h: 0.46 * k, y: m.pelvisH * 0.45, teeth: 0.6, sides: 12, seed: 153 })];
+      }, LOCAL);
+      u.add('tail2', 'wisps', function () {
+        return [hemAt(m, pale, paleD, { r: 0.12 * k, rb: 0.2 * k, rz: 0.75, h: 0.34 * k, y: -0.04 * k, teeth: 0.75, sides: 9, seed: 154 }),
+          T(geo.tuft({ n: 4, len: 0.2 * k, r: 0.03 * k, spread: 0.5, seed: 155, color: pale, tip: paleD, dir: [0, -1, -0.5] }), 0, -0.3 * k, -0.02 * k)];
+      }, LOCAL);
+      // torn sleeves
+      ['arm_r', 'arm_l'].forEach(function (j) { u.add(j, 'sleeve', function () { return [hemAt(m, smock, paleD, { r: m.armR * 1.2, rb: m.armR * 1.7, h: 0.18 * k, y: -m.upperArm * 0.45, teeth: 0.6, sides: 7, seed: 156 })]; }, LOCAL); });
+      // the head: a hollow violet shadow of a face under a flour-dusted cap with a ragged brim, wild white hair and beard
+      var hn = u.named('head'); if (hn && hn.mesh) { hn.mesh = 'sphere'; hn.color = '#241e30'; }
+      var capC = S.grade('#9a9284', { sat: 0.8, tint: '#7a6a8a', amount: 0.08 });
+      u.find('head', function (n) { return n.mesh === 'box_bevel' && !n.name; }).forEach(function (n) { n.color = capC; });
+      u.add('head', 'hair', function () {
+        var out = [hemAt(m, capC, paleD, { r: m.headW * 0.56, rb: m.headW * 0.72, h: 0.08 * k, y: m.headC + m.headH * 0.5, teeth: 0.6, sides: 10, seed: 158 })];
+        [1, -1].forEach(function (sd) { out.push(T(geo.tuft({ n: 3, len: 0.14 * k, r: 0.026 * k, spread: 0.5, seed: 159 + sd, color: pale, tip: flour, dir: [sd, -0.5, -0.3] }), sd * m.headW * 0.46, m.headC + m.headH * 0.2, m.headZ - 0.02 * k)); });
+        out.push(T(geo.tuft({ n: 6, len: 0.17 * k, r: 0.03 * k, spread: 0.6, seed: 157, color: pale, tip: flour, dir: [0, -1, 0.35] }), 0, m.headC - m.headH * 0.3, m.faceZ - 0.01 * k));
+        return out;
+      }, LOCAL);
+    }
+  });
+
+  // --------------------------------------------------------------------------------------------- Grindwell
+  // The miller-priest of the black grain: a lumpy burlap sack for a head, stitched shut, with ember eyes, a long
+  // ragged burlap robe with a rope girdle and spilled black grain, big pale knuckled hands, a noose and the golden
+  // sickle. His glowing mitre and halo, the turning wheel of the cult on his back, the stole, the candle pauldrons, the
+  // bell and flail, the sheaves, the straw dolls (the boss look) and his staff all stay.
+  boss('grindwell', 'act1_boss_grindwell', {
+    base: 'act1_cultist', area: 'mill',
+    spec: function (s) { return setColors(s, { main: '#6e5a3c', alt: '#3a2a22', skin: '#b8a07a', metal: '#c9a23a', glow: '#ff8a3a' }); },
+    scale: { head: 1.12 }, grow: LIMBS,
+    dress: function (u, spec) {
+      var m = u.m; if (!m) return;
+      var g = gm(), geo = S.geo, k = m.k;
+      var burlap = gr('#a08a5e', 'mill'), burlapD = S.shade(burlap, -0.32), robe = gr('#6a5638', 'mill'), robeD = S.shade(robe, -0.4), thread = '#2a2018', grain = '#1e1a16', glow = col(spec, 'glow', '#ff8a3a');
+      var ring0 = shape('ab_torus_lo', function () { return g.torus({ R: 0.4, r: 0.1, seg: 9, sides: 4 }); });
+      u.find('chest', function (n) { return n.mesh === 'torus' && !n.name; }).forEach(function (n) { n.mesh = ring0; });
+      // the head: the plan's boxes go (the mitre, the halo and the eyes stay) for a stitched burlap sack
+      u.drop('head', function (n) { return n.mesh && !/^bla_/.test(n.mesh) && !(n.emissive > 0.5); });
+      eyeGlow(u, glow, { size: [0.06 * k, 0.05 * k, 0.03 * k] });
+      var mo = u.named('mouth'); if (mo && mo.mesh) mo.color = '#1e1410';      // it stays (it moves when he speaks), inside the sack
+      u.add('head', 'sack', function () {
+        var out = [T(geo.blob({ r: [m.headW * 0.62, m.headH * 0.64, m.headD * 0.62], sides: 9, rings: 6, lump: 0.08, seed: 160, color: burlap }), 0, m.headC + m.headH * 0.04, m.headZ)];
+        var fz = m.headZ + m.headD * 0.6;
+        [1, -1].forEach(function (sd) { out.push(T(Sc(g.sphere({ r: 1, detail: 0, color: '#1e1410' }), 0.055 * k, 0.05 * k, 0.02 * k), sd * m.eyeX, m.eyeY, fz - 0.03 * k)); });
+        out.push(geo.stitches([-m.headW * 0.28, m.headC - m.headH * 0.26, fz], [m.headW * 0.28, m.headC - m.headH * 0.28, fz], 5, 0.022 * k, thread));
+        out.push(geo.stitches([m.headW * 0.6, m.headC + m.headH * 0.4, m.headZ], [m.headW * 0.6, m.headC - m.headH * 0.4, m.headZ], 3, 0.02 * k, thread, [1, 0, 0]));
+        out.push(T(geo.hem({ r: m.headW * 0.5, rBottom: m.headW * 0.68, h: 0.12 * k, sides: 8, teeth: 0.6, seed: 161, color: burlap, inner: burlapD }), 0, m.headC - m.headH * 0.5, m.headZ));
+        var ring = fan(11, 0, TAU, function (a) { return [sin(a) * m.headW * 0.5, m.headC - m.headH * 0.5, m.headZ + cos(a) * m.headD * 0.5]; });
+        out.push(geo.cord(ring, 0.02 * k, ROPE, 4, true));
+        return out;
+      }, LOCAL);
+      // the long robe: down to the ankles, torn at the hem, a rope girdle with spilled black grain
+      paintParts(u, ['chest', 'arm_r', 'arm_l', 'forearm_r', 'forearm_l'], robe);
+      u.add('hips', 'robe', function () {
+        var r = m.pelvisW * 0.56, out = [hemAt(m, robe, robeD, { r: r * 1.02, rb: r * 1.42, rz: m.pelvisD / m.pelvisW * 1.15, h: 0.78 * k, y: m.pelvisH * 0.45, teeth: 0.35, sides: 12, seed: 162 })];
+        var pts = fan(13, 0, TAU, function (a) { return [sin(a) * r * 1.04, m.pelvisH * 0.42, cos(a) * m.pelvisD * 0.62]; });
+        out.push(geo.cord(pts, 0.022 * k, ROPE, 4, true));
+        out.push(geo.cord([[r * 0.4, m.pelvisH * 0.42, m.pelvisD * 0.6], [r * 0.46, m.pelvisH * 0.1, m.pelvisD * 0.66], [r * 0.42, -m.pelvisH * 0.4, m.pelvisD * 0.64]], 0.016 * k, ROPE, 3, true));
+        for (var i = 0; i < 3; i++) out.push(T(geo.blob({ r: [0.02 * k, 0.014 * k, 0.02 * k], sides: 5, rings: 3, color: grain }), -r * 0.3 + i * 0.03 * k, m.pelvisH * 0.3 - i * 0.08 * k, m.pelvisD * 0.68));
+        return out;
+      }, LOCAL);
+      ['arm_r', 'arm_l'].forEach(function (j) { u.add(j, 'sleeve', function () { return [hemAt(m, robe, robeD, { r: m.armR * 1.2, rb: m.armR * 1.9, h: 0.22 * k, y: -m.upperArm * 0.7, teeth: 0.5, sides: 6, seed: 163 })]; }, LOCAL); });
+    }
+  });
+
+  // ===================================================================================================== CROSSROADS
+  // --------------------------------------------------------------------------------------------- Toll Warden
+  // The crossroads' armoured toll-keeper: blackened blue steel with worn gold trim and rust in the seams, a cold light
+  // burning in the slit of his great helm, a ragged blue cloak and tabard over chains, heavy gauntlets. The toll gate
+  // crown on his helm, the strongbox yoke and the swinging toll bell, the striped toll bar on his back, the breastplate
+  // with the toll seal, the strings of coins and the key, the tassets and the stacked pauldrons (the boss look) stay.
+  boss('toll_warden', 'act1_boss_warden', {
+    base: 'act1_toll', area: 'cross',
+    spec: function (s) { return setColors(s, { main: '#4a5268', alt: '#c8a038', skin: '#c89a78', metal: '#6e7888' }); },
+    scale: { head: 1.08 }, grow: LIMBS,
+    dress: function (u, spec) {
+      var m = u.m; if (!m) return;
+      var g = gm(), geo = S.geo, k = m.k;
+      var steel = gr('#6a7488', 'cross'), steelD = gr('#3a4052', 'cross'), blue = gr('#2e3e6e', 'cross'), blueD = S.shade(blue, -0.45), gold = gr('#c8a038', 'cross'), rust = gr('#6a4434', 'cross');
+      // the plan's bright steel is blackened (gold trim and leather stay)
+      (function steelWalk(n) {
+        if (!n || n.name === 'weapon_model' || n.name === 'offhand_model') return;
+        if (n.mesh && n.color && !/^bla_/.test(n.mesh) && !(n.emissive > 0.5)) { var c = KD.gfx.color._get(n.color), l = c[0] * 0.3 + c[1] * 0.55 + c[2] * 0.15, sat = Math.max(c[0], c[1], c[2]) - Math.min(c[0], c[1], c[2]); if (sat < 0.12 && l > 0.3) n.color = l > 0.55 ? steel : S.mix(steel, steelD, 0.5); }
+        (n.children || []).forEach(steelWalk);
+      })(u.built.model);
+      var vz = u.named('visor'); if (vz && vz.mesh) { vz.color = '#bfe4ff'; vz.emissive = 0.95; }
+      var ring = shape('ab_torus_lo', function () { return g.torus({ R: 0.4, r: 0.1, seg: 9, sides: 4 }); });
+      u.find('chest', function (n) { return n.mesh === 'torus' && !n.name; }).forEach(function (n) { n.mesh = ring; });
+      // a ragged blue cloak from the shoulders (the strongbox and the bar ride over it), rivets and rust on the helm
+      u.add('chest', 'cloak', function () {
+        var c = geo.tatter({ w: m.torsoW * 1.15, h: 1.05 * k, teeth: 6, depth: 0.32, seed: 180, color: blue, inner: blueD, bend: 0.12 });
+        return [T(R(c, 0.06, PI, 0), 0, m.neckY - 0.02 * k, -m.torsoD * 0.6),
+          hemAt(m, blue, blueD, { r: m.torsoW * 0.4, rb: m.torsoW * 0.62, rz: m.torsoD / m.torsoW * 1.25, h: 0.16 * k, y: m.neckY + 0.04 * k, teeth: 0.5, sides: 10, seed: 181 })];
+      }, LOCAL);
+      u.add('head', 'helm', function () {
+        var out = [], fz = m.faceZ + 0.04 * k;
+        [-1, 1].forEach(function (sd) { [0.1, 0.32].forEach(function (t) { out.push(metal(T(Sc(g.sphere({ r: 1, detail: 0, color: gold }), 0.014 * k, 0.014 * k, 0.01 * k), sd * m.headW * 0.42, m.headC - m.headH * 0.1 + t * m.headH, fz), 0.8)); }); });
+        out.push(geo.cord([[-m.headW * 0.3, m.headC - m.headH * 0.36, fz + 0.004], [-m.headW * 0.26, m.headC - m.headH * 0.5, fz], [-m.headW * 0.28, m.headC - m.headH * 0.62, fz - 0.01 * k]], 0.012 * k, rust, 3));
+        return out;
+      }, LOCAL);
+      // heavy gauntlet cuffs and a mail skirt under the tassets
+      ['forearm_r', 'forearm_l'].forEach(function (j) { u.add(j, 'cuff', function () { return [T(geo.rounded({ r: m.forearmR * 1.3, rTop: m.forearmR * 1.5, h: m.forearm * 0.34, sides: 7, color: steelD }), 0, -m.forearm * 0.78, 0)]; }, LOCAL); });
+      u.add('hips', 'mail', function () { return [hemAt(m, gr('#4e5466', 'cross'), steelD, { r: m.pelvisW * 0.58, rb: m.pelvisW * 0.72, rz: m.pelvisD / m.pelvisW * 1.15, h: 0.3 * k, y: m.pelvisH * 0.3, teeth: 0.25, sides: 12, seed: 182 })]; }, LOCAL);
+    }
+  });
+
+  // --------------------------------------------------------------------------------------------- The Crowned Stag
+  // The white stag of the crossroads, crowned and gone wrong: ash-white fur shading to grey-violet, a shaggy mane and
+  // bib, glowing gold eyes under a heavy brow, moss and ivy hanging from the antlers, feathered fetlocks and black
+  // hooves, a white flag of a tail. The great gilded antlers, the turning sun crown, the hanging charms, the chamfron,
+  // the peytral, the green croup cloth, the briar of glowing berries and the gold torques (the boss look) all stay.
+  boss('crowned_stag', 'act1_boss_stag', {
+    base: 'act1_stag', area: 'cross',
+    grade: function (c) { return S.grade(c, { sat: 1.0, tint: '#7a6a8a', amount: 0.05, value: 1.0, shadow: 0.12 }); },
+    paint: paintOf('cross', { bottom: 0.66, top: 1.2, rim: 0.22, cool: [0.95, 0.92, 1.0], warm: [1.06, 1.03, 0.96] }),
+    fold: { ear_l: 'head', ear_r: 'head' },
+    grow: { leg_fl: [1.18, 1.02, 1.12], leg_fr: [1.18, 1.02, 1.12], leg_bl: [1.15, 1.02, 1.1], leg_br: [1.15, 1.02, 1.1], shin_fl: [1.12, 1, 1.12], shin_fr: [1.12, 1, 1.12], shin_bl: [1.12, 1, 1.12], shin_br: [1.12, 1, 1.12] },
+    dress: function (u, spec) {
+      var g = gm(), geo = S.geo;
+      var P = KD.creature && KD.creature.PLANS && KD.creature.PLANS.quadruped, q = (P && P.table.stag) || { hd: [0.2, 0.2, 0.23], nw: 0.2, nl: 0.56, cw: 0.36, cd: 0.5, len: 0.92, lw: 0.085 };
+      var fur = S.grade('#e2dccc', { sat: 0.9, tint: '#7a6a8a', amount: 0.06 }), furD = S.mix(fur, '#5a5068', 0.5), furL = S.shade(fur, 0.1), moss = S.grade('#4e6a3a', GRADE.cross), ivy = S.grade('#3a5a34', GRADE.cross), glow = col(spec, 'glow', '#ffe08a');
+      var hd = q.hd, skullZ = 0.069;
+      // eyes: the plan's boxes go, glowing almond eyes in dark sockets under a heavy brow
+      u.drop('head', function (n) { return n.mesh === 'box' && n.emissive > 0.5; });
+      u.add('head', 'eyes', function () {
+        var fz = skullZ + hd[2] * 0.5, out = [geo.eyes({ x: hd[0] * 0.44, y: 0.028, z: fz - 0.03, r: 0.022, color: glow, slant: 0.45, socket: '#16121a' })];
+        [1, -1].forEach(function (sd) { var b = geo.bevelBox({ w: hd[0] * 0.42, h: 0.035, d: 0.07, b: 0.35, taper: [1, 0.7], color: furD, smooth: true }); R(b, 0.2, 0, -sd * 0.3); out.push(T(b, sd * hd[0] * 0.3, 0.07, fz - 0.06)); });
+        out.push(T(geo.tuft({ n: 4, len: 0.1, r: 0.025, spread: 0.6, seed: 5, color: fur, tip: furL, dir: [0, 1, -0.5] }), 0, hd[1] * 0.45, skullZ - 0.02));
+        return out;
+      }, { local: true });
+      // the mane: shaggy tufts down the neck and a bib on the chest
+      u.add('neck', 'mane', function () {
+        var out = [];
+        for (var i = 0; i < 7; i++) { var t = i / 6; out.push(T(geo.tuft({ n: 3, len: 0.12 + 0.05 * Math.sin(t * PI), r: 0.035, spread: 0.7, seed: 10 + i, color: fur, tip: furL, dir: [0, 0.3, -1] }), 0, 0.06 + t * 0.42, -q.nw * 0.45)); }
+        [1, -1].forEach(function (sd) { for (var j = 0; j < 3; j++) out.push(T(geo.tuft({ n: 2, len: 0.13, r: 0.03, spread: 0.5, seed: 20 + j + sd, color: fur, tip: furL, dir: [sd, -0.6, 0.2] }), sd * q.nw * 0.45, 0.08 + j * 0.13, 0.02)); });
+        out.push(T(geo.blob({ r: [q.nw * 0.62, 0.16, 0.1], sides: 7, rings: 4, lump: 0.2, seed: 30, color: furL }), 0, 0.08, q.nw * 0.42));
+        out.push(T(geo.tuft({ n: 5, len: 0.2, r: 0.035, spread: 0.6, seed: 31, color: furL, tip: furD, dir: [0, -1, 0.3] }), 0, -0.02, q.nw * 0.5));
+        return out;
+      }, { local: true });
+      // moss and ivy hanging off the antlers (root space, along the antler beams of the look)
+      u.add('head', 'ivy', function () {
+        var out = [];
+        [1, -1].forEach(function (sd) {
+          [[0.3, 2.05, 0.66, 0.34], [0.62, 2.5, 0.6, 0.42], [0.72, 3.0, 0.72, 0.3], [1.02, 2.76, 0.62, 0.22]].forEach(function (p, i) {
+            out.push(T(geo.tuft({ n: 3, len: p[3], r: 0.022, spread: 0.18, seed: 40 + i + (sd > 0 ? 0 : 9), color: i % 2 ? moss : ivy, tip: S.shade(moss, -0.35), dir: [0, -1, 0.05] }), sd * p[0], p[1] - 0.02, p[2]));
+          });
+          out.push(geo.cord([[sd * 0.1, 1.82, 0.76], [sd * 0.34, 2.12, 0.7], [sd * 0.56, 2.42, 0.66], [sd * 0.68, 2.8, 0.7]], 0.014, ivy, 3));
+        });
+        return out;
+      });
+      // feathered fetlocks, black hooves, a white flag of a tail
+      ['foot_fl', 'foot_fr', 'foot_bl', 'foot_br'].forEach(function (j, i) {
+        u.add(j, 'feather', function () { return [T(geo.tuft({ n: 5, len: 0.075, r: 0.024, spread: 1.0, seed: 50 + (i % 2), color: fur, tip: furL, dir: [0, -1, -0.8] }), 0, -0.13, -0.02)]; }, { local: true, sig: i < 2 ? 1 : 2 });
+      });
+      ['paw_fl', 'paw_fr', 'paw_bl', 'paw_br'].forEach(function (j) { var n = u.find(j, function (q2) { return q2.mesh && !q2.name; })[0]; if (n) n.color = '#16121a'; });
+      u.add('tail', 'flag', function () { return [geo.tuft({ n: 5, len: 0.16, r: 0.04, spread: 0.5, seed: 60, color: furL, tip: fur, dir: [0, 1, 0] })]; }, { local: true });
+    }
+  });
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
