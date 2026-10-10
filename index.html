@@ -3379,7 +3379,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.21';
+  KD.VERSION = '0.7.22';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -63616,18 +63616,43 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     },
     /** footsteps by the surface under the player's feet (every KD.gen.SURF name). */
     step: {
-      grass: 'footstep_grass', forest: 'footstep_grass', field: 'footstep_grass', marsh: 'footstep_grass',
-      dirt: 'footstep_dirt', road_dirt: 'footstep_dirt', path: 'footstep_dirt', sand: 'footstep_dirt', mud: 'footstep_dirt', gravel: 'footstep_dirt', snow: 'footstep_dirt',
+      grass: 'footstep_grass', forest: 'footstep_grass', field: 'footstep_grass', marsh: 'footstep_mud',
+      dirt: 'footstep_dirt', road_dirt: 'footstep_dirt', path: 'footstep_dirt', sand: 'footstep_dirt', mud: 'footstep_mud', gravel: 'footstep_dirt', snow: 'footstep_snow',
       road_cobble: 'footstep_stone', plaza: 'footstep_stone', cobble: 'footstep_stone', stone: 'footstep_stone', tile: 'footstep_stone', rock: 'footstep_stone', roof: 'footstep_stone',
-      plank: 'footstep_wood', wood: 'footstep_wood', carpet: 'footstep_wood', water: 'footstep_dirt', 'void': 'footstep_stone'
+      plank: 'footstep_wood', wood: 'footstep_wood', carpet: 'footstep_wood', water: 'footstep_water', 'void': 'footstep_stone'
     },
+    // [w8 sound] tables (sounds in src/audio/12_sfx_w8.js)
+    /** physical hit sound by target material (KD.fx.materialOf); overrides KD.fx.MATERIALS[..].sound. */
+    material: { flesh: 'hit_flesh', armor: 'hit_armor', rot: 'hit_flesh', bone: 'hit_bone', plant: 'hit_plant', wood: 'hit_wood', straw: 'hit_straw', stone: 'hit_stone',
+      metal: 'hit_metal', construct: 'hit_metal', ice: 'ice_impact', ghost: 'hit_ghost', goo: 'hit_slime', ichor: 'hit_ichor' },
+    /** death sound by body material; humanoids keep enemy_death, beasts (BEAST plans with flesh) use death_beast. */
+    deathMat: { bone: 'death_bones', ghost: 'death_ghost', goo: 'death_slime', ichor: 'death_bug', metal: 'death_construct', construct: 'death_construct',
+      stone: 'death_stone', ice: 'death_stone', plant: 'death_plant', wood: 'death_plant', straw: 'death_plant', beast: 'death_beast' },
+    /** swing by weapon: [light, heavy]. Hero weapons by item family, enemies by model weapon. Only replaces the swing_* sounds of castStart. */
+    weapon: {
+      sword1h: ['swing_light', 'swing_heavy'], blade2h: ['swing_heavy', 'swing_heavy'], scythe: ['swing_scythe', 'swing_scythe'], staff: ['swing_staff', 'swing_blunt'],
+      daggers: ['swing_dagger', 'swing_light'], mace1h: ['swing_blunt', 'swing_blunt'], polearm: ['swing_polearm', 'swing_polearm'], claws: ['swing_claw', 'swing_claw'],
+      sword: ['swing_light', 'swing_heavy'], greatsword: ['swing_heavy', 'swing_heavy'], greataxe: ['swing_heavy', 'swing_heavy'], axe: ['swing_light', 'swing_heavy'], halberd: ['swing_polearm', 'swing_heavy'],
+      anchor: ['swing_heavy', 'swing_heavy'], hammer: ['swing_blunt', 'swing_blunt'], mace: ['swing_blunt', 'swing_blunt'], club: ['swing_blunt', 'swing_blunt'], tree: ['swing_blunt', 'swing_blunt'],
+      bell: ['swing_blunt', 'swing_blunt'], spear: ['swing_polearm', 'swing_polearm'], dagger: ['swing_dagger', 'swing_light'], keys: ['swing_dagger', 'swing_dagger'],
+      hook: ['swing_dagger', 'swing_light'], cleaver: ['swing_dagger', 'swing_heavy'], wand: ['swing_staff', 'swing_staff'], book: ['swing_staff', 'swing_staff'], torch: ['swing_staff', 'swing_staff'],
+      banner: ['swing_polearm', 'swing_polearm'], whip: ['whip_crack', 'whip_crack'], falchion: ['swing_light', 'swing_heavy'], maul: ['swing_blunt', 'swing_heavy'],
+      censer: ['swing_staff', 'swing_blunt'], totem: ['swing_blunt', 'swing_blunt']
+    },
+    /** projectile launch whoosh (heard at the shooter): by element, lob = heavy. */
+    proj: { phys: 'proj_arrow', fire: 'proj_fire', cold: 'proj_magic', shock: 'proj_magic', holy: 'proj_magic', shadow: 'proj_magic', poison: 'proj_magic', lob: 'proj_heavy' },
+    projPitch: { cold: 1.2, shock: 1.3, holy: 1.1, shadow: 0.78, poison: 0.9 },
+    /** boss / elite telegraph: wind-up by shape, then `strike` just before it lands. */
+    tell: { circle: 'tell_slam', ring: 'tell_slam', cone: 'tell_sweep', line: 'tell_sweep', other: 'tell_windup', strike: 'tell_strike' },
+    /** loot drop by the best rarity in the drop. */
+    drop: { common: 'drop_common', fine: 'drop_fine', rare: 'drop_rare', storied: 'drop_storied', cursed: 'drop_cursed', gold: 'drop_gold' },
     /** sim `sfx` events whose name is not a sound. */
     sfxAlias: { ambush: 'enemy_alert', counter_stance: 'parry' },
     /** music moods (KD.audio.music.moods()). act 0 = hidden areas. */
     music: { act: { 0: 'explore_castle', 1: 'explore_outskirts', 2: 'explore_outskirts', 3: 'explore_city', 4: 'explore_castle' }, combat: 'combat', boss: 'boss', camp: 'camp', victory: 'victory', death: 'death' }
   };
   /** Real-time gaps between two sounds of a group (seconds) so 30 simultaneous hits do not become noise. */
-  FX.SOUND_GAP = { phit: 0.035, hit: 0.11, pswing: 0.05, swing: 0.14, cast: 0.1, death: 0.12, pickup: 0.06, fx: 0.07, alert: 1.4, status: 0.45, heal: 0.8, hurt: 0.25, big: 0.5, corrupt: 6, step: 0.16, world: 0.08 };
+  FX.SOUND_GAP = { phit: 0.035, hit: 0.11, pswing: 0.05, proj: 0.09, tell: 0.25, drop: 0.12, swing: 0.14, cast: 0.1, death: 0.12, pickup: 0.06, fx: 0.07, alert: 1.4, status: 0.45, heal: 0.8, hurt: 0.25, big: 0.5, corrupt: 6, step: 0.16, world: 0.08 };
   FX.MUSIC_HOLD = 5;       // seconds the combat mood is held after the last enemy stops fighting
   var BEAST = { quadruped: 1, spider: 1, serpent: 1, flyer: 1, blob: 1, plant: 1 };
 
@@ -63636,6 +63661,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var out = {}, S = FX.SOUNDS, k, j;
     for (k in S) if (k !== 'music') for (j in S[k]) { var v = S[k][j]; if (typeof v === 'string' && v.charAt(0) !== '@') out[v] = true; }
     for (k in FX.MATERIALS || {}) if (FX.MATERIALS[k].sound) out[FX.MATERIALS[k].sound] = true;
+    for (k in S.weapon) S.weapon[k].forEach(function (n) { out[n] = true; });
     return Object.keys(out);
   };
   /** True when the HUD is loaded: it then plays `low_health` and `ui_error` itself (src/ui/10_hud_*.js) and the effects layer must not double them. */
@@ -63666,6 +63692,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       // co-op: only the hero of this screen makes the unplaced "own" sounds; a teammate is heard from where they stand
       function local(e) { return FX.isLocal ? FX.isLocal(ctx, e) : !!e && e.kind === 'player'; }
       function mine(p) { return !p || local(p); }
+      /** [w8 sound] weapon kind of a hero (item family) or an enemy (model weapon). */
+      function weaponOf(e) {
+        var w = e.hero && e.hero.gear && e.hero.gear.weapon;
+        if (w) return w.family || (w.type && String(w.type).split('_')[0]) || null;
+        return e.model && e.model.weapon && e.model.weapon !== 'none' ? e.model.weapon : null;
+      }
       function abilityElem(id) { var d = KD.skills && KD.skills.get ? KD.skills.get(id) : null; return d && d.elem && SND.castElem[d.elem] ? d.elem : 'phys'; }
 
       ctx.on('cast', function (c, ev) {
@@ -63676,6 +63708,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
           if (name === '@elem') name = SND.castElem[abilityElem(ev.ability)];
           if ((ev.anim === 'roar' || ev.anim === 'shout') && FX.bossRank(e.tier) === 2) name = SND.event.bossIntro;
           if (name === undefined) name = 'swing_light';
+          if (name && name.indexOf('swing_') === 0) { var wv = weaponOf(e), ws = wv && SND.weapon[wv]; if (ws) name = ws[name === 'swing_light' ? 0 : 1]; }      // [w8 sound]
         } else if (ev.phase === 'fire') name = SND.castFire[ev.anim];
         if (!name) return;
         if (own) play(name, null, null, 0.9, 1, 'pswing');
@@ -63691,17 +63724,24 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         if (d.blocked) name = d.total <= 0 ? H.parry : H.block;
         else if (d.crit) name = H.crit;
         else if (d.elem && d.elem !== 'phys') name = SND.impactElem[d.elem];
-        else { var m = FX.MATERIALS[FX.materialOf(t)]; name = m ? m.sound : 'hit_flesh'; if (m && m.pitch) mp = m.pitch; }
+        else { var mk = FX.materialOf(t), m = FX.MATERIALS[mk]; name = SND.material[mk] || (m ? m.sound : 'hit_flesh'); if (m && m.pitch && !SND.material[mk]) mp = m.pitch; if (mk === 'rot') mp = 0.9; }
         play(name, t.x, t.z, own || onP ? 1 : 0.55, sizePitch(t) * mp * (d.kill ? 0.92 : 1), grp);
         if (onP && t.hpMax > 0 && d.total > t.hpMax * 0.04) play(H.hurt, null, null, clamp(0.6 + d.total / t.hpMax * 2, 0.6, 1.2), 1, 'hurt');
       });
+      /** [w8 sound] death sound by body: bones clatter, ghosts wail, slimes splat, beasts yelp, humanoids groan. */
+      function deathName(e) {
+        var mk = FX.materialOf(e), n = SND.deathMat[mk];
+        if (n) return n;
+        if ((mk === 'flesh' || mk === 'rot') && e.model && BEAST[e.model.plan] && e.model.plan !== 'blob') return SND.deathMat.beast;
+        return SND.death.enemy;
+      }
       ctx.on('death', function (c, ev) {
         var e = ev.e; if (!e) return;
         if (e.kind === 'player') { if (local(e)) play(SND.death.player, null, null, 1, 1, 'big'); else play(SND.death.player, ev.x, ev.z, 0.9, 1, 'big'); return; }
         if (ctx.dist(ev.x, ev.z) > 52) return;
         var rank = FX.bossRank(ev.tier);
         if (rank === 2) play(SND.death.boss, ev.x, ev.z, 1.1, 0.8, 'big');
-        else play(e.kind === 'ally' ? SND.death.ally : SND.death.enemy, ev.x, ev.z, rank ? 1 : 0.8, sizePitch(e) * (rank ? 0.85 : 1), 'death');
+        else play(e.kind === 'ally' ? SND.death.ally : deathName(e), ev.x, ev.z, rank ? 1 : 0.8, sizePitch(e) * (rank ? 0.85 : 1), 'death');
       });
       ctx.on('break', function (c, ev) {
         if (ev.stagger) { if (!ev.target || ev.target.kind !== 'player' || local(ev.target)) play(SND.event.stagger, null, null, 0.8, 0.9, 'hurt'); else play(SND.event.stagger, ev.x, ev.z, 0.6, 0.9, 'hit'); }
@@ -63716,7 +63756,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       ctx.on('loot', function (c, ev) {
         var items = ev.items || [];
         if (ev.forP !== undefined && !local(ev.player)) return;          // co-op: another hero's loot makes no fanfare here
-        for (var i = 0; i < items.length; i++) if (items[i].rarity === 'storied' || items[i].rarity === 'cursed' || items[i].rarity === 'rare') { play(SND.event.lootRare, ev.x, ev.z, 1, 1, 'big'); return; }
+        // [w8 sound] one drop sound for the best rarity in the drop (a storied item gets its own fanfare)
+        var RK = { common: 0, fine: 1, rare: 2, cursed: 3, storied: 4 }, best = null, bk = -1;
+        for (var i = 0; i < items.length; i++) { var it = items[i], k = RK[it.rarity] == null ? 0 : RK[it.rarity]; if (it.slot === 'relic' || it.slot === 'sigil') k = Math.max(k, 2); if (k > bk) { bk = k; best = k >= 2 && RK[it.rarity] < 2 ? 'rare' : (it.rarity || 'common'); } }
+        var dn = best ? SND.drop[best] || SND.drop.common : (ev.gold > 0 ? SND.drop.gold : null);
+        if (dn && ctx.dist(ev.x, ev.z) < 45) play(dn, ev.x, ev.z, 1, 1, bk >= 3 ? 'big' : 'drop');
       });
       ctx.on('potion', function (c, ev) { if (ev.refill) return; var p = ev.player; if (mine(p)) play(SND.event.potion, null, null, 1, 1, 'world'); else play(SND.event.potion, p.x, p.z, 0.7, 1, 'world'); });
       ctx.on('bandage', function (c, ev) { var p = ev && ev.player; if (mine(p)) play(SND.event.bandage, null, null, 1, 1, 'heal'); else play(SND.event.bandage, p.x, p.z, 0.7, 1, 'heal'); });
@@ -63764,6 +63808,30 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         if (ev.ground && !elem) return;                 // the explosion speaks for lobbed shots
         play(elem ? SND.impactElem[elem] : SND.hit.wall, ev.x, ev.z, 0.6, 1, 'hit');
       });
+      // [w8 sound] projectile launch whoosh at the shooter (the hero's own bow / gun shots already sound at the cast)
+      ctx.on('projSpawn', function (c, ev) {
+        var src = ev.src; if (ev.x === undefined || ctx.dist(ev.x, ev.z) > 34) return;
+        var own = local(src), elem = ev.elem && SND.proj[ev.elem] ? ev.elem : 'phys';
+        if (own && elem === 'phys' && !ev.lob) return;
+        var n = ev.lob ? SND.proj.lob : SND.proj[elem];
+        play(n, own ? null : ev.x, own ? null : ev.z, own ? 0.55 : 0.8, SND.projPitch[elem] || 1, 'proj');
+      });
+      // [w8 sound] readable boss and elite tells: a wind-up by shape at the start, a bright tick just before it lands
+      var tells = [];
+      ctx.on('telegraph', function (c, ev) {
+        var src = ev.src;
+        if (ev.phase === 'end') { if (ev.cancelled) for (var i = tells.length - 1; i >= 0; i--) if (tells[i].id === ev.id) tells.splice(i, 1); return; }
+        if (!src || src.kind !== 'enemy' || ctx.dist(ev.x, ev.z) > 40) return;
+        var rank = FX.bossRank(src.tier), big = (ev.r || 0) >= 4 || (ev.len || 0) >= 8;
+        if (!rank && !big) return;
+        var vol = rank === 2 ? 1 : rank ? 0.8 : 0.55, sx = src.x === undefined ? ev.x : src.x, sz = src.z === undefined ? ev.z : src.z;
+        play(SND.tell[ev.shape] || SND.tell.other, sx, sz, vol, rank === 2 ? 0.9 : 1, 'tell');
+        if (ev.dur >= 0.45 && tells.length < 8) tells.push({ id: ev.id, at: ctx.real + ev.dur - 0.1, x: ev.x, z: ev.z, vol: vol });
+      });
+      st.tells = tells;
+      function tellTick() {
+        for (var i = tells.length - 1; i >= 0; i--) if (ctx.real >= tells[i].at) { var q = tells[i]; tells.splice(i, 1); play(SND.tell.strike, q.x, q.z, q.vol, 1, 'world'); }
+      }
       ctx.on('zone', function (c, ev) { if (ev.trap && ctx.dist(ev.x, ev.z) < 40) play(SND.event.trapArm, ev.x, ev.z, 0.8, 1, 'fx'); });
       ctx.on('bossPhase', function (c, ev) {
         if (ev.start || ev.enrage) play(SND.event.bossIntro, ev.x, ev.z, 1.1, ev.enrage ? 1.15 : 1, 'big');
@@ -63841,6 +63909,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
           var p = ctx.player(), A = KD.audio, cam = ctx.camera, t = ctx.real;
           if (p && A && A.setListener) A.setListener(p.x, p.z, cam && typeof cam.yaw === 'number' ? cam.yaw : 0);
           if (t >= st.scanAt) { st.scanAt = t + 0.2; scan(); }
+          if (tells.length) tellTick();
           if (p && dt > 0) {
             steps(p, dt);
             // the HUD plays the `low_health` heartbeat (and `ui_error` for cooldown / resource messages): only fill in when there is no HUD
@@ -89688,6 +89757,422 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     S.osc({ type: 'sawtooth', f: 73.42, detune: 6, a: 0.3, h: 1.6, d: 1.0, lin: true, g: 0.2, flt: { type: 'lowpass', f: 420 } });
     S.fm({ f: 110, ratio: 2.76, idx: 1.5, idx1: 0.1, t: 1.35, a: 0.004, d: 1.6, g: 0.25 });
   }, U.assign({ room: 0.36, gap: 1, max: 1 }, TUNED));
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/audio/12_sfx_w8.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var A = KD.audio = KD.audio || {};
+  var U = KD.util;
+
+  /**
+   * [w8 sound] More sounds (docs/AUDIO.md section 4b), same rules as 10_sfx.js: every sound is a build function on a
+   * KD.audio.synth.Voice, gains are baked from the offline calibration (tools/audio_lab.py --sounds new --calib).
+   *
+   *   swings by weapon   swing_dagger, swing_scythe, swing_polearm, swing_claw, swing_staff, whip_crack
+   *   hits by material   hit_bone, hit_straw, hit_metal, hit_stone, hit_ghost, hit_slime, hit_ichor, hit_plant
+   *   deaths by body     death_beast, death_bones, death_ghost, death_slime, death_bug, death_construct, death_stone,
+   *                      death_plant
+   *   projectiles        proj_arrow, proj_fire, proj_magic, proj_heavy
+   *   telegraphs         tell_windup, tell_slam, tell_sweep, tell_strike (a readable wind-up, then a "now" accent)
+   *   loot drops         drop_common, drop_fine, drop_rare, drop_storied, drop_cursed, drop_gold
+   *   footsteps          footstep_water, footstep_snow, footstep_mud
+   *
+   * PHONE SPEAKERS. The first sound set put 80 to 96 % of the energy of the main combat sounds (hit_flesh, hit_crit,
+   * enemy_death, explosion, jump_land, boss_roar ...) under 150 Hz, which phone and laptop speakers cannot play: on
+   * those the fights were nearly silent. boost() below keeps each original sound and adds a mid "presence" layer
+   * (slap, crack, rattle, formant) in the 300 Hz .. 4 kHz range, then the calibration re-balances the whole.
+   */
+  var CATS = A.cats;
+  var GAIN = {
+    /*GAIN-BEGIN*/
+    swing_heavy: 0.438, hit_flesh: 0.546, hit_wood: 0.81, hit_crit: 0.632, block: 0.721, poise_break: 0.588,
+    arrow_hit: 0.705, gun_shot: 0.712, cast_fire: 0.404, cast_shadow: 0.274, fire_impact: 0.666, shadow_impact: 0.746,
+    explosion: 0.441, reaction: 0.663, dodge: 0.568, jump_land: 0.584, enemy_death: 0.621, boss_roar: 0.922,
+    boss_phase: 0.393, player_death: 0.249, low_health: 0.502, corruption_up: 0.27, swing_dagger: 0.953, swing_scythe: 0.772,
+    swing_polearm: 0.588, swing_claw: 1.089, swing_staff: 1.049, whip_crack: 1.44, hit_bone: 1.114, hit_straw: 1.24,
+    hit_metal: 0.614, hit_stone: 1.24, hit_ghost: 1.241, hit_slime: 1.234, hit_ichor: 1.553, hit_plant: 1.492,
+    death_beast: 0.683, death_bones: 1.259, death_ghost: 0.239, death_slime: 0.831, death_bug: 1.288, death_construct: 0.511,
+    death_stone: 0.502, death_plant: 0.879, proj_arrow: 1.424, proj_fire: 0.518, proj_magic: 0.636, proj_heavy: 0.828,
+    tell_windup: 0.403, tell_slam: 0.307, tell_sweep: 0.891, tell_strike: 0.888, drop_common: 1.067, drop_fine: 0.833,
+    drop_rare: 0.678, drop_storied: 0.69, drop_cursed: 0.639, drop_gold: 0.666, footstep_water: 0.449, footstep_snow: 1.059,
+    footstep_mud: 0.856
+    /*GAIN-END*/
+  };
+  var DEFS = A.defs = A.defs || {};
+  function def(name, cat, desc, build, o) {
+    var c = CATS[cat];
+    DEFS[name] = U.assign({
+      name: name, cat: cat, desc: desc, build: build, w8: true,
+      gain: GAIN[name] == null ? 0.5 : GAIN[name], lu: c.lu, prio: c.prio,
+      room: 0.16, pv: 0.045, vv: 0.12, gap: 0.04, max: 4
+    }, o);
+  }
+  /** Keep a sound of 10_sfx.js and add a layer on top (re-calibrated: the gain comes from GAIN). */
+  /** o.base: level of the original layers (0.5 = -6 dB: less sub-bass, so the calibrated whole carries more mid). */
+  function boost(name, extra, o) {
+    var d = DEFS[name];
+    if (!d) return;
+    var base = d.build, k = o && o.base != null ? o.base : 1;
+    d.build = function (S) {
+      if (k !== 1) { var out = S.out, g = S.ctx.createGain(); g.gain.value = k; g.connect(out); S.out = g; base(S); S.out = out; } else base(S);
+      extra(S);
+    };
+    d.w8 = true; d.boosted = true;
+    if (GAIN[name] != null) d.gain = GAIN[name];
+    if (o) { o = U.assign({}, o); delete o.base; U.assign(d, o); }
+  }
+  function mtof(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+  var TUNED = { pv: 0, vv: 0.05 };
+
+  // ================================================================ presence for small speakers
+  boost('hit_flesh', function (S) {
+    S.noise({ color: 'pink', a: 0.001, d: 0.08, g: 1.4, flt: { type: 'bandpass', f: 1200, q: 1.1 } });                  // slap
+    S.noise({ color: 'white', a: 0.001, d: 0.022, g: 0.45, flt: { type: 'bandpass', f: 3200, q: 1.4 } });               // skin
+    S.osc({ type: 'triangle', f: 260, f1: 150, a: 0.001, d: 0.11, g: 1.2 });                                            // body you can hear on a phone
+  }, { base: 0.5 });
+  boost('hit_crit', function (S) {
+    S.noise({ color: 'white', a: 0.001, d: 0.07, g: 1.1, flt: { type: 'bandpass', f: 1600, q: 0.8 } });
+    S.osc({ type: 'triangle', f: 330, f1: 170, a: 0.001, d: 0.09, g: 0.9 });
+    S.fm({ f: 2640, ratio: 1.5, idx: 0.5, idx1: 0.02, t: 0.012, a: 0.001, d: 0.22, g: 0.16 });
+  }, { base: 0.65 });
+  boost('enemy_death', function (S) {
+    S.osc({ type: 'sawtooth', f: 330, f1: 150, ft: 0.4, a: 0.01, d: 0.42, lin: true, g: 0.44, flt: { type: 'bandpass', f: 1100, f1: 600, q: 2.5 } });
+    S.noise({ color: 'pink', t: 0.4, a: 0.001, d: 0.06, g: 0.9, flt: { type: 'bandpass', f: 900, q: 1 } });           // body drop slap
+    S.noise({ color: 'crackle', t: 0.41, a: 0.004, d: 0.12, lin: true, g: 0.5, flt: { type: 'bandpass', f: 2600, q: 1.2 } });
+  });
+  boost('jump_land', function (S) {
+    S.noise({ color: 'pink', a: 0.001, d: 0.12, g: 1.6, flt: { type: 'bandpass', f: 800, q: 0.8 } });
+    S.osc({ type: 'triangle', f: 260, f1: 140, a: 0.001, d: 0.1, g: 0.9 });
+    S.noise({ color: 'white', t: 0.015, a: 0.003, d: 0.1, g: 0.3, flt: { type: 'bandpass', f: 3400, q: 2 }, am: { f: 38, depth: 0.8 } });
+  }, { base: 0.45 });
+  boost('explosion', function (S) {
+    S.noise({ color: 'pink', a: 0.002, d: 0.38, g: 1.6, flt: { type: 'bandpass', f: 650, f1: 300, ft: 0.35, q: 0.7 } });
+    S.noise({ color: 'pink', a: 0.002, d: 0.25, g: 1.1, flt: { type: 'bandpass', f: 1300, q: 0.8 } });
+    S.noise({ color: 'crackle', t: 0.05, a: 0.02, d: 0.7, lin: true, g: 1.1, flt: { type: 'bandpass', f: 2400, q: 0.8 } });
+    S.noise({ color: 'white', a: 0.001, d: 0.12, g: 0.7, flt: { type: 'bandpass', f: 1100, q: 0.6 } });
+  }, { base: 0.6 });
+  boost('swing_heavy', function (S) {
+    S.noise({ color: 'white', a: 0.07, d: 0.24, lin: true, g: 0.6, flt: { type: 'bandpass', f: 1000, fp: [[0.1, 2300], [0.32, 800]], q: 1.3 } });
+  }, { base: 0.7 });
+  boost('dodge', function (S) {
+    S.noise({ color: 'pink', a: 0.04, d: 0.18, lin: true, g: 0.8, flt: { type: 'bandpass', f: 2000, q: 0.9 } });          // cloth
+    S.noise({ color: 'pink', t: 0.2, a: 0.001, d: 0.05, g: 0.7, flt: { type: 'bandpass', f: 1000, q: 1 } });             // footfall
+  });
+  boost('shadow_impact', function (S) {
+    S.noise({ color: 'pink', a: 0.003, d: 0.25, g: 1.0, flt: { type: 'bandpass', f: 800, f1: 320, q: 2 } });
+    S.fm({ f: 392, ratio: 1.41, idx: 1.6, idx1: 0.1, a: 0.004, d: 0.35, g: 0.24 });
+  }, { base: 0.55 });
+  boost('boss_roar', function (S) {
+    S.osc({ type: 'sawtooth', f: 175, fp: [[0.3, 230], [1.0, 205], [1.9, 120]], a: 0.12, h: 1.0, d: 0.9, lin: true, g: 0.6, flt: { type: 'bandpass', f: 900, fp: [[0.3, 1500], [1.9, 650]], q: 2.5 }, am: { f: 27, f1: 18, depth: 0.7, type: 'triangle' } });
+    S.noise({ color: 'pink', a: 0.2, h: 0.8, d: 0.9, lin: true, g: 0.5, flt: { type: 'bandpass', f: 1800, fp: [[0.3, 2600], [1.9, 900]], q: 1.2 }, am: { f: 26, depth: 0.7 } });
+  });
+  boost('boss_phase', function (S) {
+    S.noise({ color: 'white', t: 0.75, a: 0.001, d: 0.12, g: 1.0, flt: { type: 'bandpass', f: 1400, q: 0.7 } });
+    S.metal({ f: 392, ratios: [1, 1.48, 2.02, 2.71], t: 0.75, d: 1.6, dp: 0.5, g: 0.24 });
+  }, { base: 0.65 });
+  boost('gun_shot', function (S) {
+    S.noise({ color: 'pink', a: 0.001, d: 0.16, g: 1.6, flt: { type: 'bandpass', f: 900, q: 0.7 } });
+    S.noise({ color: 'crackle', t: 0.02, a: 0.01, d: 0.3, lin: true, g: 0.6, flt: { type: 'bandpass', f: 2000, q: 0.8 } });
+  }, { base: 0.6 });
+  boost('poise_break', function (S) {
+    S.noise({ color: 'white', a: 0.001, d: 0.08, g: 1.2, flt: { type: 'bandpass', f: 1700, q: 0.8 } });
+    S.noise({ color: 'pink', a: 0.001, d: 0.14, g: 1.1, flt: { type: 'bandpass', f: 700, q: 0.8 } });
+    S.osc({ type: 'triangle', f: 320, f1: 150, a: 0.001, d: 0.16, g: 1 });
+  }, { base: 0.55 });
+  boost('cast_fire', function (S) {
+    S.noise({ color: 'pink', a: 0.12, d: 0.3, lin: true, g: 0.9, flt: { type: 'bandpass', f: 900, fp: [[0.16, 2200], [0.44, 1000]], q: 1 } });
+  }, { base: 0.7 });
+  boost('cast_shadow', function (S) {
+    S.noise({ color: 'pink', a: 0.25, d: 0.25, lin: true, g: 0.8, flt: { type: 'bandpass', f: 500, f1: 1500, ft: 0.3, q: 1.6 } });
+    S.noise({ color: 'pink', t: 0.3, a: 0.002, d: 0.08, g: 0.7, flt: { type: 'bandpass', f: 700, q: 1 } });
+  });
+  boost('fire_impact', function (S) {
+    S.noise({ color: 'pink', a: 0.003, d: 0.28, g: 1.6, flt: { type: 'bandpass', f: 1000, f1: 500, q: 0.8 } });
+  }, { base: 0.6 });
+  boost('reaction', function (S) {
+    S.noise({ color: 'pink', t: 0.13, a: 0.001, d: 0.14, g: 1.1, flt: { type: 'bandpass', f: 900, q: 0.8 } });
+    S.osc({ type: 'triangle', f: 300, f1: 160, t: 0.13, a: 0.001, d: 0.15, g: 0.9 });
+  }, { base: 0.65 });
+  boost('corruption_up', function (S) {
+    S.fm({ f: 554.4, f1: 830.6, ft: 0.7, ratio: 1.41, idx: 1.5, idx1: 0.4, a: 0.35, h: 0.2, d: 0.4, lin: true, g: 0.16 });
+    S.noise({ color: 'pink', t: 0.62, a: 0.002, d: 0.1, g: 0.6, flt: { type: 'bandpass', f: 600, q: 1 } });
+  });
+  boost('low_health', function (S) {
+    // a soft knock on each beat so the heartbeat still reads on a phone speaker
+    S.osc({ type: 'triangle', f: 250, f1: 150, a: 0.004, d: 0.09, g: 1 });
+    S.noise({ color: 'pink', a: 0.003, d: 0.06, g: 0.7, flt: { type: 'bandpass', f: 520, q: 1 } });
+    S.osc({ type: 'triangle', f: 230, f1: 140, t: 0.21, a: 0.004, d: 0.09, g: 0.75 });
+    S.noise({ color: 'pink', t: 0.21, a: 0.003, d: 0.06, g: 0.5, flt: { type: 'bandpass', f: 520, q: 1 } });
+  }, { base: 0.5 });
+  boost('hit_wood', function (S) {
+    S.noise({ color: 'white', a: 0.001, d: 0.03, g: 0.6, flt: { type: 'bandpass', f: 2200, q: 2 } });
+  });
+  boost('arrow_hit', function (S) {
+    S.noise({ color: 'white', a: 0.001, d: 0.03, g: 0.6, flt: { type: 'bandpass', f: 2000, q: 1.5 } });
+  });
+  boost('block', function (S) {
+    S.noise({ color: 'white', a: 0.001, d: 0.04, g: 0.6, flt: { type: 'bandpass', f: 1800, q: 1.2 } });
+  });
+  boost('player_death', function (S) {
+    S.noise({ color: 'pink', a: 0.002, d: 0.15, g: 0.8, flt: { type: 'bandpass', f: 700, q: 0.8 } });
+  });
+  // footsteps: wider natural variation so a walk does not sound like a metronome
+  ['footstep_grass', 'footstep_dirt', 'footstep_stone', 'footstep_wood'].forEach(function (n) { if (DEFS[n]) { DEFS[n].pv = 0.09; DEFS[n].vv = 0.3; } });
+
+  // ================================================================ swings by weapon
+  def('swing_dagger', 'combat', 'Very quick thin whistle. Use: daggers, knives, hooks, cleavers, keys.', function (S) {
+    S.noise({ color: 'white', a: 0.015, d: 0.08, lin: true, g: 0.9, flt: { type: 'bandpass', f: 2200, fp: [[0.03, 4200], [0.1, 2400]], q: 2 } });
+    S.noise({ color: 'pink', a: 0.012, d: 0.06, lin: true, g: 0.3, flt: { type: 'bandpass', f: 1200, q: 1 } });
+  }, { lu: -25, room: 0.06, pv: 0.1 });
+
+  def('swing_scythe', 'combat', 'Long singing hiss of a curved blade. Use: scythes, sickles.', function (S) {
+    S.noise({ color: 'white', a: 0.08, d: 0.3, lin: true, g: 0.8, flt: { type: 'bandpass', f: 700, fp: [[0.12, 2400], [0.38, 900]], q: 1.6 } });
+    S.noise({ color: 'pink', a: 0.06, d: 0.28, lin: true, g: 0.5, flt: { type: 'bandpass', f: 400, fp: [[0.12, 900], [0.36, 350]], q: 1 } });
+    S.fm({ f: 1870, ratio: 2.02, idx: 0.3, idx1: 0.05, t: 0.06, a: 0.08, d: 0.28, lin: true, g: 0.05 });
+  }, { lu: -23, room: 0.1, pv: 0.07 });
+
+  def('swing_polearm', 'combat', 'Long low sweep of a pole. Use: spears swung wide, halberds, glaives.', function (S) {
+    S.noise({ color: 'pink', a: 0.08, d: 0.3, lin: true, g: 1, flt: { type: 'bandpass', f: 380, fp: [[0.12, 1500], [0.38, 500]], q: 1.1 } });
+    S.noise({ color: 'white', a: 0.09, d: 0.25, lin: true, g: 0.25, flt: { type: 'bandpass', f: 1500, fp: [[0.12, 2800], [0.34, 1200]], q: 1.4 } });
+    S.osc({ type: 'triangle', f: 150, f1: 95, a: 0.08, d: 0.25, lin: true, g: 0.18 });
+  }, { lu: -23, room: 0.1, pv: 0.07 });
+
+  def('swing_claw', 'combat', 'Two quick ripping swipes. Use: claws, talons, Wildmask swipes.', function (S) {
+    for (var i = 0; i < 2; i++) {
+      var t = i * 0.075;
+      S.noise({ color: 'white', t: t, a: 0.02, d: 0.07, lin: true, g: 0.75 - i * 0.15, flt: { type: 'bandpass', f: 1300, fp: [[0.03, 3200], [0.09, 1500]], q: 1.5 } });
+      S.noise({ color: 'crackle', t: t + 0.01, a: 0.01, d: 0.06, lin: true, g: 0.25, flt: { type: 'bandpass', f: 2500, q: 1 } });
+    }
+  }, { lu: -24, room: 0.06, pv: 0.09 });
+
+  def('swing_staff', 'combat', 'Whirring twirl of a staff. Use: staves, wands, torches, books swung.', function (S) {
+    S.noise({ color: 'pink', a: 0.06, d: 0.26, lin: true, g: 1, flt: { type: 'bandpass', f: 500, fp: [[0.12, 1300], [0.32, 600]], q: 1.2 }, am: { f: 15, f1: 9, depth: 0.7 } });
+    S.noise({ color: 'white', a: 0.06, d: 0.2, lin: true, g: 0.2, flt: { type: 'bandpass', f: 2200, q: 1.5 }, am: { f: 15, f1: 9, depth: 0.8 } });
+  }, { lu: -24, room: 0.08, pv: 0.07 });
+
+  def('whip_crack', 'combat', 'Fast rising hiss and a sharp crack. Use: whips, lashes, chains.', function (S) {
+    S.noise({ color: 'white', a: 0.1, d: 0.01, lin: true, g: 0.5, flt: { type: 'bandpass', f: 600, f1: 3500, ft: 0.11, q: 1.5 } });
+    S.noise({ color: 'white', t: 0.11, a: 0.0005, d: 0.025, g: 1, flt: { type: 'highpass', f: 1200, q: 0.6 } });
+    S.noise({ color: 'pink', t: 0.11, a: 0.001, d: 0.05, g: 0.4, flt: { type: 'bandpass', f: 1800, q: 1 } });
+  }, { lu: -22, room: 0.2, pv: 0.06 });
+
+  // ================================================================ hits by material
+  def('hit_bone', 'combat', 'Dry hollow clack with a rattle. Use: hits on skeletons and bone creatures.', function (S) {
+    S.noise({ color: 'white', a: 0.0008, d: 0.035, g: 0.9, flt: { type: 'bandpass', f: 2300, q: 2.5 } });
+    S.osc({ type: 'triangle', f: 880 * S.rand(0.9, 1.1), f1: 640, a: 0.0008, d: 0.05, g: 0.5 });
+    S.osc({ type: 'triangle', f: 1240 * S.rand(0.9, 1.1), t: 0.035, a: 0.0008, d: 0.035, g: 0.3 });
+    S.noise({ color: 'white', t: 0.06, a: 0.001, d: 0.025, g: 0.35, flt: { type: 'bandpass', f: 3000, q: 3 } });
+    S.osc({ type: 'sine', f: 160, f1: 90, a: 0.001, d: 0.07, g: 0.45 });
+  }, { pv: 0.1 });
+
+  def('hit_straw', 'combat', 'Rustling thump into packed straw. Use: scarecrows, straw dummies, hay.', function (S) {
+    S.noise({ color: 'pink', a: 0.002, d: 0.16, g: 0.9, flt: { type: 'bandpass', f: 1600, q: 0.7 } });
+    S.noise({ color: 'crackle', a: 0.002, d: 0.2, lin: true, g: 0.7, flt: { type: 'highpass', f: 1800, q: 0.5 } });
+    S.osc({ type: 'sine', f: 140, f1: 75, a: 0.001, d: 0.09, g: 0.55 });
+  }, { pv: 0.09 });
+
+  def('hit_metal', 'combat', 'Heavy clang with a ringing tail. Use: plate constructs, iron golems, bells, cages.', function (S) {
+    S.noise({ color: 'white', a: 0.0005, d: 0.03, g: 0.8, flt: { type: 'bandpass', f: 3000, q: 1 } });
+    S.metal({ f: 420 * S.rand(0.94, 1.06), ratios: [1, 2.32, 4.25, 6.63, 8.1], d: 0.55, dp: 0.6, g: 0.42 });
+    S.osc({ type: 'sine', f: 170, f1: 100, a: 0.001, d: 0.08, g: 0.5 });
+  }, { room: 0.22, pv: 0.06 });
+
+  def('hit_stone', 'combat', 'Dull chunk with falling grit. Use: golems, statues, gargoyles, rock.', function (S) {
+    S.noise({ color: 'pink', a: 0.001, d: 0.09, g: 1, flt: { type: 'lowpass', f: 1500, f1: 500 } });
+    S.noise({ color: 'crackle', t: 0.01, a: 0.004, d: 0.2, lin: true, g: 0.55, flt: { type: 'bandpass', f: 3000, q: 1 } });
+    S.osc({ type: 'sine', f: 120, f1: 65, a: 0.001, d: 0.1, g: 0.6 });
+    S.osc({ type: 'triangle', f: 520, f1: 400, a: 0.001, d: 0.03, g: 0.25 });
+  }, { pv: 0.08 });
+
+  def('hit_ghost', 'combat', 'Airy whoosh through a cold hollow tone. Use: wraiths, spirits, shades, wisps.', function (S) {
+    S.noise({ color: 'pink', a: 0.004, d: 0.28, g: 0.8, flt: { type: 'bandpass', f: 1400, f1: 500, q: 2.2 } });
+    S.osc({ type: 'sine', f: 620, f1: 300, a: 0.006, d: 0.32, g: 0.28, vib: { f: 7, cents: 40 } });
+    S.fm({ f: 930, f1: 470, ratio: 1.5, idx: 1.2, idx1: 0.1, a: 0.005, d: 0.3, g: 0.12 });
+  }, { room: 0.35, pv: 0.07 });
+
+  def('hit_slime', 'combat', 'Wet squelch and a bubble. Use: slimes, oozes, sludge, goo.', function (S) {
+    S.noise({ color: 'pink', a: 0.002, d: 0.12, g: 1, flt: { type: 'bandpass', f: 700, f1: 260, q: 3.5 } });
+    S.osc({ type: 'sine', f: 280, f1: 90, a: 0.002, d: 0.09, g: 0.6 });
+    S.osc({ type: 'sine', f: 420 * S.rand(0.85, 1.2), f1: 950, t: 0.07, a: 0.002, d: 0.04, g: 0.3 });
+  }, { pv: 0.12 });
+
+  def('hit_ichor', 'combat', 'Chitin crunch with a wet edge. Use: spiders, crabs, ticks, beetles, leeches.', function (S) {
+    S.noise({ color: 'white', a: 0.0008, d: 0.05, g: 1, flt: { type: 'bandpass', f: 2000, q: 1.2 } });
+    S.noise({ color: 'crackle', a: 0.002, d: 0.08, lin: true, g: 0.6, flt: { type: 'highpass', f: 1500, q: 0.5 } });
+    S.noise({ color: 'pink', t: 0.01, a: 0.002, d: 0.09, g: 0.6, flt: { type: 'bandpass', f: 1000, q: 1.5 } });
+    S.osc({ type: 'sine', f: 190, f1: 95, a: 0.001, d: 0.07, g: 0.45 });
+  }, { pv: 0.1 });
+
+  def('hit_plant', 'combat', 'Leafy thwack and rustle. Use: vines, maneaters, mushrooms, bushes.', function (S) {
+    S.noise({ color: 'pink', a: 0.001, d: 0.1, g: 0.9, flt: { type: 'bandpass', f: 1100, q: 0.9 } });
+    S.noise({ color: 'white', t: 0.01, a: 0.01, d: 0.15, lin: true, g: 0.25, flt: { type: 'highpass', f: 3000, q: 0.5 }, am: { f: 30, depth: 0.7 } });
+    S.osc({ type: 'sine', f: 210, f1: 110, a: 0.001, d: 0.06, g: 0.5 });
+  }, { pv: 0.1 });
+
+  // ================================================================ deaths by body
+  def('death_beast', 'creature', 'Falling yelp and a heavy body drop. Use: wolves, hounds, boars, bears, stags.', function (S) {
+    S.fm({ f: 720, fp: [[0.06, 820], [0.32, 300]], ratio: 1, idx: 1.8, idx1: 0.6, a: 0.01, d: 0.32, lin: true, g: 0.4, flt: { type: 'bandpass', f: 1300, f1: 700, q: 1.8 } });
+    S.noise({ color: 'pink', a: 0.01, d: 0.25, lin: true, g: 0.3, flt: { type: 'bandpass', f: 1600, f1: 700, q: 1.5 } });
+    S.osc({ type: 'sine', f: 100, f1: 45, t: 0.32, a: 0.002, d: 0.16, g: 0.9 });
+    S.noise({ color: 'pink', t: 0.32, a: 0.001, d: 0.08, g: 0.6, flt: { type: 'bandpass', f: 700, q: 0.8 } });
+    S.noise({ color: 'crackle', t: 0.34, a: 0.005, d: 0.15, lin: true, g: 0.3, flt: { type: 'bandpass', f: 2200, q: 1 } });
+  }, { lu: -21, pv: 0.1 });
+
+  def('death_bones', 'creature', 'Bones clattering down into a heap. Use: skeletons and bone creatures dying.', function (S) {
+    var t = 0;
+    for (var i = 0; i < 9; i++) {
+      t += S.rand(0.03, 0.075) * (1 + i * 0.08);
+      var g = 0.9 - i * 0.07;
+      S.noise({ color: 'white', t: t, a: 0.0008, d: 0.03, g: g * 0.8, flt: { type: 'bandpass', f: S.rand(1700, 3600), q: 2.5 } });
+      S.osc({ type: 'triangle', f: S.rand(600, 1400), f1: 500, t: t, a: 0.0008, d: 0.04, g: g * 0.35 });
+    }
+    S.osc({ type: 'sine', f: 130, f1: 70, t: 0.05, a: 0.002, d: 0.1, g: 0.5 });
+    S.noise({ color: 'pink', t: t, a: 0.003, d: 0.1, g: 0.4, flt: { type: 'bandpass', f: 600, q: 1 } });
+  }, { lu: -21, pv: 0.08 });
+
+  def('death_ghost', 'creature', 'Rising wail that dissolves into air. Use: wraiths, spirits, shades, wisps dying.', function (S) {
+    S.osc({ type: 'sine', f: 520, fp: [[0.25, 880], [0.9, 420]], a: 0.04, h: 0.2, d: 0.6, lin: true, g: 0.5, vib: { f: 6.5, cents: 45 } });
+    S.osc({ type: 'triangle', f: 780, fp: [[0.25, 1320], [0.9, 630]], a: 0.06, h: 0.15, d: 0.6, lin: true, g: 0.18, vib: { f: 5.8, cents: 35 } });
+    S.noise({ color: 'pink', a: 0.08, h: 0.2, d: 0.6, lin: true, g: 0.35, flt: { type: 'bandpass', f: 1200, fp: [[0.3, 2600], [0.9, 900]], q: 1.8 } });
+  }, { lu: -21, room: 0.45, pv: 0.08 });
+
+  def('death_slime', 'creature', 'Big splat and popping bubbles. Use: slimes, oozes, blobs dying.', function (S) {
+    S.noise({ color: 'pink', a: 0.002, d: 0.2, g: 1, flt: { type: 'bandpass', f: 1000, f1: 380, q: 2 } });
+    S.osc({ type: 'sine', f: 170, f1: 50, a: 0.002, d: 0.2, g: 0.5 });
+    for (var i = 0; i < 5; i++) S.osc({ type: 'sine', f: S.rand(420, 720), f1: S.rand(900, 1400), t: 0.12 + i * S.rand(0.05, 0.09), a: 0.002, d: 0.04, g: 0.5 - i * 0.06 });
+  }, { lu: -21, pv: 0.1 });
+
+  def('death_bug', 'creature', 'Crunch and a fading chitter. Use: spiders, crabs, ticks, moths, beetles dying.', function (S) {
+    S.noise({ color: 'crackle', a: 0.001, d: 0.12, lin: true, g: 0.9, flt: { type: 'bandpass', f: 2600, q: 0.9 } });
+    S.noise({ color: 'white', a: 0.001, d: 0.04, g: 0.6, flt: { type: 'bandpass', f: 2000, q: 1.5 } });
+    S.noise({ color: 'white', t: 0.06, a: 0.02, d: 0.3, lin: true, g: 0.35, flt: { type: 'bandpass', f: 3600, f1: 2200, q: 3 }, am: { f: 42, f1: 18, depth: 0.95, type: 'square' } });
+    S.osc({ type: 'sine', f: 150, f1: 80, a: 0.002, d: 0.08, g: 0.45 });
+  }, { lu: -22, pv: 0.12 });
+
+  def('death_construct', 'creature', 'Clanking collapse and rolling bolts. Use: constructs, armour, turrets, iron golems dying.', function (S) {
+    S.metal({ f: 310, ratios: [1, 2.32, 4.25, 6.63], d: 0.45, dp: 0.6, g: 0.4 });
+    S.metal({ f: 240, ratios: [1, 2.32, 4.25, 6.63], t: 0.16, d: 0.4, dp: 0.6, g: 0.35 });
+    S.noise({ color: 'pink', t: 0.16, a: 0.002, d: 0.25, g: 0.6, flt: { type: 'lowpass', f: 1200, f1: 300 } });
+    S.osc({ type: 'sine', f: 110, f1: 50, t: 0.3, a: 0.002, d: 0.2, g: 0.8 });
+    for (var i = 0; i < 4; i++) S.fm({ f: S.rand(1800, 2600), ratio: 2.7, idx: 1, idx1: 0.05, t: 0.36 + i * S.rand(0.06, 0.1), a: 0.001, d: 0.08, g: 0.1 });
+  }, { lu: -21, room: 0.24, pv: 0.06 });
+
+  def('death_stone', 'creature', 'Crumbling rock and a heavy settle. Use: golems, statues, gargoyles, ice creatures breaking apart.', function (S) {
+    S.noise({ color: 'brown', a: 0.004, d: 0.6, g: 1, flt: { type: 'lowpass', f: 900, f1: 200 } });
+    S.noise({ color: 'crackle', a: 0.01, d: 0.6, lin: true, g: 0.8, flt: { type: 'bandpass', f: 2200, q: 0.8 } });
+    for (var i = 0; i < 4; i++) S.noise({ color: 'pink', t: 0.05 + i * S.rand(0.08, 0.13), a: 0.001, d: 0.06, g: 0.5 - i * 0.07, flt: { type: 'bandpass', f: S.rand(500, 900), q: 1.2 } });
+    S.osc({ type: 'sine', f: 90, f1: 40, a: 0.002, d: 0.3, g: 0.7 });
+  }, { lu: -21, room: 0.24, pv: 0.08 });
+
+  def('death_plant', 'creature', 'Splintering crack and a long rustle. Use: treants, vines, maneaters, scarecrows dying.', function (S) {
+    S.noise({ color: 'white', a: 0.0008, d: 0.04, g: 0.8, flt: { type: 'bandpass', f: 1800, q: 1.2 } });
+    S.noise({ color: 'crackle', a: 0.005, d: 0.3, lin: true, g: 0.6, flt: { type: 'bandpass', f: 1600, q: 0.9 } });
+    S.noise({ color: 'pink', t: 0.05, a: 0.03, d: 0.5, lin: true, g: 0.4, flt: { type: 'highpass', f: 2200, q: 0.5 }, am: { f: 24, depth: 0.6 } });
+    S.osc({ type: 'sawtooth', f: 92, f1: 70, a: 0.02, d: 0.35, lin: true, g: 0.25, flt: { type: 'bandpass', f: 600, q: 2 } });
+    S.osc({ type: 'sine', f: 120, f1: 55, t: 0.25, a: 0.002, d: 0.12, g: 0.6 });
+  }, { lu: -21, pv: 0.08 });
+
+  // ================================================================ projectiles (heard at the shooter)
+  def('proj_arrow', 'combat', 'Short whizz of an arrow or bolt leaving. Use: enemy arrows, bolts, thrown knives.', function (S) {
+    S.noise({ color: 'white', a: 0.006, d: 0.16, g: 0.9, flt: { type: 'bandpass', f: 3200, f1: 1600, q: 2.5 } });
+    S.noise({ color: 'pink', a: 0.006, d: 0.08, g: 0.3, flt: { type: 'bandpass', f: 1200, q: 1 } });
+  }, { lu: -27, room: 0.06, pv: 0.08, gap: 0.05 });
+
+  def('proj_fire', 'magic', 'Roaring fireball whoosh. Use: fire bolts and fireballs flying.', function (S) {
+    S.noise({ color: 'pink', a: 0.03, d: 0.45, lin: true, g: 1, flt: { type: 'bandpass', f: 500, fp: [[0.08, 1100], [0.45, 600]], q: 0.9 } });
+    S.noise({ color: 'crackle', a: 0.02, d: 0.4, lin: true, g: 0.5, flt: { type: 'bandpass', f: 2400, q: 0.8 } });
+  }, { lu: -25, room: 0.12, pv: 0.07, gap: 0.05 });
+
+  def('proj_magic', 'magic', 'Shimmering bolt whoosh. Use: cold, shock, holy, shadow and poison bolts flying (pitch per element).', function (S) {
+    S.noise({ color: 'white', a: 0.02, d: 0.3, lin: true, g: 0.6, flt: { type: 'bandpass', f: 1200, fp: [[0.06, 2600], [0.3, 1400]], q: 2 } });
+    S.fm({ f: 880, f1: 660, ratio: 2.01, idx: 1.2, idx1: 0.2, a: 0.02, d: 0.28, lin: true, g: 0.12 });
+  }, { lu: -26, room: 0.18, pv: 0.06, gap: 0.05 });
+
+  def('proj_heavy', 'combat', 'Low tumbling whoosh. Use: lobbed bombs, rocks, pots, heavy thrown things.', function (S) {
+    S.noise({ color: 'pink', a: 0.05, d: 0.45, lin: true, g: 1, flt: { type: 'bandpass', f: 350, fp: [[0.15, 700], [0.5, 380]], q: 1.2 }, am: { f: 7, f1: 5, depth: 0.7 } });
+    S.noise({ color: 'white', a: 0.05, d: 0.4, lin: true, g: 0.15, flt: { type: 'bandpass', f: 1500, q: 1.2 }, am: { f: 7, f1: 5, depth: 0.7 } });
+  }, { lu: -25, room: 0.1, pv: 0.07, gap: 0.08 });
+
+  // ================================================================ telegraphs (readable boss tells)
+  def('tell_windup', 'combat', 'Rising growl-and-whoosh wind-up. Use: a boss or elite starts winding up a strike.', function (S) {
+    S.osc({ type: 'sawtooth', f: 98, f1: 196, ft: 0.42, a: 0.32, d: 0.12, lin: true, g: 0.5, flt: { type: 'lowpass', f: 500, f1: 2200, ft: 0.42, q: 2 } });
+    S.noise({ color: 'pink', a: 0.36, d: 0.08, lin: true, g: 1, flt: { type: 'bandpass', f: 600, f1: 2400, ft: 0.42, q: 1.6 } });
+    S.osc({ type: 'sine', f: 60, f1: 90, ft: 0.42, a: 0.3, d: 0.12, lin: true, g: 0.2 });
+  }, { lu: -21, room: 0.2, prio: 4, pv: 0.03, gap: 0.12, max: 2 });
+
+  def('tell_slam', 'combat', 'Deep swelling rumble from the ground. Use: a boss winds up a slam, quake or ring attack.', function (S) {
+    S.noise({ color: 'brown', a: 0.45, d: 0.1, lin: true, g: 1.2, flt: { type: 'lowpass', f: 200, f1: 600, ft: 0.5 } });
+    S.noise({ color: 'crackle', a: 0.4, d: 0.12, lin: true, g: 0.45, flt: { type: 'bandpass', f: 900, f1: 1800, ft: 0.5, q: 1 } });
+    S.osc({ type: 'sawtooth', f: 55, f1: 82, ft: 0.5, a: 0.45, d: 0.1, lin: true, g: 0.35, flt: { type: 'lowpass', f: 300, f1: 900, ft: 0.5 } });
+  }, { lu: -21, room: 0.25, prio: 4, pv: 0.03, gap: 0.12, max: 2 });
+
+  def('tell_sweep', 'combat', 'Fast rising hiss. Use: a boss winds up a charge, breath, line or cone attack.', function (S) {
+    S.noise({ color: 'white', a: 0.36, d: 0.05, lin: true, g: 0.7, flt: { type: 'bandpass', f: 700, f1: 3800, ft: 0.4, q: 2.2 } });
+    S.noise({ color: 'pink', a: 0.36, d: 0.06, lin: true, g: 0.5, flt: { type: 'bandpass', f: 300, f1: 1200, ft: 0.4, q: 1.2 } });
+  }, { lu: -22, room: 0.2, prio: 4, pv: 0.03, gap: 0.12, max: 2 });
+
+  def('tell_strike', 'combat', 'Sharp bright tick: the attack lands NOW. Use: just before a telegraphed hit resolves.', function (S) {
+    S.fm({ f: 1760, ratio: 1.5, idx: 1.4, idx1: 0.05, a: 0.001, d: 0.12, g: 0.4 });
+    S.noise({ color: 'white', a: 0.0005, d: 0.02, g: 0.5, flt: { type: 'bandpass', f: 3000, q: 1.5 } });
+    S.osc({ type: 'triangle', f: 440, f1: 330, a: 0.001, d: 0.05, g: 0.35 });
+  }, { lu: -23, room: 0.12, prio: 4, pv: 0, vv: 0.05, gap: 0.08, max: 2 });
+
+  // ================================================================ loot drops (at the drop, by rarity)
+  def('drop_common', 'loot', 'Soft thunk of an item hitting the ground. Use: a common item drops.', function (S) {
+    S.noise({ color: 'pink', a: 0.001, d: 0.05, g: 0.8, flt: { type: 'bandpass', f: 900, q: 1 } });
+    S.osc({ type: 'triangle', f: 330, f1: 220, a: 0.001, d: 0.06, g: 0.4 });
+  }, { lu: -28, pv: 0.08 });
+
+  def('drop_fine', 'loot', 'Thunk and a small clear chime. Use: a fine item drops.', function (S) {
+    S.noise({ color: 'pink', a: 0.001, d: 0.05, g: 0.6, flt: { type: 'bandpass', f: 900, q: 1 } });
+    S.fm({ f: mtof(81), ratio: 2, idx: 0.7, idx1: 0.02, t: 0.04, a: 0.002, d: 0.45, g: 0.25 });
+  }, U.assign({ lu: -26 }, TUNED));
+
+  def('drop_rare', 'loot', 'Bright two-bell sparkle. Use: a rare item, Relic or Sigil drops.', function (S) {
+    S.noise({ color: 'pink', a: 0.001, d: 0.05, g: 0.5, flt: { type: 'bandpass', f: 900, q: 1 } });
+    S.fm({ f: mtof(81), ratio: 2, idx: 0.8, idx1: 0.02, t: 0.03, a: 0.002, d: 0.6, g: 0.25 });
+    S.fm({ f: mtof(88), ratio: 2, idx: 0.8, idx1: 0.02, t: 0.12, a: 0.002, d: 0.7, g: 0.22 });
+    S.noise({ color: 'white', t: 0.08, a: 0.1, d: 0.4, lin: true, g: 0.08, flt: { type: 'bandpass', f: 5000, q: 2 }, am: { f: 22, depth: 0.9 } });
+  }, U.assign({ lu: -22, room: 0.3, gap: 0.2, max: 2 }, TUNED));
+
+  def('drop_storied', 'event', 'Deep bell, warm choir swell and a sparkle. Use: a storied (legendary) item drops.', function (S) {
+    S.fm({ f: mtof(50), ratio: 3.5, idx: 1.2, idx1: 0.05, a: 0.002, d: 1.6, g: 0.3 });
+    var ch = [62, 66, 69, 74], i;
+    for (i = 0; i < 4; i++) S.osc({ type: 'triangle', f: mtof(ch[i]), a: 0.35, h: 0.3, d: 0.8, lin: true, g: 0.12, vib: { f: 5, cents: 8 }, flt: { type: 'lowpass', f: 2500, fixed: true } });
+    for (i = 0; i < 5; i++) S.fm({ f: mtof(81 + [0, 4, 7, 12, 16][i]), ratio: 2, idx: 0.6, idx1: 0.02, t: 0.15 + i * 0.07, a: 0.002, d: 0.7, g: 0.12 });
+  }, U.assign({ lu: -19, room: 0.4, gap: 0.6, max: 1 }, TUNED));
+
+  def('drop_cursed', 'event', 'Dark dissonant bell and a whisper. Use: a cursed item drops.', function (S) {
+    S.fm({ f: mtof(49), ratio: 1.41, idx: 2, idx1: 0.2, a: 0.002, d: 1.4, g: 0.35 });
+    S.fm({ f: mtof(55), ratio: 1.41, idx: 1.5, idx1: 0.2, t: 0.05, a: 0.002, d: 1.2, g: 0.2 });
+    S.noise({ color: 'pink', t: 0.1, a: 0.3, d: 0.6, lin: true, g: 0.25, flt: { type: 'bandpass', f: 1800, f1: 900, q: 3 }, am: { f: 11, depth: 0.8 } });
+  }, U.assign({ lu: -20, room: 0.4, gap: 0.6, max: 1 }, TUNED));
+
+  def('drop_gold', 'loot', 'A few coins spilling onto the ground. Use: gold drops.', function (S) {
+    for (var i = 0; i < 4; i++) S.fm({ f: S.rand(2500, 3600), ratio: 1.41, idx: 1.2, idx1: 0.05, t: i * S.rand(0.04, 0.07), a: 0.001, d: 0.12, g: 0.2 - i * 0.03 });
+    S.noise({ color: 'pink', a: 0.001, d: 0.04, g: 0.3, flt: { type: 'bandpass', f: 1200, q: 1 } });
+  }, { lu: -27, pv: 0.06 });
+
+  // ================================================================ footsteps
+  def('footstep_water', 'move', 'Light splash. Use: steps in shallow water.', function (S) {
+    S.noise({ color: 'pink', a: 0.008, d: 0.12, g: 0.9, flt: { type: 'bandpass', f: 1100, q: 1 } });
+    S.noise({ color: 'white', t: 0.02, a: 0.01, d: 0.1, lin: true, g: 0.3, flt: { type: 'highpass', f: 2800, q: 0.5 } });
+    S.osc({ type: 'sine', f: 600 * S.rand(0.8, 1.3), f1: 1100, t: 0.05, a: 0.002, d: 0.03, g: 0.15 });
+  }, { lu: -31, room: 0.1, pv: 0.1, vv: 0.3, gap: 0.07, max: 3 });
+
+  def('footstep_snow', 'move', 'Soft packed crunch. Use: steps on snow.', function (S) {
+    S.noise({ color: 'crackle', a: 0.015, d: 0.13, lin: true, g: 1, flt: { type: 'bandpass', f: 1900, q: 0.7 } });
+    S.noise({ color: 'pink', a: 0.01, d: 0.1, g: 0.5, flt: { type: 'lowpass', f: 1400 } });
+  }, { lu: -31, room: 0.05, pv: 0.1, vv: 0.3, gap: 0.07, max: 3 });
+
+  def('footstep_mud', 'move', 'Wet squelchy step. Use: steps in mud and marsh.', function (S) {
+    S.noise({ color: 'pink', a: 0.006, d: 0.12, g: 1, flt: { type: 'bandpass', f: 500, f1: 900, q: 2.5 } });
+    S.osc({ type: 'sine', f: 180, f1: 320, t: 0.06, a: 0.004, d: 0.05, g: 0.25 });
+  }, { lu: -31, room: 0.05, pv: 0.1, vv: 0.3, gap: 0.07, max: 3 });
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
