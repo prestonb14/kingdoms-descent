@@ -3221,7 +3221,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.18';
+  KD.VERSION = '0.7.19';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -75960,8 +75960,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
           while (f.acc >= 1) {
             f.acc -= 1;
             var s = f.size;
-            rt.particles.emit({ x: f.x, y: f.y, z: f.z, radius: f.r, count: 1, dir: [0, 1, 0], spread: 0.22, speed: [0.7 * s, 1.7 * s], life: [0.35, 0.75], size: [0.13 * s, 0.24 * s], sizeEnd: 0.02, color: '#ffe27a', color2: '#ff5a1e', alpha: 0.9, gravity: -1.6, drag: 0.6, additive: true });
-            if (Math.random() < (f.embers ? 0.5 : 0.16)) rt.particles.emit({ x: f.x, y: f.y + 0.2, z: f.z, radius: f.r, count: 1, dir: [0, 1, 0], spread: 0.5, speed: [1.2, 2.6], life: [0.5, 1.2], size: [0.02, 0.04], sizeEnd: 0, color: '#ffd27a', color2: '#ff6a20', gravity: -0.6, drag: 0.5, additive: true, shape: 'spark', stretch: 2 });
+            rt.particles.emit({ x: f.x, y: f.y, z: f.z, radius: f.r, count: 1, dir: [0, 1, 0], spread: 0.22, speed: [0.7 * s, 1.7 * s], life: [0.35, 0.75], size: [0.13 * s, 0.24 * s], sizeEnd: 0.02, color: f.color || '#ffe27a', color2: f.color2 || '#ff5a1e', alpha: 0.9, gravity: -1.6, drag: 0.6, additive: true });   // [w8 act4 look] f.color / f.color2: a preset's flame colour
+            if (Math.random() < (f.embers ? 0.5 : 0.16)) rt.particles.emit({ x: f.x, y: f.y + 0.2, z: f.z, radius: f.r, count: 1, dir: [0, 1, 0], spread: 0.5, speed: [1.2, 2.6], life: [0.5, 1.2], size: [0.02, 0.04], sizeEnd: 0, color: f.color || '#ffd27a', color2: f.color2 || '#ff6a20', gravity: -0.6, drag: 0.5, additive: true, shape: 'spark', stretch: 2 });
             if (!f.embers && Math.random() < 0.12) rt.particles.emit({ x: f.x, y: f.y + 0.7 * s, z: f.z, radius: f.r * 0.6, count: 1, dir: [0, 1, 0], spread: 0.25, speed: [0.5, 1.0], life: [1.2, 2.4], size: [0.16, 0.26], sizeEnd: 0.6, color: '#5a544e', color2: '#8a847c', alpha: 0.22, gravity: -0.35, drag: 0.5 });
           }
         }
@@ -78801,6 +78801,848 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   M.ACT3_READY = ['lower_town', 'market_district', 'sewers', 'harbor', 'rooftops', 'city_gates'];
   M.ACT3_READY.forEach(function (a) { if (!M.AREAS[a]) M.AREAS[a] = ACT3[a]; });
   M.act3 = { rectOf: rectOf, facingPairs: facingPairs, openFaces: openFaces, birdModel: birdModel };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/gfx/57_env_mood_act4.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var E = KD.env = KD.env || {};
+
+  /**
+   * [w8 act4 look] Mood presets of Act IV, the castle (55_env_mood.js, docs/GFX.md "Mood presets", docs/ENV.md): the
+   * seven castle areas in the painted, graded style of the grim Farm Village, each with its own strong identity.
+   *
+   *   castle_courtyard  Courtyard    pale stone under an overcast gold sky, autumn-gold trees, ivy on the walls,
+   *                                  weathered statues, crows on the battlements, drifting gold leaves
+   *   castle_armory     Armory       forge orange against cold steel, soot-stained walls, shields and crossed blades on
+   *                                  the walls, sparks flying off the anvils, smoke and embers
+   *   castle_library    Library      deep wood and candlelight, floating candles over the aisles, dust in the light
+   *                                  shafts, loose pages drifting down
+   *   castle_chapel     Chapel       cool stone lit by stained-glass windows: coloured light shafts and coloured pools on
+   *                                  the floor, candles, incense rising from the altars
+   *   castle_dungeon    Dungeons     cold green torchlight, wet mossy stone, chains and shackles on the walls, water
+   *                                  dripping, green mist, rats
+   *   castle_towers     Towers       wind and a high sky: a sea of clouds below the battlements, pennants snapping in the
+   *                                  wind, wind streaks, wheeling birds (bright: not every area is dark)
+   *   castle_throne     Throne Room  royal crimson and gold turned sinister: tall torn banners, ghostfire braziers in
+   *                                  violet, crimson light, falling ash, the climax of the run
+   *
+   * Purely visual: the layout, its colliders and everything the simulation reads stay as they are. Dressing only hangs on
+   * wall faces where nothing stands in front, floats above head height (2.7 m and up), or sits in the void below the
+   * walkways. Every runtime effect scales with KD.env.mood.quality() (1 high, 0.6 medium, 0.25 low; costly ones off on
+   * low). Shared atmosphere (rim light, air particles, shafts, glows, critters) goes through each preset's `life`
+   * field (57_env_life.js); this file only adds what is unique to an area.
+   */
+  var M = E.mood;
+  if (!M || !M.register) return;
+  var PI = Math.PI, TAU = PI * 2, sin = Math.sin, cos = Math.cos, sqrt = Math.sqrt, floor = Math.floor, min = Math.min, max = Math.max, abs = Math.abs;
+  function hsh(s, salt) { return (KD.util.hash(String(s) + ':' + (salt || '')) % 10000) / 10000; }
+  function C(c) { return Array.isArray(c) ? c.slice(0, 3) : KD.gfx.color._get(c).slice(0, 3); }
+  function copy(p, o) { var q = {}, k; for (k in p) q[k] = p[k]; for (k in o) q[k] = o[k]; return q; }
+  function lerp3(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]; }
+  var NZ = 16, NY = 4, PY = 8;
+  var ACT4 = M.ACT4 = { courtyard: 'castle_courtyard', armory: 'castle_armory', library: 'castle_library', chapel: 'castle_chapel', dungeons: 'castle_dungeon', towers: 'castle_towers', throne_room: 'castle_throne' };
+
+  // ================================================================== layout helpers
+  function block(layout, x, z) { try { return KD.gen && KD.gen.blockHeightAt ? KD.gen.blockHeightAt(layout, x, z) : 0; } catch (e) { return 0; } }
+  function surfAt(layout, x, z) { var ix = floor(x), iz = floor(z); if (ix < 0 || iz < 0 || ix >= layout.gw || iz >= layout.gd) return -1; return layout.surf[iz * layout.gw + ix]; }
+  function world(p, lx, lz) { var c = cos(p.rot || 0), s = sin(p.rot || 0); return [p.x + lx * c + lz * s, p.z - lx * s + lz * c]; }
+  function open(layout, x, z) { var s = surfAt(layout, x, z); return s >= 0 && s !== KD.gen.SURF.void && s !== KD.gen.SURF.water && block(layout, x, z) <= 0.01; }
+  /**
+   * Spots on the faces of wall pieces with open floor in front: [{ x, z (on the face), nx, nz (outward), yaw, p, u, side }].
+   * o = { test(p), step (m between spots), margin, depth (clearance probed in front), cap, salt }. Deterministic.
+   */
+  function wallSpots(layout, o) {
+    var out = [], pieces = layout.pieces || [], i, s, u;
+    for (i = 0; i < pieces.length; i++) {
+      var p = pieces[i];
+      if (p.kind !== 'wall' || (o.test && !o.test(p))) continue;
+      var L = +p.len || 1, T = +p.thick || 1, step = o.step || 4, mg = o.margin || 0.9;
+      if (L < 2 * mg + 0.4) continue;
+      var n = max(1, floor((L - 2 * mg) / step) + 1), span = (n - 1) * step;
+      for (s = -1; s <= 1; s += 2) {
+        var nn = world({ x: 0, z: 0, rot: p.rot }, 0, s);
+        for (var k = 0; k < n; k++) {
+          u = -span / 2 + k * step + (hsh(p.id + ':' + s + ':' + k, o.salt || 'ws') - 0.5) * min(0.8, step * 0.3);
+          var w = world(p, u, s * T / 2), d1 = o.depth || 0.7;
+          if (!open(layout, w[0] + nn[0] * d1, w[1] + nn[1] * d1) || !open(layout, w[0] + nn[0] * (d1 + 0.7), w[1] + nn[1] * (d1 + 0.7))) continue;
+          // the neighbours left and right in front must be open too (no shelf or statue half in front)
+          var tx = world({ x: 0, z: 0, rot: p.rot }, 1, 0), hw = o.halfW || 0.6;
+          if (!open(layout, w[0] + nn[0] * 0.5 + tx[0] * hw, w[1] + nn[1] * 0.5 + tx[1] * hw) || !open(layout, w[0] + nn[0] * 0.5 - tx[0] * hw, w[1] + nn[1] * 0.5 - tx[1] * hw)) continue;
+          out.push({ x: w[0], z: w[1], nx: nn[0], nz: nn[1], yaw: Math.atan2(nn[0], nn[1]), p: p, u: u, side: s, h: +p.h || 4, key: hsh(p.id + ':' + s + ':' + k, (o.salt || 'ws') + 'k') });
+        }
+      }
+    }
+    out.sort(function (a, b) { return a.key - b.key; });
+    return spaced(out, o.spacing || 0, o.cap || 9999);
+  }
+  /** Keep spots at least `d` metres apart (in list order), at most `cap`. */
+  function spaced(list, d, cap) {
+    var out = [], i, j;
+    for (i = 0; i < list.length && out.length < cap; i++) {
+      var a = list[i], ok = true;
+      if (d > 0) for (j = 0; j < out.length; j++) { var dx = out[j].x - a.x, dz = out[j].z - a.z; if (dx * dx + dz * dz < d * d) { ok = false; break; } }
+      if (ok) out.push(a);
+    }
+    return out;
+  }
+  /** Open floor cells on a grid (every `step` m), deterministic: [{ x, z, key }]. o.need(x, z) extra test. */
+  function floorSpots(layout, step, o) {
+    var out = [], x, z;
+    o = o || {};
+    for (z = step / 2; z < layout.d; z += step) for (x = step / 2; x < layout.w; x += step) {
+      var jx = x + (hsh(x + ',' + z, o.salt || 'fx') - 0.5) * step * 0.5, jz = z + (hsh(x + ',' + z, (o.salt || 'fx') + 'z') - 0.5) * step * 0.5;
+      if (!open(layout, jx, jz)) continue;
+      if (o.clear && (!open(layout, jx + o.clear, jz) || !open(layout, jx - o.clear, jz) || !open(layout, jx, jz + o.clear) || !open(layout, jx, jz - o.clear))) continue;
+      if (o.need && !o.need(jx, jz)) continue;
+      out.push({ x: jx, z: jz, key: hsh(jx + ',' + jz, o.salt || 'fk') });
+    }
+    out.sort(function (a, b) { return a.key - b.key; });
+    return out;
+  }
+  function pushStatic(out, m) { var g = m.done(); if (!g.idx.length) return 0; out.statics.push({ geom: g, pos: [0, 0, 0], yaw: 0, tag: 'piece' }); out.stats.tris.pieces += g.idx.length / 3; return g.idx.length / 3; }
+  function addLight(out, rec) { out.lights.push({ x: rec.x, y: rec.y, z: rec.z, color: rec.color, r: rec.r, intensity: rec.intensity, flicker: rec.flicker || 0, mood: true }); }
+  function lifeSpot(out, type, rec) { if (E.life && E.life.spot) E.life.spot(out, type, rec); }
+  /** Pieces whose centre matches a light (layout lights carry no piece id). */
+  function pieceAt(layout, kinds) {
+    var map = {};
+    (layout.pieces || []).forEach(function (p) { if (kinds[p.kind]) map[Math.round(p.x * 2) + ',' + Math.round(p.z * 2)] = p; });
+    return function (l) { return map[Math.round(l.x * 2) + ',' + Math.round(l.z * 2)] || null; };
+  }
+
+  // ================================================================== geometry post-processing (vertex colours)
+  /** Deeper occlusion toward the ground. */
+  function groundAO(g, h, k0) {
+    var pos = g.pos, col = g.col, n = pos.length / 3, i;
+    for (i = 0; i < n; i++) {
+      var y = pos[i * 3 + 1];
+      if (y >= h) continue;
+      var sy = y <= 0 ? 0 : y / h, k = k0 + (1 - k0) * sy * sy * (3 - 2 * sy);
+      col[i * 3] *= k; col[i * 3 + 1] *= k; col[i * 3 + 2] *= k * 1.02;
+    }
+  }
+  /** Painted stains in a band of heights: a noisy blend toward `tint` (moss, ivy, soot, damp). */
+  function stain(g, o) {
+    var pos = g.pos, col = g.col, aux = g.aux, n = pos.length / 3, i, t = C(o.tint), ph = o.ph || 0, f = o.freq || 1.3;
+    for (i = 0; i < n; i++) {
+      if (aux && aux[i * 4] > 0.3) continue;
+      var x = pos[i * 3], y = pos[i * 3 + 1], z = pos[i * 3 + 2];
+      var band = o.y1 > o.y0 ? (o.up ? (y - o.y0) / (o.y1 - o.y0) : 1 - (y - o.y0) / (o.y1 - o.y0)) : 1;
+      if (band <= 0) continue; band = min(1, band);
+      var nz = 0.5 + 0.5 * sin(x * f + z * f * 0.7 + ph) * sin(x * f * 0.37 - z * f * 1.13 + ph * 1.7 + y * 0.6);
+      var a = o.amount * band * (o.hard ? (nz > o.hard ? 1 : nz / o.hard * 0.3) : nz);
+      if (a <= 0) continue;
+      col[i * 3] += (t[0] - col[i * 3]) * a; col[i * 3 + 1] += (t[1] - col[i * 3 + 1]) * a; col[i * 3 + 2] += (t[2] - col[i * 3 + 2]) * a;
+      if (o.wet && aux) aux[i * 4 + 2] = max(aux[i * 4 + 2], o.wet * a);
+    }
+  }
+  /** Recolour glowing vertices (embers in braziers, flames in candles) to another hue, keeping their brightness. */
+  function glowTint(g, to, k) {
+    var col = g.col, aux = g.aux, n = g.pos.length / 3, i, c = C(to);
+    if (!aux) return;
+    for (i = 0; i < n; i++) {
+      if (aux[i * 4] < 0.3) continue;
+      var l = max(col[i * 3], col[i * 3 + 1], col[i * 3 + 2]);
+      col[i * 3] = min(1, c[0] * l * (k || 1.1)); col[i * 3 + 1] = min(1, c[1] * l * (k || 1.1)); col[i * 3 + 2] = min(1, c[2] * l * (k || 1.1));
+    }
+  }
+  /** Autumn: leaf-green vertices turn gold, amber and rust (by a per-piece hue). */
+  function autumn(g, amt, hue) {
+    var col = g.col, aux = g.aux, n = g.pos.length / 3, i, gold = [0.78, 0.56, 0.2], rust = [0.62, 0.3, 0.16], amber = [0.86, 0.66, 0.28];
+    var tgt = hue < 0.4 ? gold : (hue < 0.75 ? amber : rust);
+    for (i = 0; i < n; i++) {
+      var r = col[i * 3], gg = col[i * 3 + 1], b = col[i * 3 + 2];
+      if (!(gg > r * 1.05 && gg > b * 1.15)) continue;                 // green only (the leaves; bark and stone stay)
+      var l = r * 0.3 + gg * 0.55 + b * 0.15, k = l / 0.42;
+      col[i * 3] = r + (tgt[0] * k - r) * amt; col[i * 3 + 1] = gg + (tgt[1] * k - gg) * amt; col[i * 3 + 2] = b + (tgt[2] * k - b) * amt;
+    }
+  }
+  /** Pull every colour of a geometry toward a tint by `a` (a cast over a whole piece). */
+  function cast(g, tint, a) {
+    var col = g.col, n = g.pos.length / 3, i, t = C(tint);
+    for (i = 0; i < n; i++) { col[i * 3] += (t[0] * (col[i * 3] + col[i * 3 + 1] + col[i * 3 + 2]) / 1.5 - col[i * 3]) * a; col[i * 3 + 1] += (t[1] * (col[i * 3] + col[i * 3 + 1] + col[i * 3 + 2]) / 1.5 - col[i * 3 + 1]) * a; col[i * 3 + 2] += (t[2] * (col[i * 3] + col[i * 3 + 1] + col[i * 3 + 2]) / 1.5 - col[i * 3 + 2]) * a; }
+  }
+
+  // ================================================================== the shared runtime
+  /**
+   * castleRuntime(cfg) -> a preset runtime. cfg:
+   *   heroLight { color, r, intensity }     a faint light round the hero (dark interiors)
+   *   mist { n, color, alpha, r }           drifting ground mist patches (renderer underlays)
+   *   pools: true                           coloured ground pools from asm.mood.pools [{ x, z, r, color, a, pulse }]
+   *   spots: { type: fn(parts, s, q) }      emitters at asm.mood.emit[type] spots near the camera; s.acc is theirs
+   *   rates: { type: per second }           spot rates (times k); lowOff: { type: true } off on 'low'
+   *   ambient: [{ rate, low, fn(parts, focus, q, wind) }]   emitters around the camera
+   */
+  function castleRuntime(cfg) {
+    return function (asm, renderer, opts) {
+      var parts = renderer.particles || null, mo = asm.mood || {}, rnd = Math.random, quiet = !!(opts && opts.backdrop);
+      var theme = asm.theme, wind = (theme.env && theme.env.windYaw !== undefined ? theme.env.windYaw : 0.6), W = { x: sin(wind), z: cos(wind) };
+      var focus = [asm.layout.w / 2, 0, asm.layout.d / 2];
+      var rt = { lights: [], stats: { emitted: 0 } };
+      var heroL = null;
+      if (cfg.heroLight && !quiet && renderer.lights && renderer.lights.add) { heroL = renderer.lights.add({ x: focus[0], y: 2.6, z: focus[2], color: cfg.heroLight.color, r: cfg.heroLight.r, intensity: cfg.heroLight.intensity, flicker: 0 }); rt.lights.push(heroL); }
+      var patches = [], NP = cfg.mist ? cfg.mist.n : 0, cMist = cfg.mist ? C(cfg.mist.color) : null;
+      function placePatch(pt, anywhere) {
+        var a = rnd() * TAU, d = anywhere ? sqrt(rnd()) * 28 : 20 + rnd() * 8;
+        if (!anywhere) a = Math.atan2(-W.x, -W.z) + (rnd() - 0.5) * 2.2;
+        pt.x = focus[0] + sin(a) * d; pt.z = focus[2] + cos(a) * d; pt.r = (cfg.mist.r || 5) * (0.8 + rnd() * 0.8); pt.peak = cfg.mist.alpha * (0.7 + rnd() * 0.6); pt.age = 0; pt.life = 12 + rnd() * 12;
+        pt.vx = W.x * (0.25 + rnd() * 0.3) + (rnd() - 0.5) * 0.2; pt.vz = W.z * (0.25 + rnd() * 0.3) + (rnd() - 0.5) * 0.2;
+      }
+      for (var i = 0; i < NP; i++) { var pt = {}; placePatch(pt, true); pt.age = rnd() * pt.life; patches.push(pt); }
+      var pools = (mo.pools || []).map(function (p) { return { x: p.x, z: p.z, r: p.r, c: C(p.color), a: p.a, pulse: p.pulse || 0, ph: rnd() * TAU }; });
+      var spots = {}, types = Object.keys(cfg.spots || {});
+      types.forEach(function (t) { spots[t] = ((mo.emit && mo.emit[t]) || []).map(function (s) { return copy(s, { acc: rnd() * 2, t: rnd() * 5 }); }); });
+      var time = 0;
+      function emit(o) { parts.emit(o); rt.stats.emitted += o.count || 1; }
+      rt.update = function (dt, world, r) {
+        if (quiet) return;
+        var F = r && r._f, q = M.quality(), k = q.k, low = q.name === 'low', j, dx, dz;
+        if (F && F.ready && F.focus) { focus[0] = F.focus[0]; focus[2] = F.focus[2]; }
+        time += dt;
+        var hero = null;
+        if (world && world.players) hero = world.players[world.viewIndex || 0] || world.players[0];
+        if (heroL) { heroL.x = hero ? hero.x : focus[0]; heroL.z = hero ? hero.z : focus[2]; }
+        // ---- mist patches and coloured pools (underlays: under every decal, never over a telegraph)
+        if (r && r.underlay) {
+          var wantP = low ? min(NP, 3) : (q.name === 'medium' ? floor(NP * 0.66) : NP);
+          for (j = 0; j < patches.length && j < wantP; j++) {
+            var P0 = patches[j];
+            if (dt > 0) { P0.age += dt; P0.x += P0.vx * dt; P0.z += P0.vz * dt; dx = P0.x - focus[0]; dz = P0.z - focus[2]; if (P0.age >= P0.life || dx * dx + dz * dz > 38 * 38) placePatch(P0, false); }
+            var u = P0.age / P0.life, fade = u < 0.25 ? u / 0.25 : (u > 0.7 ? (1 - u) / 0.3 : 1);
+            r.underlay(P0.x, P0.z, P0.r * (0.9 + 0.2 * u), cMist, P0.peak * fade * fade);
+          }
+          var np = 0, maxPools = low ? 6 : (q.name === 'medium' ? 12 : 20);
+          for (j = 0; j < pools.length && np < maxPools; j++) {
+            var pl = pools[j]; dx = pl.x - focus[0]; dz = pl.z - focus[2];
+            if (dx * dx + dz * dz > 30 * 30) continue;
+            np++;
+            r.underlay(pl.x, pl.z, pl.r, pl.c, pl.a * (1 - pl.pulse * 0.5 + pl.pulse * 0.5 * sin(time * 0.7 + pl.ph)));
+          }
+        }
+        if (dt <= 0 || !parts) return;
+        var pk = (KD.gfx.quality && KD.gfx.quality.def && KD.gfx.quality.def.particles) || 1;
+        // ---- spot emitters near the camera
+        for (var ti = 0; ti < types.length; ti++) {
+          var ty = types[ti], list = spots[ty], rate = (cfg.rates && cfg.rates[ty]) || 1, fn = cfg.spots[ty], reach = (cfg.reach && cfg.reach[ty]) || 26;
+          if (low && cfg.lowOff && cfg.lowOff[ty]) continue;
+          for (j = 0; j < list.length; j++) {
+            var s = list[j]; dx = s.x - focus[0]; dz = s.z - focus[2];
+            if (dx * dx + dz * dz > reach * reach) continue;
+            s.acc += dt * rate * (s.rate || 1) * k * pk;
+            while (s.acc >= 1) { s.acc -= 1; fn(emit, s, q, W, rnd); }
+          }
+        }
+        // ---- ambient emitters around the camera
+        (cfg.ambient || []).forEach(function (am, ai) {
+          if (low && am.low === false) return;
+          var key = '_a' + ai;
+          rt[key] = (rt[key] || 0) + dt * am.rate * k * pk;
+          while (rt[key] >= 1) { rt[key] -= 1; am.fn(emit, focus, q, W, rnd, hero); }
+        });
+      };
+      rt.dispose = function () { rt.lights.forEach(function (h) { if (h && h.remove) h.remove(); }); rt.lights = []; };
+      return rt;
+    };
+  }
+  M.castleRuntime = castleRuntime;
+
+  // ================================================================== small dressing models (face frame: z = 0 on the wall, +Z out)
+  /** A round or heater shield with a painted field and a boss; crossed blades behind some (armory, throne). */
+  function wallShield(m, P, R, y, field, charge) {
+    var kind = R.next(), w = 0.62, h = 0.74, sj = m.jit;
+    m.jit = 0.04;
+    if (R.next() < 0.55) {                    // crossed blades behind
+      var bl = lerp3(P.metal, [0.75, 0.78, 0.82], 0.3);
+      [-1, 1].forEach(function (s) {
+        m.push(); m.translate(0, y, 0.035); m.rotZ(s * 0.72);
+        m.box(-0.035, -0.85, -0.012, 0.035, 0.55, 0.012, bl, 0); m.box(-0.012, -0.85, -0.02, 0.012, 0.55, 0.02, lerp3(bl, [1, 1, 1], 0.25), NZ);
+        m.box(-0.16, -0.88, -0.03, 0.16, -0.84, 0.03, P.iron, 0); m.box(-0.03, -1.12, -0.03, 0.03, -0.88, 0.03, P.woodDark, 0); m.blob(0, -1.15, 0, 0.04, 0.04, 0.04, P.gold, 5);
+        m.pop();
+      });
+    }
+    if (kind < 0.5) {                          // heater shield
+      var pts = [[-w / 2, y + h * 0.5], [w / 2, y + h * 0.5], [w / 2, y], [w * 0.28, y - h * 0.34], [0, y - h * 0.5], [-w * 0.28, y - h * 0.34], [-w / 2, y]];
+      m.prism(pts.slice().reverse().map(function (p) { return [p[0], p[1]]; }), 0.07, 0.13, field, false, lerp3(P.iron, [0, 0, 0], 0.2));
+      m.box(-w / 2 - 0.02, y + h * 0.46, 0.06, w / 2 + 0.02, y + h * 0.54, 0.145, P.iron, 0);
+      if (charge === 'band') m.box(-0.07, y - h * 0.45, 0.13, 0.07, y + h * 0.46, 0.15, P.gold, NZ);
+      else m.box(-w / 2 + 0.04, y + h * 0.05, 0.13, w / 2 - 0.04, y + h * 0.17, 0.15, P.gold, NZ);
+    } else {                                   // round shield with a boss and rim
+      m.push(); m.translate(0, y, 0.07); m.rotX(PI / 2);
+      m.cyl(0, 0, 0, 0.38, 0.06, 0.38, 12, field, 3); m.cyl(0, 0.06, 0, 0.4, 0.075, 0.4, 12, P.iron, 0);
+      m.cyl(0, 0.06, 0, 0.1, 0.14, 0.06, 8, P.metal, 2);
+      m.pop();
+      m.box(-0.36, y - 0.025, 0.13, 0.36, y + 0.025, 0.145, lerp3(field, P.gold, 0.6), NZ);
+    }
+    m.jit = sj;
+  }
+  /** Chains hanging from a ring on the wall, with an open shackle at the end (dungeon). */
+  function wallChains(m, P, R, y) {
+    var ir = lerp3(P.iron, [0.25, 0.27, 0.27], 0.3), n = 1 + floor(R.next() * 2), i, k;
+    m.box(-0.08, y - 0.06, 0, 0.08, y + 0.06, 0.04, ir, NZ);
+    for (i = 0; i < n; i++) {
+      var x0 = (n === 1 ? 0 : (i ? 0.12 : -0.12)), len = 0.7 + R.next() * 0.8, links = floor(len / 0.09);
+      for (k = 0; k < links; k++) {
+        var yy = y - 0.05 - k * 0.09;
+        if (k % 2) m.box(x0 - 0.008, yy - 0.05, 0.035, x0 + 0.008, yy + 0.005, 0.085, ir, 0);
+        else m.box(x0 - 0.03, yy - 0.05, 0.052, x0 + 0.03, yy + 0.005, 0.068, ir, 0);
+      }
+      var ye = y - 0.05 - links * 0.09;
+      m.push(); m.translate(x0, ye - 0.05, 0.06); m.rotX(PI / 2); m.cyl(0, -0.02, 0, 0.06, 0.02, 0.06, 7, lerp3(P.rust, ir, 0.4), 0); m.pop();
+    }
+  }
+  /** A lancet stained-glass window (pointed top), lead frame and coloured glowing panes; returns its main colour. */
+  var GLASS = [[0.86, 0.18, 0.2], [0.2, 0.36, 0.9], [0.95, 0.72, 0.2], [0.5, 0.24, 0.8], [0.2, 0.62, 0.4]];
+  function stainedWindow(m, P, R, y0, w, h) {
+    var lead = [0.12, 0.1, 0.12], stone = lerp3(P.stoneWall, P.trim, 0.35), sj = m.jit, em = m.emis, i, j;
+    var main = floor(R.next() * GLASS.length), alt = (main + 1 + floor(R.next() * 3)) % GLASS.length;
+    var hw = w / 2, ya = y0 + h - hw * 1.1, top = y0 + h;
+    m.jit = 0.03;
+    // stone surround: sill, jambs, pointed hood
+    m.box(-hw - 0.14, y0 - 0.12, 0, hw + 0.14, y0, 0.12, stone, 0);
+    m.box(-hw - 0.12, y0, 0, -hw, ya, 0.07, stone, NZ); m.box(hw, y0, 0, hw + 0.12, ya, 0.07, stone, NZ);
+    var arcL = [], arcR = [], n = 6;
+    for (i = 0; i <= n; i++) { var t = i / n, a = t * PI / 2 * 0.9; arcL.push([-hw + (hw * (1 - cos(a))) * 1.02, ya + (top - ya) * sin(a)]); }
+    for (i = 0; i < n; i++) { var p = arcL[i], q = arcL[i + 1]; m.quad(p[0] - 0.12, p[1], 0.07, q[0] - 0.12, q[1] + 0.06, 0.07, q[0], q[1], 0.07, p[0], p[1], 0.07, stone); m.quad(-p[0], p[1], 0.07, -q[0], q[1], 0.07, -q[0] + 0.12, q[1] + 0.06, 0.07, -p[0] + 0.12, p[1], 0.07, stone); }
+    // the glass: a grid of panes with lead lines, the upper ones following the arch
+    m.emis = 0.62;
+    var rows = 5, cols = 2, ph = (ya - y0) / rows;
+    for (j = 0; j < rows; j++) for (i = 0; i < cols; i++) {
+      var c = GLASS[(j + i) % 3 === 0 ? alt : ((j * 7 + i * 3) % 5 === 2 ? (main + 2) % GLASS.length : main)], kk = 0.8 + R.next() * 0.35;
+      var x0 = -hw + i * w / cols + 0.02, x1 = -hw + (i + 1) * w / cols - 0.02, yy0 = y0 + j * ph + 0.02, yy1 = y0 + (j + 1) * ph - 0.02;
+      m.box(x0, yy0, 0.01, x1, yy1, 0.03, [min(1, c[0] * kk), min(1, c[1] * kk), min(1, c[2] * kk)], NZ);
+    }
+    // the pointed head: a rose of panes
+    for (i = 0; i < n; i++) {
+      var a0 = arcL[i], a1 = arcL[i + 1], cc = GLASS[i % 2 ? alt : main];
+      m.tri(a0[0] + 0.02, a0[1], 0.03, -a0[0] - 0.02, a0[1], 0.03, -a1[0] - 0.02, a1[1], 0.03, cc);
+      m.tri(a0[0] + 0.02, a0[1], 0.03, -a1[0] - 0.02, a1[1], 0.03, a1[0] + 0.02, a1[1], 0.03, cc);
+    }
+    m.emis = em;
+    // lead cames over the glass
+    m.box(-0.012, y0, 0.03, 0.012, top - 0.04, 0.045, lead, NZ);
+    for (j = 1; j < rows; j++) m.box(-hw, y0 + j * ph - 0.012, 0.03, hw, y0 + j * ph + 0.012, 0.045, lead, NZ);
+    m.box(-hw, ya - 0.012, 0.03, hw, ya + 0.012, 0.045, lead, NZ);
+    m.jit = sj;
+    return GLASS[main];
+  }
+  /** A cluster of floating candles at world (x, y, z): returns the flame points. */
+  function floatCandles(m, P, R, x, y, z) {
+    var n = 3 + floor(R.next() * 3), out = [], i, wax = [0.92, 0.86, 0.72], em = m.emis;
+    for (i = 0; i < n; i++) {
+      var a = R.next() * TAU, d = 0.25 + R.next() * 0.55, cx = x + cos(a) * d, cz = z + sin(a) * d, cy = y + (R.next() - 0.5) * 0.5, h = 0.12 + R.next() * 0.16, r = 0.03 + R.next() * 0.012;
+      m.cyl(cx, cy, cz, r, cy + h, r * 0.96, 6, lerp3(wax, [1, 0.95, 0.85], R.next() * 0.4), 3);
+      m.cyl(cx + r * 0.6, cy + h * 0.3, cz, r * 0.35, cy + h * 0.95, r * 0.3, 4, wax, 0);       // a run of wax
+      m.emis = 1; m.blob(cx, cy + h + 0.045, cz, 0.02, 0.045, 0.02, [1, 0.82, 0.42], 5); m.emis = em;
+      out.push([cx, cy + h + 0.05, cz]);
+    }
+    return out;
+  }
+  /** A pennant on a short pole standing on a wall top at local (0, y0, 0); the flag streams along +X and sways. */
+  function wallPennant(m, P, R, y0, col) {
+    var pole = [0.28, 0.22, 0.17], h = 1.5 + R.next() * 0.5, sw = m.sway, len = 0.9 + R.next() * 0.4, fh = 0.36, i, n = 4;
+    m.rod(0, y0, 0, 0, y0 + h, 0, 0.035, 5, pole, 0.028, 2);
+    m.blob(0, y0 + h + 0.03, 0, 0.05, 0.05, 0.05, P.gold, 5);
+    for (i = 0; i < n; i++) {
+      var u0 = i / n, u1 = (i + 1) / n, x0 = 0.04 + u0 * len, x1 = 0.04 + u1 * len, t0 = fh * (1 - u0 * 0.85), t1 = fh * (1 - u1 * 0.85), yt = y0 + h - 0.05;
+      m.sway = 0.35 * u0; var c0 = i % 2 ? col : lerp3(col, [1, 1, 1], 0.12);
+      m.quad(x0, yt - t0, 0.012, x1, yt - t1 * 0.5 - (t0 - t1) * 0.5, 0.012, x1, yt, 0.012, x0, yt, 0.012, c0);
+      m.quad(x1, yt - t1 * 0.5 - (t0 - t1) * 0.5, -0.012, x0, yt - t0, -0.012, x0, yt, -0.012, x1, yt, -0.012, c0, 0.75);
+    }
+    m.sway = sw;
+  }
+  /** A soft cloud cluster (a few flattened blobs), pale and faintly self-lit so it reads bright far below. */
+  function cloud(m, R, x, y, z, s, col) {
+    var n = 3 + floor(R.next() * 3), em = m.emis, i;
+    m.emis = 0.32;
+    for (i = 0; i < n; i++) {
+      var a = R.next() * TAU, d = s * (0.3 + R.next() * 0.7), r = s * (0.55 + R.next() * 0.5);
+      m.blob(x + cos(a) * d, y + R.next() * s * 0.25, z + sin(a) * d, r, r * 0.38, r * (0.8 + R.next() * 0.4), lerp3(col, [1, 1, 1], R.next() * 0.25), 7);
+    }
+    m.emis = em;
+  }
+
+  // ================================================================== shared env / emitter recipes
+  var PAINT = { paintFine: 0.09, paintBroad: 0.14, paintHue: 0.024 };
+  function env(o) { return KD.util.assign({ clouds: false, grade: 1 }, PAINT, o); }
+  var EMIT = {
+    /** a burst of sparks off an anvil (hammer strike) */
+    sparks: function (emit, s, q) {
+      emit({ x: s.x, y: s.y, z: s.z, radius: 0.1, count: q.name === 'low' ? 6 : 14, dir: [0, 1, 0], spread: 1.25, speed: [2.2, 5.5], life: [0.35, 0.9], size: [0.016, 0.03], sizeEnd: 0.004,
+        color: '#fff2b0', color2: '#ff6a1a', alpha: 1, gravity: 7, drag: 0.6, additive: true, shape: 'spark', stretch: 3, bounce: 0.35 });
+      emit({ x: s.x, y: s.y + 0.05, z: s.z, count: 1, speed: 0, life: [0.12, 0.18], size: [0.45, 0.55], sizeEnd: 0.6, color: '#ffb060', alpha: 0.55, gravity: 0, additive: true, shape: 'soft' });
+    },
+    /** dark smoke out of a chimney or above a fire */
+    smoke: function (emit, s, q, W) {
+      emit({ x: s.x, y: s.y, z: s.z, radius: 0.25, count: 1, dir: [W.x * 0.2, 1, W.z * 0.2], spread: 0.25, speed: [0.5, 0.9], life: [3.5, 5.5], size: [0.25, 0.4], sizeEnd: 1.3, color: '#3a3330', color2: '#6a625a', alpha: 0.26, gravity: -0.12, drag: 0.4, additive: false, shape: 'soft' });
+    },
+    /** incense: thin pale wisps curling up from an altar */
+    incense: function (emit, s, q, W, rnd) {
+      emit({ x: s.x + (rnd() - 0.5) * 0.6, y: s.y, z: s.z + (rnd() - 0.5) * 0.4, count: 1, dir: [0, 1, 0], spread: 0.3, speed: [0.25, 0.45], life: [4, 6.5], size: [0.08, 0.14], sizeEnd: 0.8, color: '#d8d0e6', color2: '#a8a0c0', alpha: 0.2, gravity: -0.05, drag: 0.5, spin: 0.6, additive: false, shape: 'soft' });
+    },
+    /** a drop of water from the top of a wall, and a tiny splash */
+    drip: function (emit, s, q, W, rnd) {
+      emit({ x: s.x + (rnd() - 0.5) * 0.3, y: s.y, z: s.z + (rnd() - 0.5) * 0.3, count: 1, dir: [0, -1, 0], spread: 0.02, speed: [0.1, 0.3], life: [0.7, 0.9], size: [0.014, 0.02], sizeEnd: 0.012, color: '#b8ffe0', color2: '#6adfb0', alpha: 0.8, gravity: 9, drag: 0, additive: true, shape: 'spark', stretch: 2.5, bounce: 0.15 });
+    },
+    /** soft candle glow refreshed (the cheap stand-in for bloom) */
+    candle: function (emit, s, q) {
+      emit({ x: s.x, y: s.y, z: s.z, count: 1, speed: 0, life: [0.5, 0.7], size: [0.18, 0.24], sizeEnd: 0.22, color: s.c || '#ffc870', alpha: 0.42, gravity: 0, additive: true, shape: 'soft' });
+    },
+    /** ghostfire wisps over violet braziers */
+    ghost: function (emit, s, q, W, rnd) {
+      emit({ x: s.x, y: s.y, z: s.z, radius: 0.2, count: 1, dir: [0, 1, 0], spread: 0.35, speed: [0.4, 0.9], life: [1.4, 2.4], size: [0.04, 0.08], sizeEnd: 0.01, color: '#e6c8ff', color2: '#7a2aff', alpha: 0.9, gravity: -0.3, drag: 0.6, additive: true, shape: 'soft' });
+    }
+  };
+
+  // ================================================================== COURTYARD: pale stone, overcast gold light, crows
+  var COURTYARD = {
+    env: env({
+      sunDir: [0.62, 0.48, 0.62], sunColor: [1.0, 0.82, 0.56], sunIntensity: 1.22,
+      skyColor: [0.56, 0.56, 0.68], skyIntensity: 0.52, groundColor: [0.46, 0.4, 0.34], groundIntensity: 0.34,
+      zenith: [0.34, 0.36, 0.44], horizon: [0.8, 0.72, 0.58], fogDensity: 0.0078, fogStart: 14, fogMax: 0.88, sunGlow: 1.2,
+      exposure: 1.06, knee: 0.68, saturation: 0.92, rim: 0.42, clouds: true, cloudSpeed: 1.6, windStrength: 0.13,
+      mist: 0.2, mistDensity: 0.028, mistFalloff: 0.55, mistStart: 18, mistColor: [0.7, 0.64, 0.56],
+      contrast: 0.22, vignette: 0.3, vignetteRadius: 0.34, gradeShadow: [0.05, 0.03, 0.08], gradeHigh: [1.05, 1.0, 0.88]
+    }),
+    palette: {
+      grass: '#6c7748', grassAlt: '#5e6a40', gravel: '#b2ab9c', dirt: '#7c6c52', path: '#bcae8e', plaza: '#b8b09c', cobble: '#9a948a', water: '#4c6870',
+      plaster: '#e2dac6', timber: '#4a3a2c', stoneWall: '#cbc4b4', stoneDark: '#8c857a', roofA: '#4c5068', roofB: '#5c6076', roofC: '#6a3c3c', trim: '#efe6cc',
+      leafA: '#4c6a3e', leafB: '#607a46', leafC: '#3e5a3a', leafDead: '#b0843e', bush: '#4a6638', moss: '#5c6a3a', flowerA: '#e2bc5a', flowerB: '#9a4256',
+      trunk: '#5a4636', trunkDark: '#382a22', rock: '#8e8a84', rockDark: '#625e5a', gold: '#c8a04a', iron: '#3c3d44', bone: '#e2dac6',
+      cloth: ['#5a2c3c', '#3a4466', '#a8883a', '#d8d0bc']
+    },
+    look: { scatter: { tuft: 0.6, flower: 0.9, pebble: 0.4, leaf: 1.4, weed: 0.4 } },
+    lineupGround: '#6c7748',
+    piece: function (p) {
+      var h = hsh(p.id, 'cy');
+      if (p.kind === 'bush' && p.style === 'green' && h < 0.25) return copy(p, { style: 'thorn' });
+      return null;
+    },
+    post: function (p, g) {
+      if (p.kind === 'tree' || p.kind === 'grove' || p.kind === 'bush' || p.kind === 'topiary') {
+        var a = hsh(p.id, 'aut');
+        if (p.kind === 'tree' && a < 0.62) autumn(g, 0.45 + a * 0.6, hsh(p.id, 'hue'));
+        else if (p.kind === 'bush' && a < 0.3) autumn(g, 0.35, hsh(p.id, 'hue'));
+      }
+      if (p.kind === 'wall' && p.style === 'hedge') {                     // clipped hedges: sunlit tops, a few browned patches
+        stain(g, { y0: (+p.h || 2.6) - 0.5, y1: (+p.h || 2.6) + 0.1, up: true, tint: '#8a9a5a', amount: 0.45, freq: 2.6 });
+        if (hsh(p.id, 'hb') < 0.3) stain(g, { y0: 0, y1: 2.6, tint: '#8a6a32', amount: 0.55, freq: 1.7, ph: hsh(p.id, 'hp') * 9, hard: 0.7 });
+      }
+      if (p.kind === 'masonry' || p.kind === 'tower') {                  // ivy creeping up the castle walls, damp at the foot
+        stain(g, { y0: 0, y1: 4.5 + hsh(p.id, 'ivy') * 2.5, tint: '#3c5232', amount: 0.75, freq: 0.9, ph: hsh(p.id, 'iph') * 9, hard: 0.62 });
+        stain(g, { y0: 0, y1: 1.2, tint: '#5a5648', amount: 0.35, freq: 2.1, ph: 3 });
+      }
+      if (p.kind === 'statue' || p.kind === 'fountain' || p.kind === 'bench') {   // weathered: moss at the foot, rain streaks
+        stain(g, { y0: 0, y1: 1.4, tint: '#4f5c38', amount: 0.55, freq: 3.2, ph: hsh(p.id, 'st') * 7 });
+        stain(g, { y0: 0, y1: 4, tint: '#6e6a60', amount: 0.3, freq: 6.5, ph: 2 });
+      }
+      if (p.kind !== 'wall') groundAO(g, 1.4, 0.74);
+    },
+    dress: function (out) {
+      var layout = out.layout, pieces = layout.pieces || [], mo = out.mood;
+      mo.emit = {};
+      // crows on the castle walls and towers (life critters), on statues' plinth corners and lamp posts
+      pieces.forEach(function (p) {
+        if (p.kind === 'masonry' && hsh(p.id, 'cp') < 0.35) {
+          var w = +p.w || 4, d = +p.d || 4, hh = +p.h || 7, a = world(p, (hsh(p.id, 'cx') - 0.5) * (w - 1), (hsh(p.id, 'cz') - 0.5) * (d - 1));
+          lifeSpot(out, 'perch', { x: a[0], y: hh, z: a[1], yaw: (p.rot || 0) + hsh(p.id, 'cy') * TAU });
+        } else if (p.kind === 'statue' && p.style !== 'broken') {
+          var q = world(p, 0.75, 0.75);
+          lifeSpot(out, 'perch', { x: q[0], y: 0.62, z: q[1], yaw: (p.rot || 0) + PI / 4, loose: true });
+        }
+      });
+      // a gold glow at every lamp post (they are lit: the life layer gives halos; here a warm pool on the gravel)
+      mo.pools = [];
+      pieces.forEach(function (p) { if (p.kind === 'fountain' && p.style !== 'dry') mo.pools.push({ x: p.x, z: p.z, r: 3.2, color: '#ffe6b0', a: 0.08, pulse: 0.4 }); });
+    },
+    runtime: castleRuntime({ mist: { n: 8, color: '#c8b896', alpha: 0.12, r: 6 } }),
+    life: {
+      rim: 0.7, rimColor: '#ffe0a8', wind: 1.2, gust: 0.7, glow: 1.1, shafts: 0.35, shaftColor: '#ffe2a8',
+      air: { motes: 0.6, pollen: 0, leaves: 1.4, embers: 0 },
+      critters: { birds: 0.2, crows: 1.6, moths: 0.3, butterflies: 0, rats: 0 },
+      colors: { mote: '#ffe8c0', crowEyes: '#ffcf5a', leaves: ['#c8902e', '#a8582a', '#d8b04a', '#7a5a2a'] }
+    }
+  };
+
+  // ================================================================== ARMORY: forge orange, sparks, steel
+  var ARMORY = {
+    env: env({
+      sunDir: [0.4, 0.8, 0.44], sunColor: [1.0, 0.7, 0.46], sunIntensity: 0.82,
+      skyColor: [0.44, 0.5, 0.64], skyIntensity: 0.46, groundColor: [0.56, 0.34, 0.2], groundIntensity: 0.42,
+      zenith: [0.08, 0.07, 0.08], horizon: [0.32, 0.25, 0.22], fogDensity: 0.012, fogStart: 9, fogMax: 0.9, sunGlow: 0.4,
+      exposure: 1.12, knee: 0.66, saturation: 0.96, rim: 0.4, windStrength: 0.04,
+      mist: 0.32, mistDensity: 0.04, mistFalloff: 0.45, mistStart: 10, mistColor: [0.34, 0.28, 0.26],
+      contrast: 0.3, vignette: 0.45, vignetteRadius: 0.3, gradeShadow: [0.06, 0.03, 0.06], gradeHigh: [1.08, 0.98, 0.86]
+    }),
+    palette: {
+      stone: '#6e6a66', cobble: '#5e5a56', sand: '#8a7458', dirt: '#6a5a46', void: '#0d0c0e', carpet: '#5a2226', wood: '#5e4430',
+      plaster: '#a8a090', timber: '#3e2e20', stoneWall: '#7a756e', stoneDark: '#4a4643', brick: '#7a4636', metal: '#9aa6b6', iron: '#3e4148', rust: '#8a4e2e',
+      woodDark: '#3a281c', woodLight: '#7e6248', trim: '#b8ae98', gold: '#c09a40', fire: '#ff8a3a', canvas: '#8a7e6a',
+      cloth: ['#6a1e24', '#2c3a5c', '#a07a2c', '#222226']
+    },
+    lineupGround: '#5e5a56',
+    post: function (p, g) {
+      if (p.kind === 'wall' || p.kind === 'doorway' || p.kind === 'pillar') {     // soot from the forges: dark upper walls, streaks
+        stain(g, { y0: 1.6, y1: 4.2, up: true, tint: '#1e1a18', amount: 0.55, freq: 1.6, ph: hsh(p.id, 'so') * 9 });
+        stain(g, { y0: 0, y1: 0.8, tint: '#2a2622', amount: 0.3, freq: 3 });
+      }
+      if (p.kind === 'forge') glowTint(g, '#ff7a2a', 1.25);
+      if (p.kind !== 'wall') groundAO(g, 1.3, 0.7);
+    },
+    dress: function (out) {
+      var layout = out.layout, P = KD.env.arch.pal(out.theme), A = KD.env.arch, mo = out.mood, R = new KD.RNG(8811), m = new A.Mesh(8811);
+      mo.emit = { sparks: [], smoke: [] }; mo.pools = [];
+      (layout.pieces || []).forEach(function (p) {
+        if (p.kind === 'forge') {
+          var an = world(p, (+p.w || 3) * 0.28, (+p.d || 2) * 0.62);           // the anvil side in front of the forge
+          mo.emit.sparks.push({ x: an[0], y: 0.95, z: an[1], rate: 0.6 + hsh(p.id, 'sp') * 0.6 });
+          var ch = world(p, -(+p.w || 3) * 0.3, -(+p.d || 2) * 0.25);
+          mo.emit.smoke.push({ x: ch[0], y: 3.1, z: ch[1] });
+          mo.pools.push({ x: p.x, z: p.z, r: 3.4, color: '#ff7a2a', a: 0.18, pulse: 0.5 });
+        }
+      });
+      // shields and crossed blades on the walls, above head height
+      var fields = [P.cloth[0], P.cloth[1], lerp3(P.cloth[0], [0.1, 0.1, 0.1], 0.4), P.cloth[3], [0.42, 0.44, 0.48]];
+      wallSpots(layout, { test: function (p) { return p.style === 'interior'; }, step: 3.6, spacing: 5.5, cap: 46, salt: 'arm' }).forEach(function (s, i) {
+        m.push(); m.translate(s.x, 0, s.z); m.rotY(s.yaw);
+        wallShield(m, P, R, 3.0, fields[i % fields.length], i % 2 ? 'band' : 'fess');
+        m.pop();
+      });
+      pushStatic(out, m);
+    },
+    lateDress: function (out) {
+      out.flames.forEach(function (f) { f.rate *= 1.15; });
+    },
+    runtime: castleRuntime({
+      heroLight: { color: '#ffd8b0', r: 6.5, intensity: 0.55 },
+      mist: { n: 6, color: '#4a3c34', alpha: 0.16, r: 5 },
+      spots: { sparks: EMIT.sparks, smoke: EMIT.smoke }, rates: { sparks: 0.45, smoke: 1.4 }, lowOff: { smoke: true }, reach: { sparks: 22, smoke: 26 },
+      ambient: [{ rate: 1.5, fn: function (emit, f, q, W, rnd) {
+        var a = rnd() * TAU, d = sqrt(rnd()) * 12;
+        emit({ x: f[0] + sin(a) * d, y: 0.4 + rnd() * 2.6, z: f[2] + cos(a) * d, count: 1, dir: [0, 1, 0], spread: 1, speed: [0.1, 0.35], life: [2.5, 4.5], size: [0.012, 0.022], sizeEnd: 0.004, color: '#ffb050', color2: '#a8300c', alpha: 0.95, gravity: -0.12, drag: 0.2, additive: true, shape: 'soft' });
+      } }]
+    }),
+    life: {
+      rim: 0.85, rimColor: '#a8c4ff', glow: 1.45, shafts: 0.45, shaftColor: '#ffc890', wind: 0.1,
+      air: { motes: 0.6, embers: 1.3, ash: 0.35, leaves: 0 },
+      critters: { moths: 0.2, rats: 0.6, crows: 0, birds: 0 },
+      colors: { mote: '#ffd8a8', ember: '#ff8a2a', ash: '#4a4440' }
+    }
+  };
+
+  // ================================================================== LIBRARY: candlelight, dust motes, deep wood
+  var LIBRARY = {
+    env: env({
+      sunDir: [0.5, 0.74, 0.46], sunColor: [1.0, 0.8, 0.56], sunIntensity: 0.62,
+      skyColor: [0.38, 0.34, 0.5], skyIntensity: 0.42, groundColor: [0.46, 0.32, 0.2], groundIntensity: 0.38,
+      zenith: [0.07, 0.06, 0.08], horizon: [0.28, 0.21, 0.17], fogDensity: 0.011, fogStart: 9, fogMax: 0.9, sunGlow: 0.5,
+      exposure: 1.14, knee: 0.64, saturation: 0.95, rim: 0.36, windStrength: 0.02,
+      mist: 0.24, mistDensity: 0.035, mistFalloff: 0.5, mistStart: 11, mistColor: [0.42, 0.34, 0.27],
+      contrast: 0.28, vignette: 0.5, vignetteRadius: 0.3, gradeShadow: [0.06, 0.03, 0.08], gradeHigh: [1.1, 1.0, 0.84]
+    }),
+    palette: {
+      wood: '#5a3c26', plank: '#5e4028', carpet: '#24404c', tile: '#8a7a64', stone: '#6c665e', void: '#0c0a0c',
+      plaster: '#b8a88a', timber: '#3a2616', stoneWall: '#7a6e60', stoneDark: '#4a4038', woodDark: '#3a2414', woodLight: '#7e5a36',
+      trim: '#cdb88a', gold: '#c8a040', metal: '#a88a4a', iron: '#3a3634', canvas: '#c8b890',
+      cloth: ['#24404c', '#6a1e2a', '#a8862c', '#3a2a56']
+    },
+    lineupGround: '#5a3c26',
+    post: function (p, g) {
+      if (p.kind === 'wall' || p.kind === 'doorway') stain(g, { y0: 2.4, y1: 4.2, up: true, tint: '#2a2018', amount: 0.4, freq: 1.4, ph: hsh(p.id, 'lw') * 9 });
+      if (p.kind === 'bookshelf') groundAO(g, 2.6, 0.62); else if (p.kind !== 'wall') groundAO(g, 1.2, 0.72);
+    },
+    dress: function (out) {
+      var layout = out.layout, P = KD.env.arch.pal(out.theme), A = KD.env.arch, mo = out.mood, R = new KD.RNG(5151), m = new A.Mesh(5151);
+      mo.emit = { candle: [] }; mo.pools = [];
+      // floating candles over the open aisles (2.8 - 3.5 m, far above any head)
+      var spots = spaced(floorSpots(layout, 4, { salt: 'lib', clear: 1.6 }), 6.5, 44), n = 0;
+      spots.forEach(function (s) {
+        var y = 2.9 + hsh(s.x + ',' + s.z, 'cy') * 0.5, flames = floatCandles(m, P, R, s.x, y, s.z);
+        flames.forEach(function (f, i) { if (i < 2) mo.emit.candle.push({ x: f[0], y: f[1], z: f[2], rate: 1 }); });
+        lifeSpot(out, 'glow', { x: s.x, y: y + 0.15, z: s.z, color: '#ffc870', r: 0.55, pool: 2.4, flicker: 0.4 });
+        if (n++ % 4 === 0) addLight(out, { x: s.x, y: y + 0.2, z: s.z, color: '#ffbe6a', r: 6, intensity: 1.1, flicker: 0.35 });
+      });
+      pushStatic(out, m);
+      // high windows: dusty light shafts falling into the halls
+      wallSpots(layout, { test: function (p) { return p.style === 'interior'; }, step: 6, spacing: 9, cap: 24, salt: 'lsh', depth: 0.6 }).forEach(function (s) {
+        lifeSpot(out, 'shaft', { x: s.x + s.nx * 0.8, z: s.z + s.nz * 0.8, y: 5.5, w: 0.7, color: '#ffe0a8' });
+      });
+    },
+    runtime: castleRuntime({
+      heroLight: { color: '#ffe2b8', r: 7, intensity: 0.6 },
+      mist: { n: 6, color: '#5a4636', alpha: 0.13, r: 5 },
+      spots: { candle: EMIT.candle }, rates: { candle: 2.2 }, reach: { candle: 24 },
+      ambient: [{ rate: 0.55, fn: function (emit, f, q, W, rnd) {          // a loose page drifting down from the shelves
+        var a = rnd() * TAU, d = 2 + sqrt(rnd()) * 11;
+        emit({ x: f[0] + sin(a) * d, y: 3.4 + rnd() * 1.2, z: f[2] + cos(a) * d, count: 1, dir: [W.x, -0.2, W.z], spread: 1.2, speed: [0.15, 0.4], life: [6, 9], size: [0.07, 0.09], sizeEnd: 0.07,
+          color: '#e8dcc0', color2: '#c8b890', alpha: 0.95, gravity: 0.12, drag: 2.2, spin: 2.2, additive: false, shape: 'shard', bounce: 0 });
+      } }]
+    }),
+    life: {
+      rim: 0.7, rimColor: '#ffd9a0', glow: 1.35, shafts: 0.95, shaftColor: '#ffe0a8', wind: 0,
+      air: { motes: 1.7, embers: 0, ash: 0, leaves: 0 },
+      critters: { moths: 0.9, rats: 0.35, crows: 0, birds: 0 },
+      colors: { mote: '#ffe8c0', moth: '#d8c8a8' }
+    }
+  };
+
+  // ================================================================== CHAPEL: stained-glass colour shafts
+  var CHAPEL = {
+    env: env({
+      sunDir: [0.36, 0.8, 0.48], sunColor: [0.86, 0.86, 1.0], sunIntensity: 0.92,
+      skyColor: [0.44, 0.44, 0.64], skyIntensity: 0.5, groundColor: [0.42, 0.36, 0.44], groundIntensity: 0.36,
+      zenith: [0.1, 0.1, 0.16], horizon: [0.42, 0.42, 0.56], fogDensity: 0.009, fogStart: 10, fogMax: 0.88, sunGlow: 0.6,
+      exposure: 1.1, knee: 0.66, saturation: 0.98, rim: 0.4, windStrength: 0.02,
+      mist: 0.3, mistDensity: 0.035, mistFalloff: 0.5, mistStart: 10, mistColor: [0.56, 0.52, 0.62],
+      contrast: 0.24, vignette: 0.42, vignetteRadius: 0.32, gradeShadow: [0.04, 0.03, 0.1], gradeHigh: [1.02, 1.0, 1.06]
+    }),
+    palette: {
+      tile: '#8a8490', carpet: '#5e1626', stone: '#8e8a90', wood: '#5a4030', void: '#0e0c12',
+      plaster: '#c8c4c8', timber: '#3e2e24', stoneWall: '#9a96a0', stoneDark: '#5e5a66', woodDark: '#3a2a20', woodLight: '#8a6a48',
+      trim: '#e0d8c4', gold: '#d4b050', metal: '#b09858', window: '#7aa8e0', bone: '#e2dccc',
+      cloth: ['#6a1a2a', '#d8d0bc', '#c8a040', '#3a2a6a']
+    },
+    lineupGround: '#a8a0a2',
+    post: function (p, g) {
+      if (p.kind === 'wall' || p.kind === 'doorway' || p.kind === 'pillar') stain(g, { y0: 0, y1: 1.0, tint: '#4a4654', amount: 0.3, freq: 2.4, ph: hsh(p.id, 'cw') * 7 });
+      if (p.kind === 'statue') { stain(g, { y0: 0, y1: 4, tint: '#6a6672', amount: 0.25, freq: 6 }); }
+      if (p.kind !== 'wall') groundAO(g, 1.3, 0.74);
+    },
+    dress: function (out) {
+      var layout = out.layout, P = KD.env.arch.pal(out.theme), A = KD.env.arch, mo = out.mood, R = new KD.RNG(3131), m = new A.Mesh(3131);
+      mo.emit = { incense: [] }; mo.pools = [];
+      // stained-glass windows on the walls; a coloured shaft in front of each, a coloured pool where it lands
+      wallSpots(layout, { test: function (p) { return p.style === 'interior'; }, step: 3.6, spacing: 4.8, cap: 80, salt: 'sg', halfW: 0.75 }).forEach(function (s) {
+        m.push(); m.translate(s.x, 0, s.z); m.rotY(s.yaw);
+        var c = stainedWindow(m, P, R, 1.75, 0.9, 1.95);
+        m.pop();
+        var hex = KD.gfx.color.toHex(c);
+        lifeSpot(out, 'shaft', { x: s.x + s.nx * 0.5, z: s.z + s.nz * 0.5, y: 3.3, w: 0.6, color: hex });
+        mo.pools.push({ x: s.x + s.nx * 2.2, z: s.z + s.nz * 2.2, r: 1.5, color: hex, a: 0.2, pulse: 0.35 });
+        mo.pools.push({ x: s.x + s.nx * 0.7, z: s.z + s.nz * 0.7, r: 0.9, color: hex, a: 0.16, pulse: 0.2 });
+      });
+      pushStatic(out, m);
+      (layout.pieces || []).forEach(function (p) { if (p.kind === 'altar' && hsh(p.id, 'inc') < 0.6) mo.emit.incense.push({ x: p.x, y: 1.15, z: p.z }); });
+    },
+    /** Candles burn a pale gold and softer, so the coloured glass reads (the shrine and Bloom lights keep theirs). */
+    lateDress: function (out) {
+      var by = pieceAt(out.layout, { brazier: 1, altar: 1 });
+      out.lights = out.lights.map(function (l) { if (l.mood || !by(l)) return l; return copy(l, { color: '#ffd9a0', intensity: (l.intensity || 1.4) * 0.6, r: (l.r || 8) * 0.8 }); });
+    },
+    runtime: castleRuntime({
+      mist: { n: 7, color: '#8a84a0', alpha: 0.12, r: 5 },
+      pools: true,
+      spots: { incense: EMIT.incense }, rates: { incense: 1.4 }, lowOff: { incense: true }, reach: { incense: 24 }
+    }),
+    life: {
+      rim: 0.8, rimColor: '#c8c0ff', glow: 1.25, shafts: 1.35, shaftColor: '#e8e4ff', wind: 0,
+      air: { motes: 1.25, embers: 0, ash: 0, leaves: 0 },
+      critters: { moths: 0.4, rats: 0.1, crows: 0, birds: 0 },
+      colors: { mote: '#fff2d0' }
+    }
+  };
+
+  // ================================================================== DUNGEONS: cold green torchlight
+  var GREEN = '#5dffa0', GREEN2 = '#1e8a5a';
+  var DUNGEON = {
+    env: env({
+      sunDir: [0.3, 0.86, 0.42], sunColor: [0.62, 0.82, 0.74], sunIntensity: 0.4,
+      skyColor: [0.24, 0.34, 0.36], skyIntensity: 0.46, groundColor: [0.2, 0.26, 0.22], groundIntensity: 0.32,
+      zenith: [0.03, 0.05, 0.05], horizon: [0.12, 0.18, 0.16], fogDensity: 0.015, fogStart: 6, fogMax: 0.92, sunGlow: 0.2,
+      exposure: 1.18, knee: 0.62, saturation: 0.9, rim: 0.32, windStrength: 0.0,
+      mist: 0.45, mistDensity: 0.05, mistFalloff: 0.6, mistStart: 7, mistColor: [0.2, 0.32, 0.26],
+      contrast: 0.32, vignette: 0.55, vignetteRadius: 0.28, gradeShadow: [0.02, 0.06, 0.05], gradeHigh: [0.94, 1.04, 0.96]
+    }),
+    palette: {
+      stone: '#4e524c', cobble: '#464a44', dirt: '#4a4436', mud: '#3a3a2c', void: '#060807', plank: '#4e4030', wood: '#4e3e2c', sand: '#6a6250',
+      plaster: '#7a7c6e', timber: '#2e2418', stoneWall: '#5a5e56', stoneDark: '#383c36', brick: '#5a3e34', metal: '#5e6a6e', iron: '#34383c', rust: '#6a3e26',
+      woodDark: '#2e2418', woodLight: '#5e4c36', bone: '#c8c4aa', moss: '#4a6a34',
+      cloth: ['#4a1e1e', '#2a2e30', '#5a5a2c', '#3a2e3a']
+    },
+    lineupGround: '#4e524c',
+    post: function (p, g) {
+      if (p.kind === 'wall' || p.kind === 'doorway' || p.kind === 'pillar') {      // moss and damp at the foot, wet sheen
+        stain(g, { y0: 0, y1: 1.3, tint: '#3a5a2c', amount: 0.6, freq: 1.9, ph: hsh(p.id, 'dm') * 9, wet: 0.35 });
+        stain(g, { y0: 2.4, y1: 4.2, up: true, tint: '#1a201c', amount: 0.4, freq: 1.2 });
+      }
+      if (p.kind === 'brazier') glowTint(g, GREEN, 1.2);
+      if (p.kind === 'cage' || p.kind === 'torture_device') stain(g, { y0: 0, y1: 3, tint: '#6a3e26', amount: 0.35, freq: 5 });
+      if (p.kind !== 'wall') groundAO(g, 1.3, 0.66);
+    },
+    dress: function (out) {
+      var layout = out.layout, P = KD.env.arch.pal(out.theme), A = KD.env.arch, mo = out.mood, R = new KD.RNG(6161), m = new A.Mesh(6161);
+      mo.emit = { drip: [] }; mo.pools = [];
+      wallSpots(layout, { test: function (p) { return p.style === 'interior'; }, step: 3.4, spacing: 5, cap: 52, salt: 'dch' }).forEach(function (s, i) {
+        m.push(); m.translate(s.x, 0, s.z); m.rotY(s.yaw);
+        wallChains(m, P, R, 2.55 + R.next() * 0.4);
+        m.pop();
+        if (i % 2 === 0) mo.emit.drip.push({ x: s.x + s.nx * 0.12, y: 3.9, z: s.z + s.nz * 0.12, rate: 0.5 + R.next() });
+        if (i % 3 === 0) mo.pools.push({ x: s.x + s.nx * 1.2, z: s.z + s.nz * 1.2, r: 1.3, color: '#2a5a44', a: 0.18, pulse: 0.2 });
+      });
+      pushStatic(out, m);
+    },
+    /** Every fire down here burns a cold green (the shrine and Bloom lights keep their own colours). */
+    lateDress: function (out) {
+      var by = pieceAt(out.layout, { brazier: 1, campfire: 1 });
+      out.lights = out.lights.map(function (l) { if (l.mood || !by(l)) return l; return copy(l, { color: hsh(l.x + ',' + l.z, 'dg') < 0.5 ? GREEN : '#7affc8', intensity: (l.intensity || 1.4) * 1.1 }); });
+      out.flames.forEach(function (f) { f.color = '#d0ffe0'; f.color2 = GREEN2; });
+    },
+    runtime: castleRuntime({
+      heroLight: { color: '#cfffe8', r: 7, intensity: 0.65 },
+      mist: { n: 10, color: '#2e5a46', alpha: 0.2, r: 5 },
+      pools: true,
+      spots: { drip: EMIT.drip }, rates: { drip: 0.6 }, reach: { drip: 18 }
+    }),
+    life: {
+      rim: 0.95, rimColor: '#7affc0', glow: 1.3, shafts: 0, wind: 0,
+      air: { motes: 0.35, embers: 0, ash: 0, leaves: 0 },
+      critters: { rats: 1.7, moths: 0.25, crows: 0, birds: 0 },
+      colors: { mote: '#a8ffd0', moth: '#b8d8c0' }
+    }
+  };
+
+  // ================================================================== TOWERS: wind, high sky
+  var TOWERS = {
+    env: env({
+      sunDir: [0.55, 0.6, 0.5], sunColor: [1.0, 0.9, 0.76], sunIntensity: 1.38,
+      skyColor: [0.62, 0.74, 0.96], skyIntensity: 0.56, groundColor: [0.56, 0.56, 0.6], groundIntensity: 0.4,
+      zenith: [0.16, 0.32, 0.68], horizon: [0.84, 0.88, 0.92], fogDensity: 0.0042, fogStart: 24, fogMax: 0.85, sunGlow: 1.3,
+      exposure: 1.04, knee: 0.7, saturation: 1.0, rim: 0.4, clouds: true, cloudSpeed: 7, windStrength: 0.22,
+      mist: 0.15, mistDensity: 0.02, mistFalloff: 0.15, mistStart: 26, mistColor: [0.86, 0.9, 0.96],
+      contrast: 0.14, vignette: 0.16, vignetteRadius: 0.36, gradeShadow: [0.03, 0.04, 0.09], gradeHigh: [1.02, 1.0, 0.96]
+    }),
+    palette: {
+      stone: '#8e8e92', road_cobble: '#86868a', cobble: '#808084', plank: '#7a6448', void: '#b8c8e0', roof: '#4a5a78',
+      stoneWall: '#a6a4a2', stoneDark: '#6a6a70', trim: '#dcd6c6', roofA: '#3e5280', roofB: '#4e6690', metal: '#9aa6b8', iron: '#4a4e56',
+      cloth: ['#2e4a8c', '#8a2a30', '#d0a040', '#e8e2d0']
+    },
+    lineupGround: '#8e8e92',
+    post: function (p, g) { if (p.kind === 'wall' || p.kind === 'roof_block') stain(g, { y0: -20, y1: 1.2, tint: '#6a705e', amount: 0.25, freq: 2.2, ph: hsh(p.id, 'tw') * 5 }); },
+    dress: function (out) {
+      var layout = out.layout, P = KD.env.arch.pal(out.theme), A = KD.env.arch, mo = out.mood, R = new KD.RNG(7171), m = new A.Mesh(7171), mc = new A.Mesh(7172);
+      // pennants snapping in the wind on the battlement walls (on the wall top, inside its footprint)
+      var cols = [P.cloth[0], P.cloth[1], P.cloth[2], P.cloth[0]], nP = 0;
+      (layout.pieces || []).forEach(function (p) {
+        if (p.kind !== 'wall' || p.style !== 'battlement' || hsh(p.id, 'pen') > 0.4 || nP >= 40) return;
+        var L = +p.len || 1; if (L < 2) return;
+        var w = world(p, (hsh(p.id, 'pu') - 0.5) * (L - 1.2), 0);
+        m.push(); m.translate(w[0], 0, w[1]); m.rotY((out.theme.env && out.theme.env.windYaw !== undefined ? out.theme.env.windYaw : 0.6) - PI / 2);      // the flag streams downwind
+        wallPennant(m, P, R, +p.h || 1.1, cols[nP % cols.length]);
+        m.pop(); nP++;
+      });
+      pushStatic(out, m);
+      // a sea of clouds far below the walkways (over the void cells), self-lit so it reads bright
+      var VOID = KD.gen.SURF.void, cloudCol = [0.9, 0.9, 0.96], step = 7, x, z, nC = 0;
+      for (z = step / 2; z < layout.d; z += step) for (x = step / 2; x < layout.w; x += step) {
+        if (surfAt(layout, x, z) !== VOID || hsh(x + ',' + z, 'cl') > 0.7 || nC > 220) continue;
+        cloud(mc, R, x + (R.next() - 0.5) * step, -11 - R.next() * 6, z + (R.next() - 0.5) * step, 2.2 + R.next() * 2.2, cloudCol); nC++;
+      }
+      var g = mc.done();
+      if (g.idx.length) { out.statics.push({ geom: g, pos: [0, 0, 0], yaw: 0, tag: 'piece', castShadow: false }); out.stats.tris.pieces += g.idx.length / 3; }
+    },
+    runtime: castleRuntime({
+      ambient: [
+        { rate: 3.2, fn: function (emit, f, q, W, rnd) {          // wind streaks across the view
+          var a = rnd() * TAU, d = sqrt(rnd()) * 14;
+          emit({ x: f[0] + sin(a) * d - W.x * 6, y: 0.6 + rnd() * 3.2, z: f[2] + cos(a) * d - W.z * 6, count: 1, dir: [W.x, 0.02, W.z], spread: 0.08, speed: [9, 14], life: [0.6, 1.1], size: [0.012, 0.02], sizeEnd: 0.01,
+            color: '#ffffff', color2: '#dfe8ff', alpha: 0.28, gravity: 0, drag: 0, additive: true, shape: 'spark', stretch: 14 });
+        } },
+        { rate: 0.7, low: false, fn: function (emit, f, q, W, rnd) {   // cloud wisps drifting past below the walls
+          var a = rnd() * TAU, d = 8 + rnd() * 16;
+          emit({ x: f[0] + sin(a) * d, y: -4 - rnd() * 4, z: f[2] + cos(a) * d, count: 1, dir: [W.x, 0, W.z], spread: 0.2, speed: [1.5, 2.6], life: [6, 9], size: [1.2, 1.8], sizeEnd: 3.4, color: '#f2f4fa', color2: '#dde4f2', alpha: 0.16, gravity: 0, drag: 0, additive: false, shape: 'soft' });
+        } }
+      ]
+    }),
+    life: {
+      rim: 0.55, rimColor: '#ffffff', wind: 2.4, gust: 0.95, glow: 0.9, shafts: 0,
+      air: { motes: 0.25, embers: 0.2, ash: 0, leaves: 0 },
+      critters: { birds: 1.3, crows: 0.8, moths: 0, rats: 0 },
+      colors: { bird: '#e9e6df', mote: '#ffffff' }
+    }
+  };
+
+  // ================================================================== THRONE ROOM: royal crimson and gold turned sinister
+  var VIOLET = '#b46bff';
+  var THRONE = {
+    env: env({
+      sunDir: [0.42, 0.78, 0.46], sunColor: [0.96, 0.56, 0.5], sunIntensity: 0.74,
+      skyColor: [0.4, 0.28, 0.52], skyIntensity: 0.5, groundColor: [0.42, 0.18, 0.18], groundIntensity: 0.38,
+      zenith: [0.06, 0.03, 0.06], horizon: [0.3, 0.14, 0.2], fogDensity: 0.01, fogStart: 11, fogMax: 0.9, sunGlow: 0.6,
+      exposure: 1.12, knee: 0.64, saturation: 1.0, rim: 0.4, windStrength: 0.02,
+      mist: 0.34, mistDensity: 0.04, mistFalloff: 0.5, mistStart: 11, mistColor: [0.32, 0.16, 0.24],
+      contrast: 0.34, vignette: 0.55, vignetteRadius: 0.28, gradeShadow: [0.08, 0.0, 0.08], gradeHigh: [1.08, 0.96, 0.86]
+    }),
+    palette: {
+      tile: '#6a5a5a', carpet: '#7a1424', stone: '#5e5458', wood: '#4a2a22', void: '#0a0608',
+      plaster: '#8a7a78', timber: '#2e1a16', stoneWall: '#6e6066', stoneDark: '#3e3238', woodDark: '#2e1a16', woodLight: '#6a4430',
+      trim: '#b89850', gold: '#c09030', metal: '#a08040', window: '#c84a5a', iron: '#34303a', bone: '#d8ccb8',
+      cloth: ['#7a1424', '#2a1a3a', '#c09030', '#d8ccb8']
+    },
+    lineupGround: '#6a5a5a',
+    post: function (p, g) {
+      if (p.kind === 'wall' || p.kind === 'doorway' || p.kind === 'pillar') stain(g, { y0: 2.6, y1: 5.2, up: true, tint: '#1a0e14', amount: 0.45, freq: 1.3, ph: hsh(p.id, 'tr') * 9 });
+      if (p.kind === 'statue') { cast(g, '#8a7a8a', 0.18); stain(g, { y0: 0, y1: 4, tint: '#2a1e26', amount: 0.3, freq: 5 }); }
+      if (p.kind === 'brazier' && p.style === 'bowl') glowTint(g, VIOLET, 1.25);
+      if (p.kind !== 'wall') groundAO(g, 1.3, 0.7);
+    },
+    dress: function (out) {
+      var layout = out.layout, P = KD.env.arch.pal(out.theme), A = KD.env.arch, mo = out.mood, R = new KD.RNG(9191), m = new A.Mesh(9191);
+      mo.emit = { ghost: [] }; mo.pools = [];
+      // tall crimson banners with the gold crown on the walls; some torn
+      wallSpots(layout, { test: function (p) { return p.style === 'interior'; }, step: 4, spacing: 6, cap: 46, salt: 'tb', halfW: 0.75 }).forEach(function (s, i) {
+        var top = min(s.h - 0.25, 4.7), h = min(2.6, top - 2.0), torn = hsh(s.x + ',' + s.z, 'torn') < 0.35;
+        m.push(); m.translate(s.x, 0, s.z); m.rotY(s.yaw);
+        A.banner(m, 0, top, 1.05, h, { col: i % 5 === 4 ? P.cloth[1] : P.cloth[0], stripe: P.gold, tail: torn ? 'swallow' : 'point', emblem: 'crown', emblemCol: P.gold, rod: P.iron, z: 0.06 });
+        m.pop();
+      });
+      pushStatic(out, m);
+      (layout.pieces || []).forEach(function (p) {
+        if (p.kind === 'brazier' && p.style === 'bowl') { mo.emit.ghost.push({ x: p.x, y: 1.1, z: p.z }); mo.pools.push({ x: p.x, z: p.z, r: 2.2, color: VIOLET, a: 0.16, pulse: 0.4 }); }
+        if (p.kind === 'throne') mo.pools.push({ x: p.x, z: p.z, r: 5, color: '#ff3a4a', a: 0.12, pulse: 0.6 });
+      });
+    },
+    /** Bowl braziers burn with violet ghostfire, the iron ones a deep crimson. */
+    lateDress: function (out) {
+      var by = pieceAt(out.layout, { brazier: 1 });
+      out.lights = out.lights.map(function (l) {
+        var p = l.mood ? null : by(l);
+        if (!p) return l;
+        return copy(l, p.style === 'bowl' ? { color: VIOLET, intensity: (l.intensity || 1.4) * 0.9 } : { color: '#ff5a3a' });
+      });
+      var flameAt = {};
+      (out.layout.pieces || []).forEach(function (p) { if (p.kind === 'brazier') flameAt[p.x + ',' + p.z] = p.style; });
+      out.flames.forEach(function (f) { var st = flameAt[f.x + ',' + f.z]; if (st === 'bowl') { f.color = '#f0d8ff'; f.color2 = '#7a2aff'; } else if (st) { f.color = '#ffc070'; f.color2 = '#c81e1e'; } });
+    },
+    runtime: castleRuntime({
+      heroLight: { color: '#ffd0d8', r: 7, intensity: 0.55 },
+      mist: { n: 8, color: '#4a1a2a', alpha: 0.18, r: 5.5 },
+      pools: true,
+      spots: { ghost: EMIT.ghost }, rates: { ghost: 2.5 }, reach: { ghost: 24 },
+      ambient: [{ rate: 2.2, fn: function (emit, f, q, W, rnd) {          // ash falling through the hall
+        var a = rnd() * TAU, d = sqrt(rnd()) * 13;
+        emit({ x: f[0] + sin(a) * d, y: 4 + rnd() * 1.5, z: f[2] + cos(a) * d, count: 1, dir: [W.x, -0.3, W.z], spread: 0.8, speed: [0.1, 0.3], life: [6, 9], size: [0.02, 0.035], sizeEnd: 0.02,
+          color: '#4a4044', color2: '#2a2226', alpha: 0.85, gravity: 0.1, drag: 1.4, spin: 2.5, additive: false, shape: 'shard' });
+      } }]
+    }),
+    life: {
+      rim: 0.95, rimColor: '#ff7a8a', glow: 1.45, shafts: 0.75, shaftColor: '#d8c8ff', wind: 0.05,
+      air: { motes: 0.5, embers: 0.8, ash: 0.45, leaves: 0 },
+      critters: { moths: 0, rats: 0.2, crows: 0, birds: 0 },
+      colors: { mote: '#ffd0c0', ember: '#ff4a3a', ash: '#3a3034' }
+    }
+  };
+
+  M.register('castle_courtyard', COURTYARD);
+  M.register('castle_armory', ARMORY);
+  M.register('castle_library', LIBRARY);
+  M.register('castle_chapel', CHAPEL);
+  M.register('castle_dungeon', DUNGEON);
+  M.register('castle_towers', TOWERS);
+  M.register('castle_throne', THRONE);
+  for (var a in ACT4) M.AREAS[a] = ACT4[a];
+  M.act4 = { wallSpots: wallSpots, floorSpots: floorSpots, stain: stain, glowTint: glowTint, autumn: autumn };
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
