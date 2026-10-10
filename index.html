@@ -3221,7 +3221,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.13';
+  KD.VERSION = '0.7.14';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -72749,10 +72749,111 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   bossLook('a3_auctioneer', 'auctioneer', { area: 'market_district', rig: 'humanoid', eyes: 'paint', eyeOpt: { brow: '#2a2020' } });
   bossLook('a3_silverhand', 'madam_silverhand', { area: 'market_district', rig: 'humanoid', eyes: 'glow', glow: '#d8f0ff', eyeOpt: { r: 0.022, slant: 0.35 } });
 
+  // =========================================================================================== SEWERS
+  // Sickly greens, teal murk, rust and bone; toxic green and cold teal glows; everything looks wet (a bright top rim).
+  var SLIME_G = '#9cff5a', WET = { bottom: 0.55, top: 1.18, rim: 0.3, cool: [0.8, 0.92, 0.9], warm: [1.0, 1.04, 0.92] };
+  function drips(pts, c, seed) { return pts.map(function (p, i) { var d = glow(geo.blob({ r: [p[3] * 0.6, p[3] * 1.4, p[3] * 0.6], sides: 6, rings: 4, color: c || SLIME_G, seed: (seed || 1) + i }), 0.75); return T(d, p[0], p[1] - p[3], p[2]); }); }
+
+  // Sludge Heap (and the Sovereign's spawn): a heap of green muck with a sunken skull, ribs, a rusty helm and a boot in
+  // it, glowing slime oozing down its sides.
+  look('a3_sludge', {
+    area: 'sewers', colors: { main: '#4e6a2a', alt: '#2a3a20', glow: '#b6f04a' }, paint: WET, grow: null, scale: null,
+    dress: function (u, spec) {
+      if (!u.has('body')) return;
+      u.add('body', 'junk', function () {
+        var out = [geo.skull({ at: [-0.3, 0.42, 0.2], r: 0.09, color: '#d8d0b0' }), T(R(metal(geo.lathe([[0, 0], [0.14, 0.0], [0.13, 0.08], [0.06, 0.14], [0, 0.15]], 7, '#6a4a34'), 0.4), 0.5, 0, 0.6), 0.36, 0.36, -0.1)];
+        [0, 1, 2].forEach(function (i) { out.push(geo.bone([0.05 + i * 0.07, 0.36, -0.3], [0.1 + i * 0.07, 0.5, -0.38], 0.022, '#c8c0a0')); });
+        out.push(T(R(geo.bevelBox({ w: 0.1, h: 0.18, d: 0.2, b: 0.3, color: '#3a2a20' }), 0.3, 0.6, 0.9), 0.2, 0.34, 0.4));
+        return out.concat(drips([[0.55, 0.3, 0.1, 0.05], [-0.5, 0.28, -0.2, 0.04], [0.1, 0.32, 0.55, 0.045], [-0.2, 0.3, -0.55, 0.04]], col(spec, 'glow', SLIME_G), 3));
+      });
+    }
+  });
+
+  // Canal Eel: a slick teal eel with a pale belly, glowing cold spots, long barbels and a ragged fin crest.
+  look('a3_eel', {
+    area: 'sewers', colors: { main: '#24434e', alt: '#a8b84a', glow: '#7ae8ff' }, paint: WET, grow: null, scale: { head: 1.12 },
+    dress: function (u, spec) {
+      u.add('head', 'barbels', function () {
+        var out = [];
+        [1, -1].forEach(function (sd) { out.push(geo.cord([[sd * 0.07, -0.02, 0.28], [sd * 0.16, -0.06, 0.32], [sd * 0.24, -0.12, 0.26]], 0.008, '#3a5a5a', 3)); });
+        out.push(T(geo.tuft({ n: 4, len: 0.12, r: 0.03, spread: 0.4, seed: 151, color: '#2a4a52', tip: '#7ab8c0', dir: [0, 1, -1] }), 0, 0.09, 0.0));
+        return out;
+      }, LOCAL);
+    }
+  });
+
+  // Drain Tick: a bloated blood tick, plum-red and swollen, glowing veins on its back, bristles, bone-white beak.
+  look('a3_tick', {
+    area: 'sewers', colors: { main: '#6a2a3a', alt: '#2a2228', glow: '#ff6a5a' }, paint: WET, grow: null, scale: null,
+    dress: function (u, spec) {
+      u.add('chest', 'veins', function () {
+        var out = [], c = col(spec, 'glow', '#ff6a5a');
+        [[0.12, -0.05], [-0.14, -0.1], [0.02, -0.38], [0.18, -0.3], [-0.16, -0.34]].forEach(function (p, i) { out.push(T(glow(geo.blob({ r: [0.035, 0.012, 0.06], sides: 5, rings: 3, color: c }), 0.7), p[0], 0.4 - Math.abs(p[1]) * 0.12, p[1] - 0.05)); });
+        [-0.2, 0, 0.2].forEach(function (x, i) { out.push(T(geo.tuft({ n: 3, len: 0.1, r: 0.02, spread: 0.6, seed: 160 + i, color: '#2a2228', tip: '#6a5a5a', dir: [x, 1, -0.3] }), x, 0.38, -0.2)); });
+        return out;
+      }, LOCAL);
+    }
+  });
+
+  // Sluice Fungus: a mottled violet toadstool with glowing green gills, a cluster of little glowing caps at its foot.
+  look('a3_fungus', {
+    area: 'sewers', colors: { main: '#6a4a6e', alt: '#c8c08a', glow: '#7affb0' }, paint: { bottom: 0.6, top: 1.14, rim: 0.2 }, grow: null, scale: null,
+    dress: function (u, spec) {
+      var c = col(spec, 'glow', '#7affb0');
+      u.add('head', 'gills', function () { return [T(glow(g.cylinder({ r: 0.5, h: 0.03, sides: 9, color: c }), 0.6), 0, 0.0, 0)]; }, LOCAL);
+      u.add('stem', 'brood', function () {
+        var out = [];
+        [[0.3, -0.3, 0.09], [-0.32, 0.26, 0.07], [0.36, 0.18, 0.06], [-0.2, -0.38, 0.08]].forEach(function (p, i) {
+          out.push(T(g.cylinder({ r: p[2] * 0.3, h: p[2] * 1.6, sides: 5, color: '#d8d0b0' }), p[0], p[2] * 0.8, p[1]));
+          out.push(T(glow(geo.blob({ r: [p[2], p[2] * 0.55, p[2]], sides: 7, rings: 3, color: i % 2 ? c : '#b0ff6a' }), 0.7), p[0], p[2] * 1.6, p[1]));
+        });
+        return out;
+      }, LOCAL);
+    }
+  });
+
+  // Cistern Gulper (elite): a huge sewer wyrm, slimed moss-green, barnacles and rust on its back, glowing slime drooling.
+  look('a3_gulper', {
+    area: 'sewers', colors: { main: '#3a5236', alt: '#8a7a4a', glow: '#c8f04a' }, paint: WET, grow: null, scale: { head: 1.1 },
+    dress: function (u, spec) {
+      var c = col(spec, 'glow', '#c8f04a');
+      u.add('head', 'drool', function () { return drips([[0.08, -0.06, 0.3, 0.025], [-0.07, -0.07, 0.26, 0.022], [0.0, -0.08, 0.36, 0.02]], c, 170); }, LOCAL);
+      ['seg3', 'seg5', 'seg7'].forEach(function (j, i) {
+        u.add(j, 'barnacles', function () { return [0, 1, 2].map(function (q) { return T(geo.lathe([[0, 0], [0.05, 0], [0.04, 0.04], [0.02, 0.05], [0, 0.03]], 5, '#a8a088'), (q - 1) * 0.07, 0.2 - i * 0.02, (q - 1) * 0.1); }); }, LOCAL);
+      });
+    }
+  });
+
+  // Sewer Skulker: a rat-folk dart-thrower under a sewer-green hood with a crude leather beak mask (plague-doctor
+  // style) and toxic green eyes, a bandolier of darts, a long tail.
+  look('a3_skulker', {
+    area: 'sewers', rig: 'humanoid', colors: { main: '#3e4a36', alt: '#5a4a32', skin: '#7a6a5a', glow: '#9af04a' }, noEyes: true, paint: WET,
+    dress: function (u, spec, k, m) {
+      var cloak = S.grade(col(spec, 'main', '#3e4a36'), { sat: 1, amount: 0.04 }), cloakD = S.shade(cloak, -0.32), lea = S.grade('#5a4030');
+      var fz = hood(u, cloak, cloakD, 181, { tall: false });
+      eyesGlow(u, col(spec, 'glow', '#9af04a'), { r: 0.026, slant: 0.2, z: fz + 0.01 * k, socket: null });
+      u.add('head', 'beak', function () {
+        var b = geo.lathe([[0, 0], [0.06 * k, 0.0], [0.05 * k, 0.06 * k], [0.025 * k, 0.16 * k], [0, 0.22 * k]], 6, lea); R(b, HALF + 0.35, 0, 0); T(b, 0, m.headC - m.headH * 0.18, fz - 0.01 * k);
+        return [b, T(R(g.torus({ R: 0.03 * k, r: 0.008 * k, seg: 8, sides: 3, color: BRASS }), HALF, 0, 0), m.eyeX, m.eyeY, fz + 0.012 * k), T(R(g.torus({ R: 0.03 * k, r: 0.008 * k, seg: 8, sides: 3, color: BRASS }), HALF, 0, 0), -m.eyeX, m.eyeY, fz + 0.012 * k)];
+      }, LOCAL);
+      u.add('chest', 'gear', function () {
+        var a = [m.torsoW * 0.5, m.torsoH * 0.95, m.torsoD * 0.45], b = [-m.torsoW * 0.5, m.torsoH * 0.12, m.torsoD * 0.45], out = [cowl(m, cloak, cloakD, 182), geo.cord([a, [0, m.torsoH * 0.55, m.torsoD * 0.57], b], 0.02 * k, LEATHER, 4)];
+        for (var i = 0; i < 5; i++) { var t = 0.15 + i * 0.16; out.push(geo.spike([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, m.torsoD * 0.58], [a[0] + (b[0] - a[0]) * t + 0.01 * k, a[1] + (b[1] - a[1]) * t + 0.09 * k, m.torsoD * 0.6], 0.008 * k, '#9a9a8a', '#c8f04a', 3)); }
+        return out;
+      }, LOCAL);
+      u.add('hips', 'rags', function () { return [skirt(m, cloak, cloakD, 183, 0.32, 0.6)].concat(ropeBelt(m, ROPE, m.pelvisH * 0.42), pouch(m, '#4a5a3a', -1, 184)); }, LOCAL);
+    }
+  });
+
+  bossLook('a3_alchemist', 'plague_alchemist', { area: 'sewers', rig: 'humanoid', eyes: 'glow', glow: '#9cff5a', eyeOpt: { r: 0.024, slant: 0.3 }, paint: WET });
+  bossLook('a3_ooze', 'ooze_sovereign', { area: 'sewers', paint: WET, grow: null, scale: null,
+    dress: function (u) { u.add('body', 'junk', function () { return [geo.skull({ at: [0.5, 0.9, 0.5], r: 0.13, color: '#d8d0b0' }), geo.skull({ at: [-0.6, 0.7, 0.3], r: 0.11, color: '#c8c0a0' })].concat(drips([[0.9, 0.6, 0.2, 0.08], [-0.85, 0.55, -0.3, 0.07], [0.2, 0.7, 1.0, 0.07]], SLIME_G, 190)); }); } });
+
   // =========================================================================================== enemy id -> recipe
   var BY_ID = S.ACT3_BY_ID = {
     gutter_rat: 'a3_rat', crooked_watchman: 'a3_watchman', alley_knifer: 'a3_knifer', firebottle_urchin: 'a3_urchin', rat_piper: 'a3_piper', debt_collector: 'a3_collector',
-    stall_cutpurse: 'a3_cutpurse', guild_arbalist: 'a3_arbalist', counting_golem: 'a3_golem', tonic_peddler: 'a3_peddler', gilded_bravo: 'a3_bravo'
+    stall_cutpurse: 'a3_cutpurse', guild_arbalist: 'a3_arbalist', counting_golem: 'a3_golem', tonic_peddler: 'a3_peddler', gilded_bravo: 'a3_bravo',
+    sludge_heap: 'a3_sludge', sovereign_spawn: 'a3_sludge', canal_eel: 'a3_eel', drain_tick: 'a3_tick', sluice_fungus: 'a3_fungus', cistern_gulper: 'a3_gulper', sewer_skulker: 'a3_skulker'
   };
   /** Give the city bodies their recipe (only when the data has no style of its own). */
   S.act3Assign = function () {
@@ -78428,7 +78529,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   M.register('city_rooftops', ROOFS);
   M.register('city_siege', SIEGE);
   /** Areas switched on so far (they ship one at a time; the rest stay classic until their look is done). */
-  M.ACT3_READY = ['lower_town', 'market_district'];
+  M.ACT3_READY = ['lower_town', 'market_district', 'sewers'];
   M.ACT3_READY.forEach(function (a) { if (!M.AREAS[a]) M.AREAS[a] = ACT3[a]; });
   M.act3 = { rectOf: rectOf, facingPairs: facingPairs, openFaces: openFaces, birdModel: birdModel };
 })(typeof window !== 'undefined' ? window : globalThis);
