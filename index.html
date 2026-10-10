@@ -3410,7 +3410,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.32';
+  KD.VERSION = '0.7.33';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -22451,6 +22451,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.33', date: '2026-10-10', title: 'Farm Village enemy fixes', notes: [
+      'The Blackbristle Boar\'s head is fixed: no more floating ears and brows, and its tusks no longer cover its eyes',
+      'The Carrion Crow is back to its classic look, now with the new painted shading',
+      'Small fixes on the Straw Sentinel\'s sack head and Greymaw\'s tail'
+    ] },
     { version: '0.7.32', date: '2026-10-10', title: 'Moonlit Dark Forest', notes: [
       'The Dark Forest is now a moonlit night: fireflies, drifting wisps and glowing mushrooms',
       'New looks for the goblins, spiders, trolls and the other regular foes of the Dark Forest, Mire Swamp, Bandit Camp, Old Mill and Crossroads'
@@ -73880,12 +73885,16 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   Dress.prototype.named = function (name) { return this.joints[name] || null; };
   /** Hide named parts (e.g. a plan's eye boxes or a weapon head the recipe replaces); the nodes stay for the animation. */
   Dress.prototype.hide = function (names) { var self = this; (Array.isArray(names) ? names : [names]).forEach(function (n) { var nd = self.joints[n]; if (nd && nd.mesh) nd.visible = false; }); };
-  /** Remove def nodes (static parts only: never a named joint) for which test(node) is true. */
-  Dress.prototype.drop = function (joint, test) {
-    var j = this.joints[joint], n = 0;
+  /**
+   * Remove def nodes (static parts only: never a named joint) for which test(node) is true. Only `joint`'s OWN parts
+   * (and unnamed groups under it) are searched: the walk stops at named child joints, so dropping the boar's mane boxes
+   * from 'neck' can never take the skull off the 'head' below it (w8 boar fix). o.deep: true searches the whole subtree.
+   */
+  Dress.prototype.drop = function (joint, test, o) {
+    var j = this.joints[joint], n = 0, deep = !!(o && o.deep);
     (function walk(nd) {
       var ch = nd && nd.children; if (!ch) return;
-      for (var i = ch.length - 1; i >= 0; i--) { var c = ch[i]; if (c && !c.name && test(c)) { ch.splice(i, 1); n++; } else walk(c); }
+      for (var i = ch.length - 1; i >= 0; i--) { var c = ch[i]; if (c && !c.name && test(c)) { ch.splice(i, 1); n++; } else if (c && (deep || !c.name)) walk(c); }
     })(j);
     return n;
   };
@@ -74147,6 +74156,16 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       }
       // a fuller, painted brush on the tail
       u.add('tail2', 'brush', function () { return [geo.tuft({ n: 5, len: q.tl * 0.38, r: 0.045, spread: 0.45, seed: 50, color: fur, tip: furL, dir: [0, 1, 0] })]; }, LOCAL);
+      // w8 farm fix: Greymaw's flat plume fin on the tail read as a dark board from the side and from behind; a shaggy
+      // painted plume of fur tufts along the same line takes its place (root space, rest pose: the fin's own outline)
+      if (boss && u.drop('tail', function (n) { return n.mesh === 'bla_greymaw_brush'; })) {
+        u.add('tail', 'plume', function () {
+          return fan(6, 0, 1, function (t, i) {
+            var z = -0.52 - t * 0.48, y = 0.84 - t * 0.2 + 0.05 * Math.sin(t * PI);
+            return g.translate(geo.tuft({ n: 3, len: 0.2 + 0.06 * Math.sin(t * PI), r: 0.05, spread: 0.5, seed: 56 + i, color: furD, tip: fur, dir: [0, 0.5 - t * 0.4, -1] }), 0, y, z);
+          });
+        }, { sig: 1 });
+      }
       // bone-white claws on the big paws
       ['paw_fl', 'paw_fr', 'paw_bl', 'paw_br'].forEach(function (p) {
         u.add(p, 'claws', function () { var PH = q.lw * 0.55; return fan(3, -0.035, 0.035, function (x) { return geo.spike([x, -PH * 0.75, q.lw * 1.1], [x * 1.3, -PH * 1.0, q.lw * 1.5], 0.016, BONE_D, BONE, 3); }); }, LOCAL);
@@ -74174,17 +74193,24 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       u.drop('chest', function (n) { return n.mesh === 'wedge' || n.mesh === 'spike'; });
       u.drop('head', function (n) { return n.mesh === 'box' && (n.emissive > 0.5 || (n.size && n.size[2] <= 0.031)); });
       u.add('jaw', 'tusks', function () {
-        return [1, -1].map(function (sd) { return geo.tusk([sd * sn[0] * 0.42, 0.0, sn[2] * 0.62], [sd * sn[0] * 1.05, 0.2, sn[2] * 0.5], 0.05, BONE, 0.07, sd > 0); });
+        // w8 boar fix: lower and splayed outward, so the tips no longer cross in front of the eyes (they did in every
+        // 3/4 view) and stay clear of the snout when the jaw opens
+        return [1, -1].map(function (sd) { return geo.tusk([sd * sn[0] * 0.42, 0.0, sn[2] * 0.62], [sd * sn[0] * 1.3, 0.13, sn[2] * 0.5], 0.05, BONE, 0.05, sd > 0); });
       }, LOCAL);
+      // w8 boar fix: the pig snout disc is sized to the tapered snout's end (it overhung it like a plate) and gets two
+      // nostrils; the plan's own pointed ears stay (the extra tuft "ears" doubled them into a crown of thorns) and the
+      // snout scar that stuck out of the snout like a stick is gone
+      var snZ = skullZ + hd[2] * 0.42 + sn[2] * 0.5, snY = -hd[1] * 0.14;
+      u.find('head', function (n) { return n.mesh === 'cyl8' && !n.name; }).forEach(function (n) { n.size = [sn[0] * 0.78, 0.05, sn[1] * 0.74]; n.pos = [0, snY, snZ + sn[2] * 0.5 + 0.004]; });
       u.add('head', 'face', function () {
-        var fz = skullZ + hd[2] * 0.5, out = [geo.eyes({ x: hd[0] * 0.3, y: hd[1] * 0.12, z: fz - 0.01, r: 0.024, color: glow, slant: 0.5, socket: '#0e0a0e' })];
+        // w8 boar fix: bigger eyes and a solid heavy brow ridge set into the skull (the thin tilted brow slivers read
+        // as floating black scribbles at close range)
+        var fz = skullZ + hd[2] * 0.5, out = [geo.eyes({ x: hd[0] * 0.3, y: hd[1] * 0.1, z: fz - 0.008, r: 0.03, color: glow, slant: 0.45, socket: '#0e0a0e' })];
         [1, -1].forEach(function (sd) {
-          var b = geo.bevelBox({ w: hd[0] * 0.42, h: 0.05, d: 0.09, b: 0.4, taper: [1, 0.7], color: hideD, smooth: true }); g.rotate(b, 0.25, 0, -sd * 0.3); g.translate(b, sd * hd[0] * 0.25, hd[1] * 0.27, fz - 0.035); out.push(b);
-          // ragged ears
-          out.push(g.translate(geo.tuft({ n: 2, len: 0.12, r: 0.05, spread: 0.3, seed: 60 + sd, color: hide, tip: hideD, dir: [sd, 0.6, -0.5] }), sd * hd[0] * 0.42, hd[1] * 0.34, skullZ - hd[2] * 0.1));
+          var b = geo.bevelBox({ w: hd[0] * 0.5, h: 0.075, d: 0.12, b: 0.3, taper: [1, 0.8], color: hideD }); g.rotate(b, 0.3, 0, -sd * 0.2); g.translate(b, sd * hd[0] * 0.25, hd[1] * 0.25, fz - 0.04); out.push(b);
+          // nostrils on the snout disc
+          var ns = g.scale(g.sphere({ r: 1, detail: 1, color: '#2a1418' }), 0.022, 0.03, 0.012); g.translate(ns, sd * sn[0] * 0.17, snY, snZ + sn[2] * 0.5 + 0.03); out.push(ns);
         });
-        // a scar across the snout
-        out.push(g.translate(g.rotate(geo.bevelBox({ w: 0.02, h: 0.16, d: 0.02, color: '#c8a8a0' }), 0.9, 0, 0.6), hd[0] * 0.12, hd[1] * 0.1 - sn[1] * 0.05, skullZ + hd[2] * 0.5 + 0.06));
         return out;
       }, LOCAL);
       // a ridge of long bristles from the crown to the rump
@@ -74202,12 +74228,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         out.push(g.rotate(geo.buckle({ w: 0.1, h: 0.09, color: RUST }), 0, HALF, 0));
         out[out.length - 1] = g.translate(out[out.length - 1], -r * 1.0, q.cd * 0.12, q.len * 0.18);
         out.push(geo.charm({ cord: [0, -q.cd * 0.53, q.len * 0.18], at: [0, -q.cd * 0.53 - 0.13, q.len * 0.2], kind: 'skull', r: 0.05, color: BONE }));
-        // pale old scars on the shoulders
-        [1, -1].forEach(function (sd) { [0, 1].forEach(function (k) { out.push(g.translate(g.rotate(geo.bevelBox({ w: 0.012, h: 0.15, d: 0.03, color: '#a88a90' }), 0.6, 0, sd * 0.2 * k), sd * (q.cw * 0.47 - 0.01 * k), q.cd * 0.12 - 0.03 * k, q.len * 0.3 - k * 0.07)); }); });
         return out;
       }, LOCAL);
       // a curled tail tuft and bone-pale split hooves
-      u.add('tail2', 'tuft', function () { return [geo.tuft({ n: 4, len: 0.12, r: 0.03, spread: 0.6, seed: 80, color: bristle, tip: hide, dir: [0, 1, 0] })]; }, LOCAL);
+      // w8 farm fix: a short bushy tuft (four long spikes read as a pitchfork on the end of the tail)
+      u.add('tail2', 'tuft', function () { return [geo.tuft({ n: 7, len: 0.085, r: 0.032, spread: 1.0, seed: 80, color: bristle, tip: hide, dir: [0, 1, 0] })]; }, LOCAL);
     }
   });
 
@@ -74338,10 +74363,30 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
           return [b];
         }, LOCAL);
         humEyes(u, glow, { r: 0.042, gap: 1.5, slant: -0.25, socket: '#1e1410', z: m.headZ + m.headD * 0.58, y: m.headC + m.headH * 0.1 });
+        // w8 farm fix: the plan's mouth slit (named: it opens when he shouts) sat on the old box head's front and floated
+        // in front of the rounder sack; it moves onto the bag, narrower, as a dark slit under the stitches
+        var mo = u.named('mouth');
+        if (mo && mo.offset) {
+          var my0 = mo.offset[1], qx = 1 - Math.pow(0.225 / 0.62, 2) - Math.pow((my0 - m.headC - m.headH * 0.03) / (m.headH * 0.6), 2);
+          mo.size = [m.headW * 0.45, mo.size ? mo.size[1] : 0.03 * k, 0.03 * k];
+          mo.offset = [mo.offset[0], my0, m.headZ + m.headD * 0.6 * Math.sqrt(Math.max(0.04, qx)) - 0.004 * k];
+        }
         u.add('head', 'sack', function () {
-          var fz = m.headZ + m.headD * 0.6 + 0.004, out = [];
-          out.push(geo.stitches([-m.headW * 0.3, m.headC - m.headH * 0.26, fz], [m.headW * 0.3, m.headC - m.headH * 0.26, fz], 6, 0.022 * k, thread));
-          out.push(geo.stitches([m.headW * 0.6, m.headC + m.headH * 0.4, m.headZ], [m.headW * 0.6, m.headC - m.headH * 0.4, m.headZ], 5, 0.02 * k, thread, [1, 0, 0]));
+          var out = [];
+          // w8 farm fix: the stitched mouth sits ON the sack (each stitch at the bag's surface; a flat row at the bag's
+          // widest depth floated in front of the face)
+          var bagZ = function (x, y) { var q = 1 - Math.pow(x / (m.headW * 0.62), 2) - Math.pow((y - m.headC - m.headH * 0.03) / (m.headH * 0.6), 2); return m.headZ + m.headD * 0.6 * Math.sqrt(Math.max(0.04, q)); };
+          for (var mi = 0; mi < 6; mi++) {
+            var mx = m.headW * (-0.3 + 0.12 * mi), my = m.headC - m.headH * 0.26, ms = 0.022 * k;
+            out.push(geo.rod([mx, my - ms, bagZ(mx, my - ms) - 0.002], [mx, my + ms, bagZ(mx, my + ms) - 0.002], 0.004 * k, thread, 0.004 * k, 3));
+          }
+          // w8 farm fix: the side seam follows the sack's curve, its stitches crossing it front to back (a straight seam at
+          // a fixed x floated off the bag above and below the middle, its stitches sticking straight out sideways)
+          var yc = m.headC + m.headH * 0.03;
+          for (var si = 0; si < 5; si++) {
+            var dy = m.headH * (0.36 - 0.18 * si), ex = m.headW * 0.62 * Math.sqrt(Math.max(0, 1 - Math.pow(dy / (m.headH * 0.6), 2))) - 0.003 * k;
+            out.push(geo.rod([ex, yc + dy, m.headZ - 0.02 * k], [ex, yc + dy, m.headZ + 0.02 * k], 0.0036 * k, thread, 0.0036 * k, 3));
+          }
           var ring = []; for (var i = 0; i <= 12; i++) { var a = i / 12 * TAU; ring.push([Math.sin(a) * m.headW * 0.5, m.headC - m.headH * 0.52 + Math.cos(a * 3) * 0.006, m.headZ + Math.cos(a) * m.headD * 0.5]); }
           out.push(geo.cord(ring, 0.022 * k, '#7a6448', 4, true));
           out.push(g.translate(geo.hem({ r: m.headW * 0.5, rBottom: m.headW * 0.62, h: 0.09 * k, sides: 10, teeth: 0.6, seed: 46, color: burlap }), 0, m.headC - m.headH * 0.5, m.headZ));
@@ -74353,9 +74398,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       u.add('chest', 'mantle', function () {
         var r = m.torsoW * 0.56;
         return [g.translate(geo.hem({ r: r * 0.62, rz: m.torsoD / m.torsoW * 1.25, rBottom: r * 1.25, h: 0.3 * k, sides: 12, teeth: 0.55, seed: 48, color: rag, inner: ragD }), 0, m.neckY + 0.01 * k, -0.01 * k),
-          g.translate(geo.tuft({ n: 8, len: 0.13 * k, r: 0.024 * k, spread: 1.3, seed: 49, color: straw, tip: strawL, dir: [0, 1, 0] }), 0, m.neckY - 0.01 * k, 0),
-          geo.patch({ w: 0.1 * k, h: 0.11 * k, at: [m.torsoW * 0.16, m.torsoH * 0.45, m.torsoD * 0.5 + 0.006], color: S.grade('#6e5a3a'), rot: -0.2, stitch: '#d8c8a0' }),
-          geo.patch({ w: 0.08 * k, h: 0.07 * k, at: [-m.torsoW * 0.2, m.torsoH * 0.25, m.torsoD * 0.48 + 0.006], color: S.grade('#4a5a6a'), rot: 0.3, stitch: '#d8c8a0' })];
+          // w8 farm fix: the two chest patches went (the ragged mantle covers the chest, so only their corners poked out
+          // between its teeth as loose grey shards)
+          g.translate(geo.tuft({ n: 8, len: 0.13 * k, r: 0.024 * k, spread: 1.3, seed: 49, color: straw, tip: strawL, dir: [0, 1, 0] }), 0, m.neckY - 0.01 * k, 0)];
       }, LOCAL);
       u.add('hips', 'skirt', function () {
         var r = m.pelvisW * 0.56;
@@ -74369,9 +74414,22 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   S.UNIQUE.scarecrow_reeve = 'grim_scarecrow';
 
   // =========================================================================================== CROW
-  // Carrion Crow: a big-headed ragged crow, plum-black with a purple sheen, bone-white beak and talons, red glowing eyes,
-  // tattered primaries and tail, a bone ring on one leg.
+  // Carrion Crow (w8 farm fix): the owner preferred the older bird, so the crow keeps the classic flyer build and
+  // silhouette (sleek body, plan beak, feather wings and tail, glowing eyes) and only gets the grim treatment: a subtle
+  // plum grade, the hand-painted light / shadow bands and a slightly hotter eye glow. Parts are merged per joint as for
+  // every styled enemy (fewer draw calls than the classic body).
   S.recipe('grim_crow', {
+    grade: function (c) { return S.grade(c, { sat: 0.95, amount: 0.05, value: 1.04 }); },
+    paint: { bottom: 0.72, top: 1.16, rim: 0.16 },
+    dress: function (u, spec) {
+      var glow = col(spec, 'glow', '#e8503a');
+      u.find('head', function (n) { return n.emissive > 0.5; }).forEach(function (n) { n.color = S.mix(glow, '#ff8a5a', 0.25); });
+    }
+  });
+
+  // The ragged big-headed crow of v0.7.4 (bone beak, crest, ruff, tattered feathers): kept as a look other crows can
+  // use (`body.style: 'grim_crow_ragged'`); the Carrion Crow went back to the classic build above.
+  S.recipe('grim_crow_ragged', {
     spec: function (s) { s.colors = KD.util.assign({}, s.colors || {}, { main: '#34303e', alt: '#64507a', skin: '#c9bc9c' }); return s; },
     grade: function (c) { return S.grade(c, { sat: 1, amount: 0.04, value: 1.05 }); },
     paint: { y0: 1.38, y1: 1.86, bottom: 0.7, top: 1.2, rim: 0.22 },
