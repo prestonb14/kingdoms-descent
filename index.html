@@ -3379,7 +3379,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.22';
+  KD.VERSION = '0.7.23';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -63903,6 +63903,25 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         if (A && A.music && A.music.play) A.music.play(m);
       }
 
+      // [w8 sound] area ambience (src/audio/40_ambient.js): the bed of the area theme, its living-world critters, the
+      // renderer's wind gusts, pushed down while fighting
+      var amb = { theme: null, w0: 0, duck: 0 };
+      function ambience(dt) {
+        var AM = KD.audio && KD.audio.amb; if (!AM || !AM.set) return;
+        var L = world.layout, th = L && L.theme ? L.theme : null;
+        if (th !== amb.theme) {
+          amb.theme = th; amb.w0 = 0;
+          var life = null; try { life = KD.env && KD.env.life && KD.env.life.resolve ? KD.env.life.resolve(L, null) : null; } catch (e) { life = null; }
+          AM.set(th, { life: life });
+        }
+        var r = ctx.renderer, ws = r && r.env && typeof r.env.windStrength === 'number' ? r.env.windStrength : 0;
+        if (ws > 0 && (!amb.w0 || ws < amb.w0)) amb.w0 = ws;                  // the calm level is the lowest seen
+        var want = st.bossFight ? 0.75 : (st.combat ? 0.5 : 0);
+        amb.duck += (want - amb.duck) * Math.min(1, (dt || 0) * 1.5);
+        AM.update({ wind: amb.w0 > 0 ? ws / amb.w0 : 1, duck: amb.duck });
+      }
+      st.amb = amb;
+
       return {
         state: st,
         update: function (dt) {
@@ -63917,10 +63936,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
             if (!p.dead && p.inBloom && t >= st.bloomAt) { st.bloomAt = t + 2.2; play(SND.event.bloom, null, null, 1, 1, 'world'); }
           }
           music(p);
+          ambience(dt);
         },
         dispose: function () {
           var A = KD.audio;
           if (A && A.stopAll) { try { A.stopAll(false); } catch (err) { /* audio is optional */ } }
+          if (A && A.amb && A.amb.set && amb.theme) { try { A.amb.set(null, { fade: 1 }); } catch (err2) { /* audio is optional */ } }
           ctx.audio = null;
         }
       };
@@ -91149,6 +91170,403 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/audio/40_ambient.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var A = KD.audio = KD.audio || {};
+  var U = KD.util;
+
+  /**
+   * [w8 sound] KD.audio.amb: area ambience beds (docs/AUDIO.md section 4c). Browser-only, never part of the sim.
+   *
+   * A bed is a few CONTINUOUS layers (looped computed noise through filters, slow LFOs: wind, leaves, river, waves,
+   * fire, room tone, crowd murmur, insects, drone) plus SPORADIC one-shot events (birds, crows, owls, frogs,
+   * crickets, drips, gulls, bells, creaks, chains, distant hammering, banner flaps, rats, horns ...) placed at random
+   * in the stereo field. Every area theme of src/data/01_areas.js has a recipe in BEDS; the living-world settings of
+   * the area (KD.env.life: critters, air, wind) scale the matching events, and the live wind gusts of the renderer
+   * swell the wind layers in step with the swaying trees.
+   *
+   *   A.amb.set(theme, { life, fade })   crossfade to a theme's bed (remembered until audio unlocks); null = silence
+   *   A.amb.update({ wind, duck })       wind 0..2 (1 = the area's normal wind), duck 0..1 (fights push the bed down)
+   *   A.amb.setVolume(v) / getVolume()   ambience volume 0..1 (saved in localStorage 'kd.ambVol'; the pause menu row)
+   *   A.amb.current(), A.amb.themes(), A.amb.stats()   { beds, events, layers }
+   *   A.offline.amb(theme, seconds, { life, wind }) -> Promise { buffer, stats }   (tools/audio_lab.py --amb)
+   *
+   * Cost: 2 to 4 looped sources with 1 to 2 filters each, at most MAX_EVENTS short event voices at a time (2 on
+   * phones), one scheduler tick every 0.25 s. Hidden tab: the engine stops the whole context (A.suspend).
+   */
+  var AM = A.amb = A.amb || {};
+  var SY = function () { return A.synth; };
+  var LEVEL = 0.5;            // overall bed level before the ambience volume (calibrated with tools/audio_lab.py --amb)
+  var MAX_EVENTS = 3;
+  var KEY = 'kd.ambVol';
+
+  // ---------------------------------------------------------------- one-shot events (Voice build functions)
+  function mtof(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+  var EV = AM.EVENTS = {
+    bird: function (S) {             // a short songbird phrase
+      var n = 3 + Math.floor(S.rand(0, 4)), t = 0, base = S.rand(2600, 4200);
+      for (var i = 0; i < n; i++) {
+        var f = base * S.rand(0.85, 1.25), d = S.rand(0.04, 0.09);
+        S.osc({ type: 'sine', f: f, f1: f * S.rand(0.7, 1.4), t: t, a: 0.006, d: d, g: S.rand(0.5, 1) });
+        t += d + S.rand(0.02, 0.09);
+      }
+    },
+    crow: function (S) {
+      var n = 1 + Math.floor(S.rand(0, 3));
+      for (var i = 0; i < n; i++) {
+        var t = i * S.rand(0.32, 0.45);
+        S.fm({ f: S.rand(480, 600), f1: S.rand(380, 460), ratio: 1.01, idx: 3, idx1: 2, t: t, a: 0.02, h: 0.08, d: 0.14, lin: true, g: 0.8, flt: { type: 'bandpass', f: 1300, q: 2 } });
+        S.noise({ color: 'pink', t: t, a: 0.02, h: 0.06, d: 0.12, lin: true, g: 0.35, flt: { type: 'bandpass', f: 1800, q: 3 } });
+      }
+    },
+    owl: function (S) {
+      var f = S.rand(330, 400);
+      S.osc({ type: 'sine', f: f, f1: f * 0.94, a: 0.06, h: 0.12, d: 0.2, lin: true, g: 0.9, flt: { type: 'lowpass', f: 900 } });
+      S.osc({ type: 'sine', f: f * 1.02, f1: f * 0.9, t: 0.55, a: 0.08, h: 0.25, d: 0.3, lin: true, g: 0.8, flt: { type: 'lowpass', f: 900 } });
+    },
+    frog: function (S) {
+      var n = 1 + Math.floor(S.rand(0, 3)), f = S.rand(95, 150);
+      for (var i = 0; i < n; i++) S.osc({ type: 'square', f: f, t: i * S.rand(0.28, 0.4), a: 0.01, h: 0.1, d: 0.08, lin: true, g: 0.6, am: { f: S.rand(24, 34), depth: 0.9 }, flt: { type: 'bandpass', f: 700, q: 2.5 } });
+    },
+    cricket: function (S) {
+      var f = S.rand(4200, 4900), n = 2 + Math.floor(S.rand(0, 3));
+      for (var i = 0; i < n; i++) S.osc({ type: 'sine', f: f, t: i * 0.32, a: 0.01, h: 0.12, d: 0.04, lin: true, g: 0.35, am: { f: 30, depth: 1, type: 'square' } });
+    },
+    drip: function (S) {
+      var f = S.rand(900, 1500);
+      S.osc({ type: 'sine', f: f, f1: f * 2.1, ft: 0.03, a: 0.001, d: 0.06, g: 0.8 });
+      S.osc({ type: 'sine', f: f * 0.5, t: 0.004, a: 0.001, d: 0.04, g: 0.25 });
+    },
+    plop: function (S) {
+      S.osc({ type: 'sine', f: S.rand(250, 420), f1: S.rand(700, 1000), a: 0.002, d: 0.06, g: 0.7 });
+      S.noise({ color: 'pink', a: 0.002, d: 0.08, g: 0.3, flt: { type: 'bandpass', f: 1200, q: 1 } });
+    },
+    gull: function (S) {
+      var n = 1 + Math.floor(S.rand(0, 3));
+      for (var i = 0; i < n; i++) S.osc({ type: 'sawtooth', f: S.rand(1000, 1200), fp: [[0.08, S.rand(1500, 1700)], [0.3, S.rand(900, 1050)]], t: i * 0.36, a: 0.02, h: 0.1, d: 0.18, lin: true, g: 0.4, vib: { f: 9, cents: 50 }, flt: { type: 'bandpass', f: 1700, q: 3 } });
+    },
+    pigeon: function (S) {
+      for (var i = 0; i < 2; i++) S.osc({ type: 'sine', f: S.rand(380, 430), f1: 330, t: i * 0.5, a: 0.06, h: 0.12, d: 0.15, lin: true, g: 0.7, am: { f: 12, depth: 0.5 }, flt: { type: 'lowpass', f: 1200 } });
+    },
+    bell: function (S) {           // distant church / ship bell
+      var f = mtof([57, 59, 62, 64][Math.floor(S.rand(0, 4))]), n = 1 + Math.floor(S.rand(0, 3));
+      for (var i = 0; i < n; i++) S.fm({ f: f, ratio: 2.76, idx: 1.5, idx1: 0.1, t: i * 1.1, a: 0.004, d: 2.2, g: 0.4, flt: { type: 'lowpass', f: 2400, fixed: true } });
+    },
+    creak: function (S) {          // wood or rope under load
+      var f = S.rand(70, 110);
+      S.osc({ type: 'sawtooth', f: f, fp: [[0.3, f * 1.25], [0.7, f * 0.9]], a: 0.1, h: 0.3, d: 0.3, lin: true, g: 0.5, flt: { type: 'bandpass', f: 800, q: 5 }, am: { f: S.rand(18, 30), depth: 0.6 } });
+    },
+    chain: function (S) {
+      for (var i = 0; i < 4; i++) S.fm({ f: S.rand(1800, 3000), ratio: 2.7, idx: 1.2, idx1: 0.05, t: i * S.rand(0.06, 0.13), a: 0.001, d: 0.12, g: 0.3 });
+    },
+    hammer: function (S) {         // a smith somewhere: three strikes
+      for (var i = 0; i < 3; i++) {
+        var t = i * S.rand(0.5, 0.65);
+        S.metal({ f: 520, ratios: [1, 2.32, 4.25], t: t, d: 0.4, dp: 0.6, g: 0.3 });
+        S.noise({ color: 'pink', t: t, a: 0.001, d: 0.04, g: 0.3, flt: { type: 'bandpass', f: 1500, q: 1 } });
+      }
+    },
+    flap: function (S) {           // banner or sail in a gust
+      S.noise({ color: 'pink', a: 0.1, h: 0.4, d: 0.4, lin: true, g: 0.7, flt: { type: 'bandpass', f: 700, q: 1 }, am: { f: S.rand(7, 11), depth: 0.9, type: 'triangle' } });
+    },
+    rat: function (S) {
+      for (var i = 0; i < 2; i++) S.osc({ type: 'sine', f: S.rand(3000, 3800), f1: S.rand(2600, 3200), t: i * S.rand(0.1, 0.18), a: 0.005, d: 0.05, g: 0.4 });
+      S.noise({ color: 'crackle', t: 0.2, a: 0.02, d: 0.3, lin: true, g: 0.3, flt: { type: 'highpass', f: 2000 } });
+    },
+    rocks: function (S) {          // pebbles trickling down a slope
+      S.noise({ color: 'crackle', a: 0.05, h: 0.4, d: 0.6, lin: true, g: 0.8, flt: { type: 'bandpass', f: 1800, q: 0.8 } });
+      S.noise({ color: 'brown', a: 0.1, h: 0.3, d: 0.5, lin: true, g: 0.4, flt: { type: 'lowpass', f: 400 } });
+    },
+    horn: function (S) {           // distant war horn
+      var f = mtof([45, 43][Math.floor(S.rand(0, 2))]);
+      S.osc({ type: 'sawtooth', f: f, a: 0.4, h: 0.9, d: 0.8, lin: true, g: 0.4, flt: { type: 'lowpass', f: 500, fp: [[0.5, 1100], [2, 500]], q: 1.5 }, vib: { f: 4.5, cents: 6 } });
+    },
+    shout: function (S) {          // a far voice in a crowd (formant swell, no words)
+      var f = S.rand(180, 260);
+      S.osc({ type: 'sawtooth', f: f, fp: [[0.15, f * 1.3], [0.45, f]], a: 0.05, h: 0.2, d: 0.25, lin: true, g: 0.5, flt: [{ type: 'bandpass', f: S.rand(700, 1100), q: 4 }] });
+    },
+    moan: function (S) {           // something unhappy deep in the dungeon
+      var f = S.rand(110, 150);
+      S.osc({ type: 'sawtooth', f: f, fp: [[0.6, f * 1.15], [1.6, f * 0.8]], a: 0.4, h: 0.5, d: 0.8, lin: true, g: 0.4, flt: { type: 'bandpass', f: 600, fp: [[0.6, 900], [1.6, 500]], q: 4 }, vib: { f: 5, cents: 25 } });
+    },
+    chime: function (S) {          // bone / glass wind chimes
+      for (var i = 0; i < 4; i++) S.fm({ f: mtof([76, 79, 83, 86, 88][Math.floor(S.rand(0, 5))]), ratio: 3.5, idx: 0.7, idx1: 0.02, t: i * S.rand(0.12, 0.3), a: 0.002, d: 0.9, g: 0.22 });
+    },
+    tick: function (S) {           // a slow clock
+      for (var i = 0; i < 6; i++) S.noise({ color: 'white', t: i * 1.0, a: 0.0005, d: 0.012, g: 0.5, flt: { type: 'bandpass', f: i % 2 ? 2600 : 2200, q: 4 } });
+    },
+    page: function (S) {
+      S.noise({ color: 'pink', a: 0.05, h: 0.1, d: 0.2, lin: true, g: 0.6, flt: { type: 'bandpass', f: 3000, q: 0.7 } });
+    },
+    coins: function (S) {
+      for (var i = 0; i < 3; i++) S.fm({ f: S.rand(2500, 3400), ratio: 1.41, idx: 1, idx1: 0.05, t: i * S.rand(0.05, 0.1), a: 0.001, d: 0.1, g: 0.25 });
+    },
+    cart: function (S) {
+      S.noise({ color: 'brown', a: 0.4, h: 0.8, d: 0.6, lin: true, g: 0.5, flt: { type: 'lowpass', f: 350 }, am: { f: 3, depth: 0.5 } });
+      S.osc({ type: 'sawtooth', f: 85, fp: [[0.6, 105], [1.2, 90]], t: 0.2, a: 0.2, h: 0.4, d: 0.4, lin: true, g: 0.25, flt: { type: 'bandpass', f: 700, q: 6 } });
+    },
+    gust: function (S) {
+      S.noise({ color: 'pink', a: 0.9, d: 1.4, lin: true, g: 0.8, flt: { type: 'bandpass', f: 350, fp: [[0.9, 900], [2.3, 400]], q: 0.9 } });
+    },
+    crackle: function (S) {        // a log settling in the fire
+      S.noise({ color: 'crackle', a: 0.005, d: 0.35, lin: true, g: 1, flt: { type: 'bandpass', f: 2200, q: 0.8 } });
+      S.osc({ type: 'sine', f: 90, f1: 60, a: 0.002, d: 0.1, g: 0.3 });
+    },
+    ice: function (S) {            // ice settling and creaking
+      S.fm({ f: S.rand(600, 900), f1: S.rand(300, 450), ratio: 1.41, idx: 3, idx1: 0.5, a: 0.01, d: 0.25, lin: true, g: 0.3, flt: { type: 'bandpass', f: 1400, q: 2 } });
+    },
+    whisper: function (S) {        // throne room / abbey: breathy, wordless
+      S.noise({ color: 'pink', a: 0.3, h: 0.3, d: 0.5, lin: true, g: 0.6, flt: { type: 'bandpass', f: 2200, fp: [[0.4, 3000], [1.1, 1800]], q: 5 }, am: { f: 6, depth: 0.7 } });
+    }
+  };
+
+  // ---------------------------------------------------------------- continuous layers
+  /**
+   * kinds: wind (band of pink noise, wanders and swells with the gusts), whistle (high narrow wind), leaves (hiss
+   * with the gusts), river, waves (slow wash), fire (crackle and rumble), room (dark indoor tone), murmur (crowd),
+   * insects (high trill), drone (low hum).
+   */
+  function layer(ctx, dest, spec, seed) {
+    var L = { nodes: [], g: ctx.createGain(), wind: spec.kind === 'wind' || spec.kind === 'whistle' || spec.kind === 'leaves' ? 1 : 0 };
+    L.g.gain.value = spec.g; L.base = spec.g; L.g.connect(dest);
+    var t = ctx.currentTime, k = spec.kind;
+    function src(color, rate) {
+      var n = ctx.createBufferSource(), b = SY().noise(ctx, color); n.buffer = b; n.loop = true; n.playbackRate.value = rate || 1;
+      n.start(t, (seed * 0.618) % (b.duration - 0.1)); L.nodes.push(n); return n;
+    }
+    function filt(type, f, q) { var b = ctx.createBiquadFilter(); b.type = type; b.frequency.value = f; b.Q.value = q == null ? 0.7 : q; return b; }
+    function lfo(param, f, depth, type) { var o = ctx.createOscillator(), og = ctx.createGain(); o.type = type || 'sine'; o.frequency.value = f; og.gain.value = depth; o.connect(og); og.connect(param); o.start(t); L.nodes.push(o); }
+    function chain(nodes) { for (var i = 0; i < nodes.length - 1; i++) nodes[i].connect(nodes[i + 1]); nodes[nodes.length - 1].connect(L.g); }
+    var f = spec.f;
+    if (k === 'wind') { var bw = filt('bandpass', f || 420, 0.8); chain([src('pink', 1), bw]); lfo(bw.frequency, 0.05 + (seed % 7) * 0.006, (f || 420) * 0.35); }
+    else if (k === 'whistle') { var bh = filt('bandpass', f || 900, 7); chain([src('white', 1), bh]); lfo(bh.frequency, 0.09, (f || 900) * 0.25); }
+    else if (k === 'leaves') { chain([src('white', 1), filt('highpass', f || 2600, 0.6), filt('lowpass', 6500, 0.6)]); }
+    else if (k === 'river') { var br = filt('bandpass', f || 900, 0.6); chain([src('pink', 1), br, filt('lowpass', 3000, 0.7)]); lfo(br.frequency, 0.21, 120); }
+    else if (k === 'waves') {
+      var wg = ctx.createGain(); wg.gain.value = 0.55; chain([src('brown', 1), filt('lowpass', f || 600, 0.7), wg]); lfo(wg.gain, 0.11, 0.45);
+      var fg = ctx.createGain(); fg.gain.value = 0.15; chain([src('white', 1), filt('bandpass', 2400, 0.6), fg]); lfo(fg.gain, 0.11, 0.13);
+    }
+    else if (k === 'fire') { chain([src('crackle', 1), filt('bandpass', f || 2400, 0.7)]); var rg = ctx.createGain(); rg.gain.value = 0.6; chain([src('brown', 1), filt('lowpass', 260, 0.7), rg]); lfo(rg.gain, 0.7, 0.2); }
+    else if (k === 'room') { chain([src('brown', 1), filt('lowpass', f || 220, 0.7), filt('highpass', 45, 0.7)]); }
+    else if (k === 'murmur') {
+      // several formant bands of pink noise, each swelling at its own slow rate: a crowd heard from a street away
+      var fs = [330, 610, 980, 1700, 2600];
+      for (var i = 0; i < fs.length; i++) { var mg = ctx.createGain(); mg.gain.value = 0.5; chain([src('pink', 1), filt('bandpass', fs[i] * (f || 1), 3), mg]); lfo(mg.gain, 0.13 + i * 0.071 + (seed % 5) * 0.013, 0.42); }
+    }
+    else if (k === 'insects') { var ig = ctx.createGain(); ig.gain.value = 0.5; chain([src('white', 1), filt('bandpass', f || 4300, 9), ig]); lfo(ig.gain, 38, 0.5, 'square'); }
+    else if (k === 'drone') {
+      var dg = ctx.createGain(); dg.gain.value = 1; var lp = filt('lowpass', 400, 0.7); dg.connect(lp); chain([lp]);
+      [[f || 55, -5], [(f || 55) * 1.5, 4], [(f || 55) * 2, 7]].forEach(function (p, j) { var o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = p[0]; o.detune.value = p[1]; var og = ctx.createGain(); og.gain.value = [0.6, 0.3, 0.2][j]; o.connect(og); og.connect(dg); o.start(t); L.nodes.push(o); });
+      lfo(dg.gain, 0.07, 0.3);
+    }
+    return L;
+  }
+
+  // ---------------------------------------------------------------- beds per area theme
+  // layers: [kind, gain, f?]; ev: { event: per-minute rate }; critter: which KD.env.life critter / air scales the rate.
+  var CRIT = { bird: 'birds', crow: 'crows', frog: 'frogs', rat: 'rats', gull: 'birds', pigeon: 'birds', owl: 'crows', cricket: 'fireflies' };
+  function bed(layers, ev, o) { return U.assign({ layers: layers, ev: ev || {} }, o || {}); }
+  var BEDS = AM.BEDS = {
+    farmland: bed([['wind', 0.5, 380], ['leaves', 0.12]], { bird: 7, crow: 2, cricket: 2, creak: 0.6 }),
+    forest: bed([['wind', 0.45, 340], ['leaves', 0.25, 2400]], { bird: 6, crow: 2, owl: 1.2, creak: 1.2, cricket: 1.5 }),
+    swamp: bed([['insects', 0.18, 4100], ['wind', 0.25, 300]], { frog: 9, plop: 6, cricket: 3, crow: 1.5, bird: 1 }),
+    bandit: bed([['wind', 0.45, 400], ['fire', 0.22]], { crow: 2, hammer: 0.8, shout: 1.2, crackle: 2, flap: 1 }),
+    mill: bed([['river', 0.4, 850], ['wind', 0.3, 380]], { creak: 4, bird: 4, crow: 1.5, plop: 2 }),
+    crossroads: bed([['wind', 0.55, 360], ['leaves', 0.1]], { crow: 3, creak: 2, bell: 0.5, bird: 2 }),
+    mountain: bed([['wind', 0.8, 300], ['whistle', 0.12, 850]], { gust: 2.5, rocks: 1.5, crow: 1.2, bird: 0.8 }),
+    river: bed([['river', 0.55, 1000], ['wind', 0.3, 380]], { bird: 5, plop: 4, creak: 1, gull: 0.8 }),
+    snow: bed([['wind', 0.7, 320], ['whistle', 0.18, 1100]], { gust: 3, ice: 1.5, crow: 1, flap: 1 }),
+    stonefort: bed([['wind', 0.6, 380]], { flap: 2.5, chain: 1.5, crow: 2, hammer: 0.6, horn: 0.3 }),
+    slums: bed([['murmur', 0.16, 0.9], ['room', 0.15, 300]], { drip: 4, rat: 2, shout: 1.5, creak: 1, pigeon: 1, bell: 0.3 }),
+    market: bed([['murmur', 0.3, 1], ['wind', 0.2, 450]], { shout: 3, coins: 2, cart: 1.2, bell: 0.6, pigeon: 2 }),
+    canals: bed([['river', 0.4, 700], ['room', 0.3, 200]], { drip: 10, rat: 3, plop: 3, chain: 0.6 }, { room: 0.7 }),
+    harbor: bed([['waves', 0.6, 550], ['wind', 0.35, 420]], { gull: 5, creak: 3, bell: 0.6, flap: 1.2, chain: 0.8 }),
+    rooftops: bed([['wind', 0.65, 420], ['murmur', 0.07, 0.8]], { pigeon: 3, crow: 2, flap: 1.5, bell: 0.5, gust: 1 }),
+    citywall: bed([['wind', 0.6, 380], ['murmur', 0.06, 0.8]], { flap: 2, chain: 1, crow: 2, horn: 0.3, shout: 0.8 }),
+    courtyard: bed([['wind', 0.35, 420], ['river', 0.18, 1600], ['leaves', 0.12]], { bird: 6, pigeon: 1, bell: 0.4 }),
+    armory: bed([['room', 0.4, 240], ['fire', 0.12, 2000]], { hammer: 2, chain: 2.5, crackle: 2, creak: 0.6 }, { room: 0.6 }),
+    library: bed([['room', 0.35, 200]], { tick: 1, page: 2.5, creak: 1, drip: 0.5 }, { room: 0.5 }),
+    chapel: bed([['room', 0.35, 180], ['drone', 0.06, 55]], { drip: 2, bell: 0.6, whisper: 0.8, creak: 0.5 }, { room: 0.8 }),
+    dungeon: bed([['room', 0.45, 160]], { drip: 8, chain: 2.5, moan: 1, rat: 2.5, creak: 0.6 }, { room: 0.8 }),
+    battlements: bed([['wind', 0.8, 340], ['whistle', 0.1, 950]], { gust: 2.5, flap: 3, crow: 2.5, horn: 0.3 }),
+    throne: bed([['room', 0.4, 150], ['drone', 0.08, 49], ['fire', 0.08, 1800]], { whisper: 1.2, crackle: 1.5, chain: 0.6 }, { room: 0.9 }),
+    abbey: bed([['wind', 0.45, 300], ['drone', 0.05, 52]], { crow: 2.5, drip: 3, whisper: 1, bell: 0.4, creak: 1 }, { room: 0.6 }),
+    bonefair: bed([['murmur', 0.1, 0.75], ['fire', 0.15]], { chime: 3, shout: 1, crackle: 2, crow: 1.5, whisper: 0.6 }),
+    warcamp: bed([['fire', 0.25], ['wind', 0.4, 380], ['murmur', 0.07, 0.85]], { hammer: 2, horn: 0.6, shout: 2, flap: 1.5, crackle: 2 })
+  };
+  AM.THEME_ALIAS = { arena: 'dungeon' };
+  // per-theme level trim so every bed sits near the same loudness (baked: tools/audio_lab.py --amb all --calib)
+  var TRIM = {
+    /*TRIM-BEGIN*/
+    farmland: 0.459, forest: 0.48, swamp: 0.9, bandit: 0.735, mill: 0.504, crossroads: 0.647, mountain: 0.494,
+    river: 0.499, snow: 0.566, stonefort: 0.569, slums: 1.093, market: 1.074, canals: 0.499, harbor: 0.402,
+    rooftops: 0.576, citywall: 0.568, courtyard: 0.585, armory: 0.468, library: 0.565, chapel: 0.549, dungeon: 0.469,
+    battlements: 0.44, throne: 0.528, abbey: 0.842, bonefair: 1.803, warcamp: 0.683
+    /*TRIM-END*/
+  };
+  Object.keys(TRIM).forEach(function (k) { if (BEDS[k]) BEDS[k].trim = TRIM[k]; });
+
+  // ---------------------------------------------------------------- Bed: one playing theme on a context
+  function Bed(ctx, dest, theme, o) {
+    o = o || {};
+    var R = BEDS[theme] || BEDS[AM.THEME_ALIAS[theme]] || BEDS.farmland;
+    this.ctx = ctx; this.theme = theme; this.R = R; this.rng = new (SY().LCG)(o.seed || 1 + (U.hash ? U.hash(theme) : 7));
+    this.out = ctx.createGain(); this.out.gain.value = 0; this.trim = ctx.createGain(); this.trim.gain.value = R.trim || 1; this.out.connect(this.trim); this.trim.connect(dest);
+    this.room = null;
+    if (R.room > 0) {   // indoor beds: events ring in a damp stone room
+      this.room = SY().room(ctx, this.out, { times: [0.031, 0.043, 0.057, 0.071, 0.089, 0.113], fb: 0.72, damp: 2600, hp: 250, wet: 1 });
+    }
+    var lite = !!o.lite, i;
+    this.layers = [];
+    for (i = 0; i < R.layers.length; i++) {
+      if (lite && i >= 2) break;                                       // phones: at most two continuous layers
+      var sp = R.layers[i];
+      this.layers.push(layer(ctx, this.out, { kind: sp[0], g: sp[1], f: sp[2] }, 11 + i * 7));
+    }
+    // event rates (per second) scaled by the living-world settings of the area
+    var life = o.life || null; this.rates = {};
+    for (var k in R.ev) {
+      var r = R.ev[k] / 60, ck = CRIT[k];
+      if (life && ck) {
+        var v = ck === 'fireflies' ? life.air && life.air.fireflies : life.critters && life.critters[ck];
+        if (typeof v === 'number') r *= U.clamp(0.4 + v, 0.25, 2.5);
+      }
+      this.rates[k] = r;
+    }
+    this.next = {};
+    var t0 = o.t0 == null ? ctx.currentTime : o.t0;
+    for (k in this.rates) this.next[k] = t0 + 0.5 + this.exp(this.rates[k]) * 0.6;
+    this.live = [];
+    this.maxEv = o.maxEvents || MAX_EVENTS;
+    this.events = 0;
+  }
+  Bed.prototype.exp = function (rate) { return rate > 0 ? -Math.log(1 - this.rng.next() * 0.999) / rate : 1e9; };
+  Bed.prototype.fade = function (to, t, secs) { var g = this.out.gain; g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.setTargetAtTime(to, t, Math.max(0.05, secs / 3.5)); };
+  /** wind 0..2: gust swell of the wind layers. */
+  Bed.prototype.wind = function (w, t) {
+    for (var i = 0; i < this.layers.length; i++) { var L = this.layers[i]; if (L.wind) L.g.gain.setTargetAtTime(L.base * U.clamp(0.35 + 0.65 * w, 0.2, 1.8), t, 0.6); }
+  };
+  /** Schedule events that start before `until`. */
+  Bed.prototype.schedule = function (until) {
+    var ctx = this.ctx, now = ctx.currentTime, i;
+    for (i = this.live.length - 1; i >= 0; i--) if (this.live[i] < now) this.live.splice(i, 1);
+    for (var k in this.next) {
+      var guard = 0;
+      while (this.next[k] < until && guard++ < 20) {
+        var t = this.next[k];
+        this.next[k] = t + Math.max(0.6, this.exp(this.rates[k]));
+        if (t < now - 0.05 || this.live.length >= this.maxEv) continue;
+        this.spawn(k, Math.max(t, now));
+      }
+    }
+  };
+  Bed.prototype.spawn = function (k, t) {
+    var ctx = this.ctx, r = this.rng, far = r.next();
+    var g = ctx.createGain(), pan = ctx.createStereoPanner(), lp = ctx.createBiquadFilter();
+    g.gain.value = (0.6 + 1.1 * (1 - far)) * (this.R.evGain || 1);      // near ones louder
+    lp.type = 'lowpass'; lp.frequency.value = 9000 - far * 6500;        // far ones duller
+    pan.pan.value = (r.next() * 2 - 1) * 0.8;
+    g.connect(lp); lp.connect(pan); pan.connect(this.out);
+    if (this.room) { var s = ctx.createGain(); s.gain.value = 0.35 + far * 0.4; pan.connect(s); s.connect(this.room); }
+    var V = new (SY().Voice)(ctx, g, t, { pitch: 1, seed: (r.next() * 4294967295) >>> 0 });
+    EV[k](V);
+    this.live.push(t + V.end + 0.1); this.events++;
+    var self = this;
+    var end = t + V.end + 0.3;
+    if (ctx.constructor && ctx.constructor.name !== 'OfflineAudioContext' && typeof root.setTimeout === 'function') {
+      root.setTimeout(function () { try { pan.disconnect(); } catch (e) { /* gone */ } }, Math.max(100, (end - ctx.currentTime) * 1000 + 200));
+    }
+    return self;
+  };
+  Bed.prototype.kill = function () {
+    for (var i = 0; i < this.layers.length; i++) for (var j = 0; j < this.layers[i].nodes.length; j++) { try { this.layers[i].nodes[j].stop(); } catch (e) { /* stopped */ } }
+    try { this.trim.disconnect(); } catch (e) { /* gone */ }
+  };
+  AM.Bed = Bed;
+
+  // ---------------------------------------------------------------- live player
+  var st = { want: null, opts: null, cur: null, old: [], bus: null, ctx: null, vol: 0.8, duck: 0, wind: 1, timer: null, lite: false };
+  try { var sv = root.localStorage && root.localStorage.getItem(KEY); if (sv != null && isFinite(+sv)) st.vol = U.clamp(+sv, 0, 1); } catch (e) { /* storage blocked */ }
+  AM._state = st;
+  function liveCtx() {
+    var es = A._state, c = es && es.ctx;
+    if (!c || c.state !== 'running' || es.held || !es.graph) return null;
+    if (st.ctx !== c) {           // first time (or a new context): our bus into the master
+      st.ctx = c; st.bus = c.createGain(); st.bus.gain.value = busLevel(); st.bus.connect(es.graph.master); st.cur = null; st.old = [];
+    }
+    return c;
+  }
+  function busLevel() { return LEVEL * st.vol * (1 - 0.55 * st.duck); }
+  function isLite() { var Q = KD.gfx && KD.gfx.quality; return !!(Q && Q.name === 'low'); }
+  function tick() {
+    try {
+      var c = liveCtx(); if (!c) return;
+      var now = c.currentTime;
+      if ((st.cur ? st.cur.theme : null) !== st.want) {
+        var fade = st.opts && st.opts.fade != null ? st.opts.fade : 2.5;
+        if (st.cur) { st.cur.fade(0, now, fade); st.cur.killAt = now + fade * 1.6 + 0.3; st.old.push(st.cur); st.cur = null; }
+        if (st.want) {
+          st.cur = new Bed(c, st.bus, st.want, { life: st.opts && st.opts.life, lite: isLite(), maxEvents: isLite() ? 2 : MAX_EVENTS, seed: (Math.random() * 1e9) >>> 0 });
+          st.cur.fade(1, now, fade);
+        }
+      }
+      for (var i = st.old.length - 1; i >= 0; i--) if (now > st.old[i].killAt) { st.old[i].kill(); st.old.splice(i, 1); }
+      if (st.cur) { st.cur.wind(st.wind, now); st.cur.schedule(now + 0.6); }
+      st.bus.gain.setTargetAtTime(busLevel(), now, 0.4);
+    } catch (e) { var es = A._state; if (es) { es.errors++; es.lastError = 'amb: ' + (e && e.message); } }
+  }
+  function ensureTimer() { if (!st.timer && typeof root.setInterval === 'function' && typeof document !== 'undefined') st.timer = root.setInterval(tick, 250); }
+
+  /** Crossfade to a theme's bed (null = fade to silence). o: { life (KD.env.life def), fade (s) }. */
+  AM.set = function (theme, o) {
+    if (theme && !BEDS[theme] && !AM.THEME_ALIAS[theme]) theme = 'farmland';
+    st.want = theme || null; st.opts = o || null;
+    ensureTimer(); tick();
+    return st.want;
+  };
+  AM.stop = function (fade) { return AM.set(null, { fade: fade == null ? 1.2 : fade }); };
+  /** o.wind: 0..2 gust level (1 = calm normal), o.duck: 0..1 (a fight pushes the bed down). */
+  AM.update = function (o) {
+    if (!o) return;
+    if (o.wind != null && isFinite(o.wind)) st.wind = U.clamp(+o.wind, 0, 2);
+    if (o.duck != null && isFinite(o.duck)) st.duck = U.clamp(+o.duck, 0, 1);
+  };
+  AM.setVolume = function (v) {
+    if (v != null && isFinite(+v)) { st.vol = U.clamp(+v, 0, 1); try { if (root.localStorage) root.localStorage.setItem(KEY, String(st.vol)); } catch (e) { /* storage blocked */ } if (st.bus && st.ctx) st.bus.gain.setTargetAtTime(busLevel(), st.ctx.currentTime, 0.05); }
+    return st.vol;
+  };
+  AM.getVolume = function () { return st.vol; };
+  AM.current = function () { return st.want; };
+  AM.themes = function () { return Object.keys(BEDS); };
+  AM.TARGET = -34;      // average loudness of a bed at ambience volume 0.8 (LUFS-like): well under the effects (-20) and near the music
+  AM.stats = function () { var n = 0; if (st.cur) n = st.cur.layers.length; return { beds: (st.cur ? 1 : 0) + st.old.length, layers: n, events: st.cur ? st.cur.live.length : 0, theme: st.want, vol: st.vol, duck: st.duck, wind: st.wind }; };
+
+  // ---------------------------------------------------------------- offline (tools/audio_lab.py --amb)
+  A.offline = A.offline || {};
+  A.offline.amb = function (theme, seconds, o) {
+    try {
+      o = o || {};
+      var OC = root.OfflineAudioContext || root.webkitOfflineAudioContext;
+      if (!OC) return Promise.reject(new Error('OfflineAudioContext unavailable'));
+      var sr = o.sampleRate || 44100, ctx = new OC(2, Math.ceil(seconds * sr), sr), bus = ctx.createGain();
+      bus.gain.value = LEVEL * (o.vol == null ? 0.8 : o.vol); bus.connect(ctx.destination);
+      var b = new Bed(ctx, bus, theme, { life: o.life, lite: !!o.lite, seed: o.seed || 4242, t0: 0 });
+      b.out.gain.value = 1;
+      if (o.wind != null) b.wind(o.wind, 0);
+      for (var t = 0; t < seconds; t += 0.5) b.schedule(t + 0.5);        // the live scheduler, in steps
+      return new Promise(function (resolve, reject) {
+        var p = ctx.startRendering();
+        var fin = function (buf) { resolve({ theme: theme, buffer: buf, stats: A.offline.analyse ? A.offline.analyse(buf, { window: 0.4 }) : {}, events: b.events }); };
+        if (p && p.then) p.then(fin, reject); else ctx.oncomplete = function (e) { fin(e.renderedBuffer); };
+      });
+    } catch (e) { return Promise.reject(e); }
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/ui/00_device.js
 (function (root) {
   'use strict';
@@ -99946,6 +100364,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       el('div.flow-set-col', [
         el('div.kd-h3', { text: 'Sound' }),
         row('Master volume', vol('master')), row('Effects', vol('sfx')), row('Music', vol('music')),
+        // [w8 sound] ambience volume (area sounds: wind, birds, water, crowds); kept by KD.audio.amb itself
+        KD.audio && KD.audio.amb ? row('Ambience', F.slider({ min: 0, max: 100, step: 5, value: Math.round(KD.audio.amb.getVolume() * 100), format: pct, label: 'ambience volume', onInput: function (x) { KD.audio.amb.setVolume(x / 100); }, onChange: function () { F.sound('ui_click'); } })) : null,
         row('Mute everything', onoff(v.muted, function (on) { ST.set('muted', on); })),
         el('div.kd-h3', { text: 'Controls' }),
         // touch: no mouse, no mouse capture, no keys. The camera is dragged with a finger.
