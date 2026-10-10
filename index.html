@@ -3410,7 +3410,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.34';
+  KD.VERSION = '0.7.35';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -73934,7 +73934,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       u.hide(['eye_l', 'eye_r']);
       u.add('head', 'eye', function () { var e = geo.eyes({ x: m.eyeX * 1.05, y: m.eyeY, z: m.faceZ + 0.008 * k, r: 0.026 * k, color: CANDLE, slant: 0.3, socket: '#140e12' }); return [e]; }, LOCAL);
       // the robe's black half trails a torn shadow-hem
-      u.add('hips', 'hem', function () { var r = d.pw * 0.6; return [T(geo.hem({ r: r, rz: d.pd / d.pw * 1.15, rBottom: r * 1.4, h: 0.42 * k, sides: 7, teeth: 0.6, seed: 130, color: '#1c1424', inner: '#0e0a12', arc: PI, a0: PI }), 0, -d.ph * 0.1, 0)]; }, LOCAL);
+      u.add('hips', 'hem', function () {
+        var r = d.pw * 0.6, rz = d.pd / d.pw * 1.15;
+        return [T(geo.hem({ r: r, rz: rz, rBottom: r * 1.4, h: 0.5 * k, sides: 7, teeth: 0.6, seed: 130, color: '#1c1424', inner: '#0e0a12', arc: PI, a0: PI }), 0, -d.ph * 0.1, 0),
+          // and a long parchment skirt on the light half, so the robe reads as a robe
+          T(geo.hem({ r: r * 1.01, rz: rz, rBottom: r * 1.36, h: 0.56 * k, sides: 7, teeth: 0.3, seed: 131, color: '#d8ccac', inner: '#8a7e66', arc: PI, a0: 0 }), 0, -d.ph * 0.05, 0)];
+      }, LOCAL);
     }
   });
 
