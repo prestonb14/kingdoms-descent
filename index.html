@@ -476,6 +476,63 @@ html,body{margin:0;height:100%;background:#0c0f0d;color:#e8e2d0;overflow:hidden}
   .kd-window, .kd-backdrop, .kd-toast, .kd-card, .kd-card-seal, .kd-slot-ready, .kd-banner, .kd-bar-low .kd-bar-fill { animation: none !important; transition: none !important; }
 }
 
+/* [pad-play] controller glyphs (src/ui/04_pad.js, docs/CONTROLLER.md). A .kd-key whose label is a pad button becomes
+   a round painted button: PlayStation shapes, Xbox letters in their colours, bumpers, triggers, the D-pad and the sticks. */
+.kd-key.kd-glyph { min-width: calc(17 * var(--u)); height: calc(17 * var(--u)); padding: 0 calc(5 * var(--u)); border-radius: 999px; border: var(--u) solid #000; box-sizing: border-box;
+  background: radial-gradient(circle at 34% 28%, #57504a 0%, #2a2521 46%, #110e0b 100%);
+  box-shadow: inset 0 var(--u) 0 rgba(255, 255, 255, .22), inset 0 0 0 var(--u) rgba(216, 178, 90, .45), 0 var(--u) 0 rgba(0, 0, 0, .75);
+  font-size: calc(9 * var(--u)); font-weight: 800; letter-spacing: 0; color: var(--kd-parch-100); text-shadow: 0 var(--u) 0 #000; vertical-align: middle; }
+/* face buttons, the D-pad and the sticks are round and as wide as they are tall */
+.kd-key.kd-glyph.kd-g-south, .kd-key.kd-glyph.kd-g-east, .kd-key.kd-glyph.kd-g-west, .kd-key.kd-glyph.kd-g-north,
+.kd-key.kd-glyph.kd-g-up, .kd-key.kd-glyph.kd-g-down, .kd-key.kd-glyph.kd-g-left, .kd-key.kd-glyph.kd-g-right,
+.kd-key.kd-glyph.kd-g-lstick, .kd-key.kd-glyph.kd-g-rstick { width: calc(17 * var(--u)); min-width: 0; padding: 0; overflow: hidden; }
+/* drawn shapes: the label stays in the page (for code and screen readers) but is not painted */
+.kd-key.kd-glyph.kd-g-ps.kd-g-south, .kd-key.kd-glyph.kd-g-ps.kd-g-east, .kd-key.kd-glyph.kd-g-ps.kd-g-west, .kd-key.kd-glyph.kd-g-ps.kd-g-north,
+.kd-key.kd-glyph.kd-g-up, .kd-key.kd-glyph.kd-g-down, .kd-key.kd-glyph.kd-g-left, .kd-key.kd-glyph.kd-g-right,
+.kd-key.kd-glyph.kd-g-lstick, .kd-key.kd-glyph.kd-g-rstick { color: transparent; text-shadow: none; font-size: 0; background-repeat: no-repeat; background-position: center; background-size: 100% 100%; }
+.kd-key.kd-glyph.kd-g-ps.kd-g-south { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M6 6L14 14M14 6L6 14' stroke='%2386b8ff' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E"), radial-gradient(circle at 34% 28%, #57504a 0%, #2a2521 46%, #110e0b 100%); }
+.kd-key.kd-glyph.kd-g-ps.kd-g-east { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='4.9' fill='none' stroke='%23ff6b6f' stroke-width='2.2'/%3E%3C/svg%3E"), radial-gradient(circle at 34% 28%, #57504a 0%, #2a2521 46%, #110e0b 100%); }
+.kd-key.kd-glyph.kd-g-ps.kd-g-west { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Crect x='5.6' y='5.6' width='8.8' height='8.8' rx='.8' fill='none' stroke='%23f290dc' stroke-width='2.1'/%3E%3C/svg%3E"), radial-gradient(circle at 34% 28%, #57504a 0%, #2a2521 46%, #110e0b 100%); }
+.kd-key.kd-glyph.kd-g-ps.kd-g-north { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M10 5.2L15.2 14H4.8z' fill='none' stroke='%234fe0aa' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E"), radial-gradient(circle at 34% 28%, #57504a 0%, #2a2521 46%, #110e0b 100%); }
+/* Xbox (and generic pads, which follow its layout): coloured letters */
+.kd-key.kd-glyph.kd-g-xbox.kd-g-south, .kd-key.kd-glyph.kd-g-generic.kd-g-south { color: #7ad65a; }
+.kd-key.kd-glyph.kd-g-xbox.kd-g-east, .kd-key.kd-glyph.kd-g-generic.kd-g-east { color: #ff6a5e; }
+.kd-key.kd-glyph.kd-g-xbox.kd-g-west, .kd-key.kd-glyph.kd-g-generic.kd-g-west { color: #5aa8ff; }
+.kd-key.kd-glyph.kd-g-xbox.kd-g-north, .kd-key.kd-glyph.kd-g-generic.kd-g-north { color: #ffd23c; }
+.kd-key.kd-glyph.kd-g-south, .kd-key.kd-glyph.kd-g-east, .kd-key.kd-glyph.kd-g-west, .kd-key.kd-glyph.kd-g-north { font-size: calc(10 * var(--u)); }
+/* bumpers and triggers: shoulder shapes */
+.kd-key.kd-glyph.kd-g-l1, .kd-key.kd-glyph.kd-g-r1 { border-radius: calc(7 * var(--u)) calc(7 * var(--u)) calc(3 * var(--u)) calc(3 * var(--u)); }
+.kd-key.kd-glyph.kd-g-l2, .kd-key.kd-glyph.kd-g-r2 { border-radius: calc(9 * var(--u)) calc(9 * var(--u)) calc(4 * var(--u)) calc(4 * var(--u)); height: calc(18 * var(--u));
+  background: radial-gradient(ellipse at 50% 0%, #6a6058 0%, #2d2723 55%, #110e0b 100%); }
+.kd-key.kd-glyph.kd-g-select, .kd-key.kd-glyph.kd-g-start, .kd-key.kd-glyph.kd-g-home, .kd-key.kd-glyph.kd-g-touchpad { font-size: calc(7.5 * var(--u)); border-radius: calc(5 * var(--u)); }
+.kd-key.kd-glyph.kd-g-l3, .kd-key.kd-glyph.kd-g-r3 { font-size: calc(8 * var(--u)); }
+/* the D-pad: a cross with the pressed arm lit */
+.kd-key.kd-glyph.kd-g-up { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M8 3.5h4v4.5h4.5v4H12v4.5H8V12H3.5V8H8z' fill='%23978a72'/%3E%3Cpath d='M8 3.5h4v4.5H8z' fill='%23f0d48a'/%3E%3C/svg%3E"), radial-gradient(circle at 34% 28%, #57504a 0%, #2a2521 46%, #110e0b 100%); }
+.kd-key.kd-glyph.kd-g-down { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M8 3.5h4v4.5h4.5v4H12v4.5H8V12H3.5V8H8z' fill='%23978a72'/%3E%3Cpath d='M8 12h4v4.5H8z' fill='%23f0d48a'/%3E%3C/svg%3E"), radial-gradient(circle at 34% 28%, #57504a 0%, #2a2521 46%, #110e0b 100%); }
+.kd-key.kd-glyph.kd-g-left { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M8 3.5h4v4.5h4.5v4H12v4.5H8V12H3.5V8H8z' fill='%23978a72'/%3E%3Cpath d='M3.5 8H8v4H3.5z' fill='%23f0d48a'/%3E%3C/svg%3E"), radial-gradient(circle at 34% 28%, #57504a 0%, #2a2521 46%, #110e0b 100%); }
+.kd-key.kd-glyph.kd-g-right { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M8 3.5h4v4.5h4.5v4H12v4.5H8V12H3.5V8H8z' fill='%23978a72'/%3E%3Cpath d='M12 8h4.5v4H12z' fill='%23f0d48a'/%3E%3C/svg%3E"), radial-gradient(circle at 34% 28%, #57504a 0%, #2a2521 46%, #110e0b 100%); }
+/* the sticks: a thumb cap with its letter */
+.kd-key.kd-glyph.kd-g-lstick { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='6.2' fill='%23302a25' stroke='%23b8a27a' stroke-width='1.2'/%3E%3Ctext x='10' y='13.1' text-anchor='middle' font-family='Arial,sans-serif' font-weight='700' font-size='8.5' fill='%23f3e7c8'%3EL%3C/text%3E%3C/svg%3E"), radial-gradient(circle at 34% 28%, #57504a 0%, #2a2521 46%, #110e0b 100%); }
+.kd-key.kd-glyph.kd-g-rstick { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='6.2' fill='%23302a25' stroke='%23b8a27a' stroke-width='1.2'/%3E%3Ctext x='10' y='13.1' text-anchor='middle' font-family='Arial,sans-serif' font-weight='700' font-size='8.5' fill='%23f3e7c8'%3ER%3C/text%3E%3C/svg%3E"), radial-gradient(circle at 34% 28%, #57504a 0%, #2a2521 46%, #110e0b 100%); }
+/* a glyph inside a sentence or a toast */
+.kd-pad-toast { display: inline-flex; align-items: center; gap: calc(4 * var(--u)); }
+/* the mouse pointer hides over the game while the pad plays */
+html.kd-pad-on #kd-canvas { cursor: none; }
+html.kd-pad-on .hud-reticle { display: none; }      /* the cursor ring means nothing while the stick aims */
+
+/* the Controller window */
+.kd-pad-layout { display: flex; flex-direction: column; gap: calc(10 * var(--u)); }
+.kd-pad-note { font-size: calc(11 * var(--u)); }
+.kd-pad-cols { display: flex; gap: calc(22 * var(--u)); }
+.kd-pad-col { flex: 1 1 0; display: flex; flex-direction: column; gap: calc(4 * var(--u)); min-width: 0; }
+.kd-pad-row { display: flex; align-items: center; gap: calc(8 * var(--u)); min-height: calc(26 * var(--u)); }
+.kd-pad-what { flex: 1 1 auto; min-width: 0; }
+.kd-pad-btn { flex: 0 0 calc(44 * var(--u)); display: flex; justify-content: center; }
+.kd-pad-btn .kd-key { transform: scale(1.25); }
+.kd-pad-fixed { flex: 0 0 calc(76 * var(--u)); text-align: center; font-size: calc(10 * var(--u)); }
+.kd-pad-row .kd-btn { flex: 0 0 calc(76 * var(--u)); }
+.kd-compact .kd-pad-cols { gap: calc(14 * var(--u)); }
+
 /* =====================================================================================================
    Kingdom's Descent HUD.   Owner: hud.   Documented in docs/HUD.md.
    Built from the kit (00_theme.css): plates, bars, slots, badges, frames. Everything here is layout and
@@ -3410,7 +3467,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.42';
+  KD.VERSION = '0.7.43';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -22452,6 +22509,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.43', date: '2026-10-10', title: 'Controllers are here', notes: [
+      'Plug in a PlayStation or Xbox controller and just play: sticks, triggers and buttons all work, on PC, Mac, phones and tablets',
+      'The action bar and prompts show your controller\'s buttons, and switch back the moment you touch the mouse or keys',
+      'Aim assist, vibration on hits and boss slams, and a new Controller section in Settings where you can move the buttons around'
+    ] },
     { version: '0.7.42', date: '2026-10-10', title: 'Softer melee swings', notes: [
       'Melee swings leave a softer, thinner streak instead of a bright solid arc',
       'Fewer sparkles along each swing'
@@ -103220,7 +103282,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   IN.unbind = function (action, slot) { var b = IN.bindings[action]; if (!b) return; if (slot === undefined) b.length = 0; else b.splice(slot, 1); IN.save(); IN.events.emit('bindings', IN.bindings); };
   IN.resetBindings = function () { IN.bindings = IN.mergeBindings(null); IN.save(); IN.events.emit('bindings', IN.bindings); };
   /** label('skill2') -> 'Q' (the primary binding, for hotkey badges); '' when unbound. */
-  IN.label = function (action, slot) { var b = IN.bindings[action]; return b && b[slot || 0] ? IN.codeLabel(b[slot || 0]) : ''; };
+  IN.label = function (action, slot) {
+    if (IN.pad && IN.pad.active && KD.pad && KD.pad.label) { var pl = KD.pad.label(action); if (pl !== null && pl !== undefined) return slot ? '' : pl; }      // [pad-play] the pad's glyph while the pad is in use
+    var b = IN.bindings[action]; return b && b[slot || 0] ? IN.codeLabel(b[slot || 0]) : ''; };
   IN.save = function () {
     if (!st.storage) return;
     try { st.storage.setItem(IN.STORAGE_KEY, JSON.stringify({ v: 1, bindings: IN.bindings, sensitivity: IN.sensitivity, invertY: IN.invertY, aimMode: IN.aimMode, edgeTurn: IN.edgeTurn, touchSens: IN.TOUCH_SENS })); } catch (e) { /* storage full or blocked */ }
@@ -103250,6 +103314,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   // frame
   // ---------------------------------------------------------------------------------------------
   function pollPad() {
+    // [pad-play] the pad layer (src/ui/04_pad.js, docs/CONTROLLER.md) reads the controller: type, edges, dead zones, remapping
+    if (KD.pad && KD.pad.poll) return KD.pad.poll(st, emitAction);
     var p = IN.pad, k;
     for (k in p.buttons) st.padPrev[k] = p.buttons[k];
     p.connected = false; p.x = p.y = p.lx = p.ly = 0;
@@ -103289,6 +103355,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   IN.intent = function (camYaw, aimPoint, origin) {
     if (!IN.gameplayEnabled) return IN.emptyIntent();
     var T = IN.touch;
+    if (IN.pad.active && KD.pad && KD.pad.intent) return KD.pad.intent(camYaw, aimPoint, origin);      // [pad-play] the pad aims (docs/CONTROLLER.md)
     if (T.on) return IN.buildIntent(IN.actionDown, camYaw, null, { mode: 'touch', origin: origin, axisX: IN.pad.x + T.x, axisY: IN.pad.y + T.y });
     return IN.buildIntent(IN.actionDown, camYaw, aimPoint, { mode: IN.mode, origin: origin, axisX: IN.pad.x, axisY: IN.pad.y });
   };
@@ -103307,8 +103374,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (!IN.gameplayEnabled) return out;
     out.zoom = m.wheel;
     if (IN.mode === 'lock' || st.turn) { out.yaw = -m.dx * IN.sensitivity; out.pitch = m.dy * IN.sensitivity * inv; }
-    else if (IN.edgeTurn && m.inside && HAS_DOM && !IN.touch.on) out.yaw = -IN.edgeTurnAmount(m.x, window.innerWidth) * IN.EDGE_SPEED * (dt || 0);
-    if (IN.pad.connected) { out.yaw -= IN.pad.lx * 2.6 * (dt || 0); out.pitch += IN.pad.ly * 1.6 * (dt || 0) * inv; }
+    else if (IN.edgeTurn && m.inside && HAS_DOM && !IN.touch.on && !IN.pad.active) out.yaw = -IN.edgeTurnAmount(m.x, window.innerWidth) * IN.EDGE_SPEED * (dt || 0);
+    if (IN.pad.connected && KD.pad && KD.pad.look) KD.pad.look(dt, out);      // [pad-play] right stick: sensitivity and invert from the Controller settings
+    else if (IN.pad.connected) { out.yaw -= IN.pad.lx * 2.6 * (dt || 0); out.pitch += IN.pad.ly * 1.6 * (dt || 0) * inv; }
     if (IN.touch.on) { out.yaw -= st.tdx * IN.TOUCH_SENS; out.pitch += st.tdy * IN.TOUCH_SENS * 0.6 * inv; out.zoom += IN.touch.zoom; IN.touch.zoom = 0; }
     out.yaw += 0; out.pitch += 0;                 // no negative zero
     return out;
@@ -103469,6 +103537,709 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     return IN;
   };
   IN._state = st;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/ui/04_pad.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var U = KD.util;
+  var HAS_DOM = typeof document !== 'undefined' && typeof window !== 'undefined';
+
+  /**
+   * KD.pad: game controllers (PlayStation, Xbox, Switch Pro and generic pads) through the Gamepad API. docs/CONTROLLER.md.
+   * [pad-play] The shared pad layer. KD.input (src/ui/03_input.js) calls into it once per frame; other code reads the
+   * contract on KD.input.pad:
+   *
+   *   KD.input.pad.connected / type ('ps'|'xbox'|'switch'|'generic') / index / id / mapping
+   *   KD.input.pad.x, y          left stick after the radial dead zone (x right, y forward = up)
+   *   KD.input.pad.lx, ly        right stick after the dead zone (x right, y DOWN, as the browser reports it); rx, ry the same
+   *   KD.input.pad.raw[i]        standard-mapping buttons as booleans (0 south, 1 east, 2 west, 3 north, 4 L1, 5 R1, 6 L2,
+   *                              7 R2, 8 select, 9 start, 10 L3, 11 R3, 12-15 D-pad up/down/left/right, 16 home, 17 touchpad)
+   *   KD.input.pad.value[i]      the same as 0..1 values (triggers are analogue)
+   *   KD.input.pad.pressedRaw(i) / releasedRaw(i)   edges for this frame
+   *   KD.input.pad.active        true while the pad was the last device used (mouse, keys or a finger set it false)
+   *   KD.input.pad.capturing     true while the Controller window waits for a button to remap (other layers should ignore the pad)
+   *   KD.input.pad.rumble(strength 0..1, ms)        vibration (silently nothing when the pad or browser cannot, or it is Off)
+   *   KD.input.on('padConnected' | 'padDisconnected' | 'padActive' | 'padButton', fn)
+   *   KD.ui.glyph(action | 'confirm' | 'back' | 'tabLeft' | 'tabRight' | 'menu' | 'view' | 'up' | 'down' | 'left' | 'right' |
+   *               'lstick' | 'rstick' | button index, { type, size, pad })  -> a small inline element: the pad button, or the key
+   *
+   * Non-standard mappings (Firefox and some Bluetooth pads report the raw DirectInput order) are folded into the standard
+   * order by normalize(): known layouts for Sony and Xbox pads, a resting-value calibration for the sticks, triggers and
+   * the D-pad hat. The pure parts (detectType, normalize, radial, mergeMap, remap, token, pickTarget, aim) run in Node.
+   * Nothing here touches the simulation: the pad fills the same input struct as the keys do.
+   */
+  var P = KD.pad = KD.pad || {};
+  var IN = KD.input = KD.input || {};
+
+  // ---------------------------------------------------------------------------------------------
+  // pure
+  // ---------------------------------------------------------------------------------------------
+  P.NB = 18;
+  P.BTN = ['south', 'east', 'west', 'north', 'l1', 'r1', 'l2', 'r2', 'select', 'start', 'l3', 'r3', 'up', 'down', 'left', 'right', 'home', 'touchpad'];
+  P.TYPE_NAMES = { ps: 'PlayStation controller', xbox: 'Xbox controller', 'switch': 'Switch controller', generic: 'Controller' };
+  /** Button names as printed on each pad, by standard index. */
+  P.NAMES = {
+    ps: ['Cross', 'Circle', 'Square', 'Triangle', 'L1', 'R1', 'L2', 'R2', 'Share', 'Options', 'L3', 'R3', 'D-pad up', 'D-pad down', 'D-pad left', 'D-pad right', 'PS', 'Touchpad'],
+    xbox: ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'View', 'Menu', 'LS', 'RS', 'D-pad up', 'D-pad down', 'D-pad left', 'D-pad right', 'Xbox', 'Share'],
+    'switch': ['B', 'A', 'Y', 'X', 'L', 'R', 'ZL', 'ZR', 'Minus', 'Plus', 'LS', 'RS', 'D-pad up', 'D-pad down', 'D-pad left', 'D-pad right', 'Home', 'Capture'],
+    generic: ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'Select', 'Start', 'LS', 'RS', 'D-pad up', 'D-pad down', 'D-pad left', 'D-pad right', 'Home', 'Pad']
+  };
+  /** Short text on a glyph (also what KD.input.label returns while the pad is active, after an invisible marker). */
+  P.SHORT = {
+    ps: ['✕', '○', '□', '△', 'L1', 'R1', 'L2', 'R2', 'Share', 'Options', 'L3', 'R3', '↑', '↓', '←', '→', 'PS', 'Pad'],
+    xbox: ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'View', 'Menu', 'LS', 'RS', '↑', '↓', '←', '→', 'Xbox', 'Share'],
+    'switch': ['B', 'A', 'Y', 'X', 'L', 'R', 'ZL', 'ZR', '−', '+', 'LS', 'RS', '↑', '↓', '←', '→', 'Home', 'Cap'],
+    generic: ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'Select', 'Start', 'LS', 'RS', '↑', '↓', '←', '→', 'Home', 'Pad']
+  };
+  P.MARK = '⁣';      // invisible separator: marks a label as a pad glyph so the interface can draw it as one
+
+  /** detectType(id) -> 'ps' | 'xbox' | 'switch' | 'generic', from Chrome ("... Vendor: 054c Product: 09cc"), Firefox ("54c-9cc-Wireless Controller") or Safari / Android (a plain name). */
+  P.vendorOf = function (id) {
+    var s = String(id || '').toLowerCase(), m = /vendor:\s*([0-9a-f]{1,4})/.exec(s) || /^\s*([0-9a-f]{1,4})-([0-9a-f]{1,4})-/.exec(s);
+    if (!m) return '';
+    var v = m[1]; while (v.length < 4) v = '0' + v;
+    return v;
+  };
+  P.detectType = function (id) {
+    var s = String(id || '').toLowerCase(), v = P.vendorOf(id);
+    if (v === '054c' || /dualshock|dualsense|playstation|\bps[345]\b|sony/.test(s)) return 'ps';
+    if (v === '045e' || /xbox|xinput|microsoft|x-box/.test(s)) return 'xbox';
+    if (v === '057e' || /nintendo|switch|joy-?con|pro controller/.test(s)) return 'switch';
+    if (/^\s*wireless controller\b/.test(s)) return 'ps';          // a DualShock 4 on Android and older Safari names itself just this
+    return 'generic';
+  };
+
+  /** radial(x, y, dead, outer) -> { x, y, mag }: a round dead zone (no square corners), rescaled so the edge of the zone is 0 and `outer` is 1. */
+  P.radial = function (x, y, dead, outer) {
+    x = +x || 0; y = +y || 0; dead = dead === undefined ? 0.15 : dead; outer = outer === undefined ? 0.95 : outer;
+    var m = Math.sqrt(x * x + y * y);
+    if (m <= dead || m === 0) return { x: 0, y: 0, mag: 0 };
+    var k = Math.min(1, (m - dead) / Math.max(0.01, outer - dead));
+    return { x: x / m * k, y: y / m * k, mag: k };
+  };
+  /** curve(v): a gentle response curve for camera turning (fine near the centre, full speed at the rim). */
+  P.curve = function (v) { var a = Math.abs(v); return (v < 0 ? -1 : 1) * a * Math.sqrt(a); };
+
+  // known non-standard layouts: standard index -> raw button index (-1 = comes from an axis or does not exist)
+  P.LAYOUTS = {
+    ps: [1, 2, 0, 3, 4, 5, 6, 7, 8, 9, 10, 11, -1, -1, -1, -1, 12, 13],          // DirectInput order (Firefox on Windows and Mac)
+    xbox: [0, 1, 2, 3, 4, 5, -1, -1, 6, 7, 9, 10, -1, -1, -1, -1, 8, -1]           // xpad order (Firefox on Linux): triggers and D-pad are axes
+  };
+  function bval(x) {
+    if (x === null || x === undefined) return 0;
+    if (typeof x === 'number') return x;
+    var v = +x.value || 0;
+    return x.pressed ? Math.max(v, v > 0 ? v : 1) : v;
+  }
+  /** hat(v) -> [up, down, left, right] from a D-pad hat axis (-1 up, steps of 2/7 clockwise; above 1 when centred). */
+  P.hat = function (v) {
+    if (!(Math.abs(v) <= 1.05)) return [0, 0, 0, 0];
+    var i = Math.round((v + 1) * 7 / 2) % 8;
+    return [i === 7 || i === 0 || i === 1 ? 1 : 0, i >= 3 && i <= 5 ? 1 : 0, i >= 5 && i <= 7 ? 1 : 0, i >= 1 && i <= 3 ? 1 : 0];
+  };
+  /**
+   * normalize(gamepad, cal, out?) -> { v: [18 values 0..1 in standard order], ax: [lx, ly, rx, ry] }.
+   * cal: a per-pad object kept by the caller ({} at first); it remembers the resting value of every axis so triggers
+   * (resting at -1) and the D-pad hat (resting above 1) can be told from the right stick on non-standard pads.
+   */
+  P.normalize = function (g, cal, out) {
+    out = out || { v: [], ax: [0, 0, 0, 0] };
+    var b = g.buttons || [], a = g.axes || [], i, NB = P.NB;
+    for (i = 0; i < NB; i++) out.v[i] = 0;
+    out.ax[0] = +a[0] || 0; out.ax[1] = +a[1] || 0; out.ax[2] = 0; out.ax[3] = 0;
+    if (g.mapping === 'standard') {
+      for (i = 0; i < NB; i++) out.v[i] = bval(b[i]);
+      out.ax[2] = +a[2] || 0; out.ax[3] = +a[3] || 0;
+      return out;
+    }
+    cal = cal || {};
+    if (!cal.rest || cal.rest.length !== a.length) cal.rest = Array.prototype.map.call(a, function (x) { return +x || 0; });
+    var type = cal.type || P.detectType(g.id), L = P.LAYOUTS[type];
+    if (!L) { L = []; for (i = 0; i < NB; i++) L[i] = i < 12 ? i : (i < 16 ? (b.length >= 16 ? i : -1) : (b.length > i ? i : -1)); }
+    for (i = 0; i < NB; i++) if (L[i] >= 0) out.v[i] = bval(b[L[i]]);
+    // the other axes: hat (rests above 1), triggers (rest at -1), sticks (rest near 0)
+    var sticks = [], trig = [], hatAx = -1;
+    for (i = 2; i < a.length; i++) {
+      var r = cal.rest[i];
+      if (Math.abs(r) > 1.05) { if (hatAx < 0) hatAx = i; }
+      else if (r < -0.9) trig.push(i);
+      else sticks.push(i);
+    }
+    if (sticks.length >= 2) { out.ax[2] = +a[sticks[0]] || 0; out.ax[3] = +a[sticks[1]] || 0; }
+    if (trig.length >= 1 && !(out.v[6] > 0)) out.v[6] = Math.max(0, ((+a[trig[0]] || -1) + 1) / 2);
+    if (trig.length >= 2 && !(out.v[7] > 0)) out.v[7] = Math.max(0, ((+a[trig[1]] || -1) + 1) / 2);
+    var dpadMissing = L[12] < 0 || b.length < 13;
+    if (dpadMissing) {
+      var d = [0, 0, 0, 0];
+      if (hatAx >= 0) d = P.hat(+a[hatAx]);
+      else if (sticks.length >= 4) { var dx = +a[sticks[2]] || 0, dy = +a[sticks[3]] || 0; d = [dy < -0.5 ? 1 : 0, dy > 0.5 ? 1 : 0, dx < -0.5 ? 1 : 0, dx > 0.5 ? 1 : 0]; }
+      for (i = 0; i < 4; i++) out.v[12 + i] = Math.max(out.v[12 + i], d[i]);
+    }
+    return out;
+  };
+
+  /** Default button for each action (standard indices). Modern action RPG layout; docs/CONTROLLER.md. */
+  P.DEFAULT_MAP = { primary: 7, skill1: 6, skill2: 0, skill3: 3, skill4: 5, ultimate: 4, dodge: 1, interact: 2, sprint: 10, potion: 12, bandage: 13, character: 14, map: 15, inventory: 8, pause: 9 };
+  /** Actions a player may move to another button, and the buttons they may use (the menu buttons, the right stick click and the D-pad sides stay fixed). */
+  P.REMAPPABLE = ['primary', 'skill1', 'skill2', 'skill3', 'skill4', 'ultimate', 'dodge', 'interact', 'sprint', 'potion', 'bandage'];
+  P.REMAP_BUTTONS = [0, 1, 2, 3, 4, 5, 6, 7, 10, 12, 13];
+  /** Extra fixed buttons: the touchpad also opens the bag, R3 puts the camera behind the hero. */
+  P.EXTRA = { 17: 'inventory' };
+  P.UI_ACTIONS = ['pause', 'map', 'inventory', 'character'];
+  /** mergeMap(saved) -> a complete map: defaults with valid saved choices; any clash falls back to the defaults. */
+  P.mergeMap = function (saved) {
+    var out = {}, k, used = {}, ok = true;
+    for (k in P.DEFAULT_MAP) out[k] = P.DEFAULT_MAP[k];
+    if (saved && typeof saved === 'object') P.REMAPPABLE.forEach(function (a) { var v = saved[a]; if (typeof v === 'number' && P.REMAP_BUTTONS.indexOf(v) >= 0) out[a] = v; });
+    P.REMAPPABLE.forEach(function (a) { if (used[out[a]]) ok = false; used[out[a]] = true; });
+    if (!ok) { out = {}; for (k in P.DEFAULT_MAP) out[k] = P.DEFAULT_MAP[k]; }
+    return out;
+  };
+  /** remap(map, action, index) -> true when done. The action that had the button gets the old one (a swap). */
+  P.remap = function (map, action, index) {
+    if (P.REMAPPABLE.indexOf(action) < 0 || P.REMAP_BUTTONS.indexOf(index) < 0) return false;
+    var old = map[action];
+    for (var k in map) if (k !== action && map[k] === index && P.REMAPPABLE.indexOf(k) >= 0) map[k] = old;
+    map[action] = index;
+    return true;
+  };
+  /** buttonOf(action, map?) -> standard index, or -1. The move actions are the left stick. */
+  P.buttonOf = function (action, map) {
+    map = map || P.map;
+    if (typeof action === 'number') return action;
+    var alias = { confirm: 0, back: 1, west: 2, north: 3, tabLeft: 4, tabRight: 5, menu: 9, view: 8, start: 9, select: 8, up: 12, down: 13, left: 14, right: 15, home: 16, touchpad: 17 };
+    if (alias[action] !== undefined) return alias[action];
+    var i = P.BTN.indexOf(action); if (i >= 0) return i;
+    return map && map[action] !== undefined ? map[action] : -1;
+  };
+  function stickOf(action) { if (/^move/.test(action) || action === 'lstick') return 'lstick'; if (action === 'rstick' || action === 'look' || action === 'camera') return 'rstick'; return null; }
+  /** token(type, action | index) -> the marked short label ('⁣✕', '⁣RB', '⁣L' for a stick) or '' when nothing is bound. */
+  P.token = function (type, action, map) {
+    type = P.SHORT[type] ? type : 'generic';
+    var s = typeof action === 'string' ? stickOf(action) : null;
+    if (s) return P.MARK + (s === 'lstick' ? 'L stick' : 'R stick');
+    var i = P.buttonOf(action, map);
+    return i >= 0 && i < P.NB ? P.MARK + P.SHORT[type][i] : '';
+  };
+  /** info(text) -> { type, btn } for a marked label, else null (how the interface knows which glyph to draw). */
+  var TOKENS = null;
+  P.tokenInfo = function (text) {
+    if (!text || text.charAt(0) !== P.MARK) return null;
+    if (!TOKENS) {
+      TOKENS = {};
+      Object.keys(P.SHORT).forEach(function (t) {
+        P.SHORT[t].forEach(function (s, i) { (TOKENS[t] = TOKENS[t] || {})[P.MARK + s] = P.BTN[i]; });
+        TOKENS[t][P.MARK + 'L stick'] = 'lstick'; TOKENS[t][P.MARK + 'R stick'] = 'rstick';
+      });
+    }
+    var type = P.type || 'generic', m = TOKENS[type] && TOKENS[type][text];
+    if (!m) for (var t in TOKENS) if (TOKENS[t][text]) { type = t; m = TOKENS[t][text]; break; }
+    return m ? { type: type, btn: m } : null;
+  };
+
+  /**
+   * pickTarget(list, origin, yaw, range, cone) -> the enemy to lean the aim toward, or null.
+   * Only enemies within `range` metres and `cone` radians of the aim count; the nearest, weighted by how far off the
+   * aim it is, wins. list: [{ x, z, r? }].
+   */
+  P.pickTarget = function (list, o, yaw, range, cone) {
+    var best = null, bs = Infinity;
+    for (var i = 0; list && i < list.length; i++) {
+      var e = list[i]; if (!e || e.dead || e.removed) continue;
+      var dx = e.x - o.x, dz = e.z - o.z, d = Math.sqrt(dx * dx + dz * dz) - (e.r || 0);
+      if (d > range) continue;
+      var off = Math.abs(U.angDiff(yaw, Math.atan2(dx, dz)));
+      if (off > cone) continue;
+      var s = Math.max(0.3, d) * (1 + off / Math.max(0.05, cone));
+      if (s < bs) { bs = s; best = e; }
+    }
+    return best;
+  };
+  /**
+   * aim(o) -> { yaw, x, z, target }: where the hero aims with a pad.
+   *   o: { top, camYaw, rx, ry (right stick, y down), mx, mz (the move vector of the intent), lastYaw, origin {x,z},
+   *        enemies [..], range, assist 0..1 }
+   * Behind-the-hero camera: the aim follows the camera (the right stick turns it). Top-down camera: the right stick
+   * points the aim; let go, the hero aims where it walks, standing still it keeps its last aim. Aim assist leans the aim
+   * toward the nearest enemy in front by `assist` (1 = right at it).
+   */
+  P.aim = function (o) {
+    var yaw, cone, rm = Math.sqrt((o.rx || 0) * (o.rx || 0) + (o.ry || 0) * (o.ry || 0));
+    var mm = Math.sqrt((o.mx || 0) * (o.mx || 0) + (o.mz || 0) * (o.mz || 0));
+    if (o.top) {
+      if (rm > 0.25) { var v = IN.moveVector ? IN.moveVector(-(o.ry || 0), o.rx || 0, o.camYaw || 0) : { mx: o.rx, mz: -o.ry }; yaw = Math.atan2(v.mx, v.mz); cone = 0.55; }
+      else if (mm > 0.15) { yaw = Math.atan2(o.mx, o.mz); cone = 0.9; }
+      else { yaw = o.lastYaw !== undefined && o.lastYaw !== null ? o.lastYaw : (o.camYaw || 0); cone = 1.1; }
+    } else { yaw = o.camYaw || 0; cone = 0.42; }
+    var out = { yaw: yaw, x: 0, z: 0, target: null }, org = o.origin || { x: 0, z: 0 }, range = o.range || 10;
+    var t = o.assist > 0 ? P.pickTarget(o.enemies, org, yaw, range, cone) : null;
+    if (t) {
+      var ty = Math.atan2(t.x - org.x, t.z - org.z);
+      out.yaw = yaw + U.angDiff(yaw, ty) * Math.min(1, o.assist); out.target = t;
+      if (o.assist >= 0.5) { out.x = t.x; out.z = t.z; return out; }
+    }
+    var dist = Math.min(8, range);
+    out.x = org.x + Math.sin(out.yaw) * dist; out.z = org.z + Math.cos(out.yaw) * dist;
+    return out;
+  };
+
+  // ---------------------------------------------------------------------------------------------
+  // settings (saved per browser)
+  // ---------------------------------------------------------------------------------------------
+  P.STORAGE_KEY = 'kd.pad';
+  P.ASSIST = { off: 0, light: 0.45, strong: 0.85 };
+  P.DEFAULTS = { vibration: true, sens: 1, invertY: false, dead: 0.15, assist: 'strong' };
+  P.settings = { vibration: true, sens: 1, invertY: false, dead: 0.15, assist: 'strong' };
+  P.map = P.mergeMap(null);
+  function storage() { try { return root.localStorage || null; } catch (e) { return null; } }
+  P.save = function () {
+    var s = storage(); if (!s) return;
+    try { s.setItem(P.STORAGE_KEY, JSON.stringify({ v: 1, map: P.map, vibration: P.settings.vibration, sens: P.settings.sens, invertY: P.settings.invertY, dead: P.settings.dead, assist: P.settings.assist })); } catch (e) { /* storage full or blocked */ }
+  };
+  P.load = function (raw) {
+    var d = raw;
+    if (d === undefined) { var s = storage(); if (!s) return; try { d = JSON.parse(s.getItem(P.STORAGE_KEY) || 'null'); } catch (e) { d = null; } }
+    if (!d || typeof d !== 'object') return;
+    P.map = P.mergeMap(d.map);
+    var S = P.settings;
+    if (typeof d.vibration === 'boolean') S.vibration = d.vibration;
+    if (typeof d.sens === 'number' && d.sens > 0) S.sens = U.clamp(d.sens, 0.3, 2.5);
+    if (typeof d.invertY === 'boolean') S.invertY = d.invertY;
+    if (typeof d.dead === 'number') S.dead = U.clamp(d.dead, 0.05, 0.4);
+    if (P.ASSIST[d.assist] !== undefined) S.assist = d.assist;
+  };
+  P.set = function (k, v) { if (Object.prototype.hasOwnProperty.call(P.DEFAULTS, k)) { P.settings[k] = v; P.save(); } };
+  P.resetMap = function () { P.map = P.mergeMap(null); P.save(); IN.events && IN.events.emit('bindings', IN.bindings); };
+
+  // ---------------------------------------------------------------------------------------------
+  // the live pad (KD.input.pad)
+  // ---------------------------------------------------------------------------------------------
+  var pad = IN.pad = IN.pad || { connected: false, x: 0, y: 0, lx: 0, ly: 0, buttons: {} };
+  pad.type = pad.type || 'generic'; pad.index = -1; pad.id = ''; pad.mapping = '';
+  pad.raw = []; pad.value = []; pad.rx = 0; pad.ry = 0; pad.active = false; pad.capturing = false;
+  var prevRaw = [], norm = { v: [], ax: [0, 0, 0, 0] }, cal = {}, ps = { latch: false, lastYaw: null, seen: false, toastT: 0, lastId: '', rumbleUntil: 0, rumbleS: 0 };
+  for (var bi = 0; bi < P.NB; bi++) { pad.raw[bi] = false; pad.value[bi] = 0; prevRaw[bi] = false; }
+  pad.pressedRaw = function (i) { return !!pad.raw[i] && !prevRaw[i]; };
+  pad.releasedRaw = function (i) { return !pad.raw[i] && !!prevRaw[i]; };
+  P.type = 'generic';
+  P._state = ps;
+
+  function emit(name, data) { if (IN.events) IN.events.emit(name, data); }
+  function now() { return HAS_DOM && root.performance && performance.now ? performance.now() : Date.now(); }
+  function livePad() {
+    if (!HAS_DOM || !navigator.getGamepads || pad.index < 0) return null;
+    try { var a = navigator.getGamepads(); return a ? a[pad.index] : null; } catch (e) { return null; }
+  }
+  /** rumble(strength 0..1, ms): dual-rumble where the browser can, else the older haptic pulse; Off in Settings means never. */
+  pad.rumble = P.rumble = function (strength, ms) {
+    if (!P.settings.vibration || !pad.connected) return false;
+    var s = U.clamp(+strength || 0, 0, 1), d = U.clamp(+ms || 100, 10, 2000), t = now();
+    if (s <= 0) return false;
+    if (t < ps.rumbleUntil && s <= ps.rumbleS) return false;        // a stronger buzz is still running: keep it
+    ps.rumbleUntil = t + d; ps.rumbleS = s;
+    var g = livePad(); if (!g) return false;
+    try {
+      var va = g.vibrationActuator;
+      if (va && typeof va.playEffect === 'function') { var r = va.playEffect(va.type === 'vibration' ? 'vibration' : 'dual-rumble', { startDelay: 0, duration: d, strongMagnitude: s, weakMagnitude: Math.min(1, s * 0.8 + 0.1) }); if (r && r.catch) r.catch(function () {}); return true; }
+      var ha = g.hapticActuators && g.hapticActuators[0];
+      if (ha && typeof ha.pulse === 'function') { var r2 = ha.pulse(s, d); if (r2 && r2.catch) r2.catch(function () {}); return true; }
+    } catch (e) { /* no vibration here */ }
+    return false;
+  };
+
+  function modalOpen() { var W = KD.ui && KD.ui.windows, t = W && W.top && W.top(); return !!(t && t.modal); }
+  function choosePad(list) {
+    var best = null, i, g;
+    if (pad.index >= 0 && list[pad.index] && list[pad.index].connected) best = list[pad.index];
+    for (i = 0; i < list.length; i++) {
+      g = list[i]; if (!g || !g.connected || !g.axes || g.axes.length < 2) continue;
+      if (!best) { best = g; continue; }
+      // another pad pressed a button while ours is idle: take it (one player per device, the last pad used wins)
+      if (g !== best && anyDown(g) && !anyDown(best)) best = g;
+    }
+    return best;
+  }
+  function anyDown(g) { var b = g.buttons || []; for (var i = 0; i < b.length; i++) if (b[i] && (b[i].pressed || (typeof b[i] === 'number' && b[i] > 0.5))) return true; return false; }
+
+  function setConnected(g) {
+    var was = pad.connected;
+    pad.connected = true; pad.index = g.index; pad.id = String(g.id || ''); pad.mapping = String(g.mapping || '');
+    pad.type = P.type = P.detectType(pad.id);
+    cal = { type: pad.type };
+    if (!was || pad.id !== ps.lastId) {
+      ps.lastId = pad.id;
+      emit('padConnected', { type: pad.type, id: pad.id, index: pad.index, mapping: pad.mapping });
+      if (HAS_DOM && KD.ui && KD.ui.toast && now() - ps.toastT > 1500) {
+        ps.toastT = now();
+        try { KD.ui.toast(toastBody('Controller connected: ' + P.TYPE_NAMES[pad.type]), { kind: 'good', ms: 3200 }); } catch (e) { /* no toast layer yet */ }
+      }
+      if (KD.ui && KD.ui.root) decorateAll();
+    }
+  }
+  function setDisconnected() {
+    if (!pad.connected) return;
+    var id = pad.id, type = pad.type;
+    pad.connected = false; pad.index = -1;
+    for (var i = 0; i < P.NB; i++) { pad.raw[i] = false; pad.value[i] = 0; }
+    pad.x = pad.y = pad.lx = pad.ly = pad.rx = pad.ry = 0;
+    for (var k in pad.buttons) pad.buttons[k] = false;
+    ps.lastId = '';
+    emit('padDisconnected', { type: type, id: id });
+    if (HAS_DOM && KD.ui && KD.ui.toast) { try { KD.ui.toast('Controller disconnected', { kind: 'warn', ms: 2600 }); } catch (e) { /* no toast layer */ } }
+    if (pad.active) P.setActive(false);
+  }
+
+  /**
+   * poll(st, emitAction): called by KD.input.beginFrame. Reads the pad, fills KD.input.pad, sets the per-action buttons
+   * the intent reads, fires the UI actions (pause, map, bag, hero) while no window is open, and switches `active`.
+   */
+  P.poll = function (st, emitAction) {
+    var k, i;
+    for (k in pad.buttons) st.padPrev[k] = pad.buttons[k];
+    for (i = 0; i < P.NB; i++) prevRaw[i] = pad.raw[i];
+    ps.polls = (ps.polls || 0) + 1;
+    if (!HAS_DOM || !navigator.getGamepads) return;
+    var list; try { list = navigator.getGamepads(); } catch (e) { return; }
+    var g = list ? choosePad(list) : null;
+    if (!g) { setDisconnected(); return; }
+    if (!pad.connected || g.index !== pad.index || String(g.id || '') !== pad.id) setConnected(g);
+    P.normalize(g, cal, norm);
+    var any = false;
+    for (i = 0; i < P.NB; i++) {
+      var v = norm.v[i] || 0; pad.value[i] = v;
+      pad.raw[i] = i === 6 || i === 7 ? v > 0.3 : v > 0.5;
+      if (pad.raw[i] && !prevRaw[i]) { any = true; emit('padButton', { index: i, name: P.BTN[i], type: pad.type }); }
+    }
+    var S = P.settings, L = P.radial(norm.ax[0], norm.ax[1], S.dead), R = P.radial(norm.ax[2], norm.ax[3], S.dead);
+    pad.x = L.x + 0; pad.y = -L.y + 0; pad.lx = pad.rx = R.x + 0; pad.ly = pad.ry = R.y + 0; pad.lmag = L.mag; pad.rmag = R.mag;
+    if (pad.capturing) { for (k in pad.buttons) pad.buttons[k] = false; pad.x = pad.y = pad.lx = pad.ly = pad.rx = pad.ry = 0; return; }
+    if (any || L.mag > 0.4 || R.mag > 0.4) { if (!pad.active) P.setActive(true); }
+    // per action
+    var M = P.map;
+    for (k in M) pad.buttons[k] = !!pad.raw[M[k]];
+    for (k in P.EXTRA) if (pad.raw[k]) pad.buttons[P.EXTRA[k]] = true;
+    if (KD.flow && KD.flow.potionsOn && !KD.flow.potionsOn() && pad.buttons.potion) { pad.buttons.bandage = true; pad.buttons.potion = false; }
+    // sprint: L3 toggles it on; it stays on while the stick is pushed
+    if (pad.pressedRaw(M.sprint)) ps.latch = !ps.latch;
+    if (L.mag < 0.25) ps.latch = false;
+    pad.buttons.sprint = ps.latch;
+    // menu buttons: only while no window is open (inside windows the menu navigation owns the pad)
+    var free = IN.gameplayEnabled && !modalOpen();
+    if (free && emitAction) {
+      for (i = 0; i < P.UI_ACTIONS.length; i++) {
+        var a = P.UI_ACTIONS[i];
+        if (pad.buttons[a] && !st.padPrev[a]) emitAction(a, 'Pad');
+      }
+    }
+    if (free && pad.pressedRaw(11)) ps.recenter = true;
+  };
+
+  /** setActive(on): the pad became (or stopped being) the device in use. Fires padActive and refreshes every key label. */
+  P.setActive = function (on) {
+    on = !!on && pad.connected;
+    if (on === pad.active) return;
+    pad.active = on;
+    if (HAS_DOM) {
+      var de = document.documentElement;
+      de.classList.toggle('kd-pad-on', on);
+      ['ps', 'xbox', 'switch', 'generic'].forEach(function (t) { de.classList.toggle('kd-pad-' + t, on && pad.type === t); });
+      touchSwap(on);
+    }
+    emit('padActive', { active: on, type: pad.type });
+    emit('bindings', IN.bindings);          // every hotkey badge asks KD.input.label again
+    if (HAS_DOM) decorateAll();
+  };
+
+  /** label(action) -> the marked pad label of an action while the pad is active, else null (the keys apply). */
+  P.label = function (action) {
+    if (!pad.active) return null;
+    if (P.DEFAULT_MAP[action] === undefined && !/^move/.test(action) && ['web', 'skills'].indexOf(action) < 0) return null;
+    if (action === 'web' || action === 'skills') return '';         // no button of their own: through the bag window
+    return P.token(pad.type, action);
+  };
+
+  /** intent(camYaw, aimPoint, origin) -> the sim input struct from the pad (and any keys still held). Same shape as always. */
+  P.intent = function (camYaw, aimPoint, origin) {
+    var top = !!(KD.game && KD.game.view === 'top');
+    var out = IN.buildIntent(IN.actionDown, camYaw, null, { mode: 'lock', origin: origin, axisX: pad.x, axisY: pad.y });
+    var o = origin || null, world = KD.game && KD.game.world;
+    if (!o) return out;
+    var list = enemiesNear(world, o), cls = o.hero && KD.get ? safeCls(o.hero.classId) : null;
+    if (ps.lastYaw === null) ps.lastYaw = o.faceYaw !== undefined && o.faceYaw !== null ? o.faceYaw : (o.yaw || 0);
+    var r = P.aim({ top: top, camYaw: camYaw, rx: pad.rx, ry: pad.ry, mx: out.mx, mz: out.mz, lastYaw: ps.lastYaw, origin: o, enemies: list,
+      range: cls && cls.ranged ? 19 : 10, assist: P.ASSIST[P.settings.assist] || 0 });
+    out.aimYaw = r.yaw; out.aimX = r.x; out.aimZ = r.z;
+    ps.lastYaw = r.yaw; P.target = r.target;
+    return out;
+  };
+  function safeCls(id) { try { return KD.get('classes', id); } catch (e) { return null; } }
+  var near = [], tmp = [];
+  function enemiesNear(world, p) {
+    near.length = 0;
+    var S = KD.sim;
+    if (!world || !S || !S.qCircle) return near;
+    var n = 0; try { n = S.qCircle(world, p.x, p.z, 22, tmp); } catch (e) { return near; }
+    for (var i = 0; i < n; i++) { var e = tmp[i]; if (e && e !== p && e.kind === 'enemy' && !e.dead && !e.removed && !e.hidden && !e.untargetable && !e.stealthed && (!S.hostile || S.hostile(p, e))) near.push(e); }
+    return near;
+  }
+
+  /** look(dt, out): adds the right stick's camera turn to KD.input.look()'s { yaw, pitch }. */
+  P.look = function (dt, out) {
+    if (!pad.connected) return out;
+    var S = P.settings, inv = S.invertY ? -1 : 1;
+    out.yaw -= P.curve(pad.rx) * 3.0 * S.sens * (dt || 0);
+    out.pitch += P.curve(pad.ry) * 1.7 * S.sens * (dt || 0) * inv;
+    return out;
+  };
+
+  // ---------------------------------------------------------------------------------------------
+  // glyphs
+  // ---------------------------------------------------------------------------------------------
+  function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; }
+  var GCLS = ['kd-glyph'];
+  function clearGlyph(n) {
+    if (!n._kdg) return;
+    var rm = []; for (var i = 0; i < n.classList.length; i++) { var c = n.classList[i]; if (c === 'kd-glyph' || c.indexOf('kd-g-') === 0) rm.push(c); }
+    rm.forEach(function (c) { n.classList.remove(c); });
+    n._kdg = null;
+  }
+  /** decorate(node): a .kd-key whose text is a pad label becomes that pad's glyph (CSS draws the shapes); others stay keys. */
+  P.decorate = function (n) {
+    if (!n || !n.classList) return n;
+    var t = n.textContent || '';
+    if (n._kdg === t) return n;
+    var info = P.tokenInfo(t);
+    clearGlyph(n);
+    if (info) { n.classList.add('kd-glyph', 'kd-g-' + info.type, 'kd-g-' + info.btn); n._kdg = t; if (!n.title) { n.title = glyphTitle(info); n._kdgTitle = true; } }
+    else if (n._kdgTitle) { n.title = ''; n._kdgTitle = false; }
+    return n;
+  };
+  function glyphTitle(info) { var i = P.BTN.indexOf(info.btn); return i >= 0 ? P.NAMES[info.type][i] : (info.btn === 'lstick' ? 'Left stick' : 'Right stick'); }
+  function decorateAll() {
+    if (!HAS_DOM) return;
+    var list = document.querySelectorAll('.kd-key');
+    for (var i = 0; i < list.length; i++) P.decorate(list[i]);
+  }
+  P.decorateAll = decorateAll;
+  /**
+   * KD.ui.glyph(action, opts) -> an inline element for a button: the active pad's glyph, or the key while the keyboard is
+   * in use. action: an action id ('primary', 'dodge', 'interact', ...), 'confirm', 'back', 'tabLeft', 'tabRight', 'menu',
+   * 'view', 'up' / 'down' / 'left' / 'right', 'lstick' / 'rstick', or a standard button index.
+   * opts: { type: force a pad type, pad: true = always the pad glyph (default: only while the pad is active), size: px }.
+   */
+  P.glyph = function (action, opts) {
+    opts = opts || {};
+    if (!HAS_DOM) return null;
+    var usePad = opts.type || opts.pad || pad.active, n;
+    if (usePad) {
+      var type = opts.type || pad.type || 'generic', tok = P.token(type, action);
+      n = el('span', 'kd-key', tok);
+      var info = tok ? (function () { var s = P.type; P.type = type; var r = P.tokenInfo(tok); P.type = s; return r; })() : null;
+      if (info) { n.classList.add('kd-glyph', 'kd-g-' + info.type, 'kd-g-' + info.btn); n._kdg = tok; n.title = glyphTitle(info); }
+    } else {
+      var keys = { confirm: 'Enter', back: 'Esc', tabLeft: 'Q', tabRight: 'E', menu: 'Esc' };
+      n = el('span', 'kd-key', keys[action] || (IN.label ? IN.label(action) : '') || '?');
+    }
+    if (opts.size) n.style.fontSize = Math.round(opts.size * 0.6) + 'px';
+    return n;
+  };
+  function toastBody(text) {
+    var s = el('span', 'kd-pad-toast');
+    var g = P.glyph('confirm', { type: pad.type });
+    if (g) s.appendChild(g);
+    s.appendChild(document.createTextNode(' ' + text));
+    return s;
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // phones and tablets: the on-screen controls step aside while the pad plays
+  // ---------------------------------------------------------------------------------------------
+  var tswap = { on: false, prev: null };
+  function touchSwap(on) {
+    var D = KD.device; if (!D || !D.force) return;
+    if (on && !tswap.on && D.touch) { tswap.on = true; tswap.prev = D.forced; D.padHide = true; D.force(false); }
+    else if (!on && tswap.on) { tswap.on = false; D.padHide = false; D.force(tswap.prev); }
+  }
+  P._touchSwap = tswap;
+
+  // ---------------------------------------------------------------------------------------------
+  // rumble on the moments that matter
+  // ---------------------------------------------------------------------------------------------
+  var hooked = null;
+  function local() { var G = KD.game; return G && G.player; }
+  function onDamage(info) {
+    if (!pad.connected || !pad.active || !info || !info.hit) return;
+    var me = local(); if (!me) return;
+    if (info.target === me && info.amount > 0 && !info.dot) {
+      var f = U.clamp(info.amount / Math.max(1, me.hpMax || 100), 0, 1);
+      P.rumble(U.clamp(0.22 + f * 1.6, 0.22, 0.85), 90 + f * 260);
+    } else if (info.src === me || (info.src && info.src.owner === me)) {
+      var t = info.target || {};
+      if (info.kill && t.boss) P.rumble(0.9, 420);
+      else if (info.broke || (info.kill && t.tier === 'elite')) P.rumble(0.55, 140);
+      else if (info.crit && !info.dot) P.rumble(0.3, 60);
+    }
+  }
+  function onTelegraph(e) {
+    if (!pad.active || !e || e.phase !== 'end' || e.cancelled) return;
+    var t = e.tele, src = t && t.src, me = local();
+    if (!src || !src.boss || !me) return;
+    var reach = Math.max(t.r || 0, t.len || 0, 3) + 8, d = Math.sqrt((t.x - me.x) * (t.x - me.x) + (t.z - me.z) * (t.z - me.z));
+    if (d < reach) P.rumble(0.6, 220);
+  }
+  function onLevel(e) { if (pad.active && e && e.player === local()) P.rumble(0.5, 320); }
+  function hookWorld(w) {
+    if (!w || !w.events || hooked === w) return;
+    if (hooked && hooked.events) { hooked.events.off('damage', onDamage); hooked.events.off('telegraph', onTelegraph); hooked.events.off('levelup', onLevel); }
+    hooked = w;
+    w.events.on('damage', onDamage); w.events.on('telegraph', onTelegraph); w.events.on('levelup', onLevel);
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // per frame (after the input was read): world hooks, R3 recenter, periodic glyph pass
+  // ---------------------------------------------------------------------------------------------
+  var lastDecor = 0;
+  function frame() {
+    var G = KD.game;
+    if (G && G.world) hookWorld(G.world);
+    if (ps.recenter) {
+      ps.recenter = false;
+      var cam = G && G.camera, p = G && G.player;
+      if (cam && p && G.view !== 'top') ps.recenterTo = p.faceYaw !== undefined && p.faceYaw !== null ? p.faceYaw : p.yaw;
+    }
+    if (ps.recenterTo !== undefined && ps.recenterTo !== null && G && G.camera) {
+      var c = G.camera, d = U.angDiff(c.yaw, ps.recenterTo);
+      if (Math.abs(d) < 0.02 || Math.abs(pad.rx) > 0.2) ps.recenterTo = null; else c.yaw += d * 0.25;
+    }
+    var t = now();
+    if (pad.active && t - lastDecor > 250) { lastDecor = t; decorateAll(); }
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // settings rows and the Controller window
+  // ---------------------------------------------------------------------------------------------
+  P.ACTION_NAMES = { primary: 'Primary attack', skill1: 'Skill 1', skill2: 'Skill 2', skill3: 'Skill 3', skill4: 'Skill 4', ultimate: 'Ultimate', dodge: 'Dodge roll',
+    interact: 'Interact', sprint: 'Sprint (toggle)', potion: 'Drink potion', bandage: 'Use bandage', character: 'Hero sheet', map: 'Map', inventory: 'Bag', pause: 'Pause menu' };
+  function sensToStep(s) { return Math.round(U.clamp((s - 0.3) / 2.2, 0, 1) * 19) + 1; }
+  function stepToSens(n) { return 0.3 + 2.2 * (n - 1) / 19; }
+  /** settingsRows(row, F, game) -> the "Controller" block of the Settings window (src/ui/20_flow_50_pause.js). */
+  P.settingsRows = function (row, F, game) {
+    if (!row || !F || !KD.ui) return null;
+    var S = P.settings, UI = KD.ui;
+    var onoff = function (value, fn) { return F.segmented([{ id: 'on', label: 'On' }, { id: 'off', label: 'Off' }], value ? 'on' : 'off', function (id) { fn(id === 'on'); }); };
+    var status = pad.connected ? P.TYPE_NAMES[pad.type] + ' connected' : 'none yet: plug one in or pair it, then press a button';
+    return [
+      UI.el('div.kd-h3', { text: 'Controller' }),
+      row('Controller', UI.el('span.kd-dim', { text: status })),
+      row('Vibration', onoff(S.vibration, function (on) { P.set('vibration', on); if (on) P.rumble(0.5, 160); })),
+      row('Stick sensitivity', F.slider({ min: 1, max: 20, step: 1, value: sensToStep(S.sens), label: 'stick sensitivity', onInput: function (n) { S.sens = stepToSens(n); }, onChange: function () { P.save(); } }), 'how fast the right stick turns the camera'),
+      row('Invert stick look', onoff(S.invertY, function (on) { P.set('invertY', on); })),
+      row('Stick dead zone', F.slider({ min: 5, max: 35, step: 1, value: Math.round(S.dead * 100), format: function (x) { return Math.round(x) + '%'; }, label: 'stick dead zone', onInput: function (x) { S.dead = x / 100; }, onChange: function () { P.save(); } }), 'raise it if the hero drifts'),
+      row('Aim assist', F.segmented([{ id: 'off', label: 'Off' }, { id: 'light', label: 'Light' }, { id: 'strong', label: 'Strong' }], S.assist, function (id) { P.set('assist', id); }), 'leans your aim toward the enemy in front'),
+      row('Buttons', UI.button('Controller layout', { small: true, icon: 'key', onClick: function () { P.openLayout(game); } }))
+    ];
+  };
+  function layoutBody(refresh) {
+    var UI = KD.ui, e = UI.el, type = pad.connected ? pad.type : (P.lastType || 'xbox');
+    var g = function (a) { return P.glyph(a, { type: type }); };
+    var rows = function (list, can) {
+      return list.map(function (a) {
+        var label = P.ACTION_NAMES[a] || a;
+        if (a === 'potion' && KD.flow && KD.flow.potionsOn && !KD.flow.potionsOn()) return null;      // no potions in this game: the button uses a bandage too
+        var btn = can ? UI.button(ps.capture === a ? 'Press a button...' : 'Change', { small: true, kind: ps.capture === a ? 'primary' : null, onClick: function () { P.capture(a, refresh); } }) : e('span.kd-dim.kd-pad-fixed', { text: 'fixed' });
+        return e('div.kd-pad-row', [e('span.kd-pad-what', { text: label }), e('span.kd-pad-btn', [g(a)]), btn]);
+      });
+    };
+    var sticks = [e('div.kd-pad-row', [e('span.kd-pad-what', { text: 'Move' }), e('span.kd-pad-btn', [g('lstick')]), e('span.kd-dim.kd-pad-fixed', { text: 'left stick' })]),
+      e('div.kd-pad-row', [e('span.kd-pad-what', { text: KD.game && KD.game.view === 'top' ? 'Aim (top-down camera)' : 'Turn the camera' }), e('span.kd-pad-btn', [g('rstick')]), e('span.kd-dim.kd-pad-fixed', { text: 'right stick' })]),
+      e('div.kd-pad-row', [e('span.kd-pad-what', { text: 'Camera behind the hero' }), e('span.kd-pad-btn', [g(11)]), e('span.kd-dim.kd-pad-fixed', { text: 'fixed' })])];
+    return e('div.kd-pad-layout', [
+      e('div.kd-dim.kd-pad-note', { text: (pad.connected ? P.TYPE_NAMES[pad.type] + '. ' : 'No controller found yet: the Xbox layout is shown. ') + 'Pick Change, then press the button you want. The two actions swap buttons.' }),
+      e('div.kd-pad-cols', [
+        e('div.kd-pad-col', [e('div.kd-h3', { text: 'Combat' }), rows(['primary', 'skill1', 'skill2', 'skill3', 'skill4', 'ultimate', 'dodge'], true)]),
+        e('div.kd-pad-col', [e('div.kd-h3', { text: 'Moving and items' }), sticks, rows(['interact', 'sprint', 'potion', 'bandage'], true),
+          e('div.kd-h3', { text: 'Menus' }), rows(['map', 'character', 'inventory', 'pause'], false)])
+      ])
+    ]);
+  }
+  /** capture(action, done): the next pad button pressed becomes the action's button (Options cancels). */
+  P.capture = function (action, done) {
+    if (pad.capturing && ps.capture === action) return;          // already waiting (the menu layer pressed "Change" again)
+    if (ps.captureOff) ps.captureOff(true);
+    ps.capture = action; pad.capturing = true; if (done) done();
+    var f0 = ps.polls;
+    var fn = function (e) {
+      if (ps.polls === f0) return;               // the press that chose "Change" (read in the same frame)
+      if (ps.captureOff) ps.captureOff();
+      if (e.index !== 9) {
+        if (!P.remap(P.map, action, e.index)) { if (KD.ui && KD.ui.toast) KD.ui.toast('That button is kept for the menus.', { kind: 'warn', ms: 2200 }); }
+        else { P.save(); emit('bindings', IN.bindings); }
+      }
+      if (done) done();
+    };
+    IN.events.on('padButton', fn);
+    // the button that finished the capture is still down for a moment: `capturing` stays on so menus do not act on it
+    ps.captureOff = function (now) { IN.events.off('padButton', fn); ps.captureOff = null; ps.capture = null; if (now) pad.capturing = false; else setTimeout(function () { if (!ps.capture) pad.capturing = false; }, 250); };
+  };
+  P.openLayout = function () {
+    var F = KD.flow, UI = KD.ui; if (!F || !F.window) return null;
+    var w, refresh = function () { if (UI.windows.isOpen('flow-pad')) w.setContent(layoutBody(refresh)); };
+    w = F.window('flow-pad', { title: 'Controller', icon: 'key', width: 720, content: layoutBody(refresh),
+      onClose: function () { if (ps.captureOff) ps.captureOff(); F.sound && F.sound('ui_close'); },
+      footer: [UI.button('Reset to defaults', { onClick: function () { P.resetMap(); refresh(); } }), UI.button('Done', { kind: 'primary', onClick: function () { UI.windows.close('flow-pad'); } })] });
+    return w;
+  };
+
+  /** helpControls() -> [[what, how]] for "How to play" while the pad is in use. */
+  P.helpControls = function () {
+    var t = pad.type, n = function (a) { var i = P.buttonOf(a); return i >= 0 ? P.NAMES[t][i] : '?'; };
+    var top = KD.game && KD.game.view === 'top';
+    return [['Move', 'Left stick (click it to sprint)'], [top ? 'Aim' : 'Look around', 'Right stick' + (top ? '' : ' (click it to put the camera behind you)')],
+      ['Primary attack', n('primary')], ['Skills 1 to 4', [n('skill1'), n('skill2'), n('skill3'), n('skill4')].join('  ·  ')], ['Ultimate', n('ultimate')],
+      ['Dodge roll', n('dodge')], ['Interact (shrines, chests, doors, gates)', n('interact')], ['Potion / bandage', n('potion') + ' / ' + n('bandage')],
+      ['Map', n('map')], ['Hero sheet', n('character')], ['Bag', n('inventory') + (t === 'ps' ? ' or the touchpad' : '')], ['Pause menu', n('pause')],
+      ['Aim assist', 'Your aim leans toward the enemy in front (Settings, Controller)']];
+  };
+  /** controlsHint() -> [line] for the first-run hint while the pad is in use. */
+  P.controlsHint = function () {
+    var t = pad.type, n = function (a) { var i = P.buttonOf(a); return i >= 0 ? P.NAMES[t][i] : '?'; };
+    return ['Left stick moves · Right stick ' + (KD.game && KD.game.view === 'top' ? 'aims' : 'looks') + ' · Attack ' + n('primary') + ' · Skills ' + [n('skill1'), n('skill2'), n('skill3'), n('skill4')].join(' ') + ' · Ultimate ' + n('ultimate') + ' · Dodge ' + n('dodge') + ' · Interact ' + n('interact'),
+      'Press ' + n('pause') + ' for the pause menu, How to play and the Controller settings.'];
+  };
+
+  // ---------------------------------------------------------------------------------------------
+  // DOM wiring
+  // ---------------------------------------------------------------------------------------------
+  P.load();
+  if (!HAS_DOM) return;
+  P.init = function () {
+    if (P._inited) return P;
+    P._inited = true;
+    if (KD.ui) {
+      KD.ui.glyph = P.glyph;
+      if (KD.ui.keycap && !KD.ui.keycap._pad) { var kc = KD.ui.keycap; KD.ui.keycap = function (label) { return P.decorate(kc(label)); }; KD.ui.keycap._pad = true; }
+    }
+    // the mouse, the keys or a finger take over from the pad
+    var mv = 0;
+    window.addEventListener('keydown', function (e) { if (pad.active && !/^(Shift|Control|Alt|Meta)/.test(e.code || '')) P.setActive(false); }, true);
+    window.addEventListener('mousedown', function (e) { if (pad.active && !(KD.touch && KD.touch.recent && KD.touch.recent())) P.setActive(false); }, true);
+    var mvT = 0;      // a real move of the mouse (40 px within a moment), not a desk bump or sensor jitter
+    window.addEventListener('mousemove', function (e) { if (!pad.active) { mv = 0; return; } var t = now(); if (t - mvT > 300) mv = 0; mvT = t; mv += Math.abs(e.movementX || 0) + Math.abs(e.movementY || 0); if (mv > 40) { mv = 0; P.setActive(false); } }, true);
+    window.addEventListener('wheel', function () { if (pad.active) P.setActive(false); }, true);
+    window.addEventListener('pointerdown', function (e) { if (pad.active && e.pointerType === 'touch') P.setActive(false); }, true);
+    window.addEventListener('touchstart', function () { if (pad.active) P.setActive(false); }, { capture: true, passive: true });
+    window.addEventListener('gamepadconnected', function (e) { if (e && e.gamepad && !pad.connected) { try { setConnected(e.gamepad); } catch (err) { /* read on the next poll */ } } });
+    window.addEventListener('gamepaddisconnected', function (e) { if (e && e.gamepad && e.gamepad.index === pad.index) setDisconnected(); });
+    if (KD.game && KD.game.events) KD.game.events.on('frame', frame);
+    return P;
+  };
+  // KD.ui and KD.game exist by the time the page is up (both load before this runs its init)
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { P.init(); });
+  else setTimeout(function () { P.init(); }, 0);
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -106435,6 +107206,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         if (!!ni !== W.promptShown) { W.prompt.classList.toggle('kd-hidden', !ni); W.promptShown = !!ni; if (!ni && W.promptUp) W.promptUp(); }
         W.promptX = -1; W.promptPinned = null;
       }
+      // [pad-play] the key follows the device in use (a pad glyph while the controller plays, the key otherwise)
+      if (ni && !W.prompt.classList.contains('hud-prompt-sealed') && KD.input && KD.input.label) { var pk = KD.input.label('interact'); if (W.promptKey.textContent !== pk) { W.promptKey.textContent = pk; W.promptKey.classList.toggle('kd-hidden', !pk); if (KD.pad && KD.pad.decorate) KD.pad.decorate(W.promptKey); } }
       if (ni) {
         r.project(ni.x, 2.0, ni.z, pr);
         var pinned = pr.depth > 0.5 && pr.x > 0 && pr.x < r.cssW && pr.y > 0 && pr.y < r.cssH;
@@ -107172,6 +107945,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       ['Dodge roll', F.keysOf('dodge')], ['Sprint', F.keysOf('sprint')], F.potionsOn() ? ['Drink a potion', F.keysOf('potion')] : null, ['Use a bandage', F.keysOf('bandage')], ['Interact (shrines, chests, doors, gates)', F.keysOf('interact')],
       ['Map', F.keysOf('map')], ['Inventory', F.keysOf('inventory')], ['Character', F.keysOf('character')], ['Skills window', F.keysOf('skills')], [th ? 'Talent tree' : 'Talent web (Crownweb)', F.keysOf('web')], ['Pause menu', F.keysOf('pause')]].filter(Boolean);
     if (touch) controls = F.touchControls(who);
+    var padOn = !!(KD.input && KD.input.pad && KD.input.pad.active && KD.pad && KD.pad.helpControls);
+    if (padOn) controls = KD.pad.helpControls();      // [pad-play] the controller in use: its buttons by name (plain rows)
     var loop = [
       (th ? 'Pick a class and one starting skill.' : 'Pick a class and two starting skills.') + ' The road is 16 areas in four acts, ending at the Hollow King.',
       'At every fork on the Road Ahead screen, choose your next area. Each one changes the kingdom.',
@@ -107187,7 +107962,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       th ? ['Your tree', 'The talent tree of your class (' + (touch ? 'Tree, behind the menu button' : F.keysOf('web')) + '). Tree points come from levels (' + per + ' each), bosses and shrines. Its nodes are upgrades for this run, your other skills and your Ultimates, and changes to the skills you know.']
         : ['The Crownweb', 'The talent web (' + (touch ? 'Web, behind the menu button' : F.keysOf('web')) + '). Web points come from levels, bosses and shrines; every node is a small permanent upgrade for this run.' +
           (others ? ' A class with its own tree (' + others + ') starts with one skill and unlocks the rest there.' : '')]];
-    return { controls: controls, loop: loop, terms: terms, touch: touch };
+    return { controls: controls, loop: loop, terms: terms, touch: touch || padOn, pad: padOn };
   };
   /**
    * kingdomHelpModel() -> { intro, fates: [{ id, name, color, means, effects: [{ at, name, up, down }] }], corruption: [lines], factions: [{ id, name, color, blurb, tiers }], web, webTitle }.
@@ -107224,6 +107999,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   /** The one-time hint shown when the very first run starts (text only; keys from the live bindings). */
   F.controlsHint = function (touch) {
     touch = touch === undefined ? F.isTouch() : !!touch;
+    if (KD.input && KD.input.pad && KD.input.pad.active && KD.pad && KD.pad.controlsHint) return KD.pad.controlsHint();      // [pad-play]
     if (touch) return ['Left thumb moves (push to the rim to sprint) · Drag the view to look · Hold the big button to attack · Round buttons are your skills · Use lights up near things',
       'Press and hold anything to read what it does. The menu button (top right) has the map, your bag and How to play.'];
     return ['Move ' + ['moveForward', 'moveLeft', 'moveBack', 'moveRight'].map(function (a) { return (KD.input && KD.input.label(a, 0)) || '?'; }).join(' ') + ' · Attack ' + F.keysOf('primary') + ' · Skills ' + ['skill1', 'skill2', 'skill3', 'skill4'].map(function (a) { return (KD.input && KD.input.label(a, 0)) || '?'; }).join(' ') +
@@ -109499,7 +110275,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
           { id: 'auto', label: 'Auto', tip: 'Captures the mouse when the browser allows it, otherwise aims with the cursor.' },
           { id: 'lock', label: 'Mouse look', tip: 'The mouse turns the camera; aim is the centre of the screen.' },
           { id: 'cursor', label: 'Cursor', tip: 'The cursor stays free and the hero aims at the ground under it. Hold the right button to turn.' }], IN.aimMode, function (id) { IN.setAimMode(id); })),
-        touch ? null : row('Keys', KD.ui.button('Key bindings', { small: true, icon: 'key', onClick: function () { P.openBindings(game); } }))
+        touch ? null : row('Keys', KD.ui.button('Key bindings', { small: true, icon: 'key', onClick: function () { P.openBindings(game); } })),
+        KD.pad && KD.pad.settingsRows ? KD.pad.settingsRows(row, F, game) : null      // [pad-play] Controller: vibration, stick sensitivity, dead zone, aim assist, layout (src/ui/04_pad.js)
       ]),
       el('div.flow-set-col', [
         el('div.kd-h3', { text: 'Display' }),
@@ -109553,7 +110330,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         el('div.kd-h3', { text: 'Controls' }),
         // touch: what to do with your thumbs, in words (key caps are hidden on a touch screen)
         el('div.flow-help-keys', m.controls.map(function (r) { return el('div.flow-help-key', [el('span.flow-help-what', { text: r[0] }), el(m.touch ? 'span.flow-help-how' : 'span.kd-key.flow-help-keycap', { text: r[1] })]); })),
-        el('div.flow-help-foot.kd-dim', { text: m.touch ? 'Camera drag sensitivity and interface size are under Settings.' : 'Rebind any of them under Key bindings.' })
+        el('div.flow-help-foot.kd-dim', { text: m.pad ? 'Move the buttons under Settings, Controller layout.' /* [pad-play] */ : (m.touch ? 'Camera drag sensitivity and interface size are under Settings.' : 'Rebind any of them under Key bindings.') })
       ]),
       el('div.flow-help-col', [
         el('div.kd-h3', { text: 'The loop of a run' }),
