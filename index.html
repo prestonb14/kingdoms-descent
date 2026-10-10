@@ -3410,7 +3410,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.40';
+  KD.VERSION = '0.7.41';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -22452,6 +22452,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.41', date: '2026-10-10', title: 'A breezier, livelier world', notes: [
+      'Grass, crops, trees, banners and pennants now sway in the wind, and gusts roll across the fields',
+      'Campfires, braziers and torches flicker for real, and their warm light breathes',
+      'Birds and crows fly away from the camera when you scare them, and slip out of sight instead of vanishing',
+      'Moths gather at lanterns at dusk and night'
+    ] },
     { version: '0.7.40', date: '2026-10-10', title: 'The Gloamblade\'s own tree', notes: [
       'The Gloamblade has its own talent tree now: The Undercity, with over 1,500 nodes',
       'Pick from 10 recommended builds and follow them lit up on the tree',
@@ -54102,7 +54108,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     '  if (sw > 0.0) {',
     '    float ph = dot(p.xz, vec2(0.31, 0.23));',
     '    float w = sin(uWind.z * 1.5 + ph) * 0.6 + sin(uWind.z * 2.6 + ph * 2.1 + p.y * 0.6) * 0.3 + 0.35;',
-    '    p.xz += uWind.xy * (w * sw);',
+    '    vec2 wd = uWind.xy / max(length(uWind.xy), 1e-4); float gb = max(sin(dot(p.xz, wd) * 0.17 - uWind.z * 1.05), 0.0);',   // [w8 living world] a gust band rolling downwind (w = its strength)
+    '    p.xz += uWind.xy * ((w + uWind.w * gb * gb) * sw);',
     '  }',
     '  vPos = p; vNrm = n;',
     '  vCol = pow(aCol.rgb, vec3(2.2)) * tint;',
@@ -54248,7 +54255,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     '  if (sw > 0.0) {',
     '    float ph = dot(p.xz, vec2(0.31, 0.23));',
     '    float w = sin(uWind.z * 1.5 + ph) * 0.6 + sin(uWind.z * 2.6 + ph * 2.1 + p.y * 0.6) * 0.3 + 0.35;',
-    '    p.xz += uWind.xy * (w * sw);',
+    '    vec2 wd = uWind.xy / max(length(uWind.xy), 1e-4); float gb = max(sin(dot(p.xz, wd) * 0.17 - uWind.z * 1.05), 0.0);',   // [w8 living world] a gust band rolling downwind (w = its strength)
+    '    p.xz += uWind.xy * ((w + uWind.w * gb * gb) * sw);',
     '  }',
     '  gl_Position = uViewProj * vec4(p, 1.0);',
     '}'
@@ -55204,7 +55212,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     lin(e.horizon, 1, F.horizon, 0); lin(e.zenith, 1, F.zenith, 0);
     F.fog[0] = e.fogDensity; F.fog[1] = e.fogStart; F.fog[2] = e.fogMax; F.fog[3] = e.sunGlow;
     F.tone[0] = e.exposure; F.tone[1] = e.knee; F.tone[2] = e.saturation; F.tone[3] = 0;
-    F.wind[0] = Math.sin(e.windYaw) * e.windStrength; F.wind[1] = Math.cos(e.windYaw) * e.windStrength; F.wind[2] = this.time * e.windSpeed; F.wind[3] = 0;
+    F.wind[0] = Math.sin(e.windYaw) * e.windStrength; F.wind[1] = Math.cos(e.windYaw) * e.windStrength; F.wind[2] = this.time * e.windSpeed; F.wind[3] = e.windGust || 0;   // [w8 living world] windGust: rolling gust band (0 = off)
     F.paint[0] = e.paintFine; F.paint[1] = e.paintBroad; F.paint[2] = e.paintHue; F.paint[3] = e.rim;
     // [mood presets] low mist, colour grade, vignette (all 0 by default; a quality level may turn them down: level.mood)
     var mk = this.level.mood === undefined ? 1 : this.level.mood;
@@ -83091,11 +83099,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         for (i = 0; i < asm.flames.length; i++) {
           var f = asm.flames[i];
           if (hasF) { var fx = f.x - focus[0], fz = f.z - focus[2]; if (fx * fx + fz * fz > 42 * 42) continue; }
-          f.acc += dt * f.rate * pk;
+          var fk = f.fk > 0 ? f.fk : 1;   // [w8 living world r3] the fire beat of KD.env.life (1 = steady): rate, size and brightness
+          f.acc += dt * f.rate * pk * (0.7 + 0.3 * fk);
           while (f.acc >= 1) {
             f.acc -= 1;
-            var s = f.size;
-            rt.particles.emit({ x: f.x, y: f.y, z: f.z, radius: f.r, count: 1, dir: [0, 1, 0], spread: 0.22, speed: [0.7 * s, 1.7 * s], life: [0.35, 0.75], size: [0.13 * s, 0.24 * s], sizeEnd: 0.02, color: f.color || '#ffe27a', color2: f.color2 || '#ff5a1e', alpha: 0.9, gravity: -1.6, drag: 0.6, additive: true });   // [w8 act4 look] f.color / f.color2: a preset's flame colour
+            var s = f.size * (0.8 + 0.2 * fk);
+            rt.particles.emit({ x: f.x, y: f.y, z: f.z, radius: f.r, count: 1, dir: [0, 1, 0], spread: 0.22, speed: [0.7 * s, 1.7 * s], life: [0.35, 0.75], size: [0.13 * s, 0.24 * s], sizeEnd: 0.02, color: f.color || '#ffe27a', color2: f.color2 || '#ff5a1e', alpha: Math.min(1, 0.62 + 0.28 * fk), gravity: -1.6, drag: 0.6, additive: true });   // [w8 act4 look] f.color / f.color2: a preset's flame colour
             if (Math.random() < (f.embers ? 0.5 : 0.16)) rt.particles.emit({ x: f.x, y: f.y + 0.2, z: f.z, radius: f.r, count: 1, dir: [0, 1, 0], spread: 0.5, speed: [1.2, 2.6], life: [0.5, 1.2], size: [0.02, 0.04], sizeEnd: 0, color: f.color || '#ffd27a', color2: f.color2 || '#ff6a20', gravity: -0.6, drag: 0.5, additive: true, shape: 'spark', stretch: 2 });
             if (!f.embers && Math.random() < 0.12) rt.particles.emit({ x: f.x, y: f.y + 0.7 * s, z: f.z, radius: f.r * 0.6, count: 1, dir: [0, 1, 0], spread: 0.25, speed: [0.5, 1.0], life: [1.2, 2.4], size: [0.16, 0.26], sizeEnd: 0.6, color: '#5a544e', color2: '#8a847c', alpha: 0.22, gravity: -0.35, drag: 0.5 });
           }
@@ -83893,6 +83902,22 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var q = KD.gfx && KD.gfx.quality, name = (q && q.name) || 'high', pk = (q && q.def && q.def.particles) || 1;
     return { name: name, k: L.QUALITY[name] !== undefined ? L.QUALITY[name] : 1, particles: pk, low: name === 'low' };
   };
+  /**
+   * [w8 living world r3] Flame flicker, shared by halos, ground pools, flame particles and their lights:
+   * flick(t, ph) is the renderer's light flicker at strength 1 (about 0.65..1.35), breath(t, ph) a slow -1..1 swell.
+   */
+  L.flick = function (t, ph) { return 1 + (sin(t * 11.3 + ph * 5.1) * 0.5 + sin(t * 23.7 + ph * 2.3) * 0.3 + sin(t * 4.9 + ph) * 0.2) * 0.35; };
+  L.breath = function (t, ph) { return sin(t * 1.3 + ph) * 0.6 + sin(t * 2.9 + ph * 1.7) * 0.4; };
+  L.BREATH = 0.07;
+  /** [w8 living world r3] Turn a take-off heading { vx, vz } at (x, z) away from the camera (same speed); used by birds and crows. */
+  L.awayFromCam = function (cam, o, x, z) {
+    var cx = cam[0] - x, cz = cam[2] - z, cl = sqrt(cx * cx + cz * cz), sp = sqrt(o.vx * o.vx + o.vz * o.vz);
+    if (cl < 1e-3 || sp < 1e-3) return o;
+    cx /= cl; cz /= cl;
+    var dt = (o.vx * cx + o.vz * cz) / sp;
+    if (dt > -0.2) { o.vx -= (dt + 0.35) * sp * cx * 1.4; o.vz -= (dt + 0.35) * sp * cz * 1.4; var nl = sqrt(o.vx * o.vx + o.vz * o.vz) || 1; o.vx *= sp / nl; o.vz *= sp / nl; }
+    return o;
+  };   // how far a fire light's radius swells and shrinks (fraction)
   /** Budget per quality level: most critters of each kind, glows and shafts handled at once. */
   L.BUDGET = {
     low: { birds: 1, crows: 2, rats: 1, frogs: 2, butterflies: 0, glows: 6, shafts: 0, flock: 3 },
@@ -84055,6 +84080,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var cMote = C(col.mote || '#fff4dc'), cEmber = C(col.ember || '#ffa040'), cEmber2 = C('#a8300c'), cPollen = C(col.pollen || '#fff6a8'), cFly = C(col.firefly || '#d8ff7a'), cFly2 = C('#6a9a20');
     var cSnow = C(col.snow || '#f4f8ff'), cAsh = C(col.ash || '#6e6a68'), cMoth = C(col.moth || '#d8cbb0'), cShaft = C(d.shaftColor || '#fff0c8');
     var leafCols = (col.leaves || [asm.theme.leafA, asm.theme.leafB, asm.theme.leafDead || '#8a6a3a']).map(function (c) { return C(c || '#7a8a3a'); });
+    var dayK = (tenv.sunIntensity || env.sunIntensity || 1.4) >= 1.3 ? 0.6 : 1;   // halos are softer in full daylight
     var rt = { def: d, spots: S, stats: { glows: 0, critters: 0, emitted: 0, shafts: 0 }, actors: [] };
     function players(world) {
       var out = [];
@@ -84064,6 +84090,13 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     function nearest(list, x, z) { var b = 1e9; for (var i = 0; i < list.length; i++) { var dx = list[i].x - x, dz = list[i].z - z, q = dx * dx + dz * dz; if (q < b) b = q; } return sqrt(b); }
     function mk(def) { if (!KD.gfx || !KD.gfx.Actor) return null; try { var a = new KD.gfx.Actor(def); a.radius = 0.4; a.centerY = 0.1; return a; } catch (e) { return null; } }
     function inView(r, x, y, z) { return r && r.sphereVisible ? r.sphereVisible(x, y, z, 0.5) : false; }
+    // [w8 living world r3] critters that take off never fly at the camera: the part of their heading toward it is turned away
+    function awayFromCam(r, o, x, z) { var F = r && r._f; if (F && F.cam) L.awayFromCam(F.cam, o, x, z); }
+    // gone when out of sight, or after `hard` seconds with a short shrink instead of a pop
+    function leaving(r, t, soft, hard, x, y, z) { return t > hard || (t > soft && !inView(r, x, y, z)); }
+    function shrink(t, hard) { return t > hard - 0.4 ? max(0.05, (hard - t) / 0.4) : 1; }
+    // moths belong to dusk and night: fewer under a bright sun
+    var nightK = max(0.15, min(1, (1.42 - (tenv.sunIntensity || env.sunIntensity || 1.4)) / 0.5));
     function pickSpot(list, hs, minD, maxD, used) {
       if (!list.length) return null;
       for (var tries = 0; tries < 14; tries++) {
@@ -84098,6 +84131,28 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
     function emit(o) { parts.emit(o); rt.stats.emitted += o.count || 1; }
 
+    // [w8 living world r3] fire glows <-> renderer lights <-> layout flames
+    var fires = S.glow.filter(function (g) { return g.fire; }), flamesL = (asm.flames || []).slice(), fireLink = 0;
+    flamesL.forEach(function (f) { f._ph = rnd() * TAU; });
+    function linkFires(r) {
+      var list = r.lights.list, i, j;
+      for (i = 0; i < fires.length; i++) {
+        var G = fires[i];
+        if (G.L && list.indexOf(G.L) >= 0) continue;
+        G.L = null;
+        for (j = 0; j < list.length; j++) {
+          var l = list[j];
+          if (!(l.flicker > 0) || l._w8fire) continue;
+          if (Math.abs(l.x - G.x) < 0.6 && Math.abs(l.z - G.z) < 0.6 && Math.abs(l.y - G.y) < 1.5) { G.L = l; l._w8fire = true; G.r0 = l.r; G.rw = undefined; break; }
+        }
+      }
+      for (i = 0; i < flamesL.length; i++) {
+        var f = flamesL[i], best = 1.44, bg = null;
+        for (j = 0; j < fires.length; j++) { var dx = fires[j].x - f.x, dz = fires[j].z - f.z, q = dx * dx + dz * dz; if (q < best) { best = q; bg = fires[j]; } }
+        f._g = bg;
+      }
+    }
+
     rt.update = function (dt, world, r) {
       r = r || renderer;
       var q = L.quality(), k = q.k, pk = q.particles, i, j, dx, dz, dd, a;
@@ -84113,7 +84168,23 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         gustK = max(0, gs) * d.gust;
         if (r && r.env) r.env.windStrength = wind0 * (0.85 + 0.9 * gustK);
       }
+      // [w8 living world r3] a gust band rolls downwind over grass, crops, trees and banners (the shader's uWind.w); off on low
+      if (r && r.env) r.env.windGust = (q.low || !(wind0 > 0)) ? 0 : min(0.9, d.gust * (0.3 + 0.7 * gustK)) * (q.name === 'medium' ? 0.8 : 1);
       var windNow = min(2.5, wind0 * 10) * (0.6 + gustK);
+      // ---- [w8 living world r3] fire beat: every fire glow takes the flicker of its renderer light (same phase), its light
+      // radius breathes, and the flames of the layout (54_env_dynamic reads f.fk) burn bigger and brighter on the beat
+      if (r && r.lights && r.lights.list && (fireLink < 2 && time >= fireLink * 2)) { linkFires(r); fireLink++; }
+      var tR = (r && r.time) || time;
+      for (i = 0; i < fires.length; i++) {
+        var FG = fires[i], LH = FG.L;
+        FG.fk = LH ? 1 + (LH.flicker || 0) * (L.flick(tR, LH._ph) - 1) : L.flick(time, FG.ph);
+        FG.br = L.breath(time, FG.ph);
+        if (LH) {
+          if (FG.rw !== undefined && Math.abs(LH.r - FG.rw) > 1e-4) FG.r0 = LH.r;   // someone else changed the radius: follow it
+          FG.rw = LH.r = FG.r0 * (1 + L.BREATH * FG.br);
+        }
+      }
+      for (i = 0; i < flamesL.length; i++) { var FL = flamesL[i]; FL.fk = FL._g ? FL._g.fk * (1 + 0.06 * FL._g.br) : L.flick(time, FL._ph); }
       // ---- glows: halos (soft additive particles) and warm pools on the ground, nearest first
       var nG = 0;
       if (d.glow > 0 && S.glow.length) {
@@ -84122,17 +84193,17 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         if (cand.length > maxG) cand.sort(function (x, y) { return x[0] - y[0]; });
         for (i = 0; i < cand.length && i < maxG; i++) {
           var G = cand[i][1];
-          var fl = G.fire ? 0.82 + 0.1 * sin(time * 9.1 + G.ph) + 0.08 * sin(time * 23.7 + G.ph * 2.3) : 0.94 + 0.06 * sin(time * 1.6 + G.ph);
-          if (G.pool > 0 && r.underlay) r.underlay(G.x, G.z, G.pool * (0.94 + 0.08 * fl), G.c, 0.16 * d.glow * fl);
+          var fl = G.fire ? 0.82 * (G.fk || 1) : 0.94 + 0.06 * sin(time * 1.6 + G.ph), gb = G.fire ? (G.br || 0) : 0;   // [w8 living world r3] the fire beat
+          if (G.pool > 0 && r.underlay) r.underlay(G.x, G.z, G.pool * (0.94 + 0.06 * fl + 0.07 * gb), G.c, 0.16 * d.glow * fl);
           if (parts && !quiet && dt > 0) {
             G.acc += dt * (q.low ? 3 : 5);
             while (G.acc >= 1) {
               G.acc -= 1;
-              emit({ x: G.x, y: G.y, z: G.z, count: 1, speed: 0, life: [0.55, 0.75], size: [G.r * 0.9, G.r], sizeEnd: G.r * 1.05, color: G.c, alpha: 0.26 * min(1.4, d.glow) * fl, gravity: 0, additive: true, shape: 'soft' });
+              emit({ x: G.x, y: G.y, z: G.z, count: 1, speed: 0, life: [0.55, 0.75], size: [G.r * 0.9 * (1 + 0.05 * gb), G.r * (1 + 0.05 * gb)], sizeEnd: G.r * 1.05, color: G.c, alpha: 0.26 * dayK * min(1.4, d.glow) * fl, gravity: 0, additive: true, shape: 'soft' });
             }
             // moths flutter around the nearer lights
             if ((cr.moths || 0) > 0 && i < (q.low ? 2 : 6) && G.y > 0.8) {
-              G.macc = (G.macc || 0) + dt * 1.6 * cr.moths * (q.low ? 0.5 : 1);
+              G.macc = (G.macc || 0) + dt * 1.6 * cr.moths * (q.low ? 0.5 : 1) * nightK * 1.3;   // [w8 living world r3] dusk and night
               while (G.macc >= 1) {
                 G.macc -= 1;
                 var ma = rnd() * TAU;
@@ -84273,11 +84344,13 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
               for (bi = 0; bi < fl.birds.length; bi++) {
                 b = fl.birds[bi]; var ex = b.x - h0.x, ez = b.z - h0.z, el = sqrt(ex * ex + ez * ez) || 1, spd = 3.5 + rnd() * 2, tw = (rnd() - 0.5) * 0.8;
                 var ux = ex / el, uz = ez / el, cx = ux * cos(tw) - uz * sin(tw), cz = ux * sin(tw) + uz * cos(tw);
-                b.vx = cx * spd; b.vz = cz * spd; b.vy = 2.2 + rnd() * 1.5; b.yaw = Math.atan2(b.vx, b.vz); b.t = -rnd() * 0.25;
+                b.vx = cx * spd; b.vz = cz * spd; awayFromCam(r, b, b.x, b.z); b.vy = 2.2 + rnd() * 1.5; b.yaw = Math.atan2(b.vx, b.vz); b.t = -rnd() * 0.25;   // [w8 living world r3]
               }
             } else if (nearest([{ x: focus[0], z: focus[2] }], fl.x, fl.z) > 48) { fl.state = 'gone'; fl.wait = 1; fl.birds.forEach(function (bb) { bb.a.visible = false; }); }
           } else if (fl.state === 'fly') {
-            if (fl.t > 4) { fl.state = 'gone'; fl.wait = 9 + rnd() * 14; fl.birds.forEach(function (bb) { bb.a.visible = false; }); }
+            var seen = false;   // [w8 living world r3] they leave once out of sight (or shrink away at 7.5 s), no pop in mid-air
+            if (fl.t > 4) for (bi = 0; bi < fl.birds.length; bi++) { b = fl.birds[bi]; if (b.on && inView(r, b.x, b.y, b.z)) { seen = true; break; } }
+            if (fl.t > 7.5 || (fl.t > 4 && !seen)) { fl.state = 'gone'; fl.wait = 9 + rnd() * 14; fl.birds.forEach(function (bb) { bb.a.visible = false; }); }
           }
         }
         if (fl.state === 'gone') continue;
@@ -84308,7 +84381,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
             var fa = sin(b.flap) * 1.2;
             wl.rot[2] = -0.3 - fa; wr.rot[2] = 0.3 + fa; body.rot[0] = -0.35; head.rot[0] = 0;
           }
-          a.setTransform(b.x, b.y, b.z, b.yaw, 1);
+          a.setTransform(b.x, b.y, b.z, b.yaw, fl.state === 'fly' ? shrink(fl.t, 7.5) : 1);
           if (a.submit(r) !== false) n++;
         }
       }
@@ -84329,13 +84402,13 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
               var h0 = hs[0], best = 1e9;
               hs.forEach(function (h) { var q2 = (h.x - c.x) * (h.x - c.x) + (h.z - c.z) * (h.z - c.z); if (q2 < best) { best = q2; h0 = h; } });
               dx = h0.x - c.x; dz = h0.z - c.z; var dl = sqrt(dx * dx + dz * dz) || 1;
-              c.state = 'fly'; c.t = 0; c.vx = -dx / dl * (3 + rnd() * 2); c.vz = -dz / dl * (3 + rnd() * 2); c.vy = 2.6 + rnd(); c.yaw = Math.atan2(c.vx, c.vz);
+              c.state = 'fly'; c.t = 0; c.vx = -dx / dl * (3 + rnd() * 2); c.vz = -dz / dl * (3 + rnd() * 2); awayFromCam(r, c, c.x, c.z); c.vy = 2.6 + rnd(); c.yaw = Math.atan2(c.vx, c.vz);   // [w8 living world r3]
               if (c.perch) { c.perch.taken = false; c.perch = null; }
             } else if (c.t > c.next) { c.t = 0; c.next = 1.2 + rnd() * 3.5; c.look = (rnd() - 0.5) * 1.6; c.peck = rnd() < 0.3 ? 0.5 : 0; }
             if (nearest([{ x: focus[0], z: focus[2] }], c.x, c.z) > 50) { if (c.perch) c.perch.taken = false; c.perch = null; c.state = 'gone'; a.visible = false; c.wait = 1; }
           } else if (c.state === 'fly') {
             c.x += c.vx * dt; c.y += c.vy * dt; c.z += c.vz * dt; c.vy += 0.6 * dt;
-            if (c.t > 4.5 || c.y > 16) { c.state = 'gone'; a.visible = false; c.wait = 14 + rnd() * 18; }
+            if (leaving(r, c.t, 4.5, 7.5, c.x, c.y, c.z)) { c.state = 'gone'; a.visible = false; c.wait = 14 + rnd() * 18; }   // [w8 living world r3] out of sight, no pop
           } else {
             c.wait -= dt;
             if (c.wait <= 0) { var pn = pickSpot(S.perch, hs, 14, 36, true); if (pn) seatCrow(c, pn); else c.wait = 3; }
@@ -84354,7 +84427,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
           head.rot[0] = pk > 0 ? 0.6 * sin(pk * PI * 2) : 0.05 * sin(c.t * 2.1);
           wl.rot[2] = -0.06 * sin(c.t * 1.3); wr.rot[2] = -wl.rot[2];
         }
-        a.setTransform(c.x, c.y, c.z, c.yaw, 0.95);
+        a.setTransform(c.x, c.y, c.z, c.yaw, 0.95 * (c.state === 'fly' ? shrink(c.t, 7.5) : 1));
         if (a.submit(r) !== false) n++;
       }
       return n;
@@ -84391,7 +84464,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
               else if (R.state === 'scurry') { R.yaw += PI * 0.7; }
               else R.yaw += (rnd() - 0.5) * 2;
               if (R.state === 'scurry') { R.run -= dt; if (R.run <= 0) { R.state = 'idle'; R.t = 0; } }
-              else if (R.t > 1.3) { R.state = 'gone'; a.visible = false; R.wait = 8 + rnd() * 12; }
+              else if (leaving(r, R.t, 1.3, 2.6, R.x, 0.1, R.z)) { R.state = 'gone'; a.visible = false; R.wait = 8 + rnd() * 12; }   // [w8 living world r3]
             }
             if (nearest([{ x: focus[0], z: focus[2] }], R.x, R.z) > 44) { R.state = 'gone'; a.visible = false; R.wait = 1; }
           }
@@ -84402,7 +84475,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         head.rot[0] = moving ? 0 : 0.15 * sin(R.t * 11) * (sin(R.t * 1.7) > 0 ? 1 : 0);
         head.rot[1] = moving ? 0 : 0.3 * sin(R.t * 1.3);
         tail.rot[1] = sin(R.t * (moving ? 14 : 3)) * (moving ? 0.35 : 0.2);
-        a.setTransform(R.x, 0, R.z, R.yaw, 1);
+        a.setTransform(R.x, 0, R.z, R.yaw, R.state === 'flee' ? shrink(R.t, 2.6) : 1);
         if (a.submit(r) !== false) n++;
       }
       return n;
@@ -84479,6 +84552,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
     rt.dispose = function () {
       if (renderer.env && wind0) renderer.env.windStrength = wind0;
+      if (renderer.env) renderer.env.windGust = 0;   // [w8 living world r3]
+      fires.forEach(function (G) { if (G.L) { if (G.r0) G.L.r = G.r0; G.L._w8fire = false; G.L = null; } });   // [w8 living world r3]
+      flamesL.forEach(function (f) { f.fk = 1; f._g = null; });
       S.perch.forEach(function (p) { p.taken = false; });
       rt.actors = []; flocks = []; crows = []; rats = []; frogs = []; flies = [];
     };
@@ -85844,7 +85920,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     for (i = 0; i < n; i++) {
       var y = pos[i * 3 + 1]; if (y > h) continue;
       var t = 1 - max(0, y) / h;
-      aux[i * 4 + 1] = max(aux[i * 4 + 1], amt * t);
+      aux[i * 4 + 2] = max(aux[i * 4 + 2], amt * t);   // [w8 living world r3] metal sheen (index 2); index 1 is wind sway and made wet walls sway
       col[i * 3] *= 1 - 0.18 * t; col[i * 3 + 1] *= 1 - 0.12 * t; col[i * 3 + 2] *= 1 - 0.04 * t;
     }
   }
@@ -96731,6 +96807,117 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     m.jit = sj;
     return A.finish(K, 1.2, 0.25);
   });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/gfx/67_env_sway.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var E = KD.env = KD.env || {};
+
+  /**
+   * [w8 living world r3] Wind sway for the cloth and crops that were built rigid (docs/ENV.md "Living world").
+   * The lit and shadow shaders already bend every vertex by its aux.sway (index 1) with the area wind, the gusts of
+   * KD.env.life and the rolling gust band. This file only writes aux.sway on geometry the builders made stiff:
+   *   - pennants (KD.env.arch.pennant): the flag sways more toward its free end, the pole stays put
+   *   - banner_pole: the hanging banners (and what is sewn on them) swing from the crossbar down
+   *   - crop_row: wheat, blighted wheat and corn bend from the soil up (cabbages stay still)
+   * Wall banners stay rigid on purpose (a swaying cloth would cut into the wall). Purely visual, the sim never sees it.
+   * Switch: KD.config.art.sway === false leaves everything rigid (the classic picture).
+   */
+  var S = E.sway = E.sway || {};
+  var max = Math.max, min = Math.min, sqrt = Math.sqrt;
+  S.on = function () { var a = KD.config && KD.config.art; return !(a && a.sway === false); };
+  S.PENNANT = 0.6; S.BANNER = 0.7; S.CROP = 0.55;
+
+  function clamp01(t) { return t < 0 ? 0 : (t > 1 ? 1 : t); }
+
+  // ---- pennants: sway rises with the horizontal distance from the pole axis
+  function wrapPennant(A) {
+    if (!A || !A.pennant || A.pennant._w8sway) return;
+    var orig = A.pennant;
+    A.pennant = function (m, x, y0, z, y1, col, o) {
+      var v0 = m.nv, M = m.M;
+      var res = orig.apply(this, arguments);
+      if (!S.on() || !M) return res;
+      o = o || {};
+      // the pole top in stored (frame) coordinates and the frame's horizontal scale
+      var px = M[0] * x + M[1] * y1 + M[2] * z + M[3], pz = M[8] * x + M[9] * y1 + M[10] * z + M[11];
+      var sc = sqrt(M[0] * M[0] + M[8] * M[8]) || 1, r0 = max((o.r || 0.035) * 1.6, 0.05) * sc, len = (o.len || 0.9) * sc;
+      var p = m.pos, a = m.aux, i;
+      for (i = v0; i < m.nv; i++) {
+        var dx = p[i * 3] - px, dz = p[i * 3 + 2] - pz, d = sqrt(dx * dx + dz * dz);
+        if (d <= r0) continue;
+        a[i * 4 + 1] = max(a[i * 4 + 1], S.PENNANT * clamp01((d - r0) / (len - r0 || 1)));
+      }
+      return res;
+    };
+    A.pennant._w8sway = true;
+  }
+
+  // ---- banner_pole: record each hanging banner while the pole is built, then sway the cloth by position
+  var rec = null;
+  function wrapBanner(A) {
+    if (!A || !A.banner || A.banner._w8sway) return;
+    var orig = A.banner;
+    A.banner = function (m, u, yTop, w, h, o) {
+      if (rec) {
+        var M = m.M, ident = M && M[0] === 1 && M[5] === 1 && M[10] === 1 && !M[1] && !M[2] && !M[3] && !M[4] && !M[6] && !M[7] && !M[8] && !M[9] && !M[11];
+        if (ident) rec.push({ u0: u - w / 2 - 0.05, u1: u + w / 2 + 0.05, top: yTop - 0.035, h: h, bot: yTop - h - 0.45, z: (o && o.z !== undefined ? o.z : 0.08) - 0.025 });
+      }
+      return orig.apply(this, arguments);
+    };
+    A.banner._w8sway = true;
+  }
+  function swayBanners(g, list) {
+    var p = g.pos, a = g.aux, n = p.length / 3, i, k;
+    for (i = 0; i < n; i++) {
+      var x = p[i * 3], y = p[i * 3 + 1], z = p[i * 3 + 2];
+      if (x * x + z * z < 0.064 * 0.064) continue;           // the pole itself
+      for (k = 0; k < list.length; k++) {
+        var b = list[k];
+        if (x < b.u0 || x > b.u1 || y > b.top || y < b.bot || z < b.z) continue;
+        a[i * 4 + 1] = max(a[i * 4 + 1], S.BANNER * clamp01((b.top - y) / b.h));
+        break;
+      }
+    }
+  }
+
+  // ---- crops: bend from the ridge up
+  function swayCrop(g, crop) {
+    if (crop !== 'wheat' && crop !== 'blight' && crop !== 'corn') return;
+    var p = g.pos, a = g.aux, n = p.length / 3, i;
+    for (i = 0; i < n; i++) { var y = p[i * 3 + 1]; if (y > 0.14) a[i * 4 + 1] = max(a[i * 4 + 1], S.CROP * clamp01((y - 0.14) / 0.75)); }
+  }
+
+  function wrapPiece(kind, post, around) {
+    var fn = E.pieces && E.pieces[kind];
+    if (!fn || fn._w8sway) return;
+    var w = function (piece, ctx) {
+      if (around) around.before();
+      var out;
+      try { out = fn(piece, ctx); } finally { if (around) around.after(); }
+      var g = out && (out.pos ? out : out.geom);
+      if (g && g.aux && g.pos && S.on()) post(g, piece);
+      return out;
+    };
+    for (var k in fn) if (Object.prototype.hasOwnProperty.call(fn, k)) w[k] = fn[k];
+    w._w8sway = true;
+    E.pieces[kind] = w;
+  }
+
+  S.install = function () {
+    var A = E.arch;
+    wrapPennant(A); wrapBanner(A);
+    var list = null;
+    wrapPiece('banner_pole', function (g) { if (list && list.length) swayBanners(g, list); }, {
+      before: function () { rec = []; list = null; }, after: function () { list = rec; rec = null; }
+    });
+    wrapPiece('crop_row', function (g, piece) { swayCrop(g, piece.crop || 'wheat'); });
+  };
+  S.install();
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
