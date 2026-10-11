@@ -1879,6 +1879,101 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 .kd-compact .flow-pn-banner-btn.kd-btn { min-height: calc(44 * var(--u)); font-size: calc(13 * var(--u)); padding-left: calc(10 * var(--u)); padding-right: calc(10 * var(--u)); }
 .kd-compact .flow-pn-banner-x.kd-btn { min-width: calc(44 * var(--u)); min-height: calc(44 * var(--u)); }
 
+/* =====================================================================================================
+   Hearthmoor, the village that grows (owner: hub, docs/HUB.md). The village screen (flow screen 'hub'),
+   the menu button, the start choices and the run-over block. Prefix hub-. Sizes in --u units.
+   ===================================================================================================== */
+
+/* menu button */
+.hub-menu-label { display: inline-flex; align-items: center; gap: calc(8 * var(--u)); min-width: 0; }
+.hub-menu-spoils { display: inline-flex; align-items: center; gap: calc(3 * var(--u)); font-size: .78em; color: var(--kd-brass-300); opacity: .92; }
+.hub-menu-dot { width: calc(8 * var(--u)); height: calc(8 * var(--u)); border-radius: 50%; background: #f2c14e; box-shadow: 0 0 calc(6 * var(--u)) #f2c14e; flex: none; }
+
+/* the screen: the village shows through the middle */
+.flow-hub { padding: calc(16 * var(--u)) calc(24 * var(--u)) calc(12 * var(--u)); gap: calc(8 * var(--u)); }
+.hub-shade { position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(180deg, rgba(8, 5, 3, .7) 0%, rgba(8, 5, 3, .12) 20%, rgba(8, 5, 3, 0) 34%, rgba(8, 5, 3, .1) 54%, rgba(8, 5, 3, .7) 66%, rgba(8, 5, 3, .9) 100%); }
+.hub-top { flex: none; display: flex; align-items: flex-start; gap: calc(14 * var(--u)); }
+.hub-titles { flex: none; }
+.hub-title { font-size: calc(40 * var(--u)); text-align: left; }
+.hub-titles .flow-head-sub { text-align: left; }
+.hub-scene { min-height: 0; }
+.hub-plate { width: calc(300 * var(--u)); flex: none; display: flex; flex-direction: column; gap: calc(6 * var(--u)); padding: calc(10 * var(--u)) calc(12 * var(--u)); }
+.hub-plate-top { display: flex; align-items: center; gap: calc(10 * var(--u)); }
+.hub-spoils { font-size: calc(24 * var(--u)); font-weight: 700; line-height: 1; color: var(--kd-brass-200); }
+.hub-spoils-lab { font-size: calc(10 * var(--u)); letter-spacing: .08em; text-transform: uppercase; color: var(--kd-text-dim); }
+.hub-goal { font-size: calc(12.5 * var(--u)); color: var(--kd-parch-200); line-height: 1.3; }
+.hub-backpay { font-size: calc(11.5 * var(--u)); color: var(--kd-good); line-height: 1.3; }
+.hub-carry { width: calc(290 * var(--u)); flex: none; padding: calc(8 * var(--u)) calc(12 * var(--u)); display: flex; flex-direction: column; max-height: calc(176 * var(--u)); }
+.hub-carry .kd-scroll, .hub-carry-scroll { min-height: 0; flex: 1 1 auto; }
+.hub-carry-h { font-family: var(--kd-font-display); font-variant: small-caps; letter-spacing: .06em; color: var(--kd-brass-300); font-size: calc(14 * var(--u)); margin-bottom: calc(4 * var(--u)); }
+.hub-carry-list { margin: 0; padding-left: calc(16 * var(--u)); font-size: calc(11.5 * var(--u)); line-height: 1.34; color: var(--kd-text); }
+.hub-carry-win { font-size: calc(13.5 * var(--u)); color: var(--kd-ink); line-height: 1.5; }
+.hub-carry-none { font-size: calc(11.5 * var(--u)); }
+.hub-help p { margin: 0 0 calc(8 * var(--u)); font-size: calc(13 * var(--u)); line-height: 1.45; }
+
+/* the buildings */
+.hub-grid { flex: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: calc(10 * var(--u)); }
+.hub-tile { --hub-c: #bd9440; position: relative; pointer-events: auto; display: flex; flex-direction: column; gap: calc(5 * var(--u)); min-height: calc(124 * var(--u)); padding: calc(8 * var(--u)) calc(11 * var(--u)) calc(7 * var(--u));
+  background: linear-gradient(180deg, rgba(36, 26, 16, .94), rgba(22, 15, 9, .96)); border: var(--u) solid rgba(216, 178, 90, .32); border-radius: calc(4 * var(--u));
+  box-shadow: inset 0 0 0 var(--u) rgba(0, 0, 0, .6), 0 calc(3 * var(--u)) calc(10 * var(--u)) rgba(0, 0, 0, .55); }
+.hub-tile::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: calc(3 * var(--u)); border-radius: calc(4 * var(--u)) calc(4 * var(--u)) 0 0; background: var(--hub-c); opacity: .35; }
+.hub-tile.hub-built::before { opacity: .9; }
+.hub-tile.hub-ready { border-color: rgba(242, 193, 78, .75); box-shadow: inset 0 0 0 var(--u) rgba(0, 0, 0, .6), 0 0 calc(12 * var(--u)) rgba(242, 193, 78, .28); }
+.hub-tile.hub-sel { animation: hub-pop .5s ease-out; }
+.hub-tile.hub-locked { filter: saturate(.35); opacity: .78; }
+@keyframes hub-pop { 0% { transform: scale(1.04); box-shadow: 0 0 calc(22 * var(--u)) rgba(242, 193, 78, .7); } 100% { transform: none; } }
+.hub-tile-head { display: flex; align-items: center; gap: calc(9 * var(--u)); }
+.hub-tile-id { min-width: 0; }
+.hub-tile-name { font-family: var(--kd-font-display); font-variant: small-caps; font-weight: 700; letter-spacing: .04em; font-size: calc(16 * var(--u)); color: var(--kd-parch-100); line-height: 1.1; }
+.hub-tile-sub { display: flex; align-items: center; gap: calc(4 * var(--u)); font-size: calc(11 * var(--u)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hub-pips { display: inline-flex; gap: calc(3 * var(--u)); }
+.hub-pip { width: calc(9 * var(--u)); height: calc(9 * var(--u)); transform: rotate(45deg); border: var(--u) solid rgba(216, 178, 90, .55); background: rgba(0, 0, 0, .4); }
+.hub-pip.hub-on { background: var(--hub-c); border-color: #f3dfa4; box-shadow: 0 0 calc(4 * var(--u)) var(--hub-c); }
+.hub-tile-now { font-size: calc(11.5 * var(--u)); color: var(--kd-text-dim); line-height: 1.3; }
+.hub-tile-next { font-size: calc(12 * var(--u)); color: var(--kd-text); line-height: 1.3; flex: 1 1 auto; }
+.hub-tile-nlab { color: var(--kd-brass-300); font-weight: 700; }
+.hub-tile-foot { display: flex; align-items: center; gap: calc(6 * var(--u)); min-height: calc(28 * var(--u)); }
+.hub-cost { display: inline-flex; align-items: center; gap: calc(4 * var(--u)); font-size: calc(14 * var(--u)); font-weight: 700; color: var(--kd-brass-200); }
+.hub-cost.hub-short { color: var(--kd-text-faint); }
+
+/* run over */
+.hub-over { margin-top: calc(10 * var(--u)); padding-top: calc(8 * var(--u)); border-top: var(--u) solid rgba(87, 66, 43, .35); display: flex; flex-direction: column; gap: calc(5 * var(--u)); }
+.hub-over-head { display: flex; align-items: center; gap: calc(7 * var(--u)); }
+.hub-over-total { display: inline-flex; align-items: center; gap: calc(4 * var(--u)); font-weight: 700; font-size: calc(15 * var(--u)); color: #6b4f16; }
+.hub-over-lines { display: flex; flex-wrap: wrap; gap: calc(4 * var(--u)) calc(10 * var(--u)); font-size: calc(11.5 * var(--u)); color: var(--kd-ink-soft); }
+.hub-over-goal { display: flex; align-items: center; gap: calc(10 * var(--u)); font-size: calc(12 * var(--u)); color: var(--kd-ink); }
+.hub-over-goal > span { flex: 1 1 auto; }
+
+/* a phone (844 x 390): buildings in a swiped row, 40-unit targets */
+.kd-compact .hub-menu-spoils { display: none; }
+.kd-compact .kd-choice:has(.hub-card) { gap: calc(6 * var(--u)); padding: calc(2 * var(--u)) calc(6 * var(--u)); }
+.kd-compact .kd-choice:has(.hub-card) .kd-choice-title { font-size: calc(21 * var(--u)); }
+.kd-compact .kd-choice:has(.hub-card) .kd-choice-sub { font-size: calc(12.5 * var(--u)); }
+.kd-compact .kd-choice:has(.hub-card) .kd-choice-rule { display: none; }
+.kd-compact .kd-choice:has(.hub-card) .kd-cards { flex-wrap: nowrap; gap: calc(10 * var(--u)); max-width: calc(840 * var(--u)); }
+.kd-compact .kd-choice:has(.hub-card) .kd-choice-foot .kd-btn { min-height: calc(42 * var(--u)); min-width: calc(44 * var(--u)); font-size: calc(14.5 * var(--u)); }
+.kd-compact .hub-card.kd-card { width: calc(196 * var(--u)); min-height: 0; padding: calc(9 * var(--u)) calc(9 * var(--u)) calc(8 * var(--u)); }
+.kd-compact .hub-card .kd-card-art { width: calc(42 * var(--u)); height: calc(42 * var(--u)); margin-bottom: calc(4 * var(--u)); }
+.kd-compact .hub-card .kd-card-title { font-size: calc(13.5 * var(--u)); }
+.kd-compact .hub-card .kd-card-rule { margin: calc(5 * var(--u)) calc(8 * var(--u)); }
+.kd-compact .hub-card .kd-card-body { font-size: calc(12 * var(--u)); gap: calc(3 * var(--u)); line-height: 1.25; }
+.kd-compact .flow-hub { gap: calc(6 * var(--u)); }
+.kd-compact .hub-top { align-items: center; gap: calc(10 * var(--u)); }
+.kd-compact .hub-title { font-size: calc(24 * var(--u)); }
+.kd-compact .hub-plate { width: calc(330 * var(--u)); padding: calc(6 * var(--u)) calc(10 * var(--u)); gap: calc(4 * var(--u)); }
+.kd-compact .hub-goal { font-size: calc(11.5 * var(--u)); }
+.kd-compact .hub-scene { flex: 0 0 0; }
+.kd-compact .hub-grid.hub-row { flex: 1 1 auto; min-height: 0; display: flex; overflow-x: auto; overflow-y: hidden; gap: calc(8 * var(--u)); padding-bottom: calc(4 * var(--u)); scroll-snap-type: x proximity; }
+.kd-compact .hub-row .hub-tile { flex: 0 0 calc(232 * var(--u)); min-height: 0; scroll-snap-align: start; }
+.kd-compact .hub-tile-name { font-size: calc(16 * var(--u)); }
+.kd-compact .hub-tile-now, .kd-compact .hub-tile-next { font-size: calc(12.5 * var(--u)); }
+.kd-compact .hub-tile .kd-btn { min-height: calc(40 * var(--u)); }
+.kd-compact .hub-tile-foot { min-height: calc(42 * var(--u)); }
+.kd-compact .hub-over-goal { flex-wrap: wrap; }
+/* the run-over panel scrolls rather than squeezing its rows when the Spoils block is added */
+.flow-over-xp:has(.hub-over) > * { flex-shrink: 0; }
+
 /* Co-op screens (src/ui/25_coop_*.js, docs/COOP.md section 6). Prefix: coop-. Sizes in --u units, colours from the kit. */
 
 /* ---- entry and lobby (flow screen 'coop') ---- */
@@ -3566,7 +3661,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.50';
+  KD.VERSION = '0.7.51';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -16734,6 +16829,153 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/data/48_village.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  KD.data = KD.data || {};
+
+  /**
+   * HEARTHMOOR, the village that grows (owner: hub, docs/HUB.md). The refuge village behind the Farm Village is
+   * rebuilt with the Spoils every hero brings back. Each building gives a small start of run bonus or choice.
+   *
+   * Currencies, kept apart on purpose:
+   *   Spoils  (this file) come home from EVERY run, win or lose, and only rebuild Hearthmoor.
+   *   Renown  (45_run_account.js) is fame from bosses and account levels; it buys Chronicle unlocks.
+   *   Crowns  (47_cosmetics.js) buy looks in the Wardrobe and nothing else.
+   *
+   * Power never carries over: every bonus is applied when a run is created (gold, bandages, a weapon, a blessing),
+   * so gear is still found on the road and the hero starts at level 1 or 2.
+   */
+  KD.data.villageTuning = {
+    NAME: 'Hearthmoor',
+    CURRENCY: 'Spoils',
+    /** Spoils from a run summary. Multiplied by the mode (Hardcore x1.25, Relaxed x0.75), rounded, at least BASE. */
+    SPOILS: {
+      base: 6,                          // for setting out at all: a lost run still moves the village forward
+      depth: 1,                         // per route slot reached
+      areaBase: 3, areaPerSlot: 1,      // per cleared route area: 3 + its slot (deeper areas pay more)
+      actboss: 8, finalboss: 20,        // extra for the three act bosses and the Hollow King
+      miniboss: 2, hidden: 6, nemesis: 3, roaming: 5,
+      killsPer: 50, killCap: 12,        // 1 per 50 kills, at most 12
+      elitesPer: 5, eliteCap: 8,        // 1 per 5 elites, at most 8
+      contract: 2,
+      victory: 30
+    },
+    MODE_MULT: { standard: 1, hardcore: 1.25, relaxed: 0.75 },
+    /** Old accounts: the runs already in the Chronicle pay this share once (capped), so a veteran's village is not empty. */
+    BACKPAY_SHARE: 0.5, BACKPAY_CAP: 400,
+    /**
+     * Estimated combat power of the whole start kit when everything is built ({ off, def } fractions, like the prestige
+     * perks). tests/hub_village.test.js checks the fully rebuilt village stays under this.
+     */
+    POWER_CAP: { off: 0.06, def: 0.06 },
+    /** Blessing strength by Shrine level (index = level). */
+    BLESSING_SCALE: [0, 1, 1, 1.5, 1.5]
+  };
+
+  /**
+   * The buildings. `req` = village upgrades needed before it can be rebuilt (the village grows outward from the well).
+   * levels[i] = { cost (Spoils), text, flags (rule flags merged into KD.run.rules), start (run creation effects),
+   *               power { off, def } estimated combat power }.
+   * start keys: ash, bandage, ration, gold, xpToLevel2 (0..1 of the experience to level 2), weapon ('fine'),
+   *             body ('fine'), weaponChoice (n Fine weapons to choose from), blessingOffer (n), blessingRerolls,
+   *             relicOffer (n).
+   * Every level REPLACES the previous level's start numbers (they are cumulative values, not additions).
+   */
+  KD.data.villageBuildings = [
+    { id: 'smithy', name: 'Smithy', glyph: 'hammer', color: '#d8894a', req: 0, npc: 'The smith',
+      blurb: 'A forge, an anvil and a smith who stayed.',
+      levels: [
+        { cost: 15, name: 'Cold forge', text: 'Start every run with 20 Ash, enough to reforge or temper once.', start: { ash: 20 } },
+        { cost: 35, name: 'Lit forge', text: 'Start with a Fine weapon (20 more Ash instead if you already do).', start: { ash: 20, weapon: 'fine' }, power: { off: 0.006, def: 0 } },
+        { cost: 75, name: 'Armourer', text: 'Also start with a Fine body armour.', start: { ash: 20, weapon: 'fine', body: 'fine' }, power: { off: 0.006, def: 0.006 } },
+        { cost: 140, name: 'Master smith', text: 'Choose your starting weapon from 3 Fine ones.', start: { ash: 20, weapon: 'fine', body: 'fine', weaponChoice: 3 }, power: { off: 0.009, def: 0.006 } }
+      ] },
+    { id: 'shrine', name: 'Shrine', glyph: 'shrine', color: '#e2c46a', req: 0, npc: 'The keeper',
+      blurb: 'Candles for the ones who did not come back.',
+      levels: [
+        { cost: 15, name: 'Candle niche', text: 'At the start of a run, choose 1 of 3 small blessings.', start: { blessingOffer: 3 }, power: { off: 0.01, def: 0.01 } },
+        { cost: 35, name: 'Chapel', text: 'Choose from 4 blessings.', start: { blessingOffer: 4 }, power: { off: 0.012, def: 0.012 } },
+        { cost: 75, name: 'Bell tower', text: 'Blessings are half again as strong.', start: { blessingOffer: 4 }, power: { off: 0.018, def: 0.018 } },
+        { cost: 140, name: 'Reliquary chapel', text: 'You may redraw the blessings once.', start: { blessingOffer: 4, blessingRerolls: 1 }, power: { off: 0.02, def: 0.02 } }
+      ] },
+    { id: 'apothecary', name: 'Apothecary', glyph: 'bandage', color: '#9fd08a', req: 0, npc: 'The herbwife',
+      blurb: 'Linen, honey and bitter leaves.',
+      levels: [
+        { cost: 15, name: 'Herb rack', text: 'Start every run with 1 extra bandage.', start: { bandage: 1 }, power: { off: 0, def: 0.003 } },
+        { cost: 35, name: 'Drying loft', text: 'Also start with 1 extra ration.', start: { bandage: 1, ration: 1 }, power: { off: 0, def: 0.005 } },
+        { cost: 75, name: 'Infirmary', text: 'Bandages heal 20% more.', start: { bandage: 1, ration: 1 }, flags: { bandageHealMult: 1.2 }, power: { off: 0, def: 0.009 } },
+        { cost: 140, name: 'Physic garden', text: 'Start with 2 extra bandages and 2 extra rations.', start: { bandage: 2, ration: 2 }, flags: { bandageHealMult: 1.2 }, power: { off: 0, def: 0.012 } }
+      ] },
+    { id: 'market', name: 'Trading Post', glyph: 'vendor', color: '#ecd08a', req: 0, npc: 'The trader',
+      blurb: 'A cart, a scale and a woman who haggles for sport.',
+      levels: [
+        { cost: 15, name: 'Barter cart', text: 'Start every run with 25 extra gold.', start: { gold: 25 } },
+        { cost: 35, name: 'Market stall', text: 'Start with 50 extra gold.', start: { gold: 50 }, power: { off: 0.002, def: 0.002 } },
+        { cost: 75, name: 'Covered market', text: 'Camp vendors stock 1 more item.', start: { gold: 50 }, flags: { vendorStockBonus: 1 }, power: { off: 0.003, def: 0.003 } },
+        { cost: 140, name: 'Trading house', text: 'Start with 100 extra gold, and vendors pay 5% more for what you sell.', start: { gold: 100 }, flags: { vendorStockBonus: 1, sellMult: 1.05 }, power: { off: 0.005, def: 0.005 } }
+      ] },
+    { id: 'yard', name: 'Training Yard', glyph: 'sword_cross', color: '#c9b6ff', req: 2, npc: 'The old sergeant',
+      blurb: 'Straw men and a sergeant with one good eye.',
+      levels: [
+        { cost: 25, name: 'Straw men', text: '+1 free respec point in every act.', flags: { freeRespec: 1 } },
+        { cost: 60, name: 'Drill ground', text: 'Start every run halfway to level 2.', start: { xpToLevel2: 0.5 }, flags: { freeRespec: 1 }, power: { off: 0.002, def: 0.002 } },
+        { cost: 120, name: 'Sparring ring', text: 'Start every run at level 2, and +2 free respec points in every act.', start: { xpToLevel2: 1 }, flags: { freeRespec: 2 }, power: { off: 0.006, def: 0.006 } }
+      ] },
+    { id: 'barracks', name: 'Mercenary Hall', glyph: 'shield', color: '#9fb4d0', req: 3, npc: 'The captain',
+      blurb: 'A long table, a fire and swords for hire.',
+      levels: [
+        { cost: 25, name: 'Mess table', text: 'Hirelings cost 15% less.', flags: { hireCostMult: 0.85 } },
+        { cost: 60, name: 'Bunk house', text: 'Hirelings cost 30% less.', flags: { hireCostMult: 0.7 }, power: { off: 0.002, def: 0.002 } },
+        { cost: 120, name: 'Mercenary hall', text: 'Hirelings you hire have trained here: they start at mercenary level 3.', flags: { hireCostMult: 0.7, mercStartLevel: 3 }, power: { off: 0.003, def: 0.003 } }
+      ] },
+    { id: 'maproom', name: 'Map Room', glyph: 'map', color: '#d8c49a', req: 5, npc: 'The cartographer',
+      blurb: 'Maps from every hero who came back, and a few who did not.',
+      levels: [
+        { cost: 25, name: 'Pinned maps', text: 'The first road choice of each act shows one more road.', flags: { routeExtra: 1 } },
+        { cost: 60, name: 'Map table', text: 'Every road choice shows one more road.', flags: { routeExtra: 1, routeExtraAll: 1 } },
+        { cost: 120, name: 'Map room', text: 'Hidden detours show up at 15 less Fate.', flags: { routeExtra: 1, routeExtraAll: 1, hiddenFateLess: 15 }, power: { off: 0.002, def: 0 } }
+      ] },
+    { id: 'relichouse', name: 'Relic House', glyph: 'relic', color: '#e0523f', req: 6, npc: 'The curator',
+      blurb: 'Locked cases. Some of them rattle.',
+      levels: [
+        { cost: 25, name: 'Locked chest', text: 'At the start, take 1 of 2 Relics you have discovered (or none).', start: { relicOffer: 2 }, power: { off: 0.004, def: 0 } },
+        { cost: 60, name: 'Display cases', text: 'Choose from 3 Relics.', start: { relicOffer: 3 }, power: { off: 0.006, def: 0 } },
+        { cost: 120, name: 'Relic house', text: 'Choose from 4 Relics.', start: { relicOffer: 4 }, power: { off: 0.008, def: 0 } }
+      ] }
+  ];
+
+  /**
+   * Shrine blessings: small, run-long mods (smaller than a milestone boon). `needs` like boons (minions, hirelings).
+   * Strength x KD.data.villageTuning.BLESSING_SCALE[shrine level].
+   */
+  KD.data.villageBlessings = [
+    { id: 'bl_edge', name: 'Blessing of the Edge', glyph: 'sword', text: '+{3}% increased Damage.', mods: [{ s: 'dmg', t: 'inc', v: 0.03 }] },
+    { id: 'bl_hearth', name: 'Blessing of the Hearth', glyph: 'heart', text: '+{4}% increased Health.', mods: [{ s: 'hp', t: 'inc', v: 0.04 }] },
+    { id: 'bl_road', name: 'Blessing of the Road', glyph: 'boot', text: '+{4}% increased Movement Speed.', mods: [{ s: 'moveSpeed', t: 'inc', v: 0.04 }] },
+    { id: 'bl_bell', name: 'Blessing of the Bell', glyph: 'bell', text: '+{4}% increased Cooldown Recovery.', mods: [{ s: 'cdr', t: 'inc', v: 0.04 }] },
+    { id: 'bl_lamp', name: 'Blessing of the Lamp', glyph: 'lantern', text: '+{5}% increased Experience Gain.', mods: [{ s: 'xpGain', t: 'inc', v: 0.05 }] },
+    { id: 'bl_purse', name: 'Blessing of the Purse', glyph: 'coin', text: '+{15}% increased Gold Find.', mods: [{ s: 'goldFind', t: 'inc', v: 0.15 }] },
+    { id: 'bl_wall', name: 'Blessing of the Wall', glyph: 'shield', text: '+{8}% increased Armor, Evasion and Ward.', mods: [{ s: 'armor', t: 'inc', v: 0.08 }, { s: 'evasion', t: 'inc', v: 0.08 }, { s: 'ward', t: 'inc', v: 0.08 }] },
+    { id: 'bl_salt', name: 'Blessing of Salt', glyph: 'ward', text: '+{5}% to every Resistance.', mods: ['resFire', 'resCold', 'resShock', 'resPoison', 'resHoly', 'resShadow'].map(function (s) { return { s: s, t: 'add', v: 0.05 }; }) },
+    { id: 'bl_ash', name: 'Blessing of Ash', glyph: 'leaf', text: '{10}% less Corruption gain.', mods: [{ s: 'corruptionGain', t: 'more', v: -0.10 }] },
+    { id: 'bl_drum', name: 'Blessing of the Drum', glyph: 'drum', text: '+{8}% increased Momentum Gain.', mods: [{ s: 'momentumGain', t: 'inc', v: 0.08 }] },
+    { id: 'bl_flock', name: 'Blessing of the Flock', glyph: 'skull', needs: 'minions', text: '+{8}% increased Minion Damage and Health.', mods: [{ s: 'dmgMinion', t: 'inc', v: 0.08 }, { s: 'minionHp', t: 'inc', v: 0.08 }] },
+    { id: 'bl_eye', name: 'Blessing of the Eye', glyph: 'eye', text: '+{2}% Critical Chance.', mods: [{ s: 'critChance', t: 'add', v: 0.02 }] }
+  ];
+
+  // [hub] the new rule flags (KD.run.hirelingCost honours it through src/meta/48_village.js)
+  if (KD.data.ruleFlags) {
+    KD.data.ruleFlags.hireCostMult = { type: 'mult', merge: 'mul', by: 'run', text: 'Hireling price multiplier (0.7 = 30% cheaper). Hearthmoor Mercenary Hall.' };
+    KD.data.ruleFlags.mercStartLevel = { type: 'count', merge: 'add', by: 'run', text: 'Hirelings hired at a camp start at this mercenary level (KD.run.hire). Hearthmoor Mercenary Hall.' };
+    KD.data.ruleFlags.routeExtraAll = { type: 'count', merge: 'add', by: 'run', text: 'Extra options at EVERY road choice (routeExtra only adds to the first of each act). Hearthmoor Map Room.' };
+    KD.data.ruleFlags.hiddenFateLess = { type: 'count', merge: 'add', by: 'run', text: 'Hidden detours are offered at this much less Fate than their threshold. Hearthmoor Map Room.' };
+  }
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/data/50_abilities_emberscribe.js
 (function (root) {
   'use strict';
@@ -22609,6 +22851,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.51', date: '2026-10-11', title: 'The village that grows', notes: [
+      'Hearthmoor is here: a village you rebuild with the Spoils every run brings home, win or lose',
+      'Eight buildings give every new run a small head start: coin, bandages, a better weapon, a blessing or a Relic to choose',
+      'Nothing you find on the road comes home, so each run still starts fresh',
+      'The run summary shows what you brought back and what it can buy next'
+    ] },
     { version: '0.7.50', date: '2026-10-11', title: 'Tidier Settings window', notes: [
       'Settings got a tidy-up: tabs for Gameplay, Graphics, Audio, Controls, Controller, Interface and Online',
       'All the New or Classic look switches now sit together under Graphics, Art style',
@@ -51999,6 +52247,429 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   CO.localAccount = CO.localAccount || null;
   CO.localWire = function () { var a = CO.localAccount ? CO.localAccount() : null; return a ? CO.wire(CO.loadout(a)) : {}; };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/meta/48_village.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var U = KD.util;
+
+  /**
+   * KD.village: Hearthmoor, the village that grows (owner: hub). Pure, runs in Node. docs/HUB.md.
+   *
+   * account.village = { v, spoils, earned, spent, levels: { [buildingId]: n }, runs, backpaid, last: { id, spoils } }
+   * run.village     = { v, levels, start, flags, pending: [choice], picked: {}, blessing: { id, scale } | null }
+   *                     (a snapshot: a saved run never depends on later upgrades)
+   * choice          = { kind: 'weapon' | 'blessing' | 'relic', options: [...], rerolls }
+   *
+   * Hooks (wrappers, so the run and account modules stay untouched):
+   *   KD.run.create      applies the start bonuses of the account's village and opens the start choices
+   *   KD.run.rules       merges the village's rule flags (run.village.flags)
+   *   KD.run.heroMods    adds the Shrine blessing
+   *   KD.run.hirelingCost / hire honour rules.hireCostMult and mercStartLevel; KD.run.routeOffer honours routeExtraAll and hiddenFateLess; KD.run.routeOffer honours routeExtraAll and hiddenFateLess
+   *   KD.account.normalize / awardRun: the account field (with a one-time back pay for old accounts) and the Spoils of a run
+   * Co-op: every player creates their own live run from their own account, so each hero carries their own village;
+   * the choices are made on the road screen before the party sets out and reach the shared world with the run sync.
+   */
+  var V = KD.village = KD.village || {};
+  V.VERSION = 1;
+  function T() { return KD.data.villageTuning; }
+  function fail(reason, extra) { var o = { ok: false, reason: reason }; if (extra) for (var k in extra) o[k] = extra[k]; return o; }
+
+  // ------------------------------------------------------------------ catalogue
+  V.buildings = function () { return KD.data.villageBuildings; };
+  V.building = function (id) { var L = KD.data.villageBuildings; for (var i = 0; i < L.length; i++) if (L[i].id === id) return L[i]; return null; };
+  V.maxLevel = function (id) { var b = V.building(id); return b ? b.levels.length : 0; };
+  V.maxTotal = function () { return U.sum(KD.data.villageBuildings, function (b) { return b.levels.length; }); };
+  V.totalCost = function () { return U.sum(KD.data.villageBuildings, function (b) { return U.sum(b.levels, function (l) { return l.cost; }); }); };
+  V.blessing = function (id) { var L = KD.data.villageBlessings; for (var i = 0; i < L.length; i++) if (L[i].id === id) return L[i]; return null; };
+  V.name = function () { return T().NAME; };
+  V.currency = function () { return T().CURRENCY; };
+
+  // ------------------------------------------------------------------ the account side
+  /** The account's village (made or repaired on first use). Old accounts get a one-time back pay from their Chronicle. */
+  V.state = function (a) {
+    if (!a) return null;
+    var s = a.village;
+    var fresh = !s || typeof s !== 'object';
+    if (fresh) s = a.village = {};
+    s.v = V.VERSION;
+    if (!(s.spoils >= 0)) s.spoils = 0;
+    if (!(s.earned >= 0)) s.earned = 0;
+    if (!(s.spent >= 0)) s.spent = 0;
+    if (!(s.runs >= 0)) s.runs = 0;
+    if (!s.levels || typeof s.levels !== 'object') s.levels = {};
+    for (var k in s.levels) {
+      var b = V.building(k), n = Math.floor(s.levels[k] || 0);
+      if (!b || !(n > 0)) delete s.levels[k]; else s.levels[k] = Math.min(n, b.levels.length);
+    }
+    if (s.last === undefined) s.last = null;
+    if (!s.backpaid) {
+      s.backpaid = true;
+      var pay = 0;
+      (a.chronicle || []).forEach(function (e) { if (e && e.result && e.result !== 'active') pay += V.spoilsFor(e).total; });
+      pay = Math.min(T().BACKPAY_CAP, Math.round(pay * T().BACKPAY_SHARE));
+      if (pay > 0) { s.spoils += pay; s.earned += pay; s.backpay = pay; }
+    }
+    return s;
+  };
+  V.level = function (a, id) { var s = V.state(a); return s ? (s.levels[id] || 0) : 0; };
+  /** Upgrades built in all: totalLevels(levels object) (the village's own `levels`, or an account). */
+  V.totalLevels = function (levels) {
+    if (levels && levels.chronicle) levels = V.state(levels).levels;
+    var n = 0; for (var k in (levels || {})) n += levels[k] || 0; return n;
+  };
+  V.spoils = function (a) { var s = V.state(a); return s ? s.spoils : 0; };
+  /** canUpgrade(a, id) -> { ok, cost, level (next), reason: unknown | max | locked | spoils, need, req } */
+  V.canUpgrade = function (a, id) {
+    var b = V.building(id), s = V.state(a);
+    if (!b || !s) return fail('unknown');
+    var cur = s.levels[id] || 0;
+    if (cur >= b.levels.length) return fail('max', { level: cur });
+    var total = V.totalLevels(s.levels);
+    if (cur === 0 && total < (b.req || 0)) return fail('locked', { req: b.req, have: total, cost: b.levels[0].cost });
+    var cost = b.levels[cur].cost;
+    if (s.spoils < cost) return fail('spoils', { cost: cost, need: cost - s.spoils, level: cur + 1 });
+    return { ok: true, cost: cost, level: cur + 1 };
+  };
+  /** upgrade(a, id) -> { ok, level, cost, spoils (left), name } */
+  V.upgrade = function (a, id) {
+    var c = V.canUpgrade(a, id);
+    if (!c.ok) return c;
+    var s = V.state(a), b = V.building(id);
+    s.spoils -= c.cost; s.spent += c.cost;
+    s.levels[id] = c.level;
+    return { ok: true, level: c.level, cost: c.cost, spoils: s.spoils, name: b.levels[c.level - 1].name };
+  };
+  /** Rows for the village screen: every building with its state. */
+  V.rows = function (a) {
+    var s = V.state(a), total = V.totalLevels(s.levels);
+    return KD.data.villageBuildings.map(function (b) {
+      var lv = s.levels[b.id] || 0, c = V.canUpgrade(a, b.id), next = lv < b.levels.length ? b.levels[lv] : null;
+      return { id: b.id, name: b.name, glyph: b.glyph, color: b.color, blurb: b.blurb, npc: b.npc, level: lv, max: b.levels.length,
+        current: lv > 0 ? b.levels[lv - 1] : null, next: next, cost: next ? next.cost : 0, can: c.ok, reason: c.ok ? null : c.reason,
+        need: c.need || 0, req: b.req || 0, locked: lv === 0 && total < (b.req || 0) };
+    });
+  };
+  /**
+   * nextGoal(a) -> { id, name, level, cost, need, text } | null: the upgrade the player is closest to affording
+   * ("2 more Spoils to rebuild the Smithy").
+   */
+  V.nextGoal = function (a) {
+    var rows = V.rows(a).filter(function (r) { return r.next && !r.locked; });
+    if (!rows.length) return null;
+    rows.sort(function (x, y) { return (x.cost - y.cost) || (x.level - y.level); });
+    var r = rows[0], s = V.state(a), need = Math.max(0, r.cost - s.spoils);
+    var verb = r.level === 0 ? 'rebuild the ' + r.name : 'raise the ' + r.name + ' to level ' + (r.level + 1);
+    return { id: r.id, name: r.name, level: r.level + 1, cost: r.cost, need: need,
+      text: need > 0 ? need + ' more ' + T().CURRENCY + ' to ' + verb + '.' : 'You can ' + verb + ' now (' + r.cost + ' ' + T().CURRENCY + ').' };
+  };
+
+  // ------------------------------------------------------------------ spoils from a run
+  /**
+   * spoilsFor(summary) -> { lines: [{ key, label, count, spoils }], subtotal, modeMult, total }. Pure. Every run pays
+   * at least the base, so a loss still moves the village forward; deeper runs pay more.
+   */
+  V.spoilsFor = function (s) {
+    var P = T().SPOILS, lines = [];
+    var add = function (key, label, count, each, cap) { var v = Math.floor(count * each); if (cap !== undefined) v = Math.min(cap, v); if (v > 0) lines.push({ key: key, label: label, count: count, spoils: v }); };
+    s = s || {};
+    add('base', 'Came home', 1, P.base);
+    add('depth', 'Roads travelled', s.slot || 1, P.depth);
+    var areas = 0;
+    (s.cleared || []).forEach(function (c) { if (!c.hidden) areas += P.areaBase + P.areaPerSlot * (c.slot || 1); });
+    if (areas > 0) lines.push({ key: 'areas', label: 'Areas cleared', count: s.areasCleared || (s.cleared || []).filter(function (c) { return !c.hidden; }).length, spoils: areas });
+    var bt = s.bossTiers || {};
+    add('actboss', 'Act bosses', bt.actboss || 0, P.actboss);
+    add('finalboss', 'The Hollow King', bt.finalboss || 0, P.finalboss);
+    add('miniboss', 'Mini-bosses', s.minibosses || 0, P.miniboss);
+    add('hidden', 'Hidden areas', s.hiddenCleared || 0, P.hidden);
+    add('nemesis', 'Nemeses', s.nemesis || 0, P.nemesis);
+    add('roaming', 'Roaming bosses', s.roaming || 0, P.roaming);
+    if ((s.kills || 0) >= P.killsPer) lines.push({ key: 'kills', label: 'Kills', count: s.kills, spoils: Math.min(P.killCap, Math.floor(s.kills / P.killsPer)) });
+    if ((s.elites || 0) >= P.elitesPer) lines.push({ key: 'elites', label: 'Elites', count: s.elites, spoils: Math.min(P.eliteCap, Math.floor(s.elites / P.elitesPer)) });
+    add('contracts', 'Contracts', s.contracts || 0, P.contract);
+    if (s.result === 'won') add('victory', 'Victory', 1, P.victory);
+    var subtotal = U.sum(lines, function (l) { return l.spoils; });
+    var mult = T().MODE_MULT[s.mode] || 1;
+    return { lines: lines, subtotal: subtotal, modeMult: mult, total: Math.max(P.base, Math.round(subtotal * mult)) };
+  };
+  /** award(a, summary) -> spoilsFor(...) + { ok, spoils (balance), goal }. Called by KD.account.awardRun (once per run id). */
+  V.award = function (a, summary) {
+    var s = V.state(a), bd = V.spoilsFor(summary);
+    s.spoils += bd.total; s.earned += bd.total; s.runs++;
+    s.last = { id: summary.id, spoils: bd.total };
+    bd.ok = true; bd.spoils = s.spoils; bd.goal = V.nextGoal(a);
+    return bd;
+  };
+
+  // ------------------------------------------------------------------ what a village gives a run
+  function mergeStart(levels) {
+    var start = {}, flags = {};
+    KD.data.villageBuildings.forEach(function (b) {
+      var lv = Math.min(levels[b.id] || 0, b.levels.length);
+      if (lv <= 0) return;
+      var L = b.levels[lv - 1];
+      var st = L.start || {};
+      for (var k in st) start[k] = typeof st[k] === 'number' ? (start[k] || 0) + st[k] : st[k];
+      if (L.flags && KD.run && KD.run.mergeFlags) KD.run.mergeFlags(flags, L.flags);
+      else if (L.flags) for (var f in L.flags) flags[f] = L.flags[f];
+    });
+    start.shrine = Math.min(levels.shrine || 0, T().BLESSING_SCALE.length - 1);
+    return { start: start, flags: flags };
+  }
+  V.startOf = function (levels) { return mergeStart(levels || {}); };
+  /** power(levels) -> { off, def }: the estimated combat power of the start kit (the highest level of each building). */
+  V.power = function (levels) {
+    var out = { off: 0, def: 0 };
+    KD.data.villageBuildings.forEach(function (b) {
+      var lv = Math.min((levels || {})[b.id] || 0, b.levels.length);
+      var p = lv > 0 ? b.levels[lv - 1].power : null;
+      if (p) { out.off += p.off || 0; out.def += p.def || 0; }
+    });
+    return out;
+  };
+  /** carryLines(levels) -> ['+50 gold', ...]: what a hero sets out with from this village, in plain words. */
+  V.carryLines = function (levels) {
+    var ms = mergeStart(levels || {}), st = ms.start, f = ms.flags, out = [];
+    var plural = function (n, one, many) { return n + ' ' + (n === 1 ? one : many); };
+    if (st.gold) out.push('+' + st.gold + ' gold');
+    if (st.bandage || st.ration) out.push([st.bandage ? '+' + plural(st.bandage, 'bandage', 'bandages') : null, st.ration ? '+' + plural(st.ration, 'ration', 'rations') : null].filter(Boolean).join(', '));
+    if (st.ash) out.push('+' + st.ash + ' Ash for the forge');
+    if (st.weaponChoice > 1) out.push('A Fine weapon, chosen from ' + st.weaponChoice);
+    else if (st.weapon) out.push('A Fine weapon');
+    if (st.body) out.push('A Fine body armour');
+    if (st.xpToLevel2 >= 1) out.push('Start at level 2'); else if (st.xpToLevel2 > 0) out.push('Start halfway to level 2');
+    if (st.blessingOffer) out.push('Choose 1 of ' + st.blessingOffer + ' blessings' + ((T().BLESSING_SCALE[st.shrine] || 1) > 1 ? ' (half again as strong)' : '') + (st.blessingRerolls ? ', one redraw' : ''));
+    if (st.relicOffer) out.push('Take 1 of ' + st.relicOffer + ' Relics');
+    if (f.routeExtraAll) out.push('One more road at every road choice' + (f.routeExtra ? ', two at the first of each act' : ''));
+    else if (f.routeExtra) out.push('One more road at the first choice of each act');
+    if (f.hiddenFateLess) out.push('Hidden detours at ' + f.hiddenFateLess + ' less Fate');
+    if (f.freeRespec) out.push('+' + plural(f.freeRespec, 'free respec point', 'free respec points') + ' every act');
+    if (f.bandageHealMult > 1) out.push('Bandages heal ' + Math.round((f.bandageHealMult - 1) * 100) + '% more');
+    if (f.vendorStockBonus) out.push('Vendors stock ' + plural(f.vendorStockBonus, 'more item', 'more items'));
+    if (f.sellMult > 1) out.push('Vendors pay ' + Math.round((f.sellMult - 1) * 100) + '% more');
+    if (f.hireCostMult && f.hireCostMult < 1) out.push('Hirelings cost ' + Math.round((1 - f.hireCostMult) * 100) + '% less' + (f.mercStartLevel > 1 ? ' and start at level ' + f.mercStartLevel : ''));
+    return out;
+  };
+  /** Every building at its top level (tests, balance tools). */
+  V.fullLevels = function () { var o = {}; KD.data.villageBuildings.forEach(function (b) { o[b.id] = b.levels.length; }); return o; };
+  /** Rule flags of a run's village (empty without one). */
+  V.flags = function (run) { return run && run.village && run.village.flags ? run.village.flags : null; };
+
+  function heroUsesMinions(classId) {
+    try {
+      var cls = KD.get('classes', classId);
+      return (cls.skills || []).some(function (n) { var ab = KD.skills && KD.skills.get ? KD.skills.get(KD.data.slug(n)) : null; return ab && (ab.tags || []).indexOf('summon') >= 0; });
+    } catch (e) { return false; }
+  }
+  function blessingPool(run) {
+    var rules = KD.run.rules(run), minions = heroUsesMinions(run.hero.classId) && !rules.noMinions;
+    return KD.data.villageBlessings.filter(function (b) { return b.needs !== 'minions' || minions; }).map(function (b) { return b.id; });
+  }
+  function relicPool(run) {
+    if (KD.run.rules(run).noRelics || !KD.data.relics) return [];
+    var ids = (run.unlocked && run.unlocked.relics) || [];
+    return ids.filter(function (id) { return KD.has('relics', id); });
+  }
+  function fineWeapon(run, rng) {
+    var cls = KD.get('classes', run.hero.classId);
+    var w = KD.items.generate({ slot: 'weapon', family: cls.weapon, classId: cls.id, ilvl: 1, rarity: 'fine', rng: rng, run: run });
+    return w && w.slot === 'weapon' ? w : null;
+  }
+  function fineBody(run, rng) {
+    var cls = KD.get('classes', run.hero.classId), d = KD.items.db();
+    var set = ((d.setsByClass && d.setsByClass[cls.armor]) || ['leather'])[0];
+    var it = KD.items.generate({ base: set + '_body', ilvl: 1, rarity: 'fine', rng: rng, run: run });
+    return it && it.slot === 'body' ? it : null;
+  }
+  function safe(label, fn) { try { return fn(); } catch (e) { if (KD.log) KD.log('[village] ' + label + ' failed', e); return null; } }
+
+  /**
+   * applyStart(run, account): gives a new run what its village holds. Deterministic for the run seed and the levels.
+   * Called by the KD.run.create wrapper; idempotent (a run that already has run.village is left alone).
+   */
+  V.applyStart = function (run, account) {
+    if (!run || run.village || !account) return run;
+    var s = V.state(account), levels = U.deepClone(s.levels);
+    var ms = mergeStart(levels), st = ms.start, R = KD.run, hero = run.hero;
+    var v = run.village = { v: V.VERSION, levels: levels, start: st, flags: ms.flags, pending: [], picked: {}, blessing: null };
+    if (!V.totalLevels(levels)) return run;
+    var rng = function (label) { return R.rng(run, 'village:' + label); };
+    // supplies and coin
+    if (st.gold) hero.gold += st.gold;
+    if (st.bandage) R.addSupply(run, 'bandage', st.bandage);
+    if (st.ration) R.addSupply(run, 'ration', st.ration);
+    var ash = st.ash || 0;
+    // the smithy: a Fine weapon (Ash instead when Heirloom Blade already gives one), a Fine body armour, or a choice of weapons
+    var rules = R.rules(run);
+    if (st.weapon && KD.items && KD.items.generate) {
+      if (rules.heirloomWeapon) ash += 20;
+      else if (!(st.weaponChoice > 1)) safe('weapon', function () { var w = fineWeapon(run, rng('weapon')); if (w) hero.gear.weapon = w; });
+    }
+    if (st.weaponChoice > 1 && KD.items && KD.items.generate) safe('weaponChoice', function () {
+      var r = rng('weapons'), opts = [];
+      for (var i = 0; i < st.weaponChoice; i++) { var w = fineWeapon(run, r); if (w) opts.push(w); }
+      if (opts.length) { hero.gear.weapon = opts[0]; v.pending.push({ kind: 'weapon', options: opts, rerolls: 0 }); }
+    });
+    if (st.body && KD.items && KD.items.generate) safe('body', function () { var b = fineBody(run, rng('body')); if (b) hero.gear.body = b; });
+    if (ash) hero.ash = (hero.ash || 0) + ash;
+    // the training yard: experience towards level 2
+    if (st.xpToLevel2 > 0 && hero.level < 2) safe('xp', function () {
+      var need = KD.balance.xpToNext(1);
+      KD.hero.addXp(hero, Math.min(need, Math.ceil(need * Math.min(1, st.xpToLevel2))) - (st.xpToLevel2 < 1 ? 1 : 0));
+      if (R.onLevelUp) R.onLevelUp(run);
+    });
+    // the training yard's respec points (the run module set the allowance before the village was known)
+    if (ms.flags.freeRespec && hero.web) hero.web.respecFree = (hero.web.respecFree || 0) + ms.flags.freeRespec;
+    // the shrine and the relic house: choices made on the road screen before the first area
+    if (st.blessingOffer > 0) {
+      var pool = blessingPool(run);
+      if (pool.length) v.pending.push({ kind: 'blessing', options: rng('blessings').sample(pool, st.blessingOffer), rerolls: st.blessingRerolls || 0, scale: T().BLESSING_SCALE[st.shrine] || 1 });
+    }
+    if (st.relicOffer > 0) {
+      var rp = relicPool(run);
+      if (rp.length) v.pending.push({ kind: 'relic', options: rng('relics').sample(rp, st.relicOffer), rerolls: 0 });
+    }
+    // rule flags that matter from the first area on (route options of slot 1 are fixed, so the offer is unchanged)
+    if (run.offer && run.phase === 'route') run.offer = R.routeOffer(run);
+    R.restoreHero(run);
+    if (V.totalLevels(levels) > 0) R.log(run, 'Set out from ' + T().NAME + '.');
+    return run;
+  };
+
+  // ------------------------------------------------------------------ start choices
+  V.pending = function (run) { return run && run.village && run.village.pending ? run.village.pending : []; };
+  V.hasPending = function (run) { return V.pending(run).length > 0; };
+  function pendingOf(run, kind) { return V.pending(run).filter(function (c) { return c.kind === kind; })[0] || null; }
+  V.pendingOf = pendingOf;
+  /** A blessing's text at a strength: "+{3}% increased Damage." -> "+4.5% increased Damage." */
+  V.blessingText = function (id, scale) {
+    var b = V.blessing(id); if (!b) return '';
+    scale = scale || 1;
+    return b.text.replace(/\{([\d.]+)\}/g, function (m, n) { var v = Math.round(parseFloat(n) * scale * 10) / 10; return String(v); });
+  };
+  V.blessingMods = function (id, scale) {
+    var b = V.blessing(id); if (!b) return [];
+    scale = scale || 1;
+    return b.mods.map(function (m) { var c = { s: m.s, t: m.t, v: m.v * scale }; if (m.cond) c.cond = m.cond; return c; });
+  };
+  /**
+   * choose(run, kind, index | null) -> { ok, kind, picked }. null declines (a Relic or a blessing may be left behind; the
+   * weapon choice keeps the first). Only before the first area (phase 'route', slot 1) or while the choice is open.
+   */
+  V.choose = function (run, kind, index) {
+    var c = pendingOf(run, kind);
+    if (!c) return fail('no_choice');
+    var v = run.village, R = KD.run, hero = run.hero, out = { ok: true, kind: kind, picked: null };
+    if (index !== null && index !== undefined && !(index >= 0 && index < c.options.length)) return fail('bad_index');
+    if (kind === 'weapon') {
+      var w = c.options[index === null || index === undefined ? 0 : index];
+      if (w) { hero.gear.weapon = w; out.picked = w.name; v.picked.weapon = w.uid; }
+    } else if (kind === 'blessing') {
+      if (index !== null && index !== undefined) {
+        var id = c.options[index];
+        v.blessing = { id: id, scale: c.scale || 1 };
+        v.picked.blessing = id; out.picked = V.blessing(id).name;
+        R.log(run, 'Blessed at the ' + T().NAME + ' shrine: ' + V.blessing(id).name + '.');
+      }
+    } else if (kind === 'relic') {
+      if (index !== null && index !== undefined && KD.items && KD.items.makeRelic) {
+        var rid = c.options[index];
+        var item = safe('relic', function () { return KD.items.makeRelic(rid, R.rng(run, 'village:relicItem'), 1, { run: run, hero: hero }); });
+        if (item) {
+          hero.bag.push(item);
+          var eq = R.equip ? R.equip(run, item.uid) : null;
+          out.picked = item.name; out.equipped = !!(eq && eq.ok); v.picked.relic = rid;
+          R.log(run, 'Took ' + item.name + ' from the ' + T().NAME + ' relic house.');
+        }
+      }
+    }
+    v.pending = v.pending.filter(function (x) { return x !== c; });
+    R.restoreHero(run);
+    return out;
+  };
+  /** reroll(run, kind) -> { ok, options }: a fresh draw of the same size (Reliquary chapel: the blessings once). */
+  V.reroll = function (run, kind) {
+    var c = pendingOf(run, kind);
+    if (!c) return fail('no_choice');
+    if (!(c.rerolls > 0)) return fail('no_rerolls');
+    var pool = kind === 'blessing' ? blessingPool(run) : (kind === 'relic' ? relicPool(run) : []);
+    var rest = pool.filter(function (id) { return c.options.indexOf(id) < 0; });
+    if (rest.length < c.options.length) rest = pool;
+    c.rerolls--;
+    c.options = KD.run.rng(run, 'village:reroll:' + kind + ':' + c.rerolls).sample(rest, c.options.length);
+    return { ok: true, options: c.options.slice(), rerolls: c.rerolls };
+  };
+  /** Decide every open choice with its first option (bots, the dev harness, a guest that has to hurry). */
+  V.autoChoose = function (run) {
+    V.pending(run).slice().forEach(function (c) { V.choose(run, c.kind, c.kind === 'relic' ? null : 0); });
+    return run;
+  };
+
+  // ------------------------------------------------------------------ wrappers
+  function install() {
+    var R = KD.run, A = KD.account;
+    if (!R || !A || R._villageHooked) return;
+    R._villageHooked = true;
+    var create = R.create;
+    R.create = function (opts) {
+      var run = create.apply(this, arguments);
+      if (opts && opts.account && opts.village !== false) safe('applyStart', function () { V.applyStart(run, opts.account); });
+      return run;
+    };
+    var rules = R.rules;
+    R.rules = function (run) {
+      var out = rules.apply(this, arguments);
+      var f = V.flags(run);
+      if (f) R.mergeFlags(out, f);
+      return out;
+    };
+    var heroMods = R.heroMods;
+    R.heroMods = function (run, hero) {
+      var m = heroMods.apply(this, arguments);
+      var b = run && run.village && run.village.blessing;
+      if (b && b.id) m = m.concat(V.blessingMods(b.id, b.scale));
+      return m;
+    };
+    if (R.hirelingCost) {
+      var cost = R.hirelingCost;
+      R.hirelingCost = function (run, defId, rarity) {
+        var c = cost.apply(this, arguments), mult = R.rules(run).hireCostMult;
+        return c > 0 && mult > 0 && mult !== 1 ? Math.max(1, Math.round(c * mult)) : c;
+      };
+    }
+    if (R.hire) {
+      var hire = R.hire;
+      R.hire = function (run) {
+        var res = hire.apply(this, arguments), L = res && res.ok ? R.rules(run).mercStartLevel : 0, h = res && res.hireling;
+        if (L > 1 && h && KD.mercs && KD.mercs.norm) { KD.mercs.norm(h); if (h.mlv < L) { h.mlv = Math.min(L, 4); h.mxp = 0; } }      // below the first level perk (5)
+        return res;
+      };
+    }
+    var routeOffer = R.routeOffer;
+    R.routeOffer = function (run) {
+      var f = V.flags(run) || {}, d = KD.data.route[run && run.nextSlot], undo = [];
+      try {
+        if (f.routeExtraAll > 0 && d && d.kind === 'choose') { var n0 = d.offer; d.offer = n0 + f.routeExtraAll; undo.push(function () { d.offer = n0; }); }
+        if (f.hiddenFateLess > 0) KD.list('areas').forEach(function (a) { if (a.hidden) { var at = a.hidden.at; a.hidden.at = at - f.hiddenFateLess; undo.push(function () { a.hidden.at = at; }); } });
+        return routeOffer.apply(this, arguments);
+      } finally { undo.forEach(function (fn) { fn(); }); }
+    };
+    var normalize = A.normalize;
+    A.normalize = function (a) { var out = normalize.apply(this, arguments); V.state(out); return out; };
+    var award = A.awardRun;
+    A.awardRun = function (a, s, now) {
+      var bd = award.apply(this, arguments);
+      if (bd && bd.ok !== false && s) bd.village = V.award(a, s);
+      return bd;
+    };
+  }
+  V._install = install;
+  install();
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -110102,6 +110773,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       el('div.flow-menu-buttons' + (cont ? '.flow-menu-has-continue' : ''), [
         cont,
         KD.ui.button('New Run', { icon: 'sword', className: 'flow-menu-btn flow-menu-wide', onClick: function () { M.openNewRun(game); } }),
+        F.hub && F.hub.menuButton ? F.hub.menuButton(game) : null,      // [hub] "Hearthmoor", the village that grows (src/ui/22_hub.js)
         F.coop && F.coop.menuButton ? F.coop.menuButton(game) : null,      // "Play Together" (src/ui/25_coop_10_lobby.js)
         F.online && F.online.menuButton ? F.online.menuButton(game) : null,      // "Friends" (src/ui/26_online_10_screens.js)
         btn('Account', 'crown', function () { F.account.open(game); }, 'Account level, prestige, perks and the Renown shop'),
@@ -112298,6 +112970,249 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (game.state && game.state !== 'boot') onState({ state: game.state, prev: 'boot' });
     return F;
   });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/ui/22_hub.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  if (typeof document === 'undefined') return;       // browser only
+  var F = KD.flow, U = KD.util, V = KD.village;
+  if (!F || !V) return;
+
+  /**
+   * Hearthmoor, the village that grows (owner: hub, docs/HUB.md): the village screen (flow screen 'hub', state 'menu',
+   * over the 3D village), the menu button, the start choices on the road screen (blessing, Relic, weapon) and the
+   * Spoils block of the run-over screen. Pure rules: KD.village (src/meta/48_village.js).
+   */
+  var H = F.hub = F.hub || {};
+  var view = { game: null, sel: null, busy: false };
+
+  function spoilsIcon(size) { return KD.ui.icon('chest', size || 14, '#ecd08a'); }
+  function cur() { return V.currency(); }
+  H.events = H.events || new KD.Emitter();
+
+  // ------------------------------------------------------------------------------------------ menu button
+  /** The main menu's "Hearthmoor" button with the Spoils in hand. */
+  H.menuButton = function (game) {
+    var el = KD.ui.el, a = game && game.account;
+    if (!a) return null;
+    var sp = V.spoils(a), any = V.rows(a).some(function (r) { return r.can; });
+    var label = el('span.hub-menu-label', [el('span', { text: V.name() }), el('span.hub-menu-spoils.kd-num', [spoilsIcon(12), el('span', { text: F.num(sp) })]),
+      any ? el('span.hub-menu-dot', { attrs: { 'aria-label': 'An upgrade is ready' } }) : null]);
+    return KD.ui.button(label, { icon: 'camp', className: 'flow-menu-btn hub-menu-btn', tip: F.isTouch() ? null : 'The village you rebuild with the ' + cur() + ' of every run', onClick: function () { H.open(game); } });
+  };
+
+  // ------------------------------------------------------------------------------------------ the village screen
+  function pips(n, max) { var el = KD.ui.el; return el('span.hub-pips', Array.apply(null, { length: max }).map(function (x, i) { return el('span.hub-pip' + (i < n ? '.hub-on' : '')); })); }
+  function tileTip(r) {
+    var b = V.building(r.id);
+    return { title: r.name, sub: r.npc + (r.level ? ', level ' + r.level + ' of ' + r.max : (r.locked ? ', in ruins' : ', not rebuilt yet')), color: r.color,
+      lines: [{ text: r.blurb, kind: 'dim' }, { kind: 'sep' }].concat(b.levels.map(function (L, i) {
+        return { text: (i < r.level ? 'Built: ' : 'Level ' + (i + 1) + ' (' + L.cost + ' ' + cur() + '): ') + L.text, kind: i < r.level ? 'good' : (i === r.level ? 'implicit' : 'dim') };
+      })), footer: r.locked ? 'Rebuild ' + r.req + ' other upgrades first.' : null };
+  }
+  function tile(game, r) {
+    var el = KD.ui.el, a = game.account;
+    var btn;
+    if (!r.next) btn = KD.ui.badge('Complete', { kind: 'good', icon: 'check' });
+    else if (r.locked) btn = KD.ui.badge('Needs ' + r.req + ' upgrades', { kind: 'warn', icon: 'lock' });
+    else btn = KD.ui.button(r.level ? 'Upgrade' : 'Rebuild', { small: true, kind: 'primary', disabled: !r.can, className: 'hub-up',
+      tip: r.can ? null : (r.need ? r.need + ' more ' + cur() + ' needed' : null),
+      onClick: function (e) { if (e) e.stopPropagation(); H.upgrade(game, r.id); } });
+    var now = r.current ? r.current.text : (r.locked ? 'In ruins.' : 'Not rebuilt yet.');
+    return el('div.hub-tile.kd-tip-tap' + (r.level ? '.hub-built' : '') + (r.locked ? '.hub-locked' : '') + (r.can ? '.hub-ready' : '') + (view.sel === r.id ? '.hub-sel' : ''),
+      { style: { '--hub-c': r.color }, data: { id: r.id }, tip: function () { return tileTip(r); } }, [
+        el('div.hub-tile-head', [
+          F.medallion(r.glyph, 34, r.locked ? '#5b5145' : r.color),
+          el('div.hub-tile-id', [el('div.hub-tile-name', { text: r.name }), el('div.hub-tile-sub', [pips(r.level, r.max), el('span.kd-dim', { text: r.level ? ' ' + (r.current.name || '') : '' })])])
+        ]),
+        el('div.hub-tile-now', { text: now }),
+        r.next ? el('div.hub-tile-next', [el('span.hub-tile-nlab', { text: r.level ? 'Next: ' : 'Rebuild: ' }), el('span', { text: r.next.text })]) : el('div.hub-tile-next.kd-dim', { text: 'Fully rebuilt.' }),
+        el('div.hub-tile-foot', [r.next ? el('span.hub-cost.kd-num' + (r.can ? '' : '.hub-short'), [spoilsIcon(13), el('span', { text: F.num(r.cost) })]) : null, el('span.flow-grow'), btn])
+      ]);
+  }
+  function carryPanel(a) {
+    var el = KD.ui.el, lines = V.carryLines(V.state(a).levels);
+    return el('div.hub-carry.kd-plate', [
+      el('div.hub-carry-h', { text: 'You set out with' }),
+      lines.length ? KD.ui.scroll(el('ul.hub-carry-list', lines.map(function (t) { return el('li', { text: t }); })), { className: 'hub-carry-scroll' }) : el('div.kd-dim.hub-carry-none', { text: 'Nothing yet. Rebuild a building and every new run starts with its gift.' })
+    ]);
+  }
+  H.openCarry = function (game) {
+    var el = KD.ui.el, lines = V.carryLines(V.state(game.account).levels);
+    return F.window('hub-carry', { title: 'You set out with', icon: 'camp', width: 420, pauses: false,
+      content: lines.length ? el('ul.hub-carry-list.hub-carry-win', lines.map(function (t) { return el('li', { text: t }); })) : el('div.kd-dim', { text: 'Nothing yet. Rebuild a building and every new run starts with its gift.' }) });
+  };
+  function helpText() {
+    return [
+      'Every run brings ' + cur() + ' home to ' + V.name() + ', win or lose. The deeper you get, the more you bring: areas cleared, bosses, mini-bosses, kills and a share for the road itself.',
+      cur() + ' only rebuild the village. Renown still buys Chronicle unlocks, and Crowns buy looks in the Wardrobe.',
+      'Each building gives a small gift to every new run: coin, supplies, a better weapon, a blessing, a Relic, trained hirelings. Nothing you find on the road comes home: each run still starts fresh.',
+      'Choices (blessing, Relic, weapon) are made on the road screen when a run begins. A run keeps the village it set out from.'
+    ];
+  }
+  H.openHelp = function () {
+    var el = KD.ui.el;
+    return F.window('hub-help', { title: 'How ' + V.name() + ' works', icon: 'info', width: 520, pauses: false, content: el('div.hub-help', helpText().map(function (t) { return el('p', { text: t }); })) });
+  };
+  H.build = function (game) {
+    var el = KD.ui.el, s = F.screenRoot('hub'), a = game.account, compact = F.isCompact();
+    KD.ui.clear(s);
+    view.game = game;
+    var st = V.state(a), rows = V.rows(a), total = V.totalLevels(st.levels), max = V.maxTotal(), goal = V.nextGoal(a);
+    var bar = KD.ui.bar({ kind: 'resource', color: '#d8a24a', value: total, max: max, width: '100%', height: compact ? 12 : 14, lag: false, text: function (v, m) { return v + ' of ' + m + ' rebuilt'; } });
+    var plate = el('div.hub-plate.kd-plate', [
+      el('div.hub-plate-top', [spoilsIcon(compact ? 20 : 26), el('div', [el('div.hub-spoils.kd-num', { text: F.num(st.spoils) }), el('div.hub-spoils-lab', { text: cur() })]),
+        el('span.flow-grow'), KD.ui.button('?', { small: true, className: 'flow-qbtn', tip: F.isTouch() ? null : 'How ' + V.name() + ' works', onClick: function () { H.openHelp(); } })]),
+      bar,
+      goal ? el('div.hub-goal', { text: goal.text }) : el('div.hub-goal', { text: V.name() + ' is fully rebuilt.' }),
+      st.backpay && !st.backpaySeen ? el('div.hub-backpay', { text: 'Your past runs already brought home ' + st.backpay + ' ' + cur() + '.' }) : null
+    ]);
+    if (st.backpay && !st.backpaySeen) { st.backpaySeen = true; F.saveAccount(game); }
+    var tiles = rows.map(function (r) { return tile(game, r); });
+    var grid = el('div.hub-grid' + (compact ? '.hub-row' : ''), tiles);
+    if (compact) F.swipeRow(grid);
+    var back = KD.ui.button(compact ? 'Back' : 'Back to the menu', { icon: 'arrow_left', onClick: function () { H.close(game); } });
+    var go = KD.ui.button('New Run', { kind: 'primary', icon: 'sword', className: 'flow-big-btn', onClick: function () { unscene(game); F.menu.openNewRun(game); } });
+    s.appendChild(el('div.hub-shade'));
+    s.appendChild(el('div.hub-top', [
+      el('div.hub-titles', [el('div.flow-head-title.hub-title', { text: V.name() }), el('div.flow-head-sub', { text: compact ? 'The village that grows' : 'The village that grows with every run' })]),
+      el('div.flow-grow'),
+      compact ? null : carryPanel(a),
+      plate
+    ]));
+    s.appendChild(el('div.flow-grow.hub-scene', { attrs: { 'aria-hidden': 'true' } }));
+    s.appendChild(grid);
+    s.appendChild(el('div.flow-foot', [back, compact ? KD.ui.button('You set out with', { small: true, onClick: function () { H.openCarry(game); } }) : null, el('div.flow-grow'), go]));
+    H.events.emit('build', { game: game, levels: st.levels });
+    return s;
+  };
+  /** The 3D village behind the screen (src/gfx/68_env_hub.js): built after the screen has painted. */
+  function scene(game, focus) {
+    if (!KD.hubScene || !game || game.state !== 'menu') return;
+    setTimeout(function () {
+      if (F.current !== 'hub') return;
+      try { KD.hubScene.show(game, V.state(game.account).levels); if (focus) KD.hubScene.focus(focus); } catch (e) { console.error('hub scene', e); }
+    }, 30);
+  }
+  function unscene(game) { if (KD.hubScene) { try { KD.hubScene.hide(game); } catch (e) { console.error('hub scene', e); } } }
+  H.open = function (game) {
+    game = game || view.game || KD.game;
+    H.build(game); F.show('hub'); F.music('menu');
+    scene(game);
+    H.events.emit('open', { game: game, levels: V.state(game.account).levels });
+  };
+  H.close = function (game) {
+    H.events.emit('close', { game: game });
+    unscene(game);
+    F.menu.show(game);
+  };
+  H.refresh = function (game) { if (F.current === 'hub') H.build(game || view.game); };
+  H.upgrade = function (game, id) {
+    var r = V.upgrade(game.account, id);
+    if (!r.ok) { F.sound('ui_error'); KD.ui.toast(r.reason === 'spoils' ? r.need + ' more ' + cur() + ' needed.' : (r.reason === 'locked' ? 'Rebuild ' + r.req + ' other upgrades first.' : 'Already complete.'), { kind: 'bad' }); return r; }
+    F.sound('ui_confirm');
+    var b = V.building(id);
+    KD.ui.toast(b.name + (r.level === 1 ? ' rebuilt' : ' raised to level ' + r.level) + ': ' + r.name + '.', { kind: 'good', icon: b.glyph });
+    F.saveAccount(game);
+    view.sel = id;
+    H.events.emit('upgrade', { game: game, id: id, level: r.level, levels: V.state(game.account).levels });
+    H.refresh(game);
+    scene(game, id);      // the village rebuilds itself and the camera glides over to the building
+    return r;
+  };
+
+  // ------------------------------------------------------------------------------------------ start choices (road screen)
+  function itemCard(item, i) {
+    var d = KD.items && KD.items.describe ? KD.items.describe(item) : { title: item.name, lines: [] };
+    var map = { curse: 'bad', unique: 'good', affix: 'good', implicit: 'good', fate: 'good', base: null, dim: 'dim' };
+    var lines = (d.lines || []).filter(function (l) { return l && l.text && l.kind !== 'sep'; }).slice(0, 6).map(function (l) { return { text: l.text, kind: map[l.kind] !== undefined ? map[l.kind] : l.kind }; });
+    var compact = F.isCompact();
+    return { id: i, title: d.title || item.name, sub: compact ? null : (d.sub || null), icon: KD.ui.icons && KD.ui.icons.item ? KD.ui.icons.item(item, compact ? 30 : 42) : null, glyph: 'relic', color: d.color || null,
+      lines: compact ? lines.slice(0, 4) : lines, footer: compact ? null : (d.flavor || null), className: 'hub-card' };
+  }
+  function choiceSpec(run, c) {
+    var hearth = V.name();
+    if (c.kind === 'blessing') return {
+      title: 'The ' + hearth + ' Shrine', subtitle: 'Choose a blessing for this run.', confirm: 'Take the blessing', cancel: c.rerolls > 0 ? 'Redraw (' + c.rerolls + ' left)' : false,
+      cards: c.options.map(function (id, i) { var b = V.blessing(id); return { id: i, title: b.name, glyph: b.glyph, color: '#e2c46a', lines: [{ text: V.blessingText(id, c.scale), kind: 'good' }], footer: F.isCompact() ? null : 'Lasts the whole run.', className: 'hub-card' }; })
+    };
+    if (c.kind === 'relic') return {
+      title: 'The ' + hearth + ' Relic House', subtitle: 'Take one Relic for this run, or leave them. A Relic has a gift, a curse and Corruption.', confirm: 'Take it', cancel: 'Leave them',
+      cards: c.options.map(function (id, i) { var it = KD.items.makeRelic(id, new KD.RNG(i + 1), 1, {}); return itemCard(it, i); })
+    };
+    return {
+      title: 'The ' + hearth + ' Smithy', subtitle: 'The smith made three. Choose your weapon.', confirm: 'Take this one', cancel: false,
+      cards: c.options.map(function (w, i) { return itemCard(w, i); })
+    };
+  }
+  /** Opens the run's open start choices one after the other (road screen). Bots and the dev harness take the first ones. */
+  H.startChoices = function (game) {
+    var run = game && game.run;
+    if (!run || view.busy || !V.hasPending(run) || run.phase !== 'route') return;
+    if (game.botOn || (game.query && game.query.auto && !game.query.flow)) { V.autoChoose(run); after(game); return; }
+    view.busy = true;
+    var next = function () {
+      var c = V.pending(run)[0];
+      if (!c || game.run !== run || game.state !== 'route') { view.busy = false; after(game); return; }
+      var spec = choiceSpec(run, c);
+      KD.ui.choice(spec.cards, { title: spec.title, subtitle: spec.subtitle, confirm: spec.confirm, cancel: spec.cancel, pauses: false }).then(function (pick) {
+        try {
+          if (pick === null && c.kind === 'blessing' && c.rerolls > 0) { V.reroll(run, 'blessing'); F.sound('ui_click'); }
+          else {
+            var r = V.choose(run, c.kind, pick ? pick.id : null);
+            if (r.ok && r.picked) { F.sound('ui_confirm'); KD.ui.toast((c.kind === 'blessing' ? 'Blessed: ' : (c.kind === 'relic' ? (r.equipped ? 'Relic worn: ' : 'Relic in your bag: ') : 'Weapon: ')) + r.picked, { kind: 'good', icon: c.kind === 'blessing' ? 'shrine' : (c.kind === 'relic' ? 'relic' : 'sword') }); }
+          }
+          if (game.saveNow) game.saveNow();
+          if (game.refreshHero) game.refreshHero();
+        } catch (e) { console.error('hub choice', e); V.choose(run, c.kind, c.kind === 'relic' ? null : 0); }
+        setTimeout(next, 60);
+      });
+    };
+    next();
+  };
+  function after(game) { try { if (game.saveNow) game.saveNow(); if (F.route && F.route.refresh) F.route.refresh(game); } catch (e) { console.error(e); } }
+
+  // ------------------------------------------------------------------------------------------ run over: what came home
+  function overBlock(game, bd) {
+    var el = KD.ui.el, v = bd && bd.village;
+    if (!v) return null;
+    var lines = v.lines.slice().sort(function (x, y) { return y.spoils - x.spoils; });
+    var shown = lines.slice(0, F.isCompact() ? 3 : 5), rest = U.sum(lines.slice(shown.length), function (l) { return l.spoils; });
+    var a = game.account, goal = V.nextGoal(a);
+    var coop = !!(KD.coop && KD.coop.session);
+    return el('div.hub-over', [
+      el('div.hub-over-head', [KD.ui.icon('camp', 16, '#96732c'), el('span.kd-h3', { text: 'Brought home to ' + V.name() }), el('span.flow-grow'),
+        el('span.hub-over-total.kd-num', [spoilsIcon(14), el('span', { text: '+' + F.num(v.total) + ' ' + cur() })])]),
+      el('div.hub-over-lines', shown.map(function (l) { return el('span.hub-over-line', { text: l.label + ' +' + l.spoils }); }).concat(rest > 0 ? [el('span.hub-over-line.kd-dim', { text: 'other +' + rest })] : [])
+        .concat(v.modeMult !== 1 ? [el('span.hub-over-line.kd-dim', { text: 'mode x' + v.modeMult })] : [])),
+      el('div.hub-over-goal', [el('span', { text: 'You hold ' + F.num(v.spoils) + ' ' + cur() + '. ' + (goal ? goal.text : V.name() + ' is fully rebuilt.') }),
+        coop ? null : KD.ui.button('Visit ' + V.name(), { small: true, icon: 'camp', onClick: function (e) { if (e) e.stopPropagation(); if (F.over && F.over.leave) F.over.leave(game, F.over._args ? F.over._args.opts : {}, false); H.open(game); } })])
+    ]);
+  }
+
+  // ------------------------------------------------------------------------------------------ wiring
+  function wire() {
+    // the run-over screen: the Spoils block under the account experience
+    if (F.over && F.over.build && !F.over._hub) {
+      var build = F.over.build;
+      F.over._hub = true;
+      F.over.build = function (game, result) {
+        var s = build.apply(this, arguments);
+        try { var xp = s.querySelector('.flow-over-xp'), b = overBlock(game, result && result.breakdown); if (xp && b) xp.appendChild(b); } catch (e) { console.error('hub over', e); }
+        return s;
+      };
+    }
+    F.events.on('screen', function (e) {
+      if (e.screen === 'route' && F.game) setTimeout(function () { H.startChoices(F.game); }, 120);
+    });
+    if (KD.input && KD.input.on) KD.input.on('pause', function () { if (F.current === 'hub' && F.game && F.game.state === 'menu' && !KD.ui.windows.anyOpen()) H.close(F.game); });
+    if (KD.ui && KD.ui.events) KD.ui.events.on('device', function () { if (F.current === 'hub') setTimeout(function () { H.refresh(F.game); }, 0); });
+  }
+  wire();
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
