@@ -3851,7 +3851,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.56';
+  KD.VERSION = '0.7.57';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -23497,6 +23497,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.57', date: '2026-10-11', title: 'The castle on the horizon', notes: [
+      'The Hollow King\'s castle now waits on the horizon, a little closer every act',
+      'The road shows a fallen kingdom: abandoned carts, torn royal banners and dead crows, later burnt wagons, toppled statues and fallen soldiers',
+      'Near the city the sky turns a wrong shade of violet and ash drifts down',
+      'Lower the camera to look ahead, or switch both off in Settings, Graphics, Atmosphere'
+    ] },
     { version: '0.7.56', date: '2026-10-11', title: 'Boss entrances', notes: [
       'Bosses now make an entrance: the camera meets them, they roar, and their name and title are painted across the screen',
       'Phase changes flash the name of the new phase',
@@ -56382,6 +56388,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     'uniform vec3 uGradeLo;', // shadow tint (display space)
     'uniform vec3 uGradeHi;', // highlight tint (display space)
     'uniform vec2 uScreenI;', // 1 / drawing buffer size (vignette)
+    'uniform vec4 uSkyT; uniform vec3 uSkyTC;',   // [w8 horizon] sky tint toward one side: xy = direction on the ground, z = sharpness, w = strength (0 = off); colour (linear)
     'vec3 tonemap(vec3 c) {',
     '  c *= uTone.x;',
     '  float a = uTone.y;',
@@ -56406,6 +56413,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     '  c = mix(c, uHorizonCol * 0.86, smoothstep(0.0, -0.4, d.y));',
     '  float sd = max(dot(d, uSunDir), 0.0);',
     '  c += uSunCol * (pow(sd, 5.0) * 0.09 + pow(sd, 48.0) * 0.20) * uFog.w;',
+    '  if (uSkyT.w > 0.0) { float st = pow(max(dot(normalize(d.xz + vec2(1e-5)), uSkyT.xy), 0.0), uSkyT.z) * (1.0 - 0.75 * smoothstep(0.05, 0.75, d.y)); c = mix(c, uSkyTC, st * uSkyT.w); }',   // [w8 horizon] the wrong-coloured sky on the castle side (fog follows it)
     '  return c;',
     '}',
     'vec3 applyFog(vec3 col, vec3 wpos) {',
@@ -56462,6 +56470,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     '  }',
     '  vPos = p; vNrm = n;',
     '  vCol = pow(aCol.rgb, vec3(2.2)) * tint;',
+    '#ifndef INSTANCED',
+    '  flash = -aAux.w;',   // [w8 horizon] static geometry: aux.w = less fog (0 = normal, 1 = none), carried as a negative flash
+    '#endif',
     '  vMat = vec4(emis, metal, flash, alpha);',
     '  float ndl = max(dot(n, uSunDirV), 0.0);',
     '  vShadow = (uShadowMat * vec4(p + n * (uShadowP.x * (0.25 + 1.5 * (1.0 - ndl))), 1.0)).xyz;',
@@ -56578,7 +56589,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     '  col += alb * (vMat.x * 2.4);',
     '  float fl = clamp(vMat.z, 0.0, 1.0);',
     '  col = mix(col, vec3(1.1), fl * fl);',
-    '  col = applyFog(col, vPos);',
+    '  col = applyFog(col, vMat.z < 0.0 ? uCam + (vPos - uCam) * (1.0 + vMat.z) : vPos);',   // [w8 horizon] a negative flash pulls the fog in (far landmarks stay readable)
     '  oCol = vec4(tonemap(col), vMat.w > 0.9995 ? vMat.w - 1.0 : vMat.w);',   // [camera finish] opaque: alpha = ink mask (1 an inked character, 0 the rest); see-through things: their alpha
     '}'
   ].join('\n');
@@ -57165,7 +57176,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       shadowMat: new Float32Array(16), shadowClip: new Float32Array(16), shadowP: new Float32Array(4), paint: new Float32Array(4), see: new Float32Array(4),
       lightPos: new Float32Array(32), lightCol: new Float32Array(24), lightCount: 0, right: new Float32Array(3), up: new Float32Array(3), ready: false,
       fogH: new Float32Array(4), fogC: new Float32Array(3), grade: new Float32Array(4), gradeLo: new Float32Array(3), gradeHi: new Float32Array(3), screenI: new Float32Array(2),   // [mood presets]
-      rimB: new Float32Array(4), waterP: new Float32Array(4)   // [w8 living world]
+      rimB: new Float32Array(4), waterP: new Float32Array(4),   // [w8 living world]
+      skyT: new Float32Array(4), skyTC: new Float32Array(3)   // [w8 horizon]
     };
     G.m4.identity(F.viewProj); G.m4.identity(F.shadowMat);
     this.cssW = 1; this.cssH = 1;
@@ -57572,6 +57584,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     // [w8 living world] back light on characters, water waves and glitter (KD.env.life sets them per area)
     F.rimB[3] = e.rimBack > 0 ? e.rimBack : 0; if (F.rimB[3] > 0) lin(e.rimBackColor || [1, 0.86, 0.68], 1, F.rimB, 0);
     F.waterP[0] = e.waterRipple === undefined ? 1 : e.waterRipple; F.waterP[1] = e.waterWaves || 0; F.waterP[2] = e.waterShimmer || 0; F.waterP[3] = this.time;
+    // [w8 horizon] env.skyTint = [dirX, dirZ, sharpness, strength], env.skyTintColor: one side of the sky in another colour
+    var skt = e.skyTint; if (skt && skt[3] > 0) { var skl = Math.sqrt(skt[0] * skt[0] + skt[1] * skt[1]) || 1; F.skyT[0] = skt[0] / skl; F.skyT[1] = skt[1] / skl; F.skyT[2] = skt[2] || 2; F.skyT[3] = skt[3]; lin(e.skyTintColor || [0.5, 0.3, 0.6], 1, F.skyTC, 0); } else F.skyT[3] = 0;
     var seeR = e.seeRadius || 0, sf = camera.focus;
     if (seeR > 0 && sf) { F.see[0] = sf[0]; F.see[1] = sf[1]; F.see[2] = sf[2]; F.see[3] = seeR; } else F.see[3] = 0;
     // shadow box: fixed light basis, centre snapped to whole texels so the map does not shimmer when the camera moves
@@ -57662,6 +57676,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (u.uPaint) gl.uniform4fv(u.uPaint, F.paint);
     if (u.uSee) gl.uniform4fv(u.uSee, F.see);
     if (u.uRimB) gl.uniform4fv(u.uRimB, F.rimB);           // [w8 living world]
+    if (u.uSkyT) { gl.uniform4fv(u.uSkyT, F.skyT); gl.uniform3fv(u.uSkyTC, F.skyTC); }   // [w8 horizon]
     if (u.uWaterP) gl.uniform4fv(u.uWaterP, F.waterP);
     if (u.uShadowMat) gl.uniformMatrix4fv(u.uShadowMat, false, F.shadowMat);
     if (u.uShadowP) gl.uniform4fv(u.uShadowP, F.shadowP);
@@ -83296,9 +83311,13 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (mood) { theme = E.mood.theme(theme, mood); look = E.mood.look(look, mood); }
     // [w8 living world] 57_env_life.js: rim light, air, wind, water, critters of this area (theme < area < mood preset)
     var life = E.life && E.life.resolve ? E.life.resolve(layout, mood, opts) : null;
+    var tod = E.tod && E.tod.state ? E.tod.state(layout, opts) : null;      // [w8 day] 58_env_tod.js: the hour of the road slot (visual only)
+    if (tod) { theme = E.tod.theme(theme, tod); if (life) life = E.tod.life(life, tod); }      // [w8 day]
     if (life) theme = E.life.theme(theme, life);
+    var hz = E.horizon && E.horizon.forLayout ? E.horizon.forLayout(layout, opts) : null;   // [w8 horizon] 58_env_horizon.js: castle on the horizon, signs of the fallen kingdom
+    if (hz) theme = E.horizon.theme(theme, hz);
     var rng = new KD.RNG(((layout.seed >>> 0) ^ 0x5eed) >>> 0);
-    var out = { theme: theme, look: look, layout: layout, opts: opts, statics: [], dynamics: [], lights: [], flames: [], bloom: [], stats: null, moodPreset: mood, mood: {}, life: life, lifeSpots: {} };
+    var out = { theme: theme, look: look, layout: layout, opts: opts, statics: [], dynamics: [], lights: [], flames: [], bloom: [], stats: null, moodPreset: mood, mood: {}, life: life, lifeSpots: {}, horizon: hz };
     var st = out.stats = { tris: { ground: 0, water: 0, scatter: 0, backdrop: 0, pieces: 0, total: 0 }, ms: {}, pieces: layout.pieces.length, built: 0, cacheHits: 0, fallbacks: 0, dynamic: 0 };
     function push(geom, o, tag) {
       if (!geom || !geom.pos || !geom.idx || !geom.idx.length) return 0;
@@ -83328,6 +83347,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     for (var i = 0; i < layout.pieces.length; i++) {
       var p = layout.pieces[i];
       if (mood) p = E.mood.piece(p, ctx, mood);       // [mood presets] a restyled copy (same kind and footprint) or the piece itself
+      if (hz) p = E.horizon.piece(p, ctx, hz);        // [w8 horizon] a fallen-kingdom copy (same kind and footprint) or the piece itself
       var fn = E.pieces[p.kind], res, dyn = !!E.DYNAMIC_KINDS[p.kind];
       if (!fn) st.fallbacks++;
       if (dyn || (fn && fn.noCache)) {
@@ -83363,12 +83383,15 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         if (bd) st.tris.backdrop = push(bd, { castShadow: false, chunkSize: 192 }, 'backdrop');
       } catch (err) { if (typeof console !== 'undefined') console.error('KD.env: backdrop failed', err); }
     }
+    // [w8 horizon] the Hollow King's castle far away and the signs of the fallen kingdom (visual only, never on a walkway)
+    if (hz) { try { ctx.rng = rng.fork('horizon'); st.tris.horizon = E.horizon.dress(out, ctx, hz); st.tris.backdrop += st.tris.horizon; } catch (err) { if (typeof console !== 'undefined') console.error('KD.env.horizon: dress failed', err); } }
     st.ms.backdrop = H.now() - t1;
     // ---- lights, flames, bloom
     (layout.lights || []).forEach(function (l) { out.lights.push(l); });
     if (E.dynamic && E.dynamic.collect) { try { E.dynamic.collect(layout, out); } catch (err) { if (typeof console !== 'undefined') console.error('KD.env: collect failed', err); } }
     // [w8 act4 look] a preset may recolour the layout's own lights and flames once they are all in (visual only)
     if (mood && mood.lateDress) { try { mood.lateDress(out, ctx); } catch (err) { if (typeof console !== 'undefined') console.error('KD.env.mood: lateDress failed', err); } }
+    if (tod) { E.tod.lights(out, tod); out.tod = tod; }      // [w8 day] lights brighter at dusk and night
     st.tris.total = st.tris.ground + st.tris.water + st.tris.scatter + st.tris.backdrop + st.tris.pieces;
     st.ms.assemble = H.now() - t0;
     return out;
@@ -83401,7 +83424,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   E.build = function (layout, renderer, opts) {
     opts = opts || {};
     if (renderer._kdEnv && renderer._kdEnv.dispose) { try { renderer._kdEnv.dispose(); } catch (err) { /* a stale handle must never block a new area */ } }
-    var scene = renderer.scene, rt = null, moodRt = null, lifeRt = null, disposed = false, handle = null;   // [w8 living world] lifeRt
+    var scene = renderer.scene, rt = null, moodRt = null, lifeRt = null, hzRt = null, disposed = false, handle = null;   // [w8 living world] lifeRt [w8 horizon] hzRt
     /** Assembles the area and uploads it. again: a rebuild of the same area (lighting, lights of others and piece states are kept). */
     function construct(again) {
       // the quality level decides how dense the ground scatter is (KD.gfx.quality; an explicit opts.scatterDetail wins)
@@ -83426,6 +83449,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       }
       moodRt = E.mood && E.mood.runtime ? E.mood.runtime(asm, renderer, bo) : null;     // [mood presets] mist, particles, birds
       lifeRt = E.life && E.life.runtime ? E.life.runtime(asm, renderer, bo) : null;     // [w8 living world] air, glow, critters, shafts
+      hzRt = null; if (asm.horizon && E.horizon.runtime) { try { hzRt = E.horizon.runtime(asm, renderer, bo); } catch (err) { if (typeof console !== 'undefined') console.error('KD.env.horizon: runtime failed', err); } }   // [w8 horizon] beacon, ash
       if (!rt) asm.lights.forEach(function (l) { renderer.lights.add(l); });
       scene.buildStatic();
       st.ms.upload = H.now() - t1;
@@ -83443,6 +83467,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         if (rt) rt.update(dt || 0, world || null, r || renderer);
         if (moodRt) { try { moodRt.update(dt || 0, world || null, r || renderer); } catch (err) { if (typeof console !== 'undefined') console.error('KD.env.mood: update failed', err); moodRt = null; } }
         if (lifeRt) { try { lifeRt.update(dt || 0, world || null, r || renderer); } catch (err) { if (typeof console !== 'undefined') console.error('KD.env.life: update failed', err); lifeRt = null; } }   // [w8 living world]
+        if (hzRt) { try { hzRt.update(dt || 0, world || null, r || renderer); } catch (err) { if (typeof console !== 'undefined') console.error('KD.env.horizon: update failed', err); hzRt = null; } }   // [w8 horizon]
       },
       /** [w8 living world] The KD.env.life runtime of this area (stats, def) or null. */
       life: function () { return lifeRt; },
@@ -83462,6 +83487,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         if (rt) rt.dispose(); else renderer.lights.clear();
         if (moodRt) { moodRt.dispose(); moodRt = null; }
         if (lifeRt) { lifeRt.dispose(); lifeRt = null; }   // [w8 living world]
+        if (hzRt) { hzRt.dispose(); hzRt = null; }   // [w8 horizon]
         var asm = construct(true);
         if (relight) applyEnv(renderer, asm.theme);
         if (rt) for (i = 0; i < ids.length; i++) rt.setState(ids[i], states[ids[i]], { instant: true });
@@ -83477,6 +83503,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         if (rt) rt.dispose(); else renderer.lights.clear();
         if (moodRt) { moodRt.dispose(); moodRt = null; }
         if (lifeRt) { lifeRt.dispose(); lifeRt = null; }   // [w8 living world]
+        if (hzRt) { hzRt.dispose(); hzRt = null; }   // [w8 horizon]
         scene.clearStatic();
         if (renderer._kdEnv === handle) renderer._kdEnv = null;
       }
@@ -84946,6 +84973,13 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var horizon = (theme.env && theme.env.horizon) ? H.col(theme.env.horizon) : [0.72, 0.86, 0.97];
     var dead = layout.theme === 'abbey' || layout.theme === 'bonefair', snowy = layout.theme === 'snow';
     var cc = [0, 0, 0];
+    // [w8 horizon] 58_env_horizon.js: the Hollow King's castle stands far out this way; big hills there stay low so it shows
+    var gap = theme.horizonGap || null;
+    function gapK(x, z) {
+      if (!gap) return 1;
+      var gx = x - w / 2, gz = z - d / 2, gl = Math.sqrt(gx * gx + gz * gz) || 1, c = (gx * gap.x + gz * gap.z) / gl;
+      return 1 - 0.8 * H.smooth(0.9, 0.985, c);
+    }
 
     // ---- what the edge of the map is made of, seen from outside (water and roads stay clear, void lowers the base)
     function edgeSurf(x, z) {
@@ -85091,6 +85125,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         var lim = Math.max(4, (dd - 6) / 1.25);                                      // a hill never reaches into the map
         var rx = Math.min(lim, step * (0.7 + 0.7 * hash2(hs, 15, seed))), rz = Math.min(lim, step * (0.7 + 0.7 * hash2(hs, 16, seed))), hh = hMin + (hMax - hMin) * hash2(hs, 17, seed) * Math.min(1, 0.45 + dd / r1);
         hh = Math.min(hh, Math.max(rx, rz) * 1.5);
+        if (dd > 60) hh *= gapK(x, z);   // [w8 horizon]
         mound(x, baseY(x, z) - 1, z, rx, rz, hh, sides || 9, profile || [[1, 0], [0.72, 0.5], [0.4, 0.86]], colFn, hs);
       });
     }
@@ -90804,6 +90839,601 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   M.register('hidden_abbey', ABBEY);
   M.register('hidden_fair', FAIR);
   M.register('hidden_warcamp', CAMP);
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/gfx/58_env_horizon.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var E = KD.env = KD.env || {};
+
+  /**
+   * [w8 horizon] KD.env.horizon: the Hollow King's castle on the horizon, and the signs of the fallen kingdom.
+   * Purely visual (layout, colliders and everything the sim reads stay exactly as they are). docs/ENV.md "Horizon".
+   *
+   *   castle   a big low-poly silhouette (crag, curtain wall, towers, keep, needle spires, violet window slits and a
+   *            ghostfire crown) far beyond the backdrop in the direction of travel (spawn -> exit). Act 1 small and hazy,
+   *            Act 2 larger and sharper, Act 3 looming (City Gates: huge) with a wrong-coloured violet sky on that side.
+   *            Never indoors (interior archetypes) and never in Act 4 (you are inside it by then).
+   *            Its haze is set per act, not by the area's fog: static vertices carry aux.w (0 = normal fog, 1 = none),
+   *            the lit shader pulls the fog sample in by that much (12_renderer.js [w8 horizon]), so it fades into the
+   *            sky colour of the area's own fog at the strength the act wants, whatever the mood's fog distance is.
+   *   decay    Act 1: an abandoned cart, torn royal banners, dead crows. Act 2: burned carts and crates, charred siege
+   *            gear, toppled royal statues (in place of boulders), crow-picked fallen soldiers (in place of logs), shields,
+   *            helmets, arrows. Act 3: the same plus ash on the ground and in the air and violet shards.
+   *            Swaps keep the piece's footprint (its collider comes from the layout); loose decor is walk-over sized
+   *            (under 0.45 m) and only placed on free soft ground away from the route, roads, pieces, doors and chests.
+   *            Everything merges into the area's static chunks: no extra draw calls.
+   *   runtime  a slowly breathing ghostfire beacon on the highest spire (2 instanced draws; off on 'low').
+   * Settings > Graphics > Atmosphere: "Castle on the horizon", "Signs of the fallen kingdom" (saved under kd.horizon).
+   * Page address: ?horizon=0 turns both off, ?castle=0 / ?decay=0 one of them.
+   */
+  var HZ = E.horizon = E.horizon || {};
+  var U = KD.util, PI = Math.PI, TAU = PI * 2, sin = Math.sin, cos = Math.cos, sqrt = Math.sqrt, floor = Math.floor, min = Math.min, max = Math.max, abs = Math.abs;
+  function hsh(s, salt) { return (U.hash(String(s) + ':' + (salt || '')) % 100000) / 100000; }
+  function copy(p, o) { var q = {}, k; for (k in p) q[k] = p[k]; for (k in o) q[k] = o[k]; return q; }
+  function smooth(a, b, x) { var t = (x - a) / (b - a); t = t < 0 ? 0 : (t > 1 ? 1 : t); return t * t * (3 - 2 * t); }
+  function col(c) { return KD.gfx.color._get(c).slice(0, 3); }
+  function mixc(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]; }
+
+  // ------------------------------------------------------------------ settings
+  HZ.KEY = 'kd.horizon';
+  HZ.DEFAULTS = { castle: true, decay: true };
+  HZ.settings = { castle: true, decay: true };
+  (function load() {
+    try {
+      var s = root.localStorage ? root.localStorage.getItem(HZ.KEY) : null, o = s ? JSON.parse(s) : null;
+      if (o && typeof o === 'object') { if (typeof o.castle === 'boolean') HZ.settings.castle = o.castle; if (typeof o.decay === 'boolean') HZ.settings.decay = o.decay; }
+      var q = root.location && root.location.search ? root.location.search : '';
+      if (/[?&]horizon=0/.test(q)) { HZ.settings.castle = false; HZ.settings.decay = false; HZ.fromQuery = true; }
+      var c = /[?&]castle=([01])/.exec(q), d = /[?&]decay=([01])/.exec(q);
+      if (c) { HZ.settings.castle = c[1] === '1'; HZ.fromQuery = true; }
+      if (d) { HZ.settings.decay = d[1] === '1'; HZ.fromQuery = true; }
+    } catch (e) { /* storage blocked: defaults */ }
+  })();
+  /** set('castle' | 'decay', on, { save: true, restyle: true }): switch, remember, rebuild the area on screen. */
+  HZ.set = function (key, on, o) {
+    o = o || {};
+    if (key !== 'castle' && key !== 'decay') return;
+    var changed = HZ.settings[key] !== !!on;
+    HZ.settings[key] = !!on;
+    if (o.save !== false) { try { if (root.localStorage) root.localStorage.setItem(HZ.KEY, JSON.stringify({ castle: HZ.settings.castle, decay: HZ.settings.decay })); } catch (e) { /* storage blocked */ } }
+    if (changed && o.restyle !== false) {
+      var g = KD.game, h = g && g.env;
+      if (h && h.restyle) { try { h.restyle(); } catch (err) { if (typeof console !== 'undefined') console.error('KD.env.horizon: restyle failed', err); } }
+    }
+  };
+  HZ.reset = function () { HZ.set('castle', HZ.DEFAULTS.castle, { restyle: false }); HZ.set('decay', HZ.DEFAULTS.decay); var g = KD.game, h = g && g.env; if (h && h.restyle) { try { h.restyle(); } catch (e) { /* ignore */ } } };
+  /** The two rows of Settings > Graphics > Atmosphere (src/ui/20_flow_52_settings.js). */
+  HZ.settingsRows = function (row, F, c) {
+    if (!row || !c || !c.onoff) return [];
+    return [
+      row('Castle on the horizon', c.onoff(HZ.settings.castle, function (on) { HZ.set('castle', on); }), 'the Hollow King\'s castle far ahead'),
+      row('Signs of the fallen kingdom', c.onoff(HZ.settings.decay, function (on) { HZ.set('decay', on); }), 'wrecks, crows and ash along the way')
+    ];
+  };
+
+  // ------------------------------------------------------------------ per act
+  /** ang: castle height seen from the map centre (radians); lift: the mountain it stands on (radians, so it shows over the trees); haze: fog left at the top / at the foot; glow: violet light; sky: sky tint. */
+  HZ.ACTS = {
+    1: { ang: 0.095, lift: 0.07, haze: 0.5, hazeBase: 0.72, glow: 0.55, beacon: 0.55, sky: 0, width: 1.0 },
+    2: { ang: 0.16, lift: 0.06, haze: 0.38, hazeBase: 0.62, glow: 0.75, beacon: 0.8, sky: 0, width: 1.05 },
+    3: { ang: 0.26, lift: 0.035, haze: 0.24, hazeBase: 0.5, glow: 1, beacon: 1, sky: 0.3, width: 1.1 },
+    gates: { ang: 0.4, lift: 0.02, haze: 0.14, hazeBase: 0.42, glow: 1, beacon: 1.1, sky: 0.45, width: 1.15 }
+  };
+  HZ.DIST = 1000;                  // metres from the map centre (camera far plane is 1400)
+  HZ.SKY = '#7d4f9e';              // the wrong-coloured sky on the castle side
+  HZ.GLOW = '#b98cff';             // window slits and the crown
+  HZ.FIRE = '#a56cff';             // the ghostfire beacon
+
+  function areaFor(layout) {
+    var list = KD.list ? KD.list('areas') : [], i, a;
+    if (layout.kind === 'arena') {
+      for (i = 0; i < list.length; i++) { a = list[i]; if ((a.boss && a.boss.id === layout.bossId) || (a.miniboss && a.miniboss.id === layout.bossId)) return a; }
+      return null;
+    }
+    for (i = 0; i < list.length; i++) if (list[i].id === layout.areaId) return list[i];
+    return null;
+  }
+  /** What this layout gets: null, or { act, cfg, castle, decay, dir: [x, z], ... }. opts.horizon: false = nothing. */
+  HZ.forLayout = function (layout, opts) {
+    opts = opts || {};
+    if (!layout || opts.horizon === false || !layout.w) return null;
+    var S = HZ.settings, a = areaFor(layout);
+    if (!a) return null;
+    var act = a.act === 0 ? 2 : a.act;                     // hidden areas: as far along as the middle of a run
+    if (!(act >= 1 && act <= 3)) return null;               // Act 4: inside the castle
+    var indoor = a.archetype === 'interior';
+    var castle = S.castle && !indoor && !opts.noBackdrop, decay = S.decay && !indoor;   // indoors: neither (no sky, no crows)
+    if (!castle && !decay) return null;
+    var cfg = HZ.ACTS[a.id === 'city_gates' ? 'gates' : act];
+    var P = layout.points || {}, sp = P.spawn || { x: layout.w / 2, z: 0 }, ex = P.exit || { x: layout.w / 2, z: layout.d };
+    var dx = ex.x - sp.x, dz = ex.z - sp.z, dl = sqrt(dx * dx + dz * dz);
+    if (dl < 1) { dx = 0; dz = 1; dl = 1; }
+    var q = KD.gfx && KD.gfx.quality, low = !!(q && q.name === 'low');
+    return { act: act, areaId: a.id, cfg: cfg, castle: castle, decay: decay, indoor: indoor, dir: [dx / dl, dz / dl], low: low, caps: {}, swaps: [], theme: layout.theme, arena: layout.kind === 'arena' };
+  };
+  /** Theme copy with the sky tint toward the castle (Act 3) and the backdrop's clear wedge in that direction. */
+  HZ.theme = function (theme, hz) {
+    if (!hz || !hz.castle) return theme;
+    var t = U.assign({}, theme);
+    t.horizonGap = { x: hz.dir[0], z: hz.dir[1] };
+    if (hz.cfg.sky > 0) { t.env = U.assign({}, theme.env || {}); t.env.skyTint = [hz.dir[0], hz.dir[1], 2.6, hz.cfg.sky]; t.env.skyTintColor = col(HZ.SKY); }
+    return t;
+  };
+
+  // ------------------------------------------------------------------ piece swaps (same footprint, visual only)
+  var CART_OK = { hay: 1, grain: 1, merchant: 1, broken: 1, siege: 1 };
+  function capOk(hz, k, n) { var c = hz.caps[k] || 0; if (c >= n) return false; hz.caps[k] = c + 1; return true; }
+  HZ.piece = function (p, ctx, hz) {
+    if (!hz || !hz.decay || !p) return p;
+    var q = swap(p, ctx, hz);
+    if (q !== p && hz.swaps) hz.swaps.push({ kind: q.kind === 'hz_burnt' ? 'burnt_' + q.hzBase : (q.kind === p.kind ? p.kind + '_' + q.style : q.kind), x: p.x, z: p.z });
+    return q;
+  };
+  function swap(p, ctx, hz) {
+    var act = hz.act, h = hsh(p.id, 'hz'), lowK = hz.low ? 0.6 : 1;
+    switch (p.kind) {
+      case 'cart':
+        if (!CART_OK[p.style || 'hay']) return p;
+        if (act === 1) return h < 0.35 && capOk(hz, 'cart', 2) ? copy(p, { style: 'broken' }) : p;
+        if (h < (act === 2 ? 0.7 : 0.5)) return copy(p, { kind: 'hz_burnt', hzBase: 'cart', style: 'broken' });
+        return p;
+      case 'banner_pole':
+        if ((p.style || 'crown') === 'crown' && h < (act === 1 ? 0.5 : 0.75)) return copy(p, { style: 'broken' });
+        return p;
+      case 'statue':
+        if (act >= 2 && (p.style === 'king' || p.style === 'knight' || p.style === 'saint' || !p.style) && h < 0.6) return copy(p, { style: 'broken' });
+        return p;
+      case 'crate':
+        if (act >= 2 && h < 0.18) return copy(p, { kind: 'hz_burnt', hzBase: 'crate' });
+        return p;
+      case 'siege_engine':
+        if (act >= 2 && (p.type === 'catapult' || p.type === 'ballista' || p.type === 'mantlet' || !p.type) && h < 0.45) return copy(p, { kind: 'hz_burnt', hzBase: 'siege_engine' });
+        return p;
+      case 'rock':
+        if (act >= 2 && (+p.size || 1) >= 1.1 && h < 0.3 && capOk(hz, 'statue', floor(3 * lowK + 0.5))) return copy(p, { kind: 'hz_statue', hzSize: +p.size || 1 });
+        return p;
+      case 'log':
+        if (act >= 2 && (+p.len || 2) >= 1.9 && h < (act === 2 ? 0.35 : 0.25) && capOk(hz, 'corpse', floor(5 * lowK + 0.5))) return copy(p, { kind: 'hz_corpse', hzLen: +p.len || 2 });
+        return p;
+    }
+    return p;
+  }
+
+  // ------------------------------------------------------------------ shared geometry helpers
+  function G() { return KD.gfx.geom; }
+  function put(list, g, x, y, z, rx, ry, rz, s) { G().trs(g, [x || 0, y || 0, z || 0], [rx || 0, ry || 0, rz || 0], s === undefined ? 1 : s); list.push(g); return g; }
+  function glow(g, k) { return G().setAux(g, { emissive: k }); }
+  /** Burnt: charred black with ash-grey tops and a few ember-brown patches (vertex colours, in place). */
+  function burn(g, seed) {
+    var c = g.col, p = g.pos, n = c.length / 3, i;
+    for (i = 0; i < n; i++) {
+      var y = p[i * 3 + 1], ny = g.nrm[i * 3 + 1], r = hsh(seed + ':' + floor(p[i * 3] * 3) + ',' + floor(p[i * 3 + 2] * 3) + ',' + floor(y * 3), 'b');
+      var k = 0.26 + 0.12 * r, ash = ny > 0.6 ? 0.35 : 0.08, l = (c[i * 3] + c[i * 3 + 1] + c[i * 3 + 2]) / 3;
+      var r0 = c[i * 3] * k + 0.02, g0 = c[i * 3 + 1] * k + 0.016, b0 = c[i * 3 + 2] * k + 0.016;
+      var e = r > 0.9 && y < 0.8 ? 0.5 : 0;   // a few smouldering spots
+      c[i * 3] = r0 + (0.32 - r0) * ash + e * 0.22; c[i * 3 + 1] = g0 + (0.3 - g0) * ash + e * 0.06; c[i * 3 + 2] = b0 + (0.31 - b0) * ash;
+      if (l < 0.02) { c[i * 3] = 0.05; c[i * 3 + 1] = 0.045; c[i * 3 + 2] = 0.045; }
+    }
+    return g;
+  }
+
+  // burnt copies of the layout's own pieces: the original builder, then charred
+  E.registerPiece('hz_burnt', function (piece, ctx) {
+    var base = piece.hzBase, fn = E.pieces[base];
+    if (!fn) return null;
+    var q = copy(piece, { kind: base }); delete q.hzBase;
+    var res = fn(q, ctx);
+    if (!res) return null;
+    var g = res.pos ? res : res.geom;
+    if (g) burn(g, piece.id || base);
+    return res;
+  });
+
+  /** A toppled royal statue lying in pieces inside a boulder's circle (radius r): plinth stub, body, crowned head. */
+  E.registerPiece('hz_statue', function (piece, ctx) {
+    var g = G(), r = max(1, +piece.hzSize || 1), R = ctx.rng, out = [], k = min(1.25, r / 1.25);
+    var T = ctx.theme || {}, stone = mixc(col(T.stoneWall || '#9a968c'), [0.72, 0.7, 0.66], 0.45), dk = mixc(stone, [0.2, 0.2, 0.22], 0.35), moss = col(T.moss || '#5e7040');
+    var gold = [0.62, 0.5, 0.22];
+    // the broken plinth stub
+    put(out, g.box({ w: 1.0 * k, h: 0.5 * k, d: 0.9 * k, taper: 0.92, color: dk }), -0.55 * r, 0.25 * k, -0.15 * r, 0, 0.3, 0);
+    put(out, g.box({ w: 0.75 * k, h: 0.16 * k, d: 0.6 * k, color: mixc(dk, moss, 0.4) }), -0.55 * r, 0.56 * k, -0.15 * r, 0.12, 0.3, 0.08);
+    // the body lying on its side, robe and legs
+    var yaw = (R.next() - 0.5) * 0.5;
+    put(out, g.box({ w: 1.5 * k, h: 0.5 * k, d: 0.62 * k, taper: [0.82, 0.9], color: stone }), 0.15 * r, 0.31 * k, 0.12 * r, 0, yaw, PI / 2 + 0.06);
+    put(out, g.box({ w: 0.62 * k, h: 0.38 * k, d: 0.5 * k, color: mixc(stone, dk, 0.3) }), 0.15 * r - cos(yaw) * 0.9 * k, 0.25 * k, 0.12 * r + sin(yaw) * 0.9 * k, 0, yaw, 0.1);
+    // the arm with a broken sceptre
+    put(out, g.box({ w: 0.8 * k, h: 0.17 * k, d: 0.17 * k, color: stone }), 0.2 * r, 0.5 * k, 0.4 * r, 0, yaw + 0.35, 0);
+    put(out, g.cylinder({ r: 0.05 * k, h: 0.6 * k, sides: 5, color: gold }), 0.5 * r, 0.52 * k, 0.48 * r, 0, 0, PI / 2 - 0.3);
+    // the head rolled away, still wearing its crown
+    var hx = 0.62 * r * cos(0.9), hz = 0.62 * r * sin(0.9);
+    put(out, g.sphere({ r: 0.27 * k, detail: 1, color: stone }), hx, 0.25 * k, hz);
+    var crown = g.cylinder({ r: 0.24 * k, h: 0.16 * k, sides: 7, caps: false, color: mixc(stone, gold, 0.55) });
+    put(out, crown, hx + 0.12 * k, 0.33 * k, hz, 0, 0, 1.1);
+    for (var i = 0; i < 5; i++) { var a = i / 5 * TAU; put(out, g.cone({ r: 0.05 * k, h: 0.13 * k, sides: 4, color: mixc(stone, gold, 0.55) }), hx + 0.12 * k + 0.2 * k, 0.33 * k + sin(a) * 0.22 * k, hz + cos(a) * 0.22 * k, 0, 0, -PI / 2 + 0.47); }
+    // chips and moss
+    for (i = 0; i < 4; i++) { var ca = R.next() * TAU, cr = (0.4 + R.next() * 0.45) * r; put(out, g.sphere({ r: (0.09 + R.next() * 0.08) * k, detail: 0, color: i % 2 ? stone : dk }), cos(ca) * cr, 0.05, sin(ca) * cr); }
+    var res = g.merge(out), b = g.bounds(res), rr = 0, P = res.pos, i2;
+    for (i2 = 0; i2 < P.length; i2 += 3) rr = max(rr, sqrt(P[i2] * P[i2] + P[i2 + 2] * P[i2 + 2]));
+    if (rr > r * 0.97) g.scale(res, r * 0.97 / rr, 1, r * 0.97 / rr);   // always inside the boulder's circle
+    if (b.max[1] > 1.05 * r) g.scale(res, 1, 1.05 * r / b.max[1], 1);
+    g.aoGradient(res, 0, 0.9 * k, 0.35);
+    return res;
+  });
+
+  /** A crow-picked fallen soldier (stylised: bare skull, ribs under a royal tabard, no gore) within a log's footprint. */
+  E.registerPiece('hz_corpse', function (piece, ctx) {
+    var g = G(), L = min(2.2, +piece.hzLen || 2), R = ctx.rng, out = [], s = min(1.05, L / 1.95);
+    var bone = [0.86, 0.82, 0.72], iron = [0.36, 0.37, 0.4], cloth = R.next() < 0.5 ? [0.32, 0.12, 0.13] : [0.18, 0.2, 0.36], leather = [0.3, 0.2, 0.14], gold = [0.66, 0.54, 0.24];
+    var lean = (R.next() - 0.5) * 0.2;
+    // the body along local x: legs at -x, head at +x
+    put(out, g.box({ w: 0.62 * s, h: 0.2 * s, d: 0.36 * s, taper: [0.9, 0.85], color: cloth }), 0.1 * s, 0.12 * s, 0, 0, lean, 0);                 // tabard over the chest
+    put(out, g.box({ w: 0.2 * s, h: 0.06 * s, d: 0.3 * s, color: gold }), 0.12 * s, 0.225 * s, 0, 0, lean, 0);                                  // the crown sewn on it, faded
+    put(out, g.box({ w: 0.5 * s, h: 0.16 * s, d: 0.42 * s, color: iron }), 0.38 * s, 0.11 * s, 0, 0, lean, 0);                                  // breastplate shoulders
+    for (var i = 0; i < 2; i++) put(out, g.box({ w: 0.72 * s, h: 0.12 * s, d: 0.13 * s, color: i ? leather : mixc(leather, iron, 0.4) }), -0.5 * s, 0.07 * s, (i ? 0.1 : -0.11) * s, 0, lean + (i ? 0.08 : -0.12), 0);   // legs
+    for (i = 0; i < 2; i++) put(out, g.box({ w: 0.2 * s, h: 0.11 * s, d: 0.14 * s, color: iron }), -0.92 * s, 0.07 * s, (i ? 0.12 : -0.13) * s, 0, lean, 0);   // boots
+    put(out, g.box({ w: 0.5 * s, h: 0.07 * s, d: 0.08 * s, color: bone }), 0.32 * s, 0.05 * s, 0.25 * s, 0, 0.5, 0);                            // a bare arm bone flung out
+    put(out, g.sphere({ r: 0.06 * s, detail: 0, color: bone }), 0.56 * s, 0.05 * s, 0.37 * s);
+    // the skull with an empty eye and a dented helmet beside it
+    put(out, g.sphere({ r: 0.12 * s, detail: 1, color: bone }), 0.72 * s, 0.13 * s, -0.02 * s);
+    put(out, g.box({ w: 0.07 * s, h: 0.04 * s, d: 0.06 * s, color: [0.1, 0.08, 0.08] }), 0.8 * s, 0.17 * s, 0.07 * s);
+    put(out, g.dome ? g.dome({ r: 0.16 * s, color: iron }) : g.sphere({ r: 0.15 * s, detail: 0, color: iron }), 0.86 * s, 0.1 * s, -0.2 * s, 1.4, 0, 0.3);
+    // a broken spear across the legs and the round shield with the royal crown
+    put(out, g.cylinder({ r: 0.025 * s, h: 1.1 * s, sides: 5, color: [0.42, 0.32, 0.22] }), -0.35 * s, 0.17 * s, 0.05 * s, 0, 0.35, PI / 2);
+    put(out, g.cylinder({ r: 0.24 * s, h: 0.05 * s, sides: 9, color: cloth }), -0.15 * s, 0.05 * s, -0.22 * s, 0.12, 0, 0.05);
+    put(out, g.cylinder({ r: 0.08 * s, h: 0.03 * s, sides: 6, color: gold }), -0.15 * s, 0.09 * s, -0.22 * s, 0.12, 0, 0.05);
+    var res = g.merge(out), b = g.bounds(res);
+    var kx = min(1, (L / 2 - 0.04) / max(-b.min[0], b.max[0])), kz = min(1, 0.27 / max(-b.min[2], b.max[2]));
+    g.scale(res, kx, 1, kz);   // always inside the log's box (len x 0.6)
+    g.aoGradient(res, 0, 0.3, 0.3);
+    return res;
+  });
+
+  // ------------------------------------------------------------------ loose walk-over decor (all under 0.45 m)
+  var DECOR = {
+    /** a dead crow on its back, wings spread */
+    crow: function (R) {
+      var g = G(), out = [], blk = [0.08, 0.075, 0.09], blk2 = [0.14, 0.13, 0.16], beak = [0.3, 0.27, 0.22];
+      put(out, g.sphere({ r: 0.1, detail: 0, color: blk }), 0, 0.08, 0, 0, 0, 0, 1);
+      G().scale(out[0], 1.4, 0.75, 1);
+      put(out, g.sphere({ r: 0.06, detail: 0, color: blk }), 0.16, 0.07, 0.01);
+      put(out, g.cone({ r: 0.022, h: 0.08, sides: 4, color: beak }), 0.24, 0.07, 0.01, 0, 0, -PI / 2);
+      for (var s = -1; s <= 1; s += 2) {
+        put(out, g.box({ w: 0.16, h: 0.015, d: 0.22, taper: [0.5, 0.6], color: s > 0 ? blk2 : blk }), -0.02, 0.085, s * 0.15, s * 0.25, s * 0.3, 0);
+        put(out, g.box({ w: 0.04, h: 0.012, d: 0.06, color: beak }), -0.1, 0.13, s * 0.03, 0, 0, 0.6);   // claws up
+      }
+      put(out, g.box({ w: 0.14, h: 0.015, d: 0.08, taper: [1, 0.5], color: blk }), -0.17, 0.07, 0, 0, 0, 0.05);   // tail
+      for (var i = 0; i < 4; i++) put(out, g.box({ w: 0.09, h: 0.01, d: 0.025, color: i % 2 ? blk : blk2 }), (R.next() - 0.5) * 0.7, 0.075, (R.next() - 0.5) * 0.7, 0, R.next() * TAU, 0);   // loose feathers
+      return g.merge(out);
+    },
+    /** a torn royal banner lying in the dirt on its snapped pole */
+    banner: function (R, th) {
+      var g = G(), out = [], red = [0.42, 0.1, 0.12], red2 = [0.3, 0.07, 0.09], gold = [0.7, 0.56, 0.22], wood = [0.36, 0.26, 0.18];
+      put(out, g.cylinder({ r: 0.04, h: 1.6, sides: 5, color: wood }), 0.1, 0.075, -0.55, 0, 0.08, PI / 2);
+      put(out, g.cylinder({ r: 0.04, h: 0.7, sides: 5, color: wood }), -1.0, 0.075, -0.3, 0, 0.6, PI / 2);
+      // the cloth: a few overlapping torn strips, slightly rumpled
+      var strips = [[-0.2, -0.1, 0.9, 0.62, 0.05], [0.3, 0.25, 0.7, 0.5, -0.12], [0.75, -0.05, 0.42, 0.55, 0.3]];
+      strips.forEach(function (st, i) { put(out, g.box({ w: st[2], h: 0.018, d: st[3], taper: [0.86, 0.8], color: i === 1 ? red2 : red }), st[0], 0.075 + i * 0.012, st[1], (R.next() - 0.5) * 0.08, st[4], (R.next() - 0.5) * 0.08); });
+      // the crown on it, and its tassels
+      put(out, g.box({ w: 0.3, h: 0.012, d: 0.12, color: gold }), -0.15, 0.105, -0.05);
+      for (var i = 0; i < 3; i++) put(out, g.box({ w: 0.06, h: 0.012, d: 0.1, color: gold }), -0.26 + i * 0.11, 0.105, 0.04, 0, 0, 0);
+      put(out, g.box({ w: 0.5, h: 0.012, d: 0.05, color: gold }), -0.2, 0.095, -0.42);
+      return g.merge(out);
+    },
+    /** a dropped shield with the crown, and a helmet */
+    shield: function (R) {
+      var g = G(), out = [], face = R.next() < 0.5 ? [0.34, 0.11, 0.12] : [0.2, 0.22, 0.38], iron = [0.4, 0.41, 0.44], gold = [0.68, 0.55, 0.24];
+      var sy = R.next() * TAU;
+      put(out, g.box({ w: 0.62, h: 0.06, d: 0.74, taper: [1, 0.55], color: face }), 0, 0.1, 0, 0.18, sy, 0.06);
+      put(out, g.box({ w: 0.26, h: 0.03, d: 0.16, color: gold }), 0, 0.15, 0, 0.18, sy, 0.06);
+      put(out, g.sphere({ r: 0.16, detail: 1, color: iron }), 0.62, 0.11, 0.28);
+      G().scale(out[2], 1, 0.8, 1);
+      put(out, g.box({ w: 0.36, h: 0.035, d: 0.36, color: mixc(iron, [0, 0, 0], 0.3) }), 0.62, 0.04, 0.28);
+      return g.merge(out);
+    },
+    /** arrows stuck in the ground, some snapped */
+    arrows: function (R) {
+      var g = G(), out = [], shaft = [0.45, 0.36, 0.24], fl = [0.82, 0.8, 0.74], n = 4 + floor(R.next() * 3);
+      for (var i = 0; i < n; i++) {
+        var x = (R.next() - 0.5) * 0.9, z = (R.next() - 0.5) * 0.9, h = R.next() < 0.3 ? 0.18 : 0.38, tx = (R.next() - 0.5) * 0.7, tz = 0.2 + R.next() * 0.3;
+        put(out, g.cylinder({ r: 0.012, h: h, sides: 4, color: shaft }), x, h * 0.45, z, tx, 0, tz);
+        if (h > 0.3) put(out, g.box({ w: 0.012, h: 0.08, d: 0.05, color: fl }), x + sin(tz) * -0.15, h * 0.82, z + sin(tx) * 0.15, tx, R.next() * PI, tz);
+      }
+      return g.merge(out);
+    },
+    /** a heap of grey-black ash with charred bits (flat, above the ground overlays) */
+    ash: function (R) {
+      var g = G(), out = [], n = 9, r = 0.9 + R.next() * 0.6, pts = [], i;
+      for (i = 0; i < n; i++) { var a = i / n * TAU, rr = r * (0.7 + R.next() * 0.45); pts.push([cos(a) * rr, sin(a) * rr]); }
+      var mb = new E.MeshBuf(64), c0 = [0.2, 0.19, 0.2], c1 = [0.33, 0.32, 0.33];
+      for (i = 0; i < n; i++) { var p0 = pts[i], p1 = pts[(i + 1) % n]; mb.face3(0, 0.12, 0, p1[0], 0.07, p1[1], p0[0], 0.07, p0[1], (i % 2 ? c0 : c1)[0], (i % 2 ? c0 : c1)[1], (i % 2 ? c0 : c1)[2]); }
+      out.push(mb.done());
+      for (i = 0; i < 3; i++) put(out, g.box({ w: 0.4 + R.next() * 0.3, h: 0.06, d: 0.08, color: [0.08, 0.07, 0.07] }), (R.next() - 0.5) * r, 0.1, (R.next() - 0.5) * r, 0, R.next() * PI, 0.1);
+      return g.merge(out.map(function (q) { return q.aux ? q : q; }));
+    },
+    /** small violet shards of the Hollow pushing out of the ground (faint glow) */
+    shards: function (R) {
+      var g = G(), out = [], n = 3 + floor(R.next() * 2), c = col(HZ.GLOW);
+      for (var i = 0; i < n; i++) {
+        var h = 0.2 + R.next() * 0.2, sh = g.cone({ r: 0.06 + R.next() * 0.04, h: h, sides: 4, color: mixc(c, [0.25, 0.12, 0.35], 0.35) });
+        glow(sh, 0.45);
+        put(out, sh, (R.next() - 0.5) * 0.5, h * 0.42, (R.next() - 0.5) * 0.5, (R.next() - 0.5) * 0.5, R.next() * PI, (R.next() - 0.5) * 0.5);
+      }
+      put(out, g.cylinder({ r: 0.4, h: 0.02, sides: 7, color: [0.16, 0.12, 0.18] }), 0, 0.075, 0);
+      return g.merge(out);
+    }
+  };
+  HZ.DECOR = DECOR;
+  /** What each act scatters (kinds and how many on 'high'; halved on 'low'). */
+  HZ.DECOR_MIX = {
+    1: [['crow', 4], ['banner', 2], ['shield', 1]],
+    2: [['crow', 3], ['banner', 2], ['shield', 3], ['arrows', 4], ['ash', 1]],
+    3: [['crow', 3], ['banner', 2], ['shield', 2], ['arrows', 2], ['ash', 5], ['shards', 3]]
+  };
+  var DECOR_R = { crow: 0.6, banner: 1.4, shield: 0.9, arrows: 0.7, ash: 1.6, shards: 0.6 };   // keep-clear radius of each
+
+  /** Free cells for loose decor: walkable soft ground, no piece, no road, away from the route, doors, chests and gates. */
+  HZ.freeMap = function (layout) {
+    var gw = layout.gw, gd = layout.gd, n = gw * gd, occ = new Uint8Array(n), i, k, SID = KD.gen.SURF;
+    for (i = 0; i < n; i++) {
+      var s = layout.surf[i];
+      if (layout.grid[i] !== 0 || KD.gen.isRoadSurf(s) || s === SID.water || s === SID.void || s === SID.roof) occ[i] = 1;
+    }
+    function mark(x0, z0, x1, z1) {
+      var gx0 = max(0, floor(x0)), gz0 = max(0, floor(z0)), gx1 = min(gw - 1, floor(x1)), gz1 = min(gd - 1, floor(z1));
+      for (var z = gz0; z <= gz1; z++) for (var x = gx0; x <= gx1; x++) occ[z * gw + x] = 1;
+    }
+    function shape(sh, pad) {
+      if (sh.t === 'circle') { mark(sh.x - sh.r - pad, sh.z - sh.r - pad, sh.x + sh.r + pad, sh.z + sh.r + pad); return; }
+      var c = cos(sh.rot || 0), s = sin(sh.rot || 0), hw = sh.hw + pad, hd = sh.hd + pad;
+      var ex = abs(c) * hw + abs(s) * hd, ez = abs(s) * hw + abs(c) * hd;
+      var gx0 = max(0, floor(sh.x - ex)), gz0 = max(0, floor(sh.z - ez)), gx1 = min(gw - 1, floor(sh.x + ex)), gz1 = min(gd - 1, floor(sh.z + ez));
+      for (var z = gz0; z <= gz1; z++) for (var x = gx0; x <= gx1; x++) {
+        var dx = x + 0.5 - sh.x, dz = z + 0.5 - sh.z, lx = dx * c - dz * s, lz = dx * s + dz * c;
+        if (abs(lx) <= hw + 0.71 && abs(lz) <= hd + 0.71) occ[z * gw + x] = 1;
+      }
+    }
+    for (k = 0; k < layout.pieces.length; k++) {
+      var p = layout.pieces[k], fp = KD.gen.footprint(p), j;
+      for (j = 0; j < fp.solid.length; j++) shape(fp.solid[j], 0.6);
+      for (j = 0; j < fp.area.length; j++) shape(fp.area[j], 0.6);
+      var ap = KD.gen.doorApron ? KD.gen.doorApron(p) : null;
+      if (ap) shape(ap.t ? ap : { t: 'box', x: ap.x, z: ap.z, hw: ap.hw || 1.5, hd: ap.hd || 1, rot: ap.rot || 0 }, 1);
+    }
+    var P = layout.points || {};
+    ['spawn', 'exit', 'camp', 'bossGate', 'miniboss'].forEach(function (key) { var q = P[key]; if (q) mark(q.x - 6, q.z - 6, q.x + 6, q.z + 6); });
+    (layout.interact || []).forEach(function (q) { mark(q.x - 2.5, q.z - 2.5, q.x + 2.5, q.z + 2.5); });
+    // the critical route: a 2.5 m band either side stays clear
+    var path = layout.path || [];
+    for (k = 0; k + 1 < path.length; k++) {
+      var a = path[k], b = path[k + 1], dx = b[0] - a[0], dz = b[1] - a[1], L = sqrt(dx * dx + dz * dz), st = max(1, Math.ceil(L / 0.8));
+      for (j = 0; j <= st; j++) { var t = j / st, x = a[0] + dx * t, z = a[1] + dz * t; mark(x - 2.5, z - 2.5, x + 2.5, z + 2.5); }
+    }
+    return occ;
+  };
+  function pathDist(layout, x, z) {
+    var path = layout.path || [], best = 1e9;
+    for (var k = 0; k + 1 < path.length; k++) {
+      var a = path[k], b = path[k + 1], dx = b[0] - a[0], dz = b[1] - a[1], L2 = dx * dx + dz * dz || 1, t = ((x - a[0]) * dx + (z - a[1]) * dz) / L2;
+      t = t < 0 ? 0 : (t > 1 ? 1 : t);
+      var ex = a[0] + dx * t - x, ez = a[1] + dz * t - z, d2 = ex * ex + ez * ez;
+      if (d2 < best) best = d2;
+    }
+    return sqrt(best);
+  }
+  /** Pick decor spots: [{ kind, x, z, yaw }]. Deterministic for a layout; never on an occupied cell (radius checked). */
+  HZ.decorSpots = function (layout, hz, rng) {
+    var mix = HZ.DECOR_MIX[hz.act] || [], occ = HZ.freeMap(layout), gw = layout.gw, gd = layout.gd, out = [], cands = [], i, k;
+    for (var z = 2; z < gd - 2; z += 2) for (var x = 2; x < gw - 2; x += 2) {
+      var jx = x + floor(rng.next() * 2), jz = z + floor(rng.next() * 2);
+      if (occ[jz * gw + jx]) continue;
+      var pd = pathDist(layout, jx + 0.5, jz + 0.5);
+      if (pd > 16) continue;                                   // where players actually walk past
+      cands.push({ x: jx + 0.5, z: jz + 0.5, s: rng.next() + (pd < 9 ? 0.6 : 0) });
+    }
+    cands.sort(function (a, b) { return b.s - a.s; });
+    var want = [];
+    mix.forEach(function (m) { var n = hz.low ? Math.ceil(m[1] / 2) : m[1]; for (k = 0; k < n; k++) want.push(m[0]); });
+    function free(cx, cz, r) {
+      var R2 = Math.ceil(r);
+      for (var dz = -R2; dz <= R2; dz++) for (var dx = -R2; dx <= R2; dx++) {
+        var gx = floor(cx + dx), gz = floor(cz + dz);
+        if (gx < 0 || gz < 0 || gx >= gw || gz >= gd || occ[gz * gw + gx]) return false;
+      }
+      return true;
+    }
+    var ci = 0;
+    for (k = 0; k < want.length && ci < cands.length; k++) {
+      var kind = want[k], r = DECOR_R[kind] || 1;
+      for (; ci < cands.length; ci++) {
+        var c = cands[ci], ok = free(c.x, c.z, r);
+        for (i = 0; ok && i < out.length; i++) { var ddx = out[i].x - c.x, ddz = out[i].z - c.z; if (ddx * ddx + ddz * ddz < 49) ok = false; }   // spread out: 7 m apart
+        if (ok) { out.push({ kind: kind, x: c.x, z: c.z, yaw: rng.next() * TAU, r: r }); ci++; break; }
+      }
+    }
+    return out;
+  };
+
+  // ------------------------------------------------------------------ the castle
+  /**
+   * Built at about 130 m tall in its own frame (base centre at the origin, +Z toward the viewer), then scaled to the act.
+   * Faces never closer than 1 m to each other at this scale (depth precision a kilometre out is about 0.25 m).
+   */
+  HZ.castleGeom = function (cfg, seed) {
+    var g = G(), out = [], R = new KD.RNG((seed >>> 0) || 1), i, k;
+    var rock = [0.2, 0.19, 0.22], rock2 = [0.27, 0.25, 0.28], stone = [0.26, 0.24, 0.3], stone2 = [0.31, 0.29, 0.35], dark = [0.15, 0.13, 0.19], roof = [0.13, 0.11, 0.17];
+    var glowC = col(HZ.GLOW), gk = cfg.glow;
+    // the crag: a faceted mound of dark rock with a few spurs
+    var mb = new E.MeshBuf(512), prof = [[1, -20], [0.92, 6], [0.72, 22], [0.52, 34]], sides = 11, rings = [], r;
+    for (r = 0; r < prof.length; r++) {
+      var ring = [];
+      for (k = 0; k < sides; k++) { var a = k / sides * TAU, j = 0.82 + 0.3 * R.next(), rad = 78 * prof[r][0] * j; ring.push([cos(a) * rad, prof[r][1] + (r ? (R.next() - 0.5) * 6 : 0), sin(a) * rad * 0.62]); }
+      rings.push(ring);
+    }
+    for (r = 0; r < rings.length - 1; r++) for (k = 0; k < sides; k++) {
+      var k1 = (k + 1) % sides, A = rings[r][k], B = rings[r][k1], C = rings[r + 1][k1], D = rings[r + 1][k], cc = (k + r) % 2 ? rock : rock2;
+      mb.face4(A[0], A[1], A[2], D[0], D[1], D[2], C[0], C[1], C[2], B[0], B[1], B[2], cc[0], cc[1], cc[2]);
+    }
+    var top = rings[rings.length - 1], cy = 34;
+    for (k = 0; k < sides; k++) { var t0 = top[k], t1 = top[(k + 1) % sides]; mb.face3(0, cy + 1, 0, t1[0], t1[1], t1[2], t0[0], t0[1], t0[2], rock2[0], rock2[1], rock2[2]); }
+    out.push(mb.done());
+    for (i = 0; i < 5; i++) { var sa = R.next() * TAU, sr = 50 + R.next() * 22; put(out, g.cone({ r: 9 + R.next() * 6, h: 30 + R.next() * 22, sides: 5, color: i % 2 ? rock : rock2 }), cos(sa) * sr, 0, sin(sa) * sr * 0.62, (R.next() - 0.5) * 0.3, R.next() * TAU, (R.next() - 0.5) * 0.3); }
+    var base = 30;   // the walls stand on the flattened crown of the crag
+    // curtain wall: an irregular ring with battlements and round towers at the corners
+    var wp = [[-40, -14], [-30, 18], [-6, 26], [22, 22], [40, 4], [34, -20], [6, -26], [-24, -24]];
+    for (i = 0; i < wp.length; i++) {
+      var p0 = wp[i], p1 = wp[(i + 1) % wp.length], dx = p1[0] - p0[0], dz = p1[1] - p0[1], L = sqrt(dx * dx + dz * dz), yaw = Math.atan2(dx, dz) - PI / 2, wh = 15;
+      put(out, g.box({ w: L, h: wh, d: 3, color: stone }), (p0[0] + p1[0]) / 2, base + wh / 2 - 6, (p0[1] + p1[1]) / 2, 0, yaw, 0);
+      var nm = max(2, floor(L / 5.5));
+      for (k = 0; k < nm; k++) { var tt = (k + 0.5) / nm; put(out, g.box({ w: 2.6, h: 2.6, d: 3.6, color: stone2 }), p0[0] + dx * tt, base + wh - 6 + 1.3, p0[1] + dz * tt, 0, yaw, 0); }
+      var th = 26 + R.next() * 10, tr = 5 + R.next() * 1.5;
+      put(out, g.cylinder({ r: tr, h: th, sides: 8, color: stone }), p0[0], base - 6 + th / 2, p0[1]);
+      put(out, g.cone({ r: tr + 1.6, h: 12 + R.next() * 6, sides: 8, color: roof }), p0[0], base - 6 + th + 6.5, p0[1]);
+      if (R.next() < 0.6) { var sl = glow(g.box({ w: 1.1, h: 4, d: 1.2, color: glowC }), 0.85 * gk); put(out, sl, p0[0] + 0, base - 6 + th * 0.7, p0[1] + tr + 0.3, 0, 0, 0); }
+    }
+    // the gatehouse facing the viewer
+    put(out, g.box({ w: 18, h: 26, d: 10, color: stone2 }), -6, base + 7, 26);
+    put(out, g.box({ w: 7, h: 11, d: 2.2, color: dark }), -6, base + 0, 31.2);
+    for (k = -1; k <= 1; k += 2) { put(out, g.cylinder({ r: 4.2, h: 34, sides: 8, color: stone }), -6 + k * 10, base + 11, 27); put(out, g.cone({ r: 5.6, h: 14, sides: 8, color: roof }), -6 + k * 10, base + 35, 27); }
+    // the keep: a tall block with a steep roof, buttresses and lit slits
+    put(out, g.box({ w: 34, h: 52, d: 26, taper: 0.94, color: stone }), 2, base + 20, -4);
+    put(out, g.pyramid({ w: 38, h: 22, d: 30, color: roof }), 2, base + 46 + 11, -4);
+    for (k = 0; k < 4; k++) put(out, g.box({ w: 3.4, h: 46, d: 4, taper: [0.5, 0.6], color: stone2 }), -14 + k * 10.7, base + 17, 10);
+    for (k = 0; k < 6; k++) { var wx = -11 + k * 4.4, wy = base + 24 + (k % 2) * 10; put(out, glow(g.box({ w: 1.4, h: 5.5, d: 1.4, color: glowC }), 0.9 * gk), wx, wy, 9.3); }
+    // four corner towers of the keep, one of them broken off (the Hollow)
+    var ct = [[-15, -16], [19, -16], [-15, 8], [19, 8]];
+    for (k = 0; k < 4; k++) {
+      var th2 = 64 + R.next() * 14, tr2 = 4.6;
+      put(out, g.cylinder({ r: tr2, h: th2, sides: 8, color: k % 2 ? stone : stone2 }), ct[k][0], base - 4 + th2 / 2, ct[k][1]);
+      if (k === 1) {   // broken: a jagged crown of stones and no roof
+        for (i = 0; i < 5; i++) { var ba = i / 5 * TAU; put(out, g.box({ w: 2.2, h: 3 + R.next() * 5, d: 2.2, color: stone2 }), ct[k][0] + cos(ba) * 3.6, base - 4 + th2 + 1.5, ct[k][1] + sin(ba) * 3.6, (R.next() - 0.5) * 0.3, ba, (R.next() - 0.5) * 0.3); }
+      } else {
+        put(out, g.cone({ r: tr2 + 1.3, h: 22 + R.next() * 10, sides: 8, color: roof }), ct[k][0], base - 4 + th2 + 12, ct[k][1]);
+      }
+      put(out, glow(g.box({ w: 1.2, h: 5, d: 1.2, color: glowC }), 0.85 * gk), ct[k][0], base + th2 * 0.62, ct[k][1] + tr2 + 0.35);
+    }
+    // the great needle spire with the ghostfire crown at the top
+    var spX = 2, spZ = -6, spB = base + 64, spH = 46;
+    put(out, g.cylinder({ r: 6.5, rTop: 5.4, h: spH, sides: 8, color: stone2 }), spX, spB + spH / 2 - 8, spZ);
+    for (k = 0; k < 8; k += 2) { var ga = k / 8 * TAU; put(out, g.box({ w: 2.2, h: 7, d: 2.2, color: stone }), spX + cos(ga) * 6.2, spB + spH - 6, spZ + sin(ga) * 6.2, 0, -ga, 0); }
+    put(out, glow(g.box({ w: 1.6, h: 7, d: 1.4, color: glowC }), gk), spX, spB + spH * 0.6, spZ + 6.6);
+    var needle = g.cone({ r: 6.2, h: 44, sides: 8, color: roof });
+    put(out, needle, spX, spB + spH - 8 + 22, spZ);
+    // ghostfire crown: a ring of violet shards around the needle's tip and a cold flame above it
+    var crownY = spB + spH + 26;
+    for (k = 0; k < 7; k++) { var ca = k / 7 * TAU, sh = glow(g.cone({ r: 1.1, h: 9, sides: 4, color: glowC }), gk); put(out, sh, spX + cos(ca) * 3.4, crownY, spZ + sin(ca) * 3.4, sin(ca) * 0.45, 0, -cos(ca) * 0.45); }
+    put(out, glow(g.sphere({ r: 3.2, detail: 0, color: mixc(glowC, [1, 1, 1], 0.25) }), gk), spX, crownY + 9, spZ);
+    // two slender side spires
+    for (k = -1; k <= 1; k += 2) {
+      var sx = spX + k * 12, sz = spZ + 6, sh2 = 36 + R.next() * 8;
+      put(out, g.cylinder({ r: 3, h: sh2, sides: 6, color: stone }), sx, spB + sh2 / 2 - 14, sz);
+      put(out, g.cone({ r: 3.8, h: 24, sides: 6, color: roof }), sx, spB + sh2 - 14 + 12, sz);
+    }
+    var gm = g.merge(out);
+    HZ.castleTop = crownY + 9;
+    return gm;
+  };
+  /** Fog actually seen at distance d with the area's fog settings (the shader's formula). */
+  function fogAt(env, d) { var x = max(d - env.fogStart, 0) * env.fogDensity; return min(1 - Math.exp(-x * x), env.fogMax); }
+  /** aux.w that leaves `haze` of fog at real distance D. */
+  HZ.fogW = function (env, D, haze) {
+    if (haze >= env.fogMax - 0.004 || fogAt(env, D) <= haze) return 0;
+    var dEff = env.fogStart + sqrt(-Math.log(1 - haze)) / max(1e-5, env.fogDensity);
+    return Math.max(0, min(0.985, 1 - dEff / D));
+  };
+  HZ.envOf = function (theme) {
+    var e = theme.env || {};
+    return { fogDensity: e.fogDensity !== undefined ? e.fogDensity : 0.0052, fogStart: e.fogStart !== undefined ? e.fogStart : 12, fogMax: e.fogMax !== undefined ? e.fogMax : 0.92 };
+  };
+  /** The castle placed for a layout: { geom, x, z, yaw, scale, top: [x, y, z], wTop } (world space geometry). */
+  HZ.placeCastle = function (layout, theme, hz) {
+    var cfg = hz.cfg, D = HZ.DIST, cx = layout.w / 2 + hz.dir[0] * D, cz = layout.d / 2 + hz.dir[1] * D;
+    var g = HZ.castleGeom(cfg, (layout.seed >>> 0) ^ 0x6b1d), H = HZ.castleTop || 130;
+    var scale = Math.tan(cfg.ang) * D / H, env = HZ.envOf(theme);
+    var wTop = HZ.fogW(env, D, cfg.haze), wBase = HZ.fogW(env, D, min(env.fogMax, cfg.hazeBase));
+    if (HZ.forceW !== undefined) { wTop = wBase = HZ.forceW; }   // debugging: a fixed fog weight
+    var p = g.pos, a = g.aux, n = p.length / 3, i;
+    for (i = 0; i < n; i++) { var t = smooth(-10, H * 0.75, p[i * 3 + 1]); a[i * 4 + 3] = wBase + (wTop - wBase) * t; }
+    var yaw = Math.atan2(-hz.dir[0], -hz.dir[1]), lift = Math.tan(cfg.lift || 0) * D;
+    G().scale(g, scale * cfg.width, scale, scale * cfg.width);
+    // the mountain it stands on: a broad faceted massif from the plain up to the crag (more haze, it is lower)
+    if (lift > 4) {
+      var mb = new E.MeshBuf(256), R = new KD.RNG(((layout.seed >>> 0) ^ 0x2c3a) >>> 0), sides = 13, rings = [], prof = [[1, 0], [0.62, 0.55], [0.3, 0.92], [0.16, 1.02]], rb = max(170, H * scale * 1.15 + lift * 1.6), rk, k;
+      var c0 = [0.24, 0.23, 0.27], c1 = [0.3, 0.28, 0.32];
+      for (rk = 0; rk < prof.length; rk++) {
+        var ring = [];
+        for (k = 0; k < sides; k++) { var a = k / sides * TAU, j = 0.8 + 0.35 * R.next(); ring.push([cos(a) * rb * prof[rk][0] * j, -8 + (lift + 8) * prof[rk][1] + (rk && rk < 3 ? (R.next() - 0.5) * lift * 0.18 : 0), sin(a) * rb * prof[rk][0] * j * 0.7]); }
+        rings.push(ring);
+      }
+      for (rk = 0; rk < rings.length - 1; rk++) for (k = 0; k < sides; k++) {
+        var k1 = (k + 1) % sides, A = rings[rk][k], B = rings[rk][k1], C = rings[rk + 1][k1], Dd = rings[rk + 1][k], cc = (k + rk) % 2 ? c0 : c1;
+        mb.face4(A[0], A[1], A[2], Dd[0], Dd[1], Dd[2], C[0], C[1], C[2], B[0], B[1], B[2], cc[0], cc[1], cc[2]);
+      }
+      var mt = mb.done(), wM = HZ.fogW(env, D, min(env.fogMax, cfg.hazeBase + 0.1));
+      for (k = 0; k < mt.aux.length; k += 4) mt.aux[k + 3] = wM;
+      G().translate(g, 0, lift, 0);
+      g = G().merge([g, mt]);
+    }
+    G().trs(g, [cx, -6, cz], [0, yaw, 0], 1);
+    return { geom: g, x: cx, z: cz, yaw: yaw, scale: scale, wTop: wTop, wBase: wBase, top: [cx, -6 + lift + H * scale, cz], D: D, lift: lift };
+  };
+
+  // ------------------------------------------------------------------ assemble hook
+  /** Called by KD.env.assemble after the backdrop: adds the castle and the loose decor; returns triangles added. */
+  HZ.dress = function (out, ctx, hz) {
+    var layout = out.layout, tris = 0;
+    out.horizonInfo = HZ.last = { act: hz.act, areaId: hz.areaId, dir: hz.dir, castle: null, decor: [], swaps: hz.swaps || [] };   // HZ.last: the latest build (tools, tests)
+    if (hz.castle) {
+      var c = HZ.placeCastle(layout, out.theme, hz);
+      out.statics.push({ geom: c.geom, castShadow: false, chunkSize: 2048, tag: 'horizon' });
+      tris += c.geom.idx.length / 3;
+      out.horizonInfo.castle = { x: c.x, z: c.z, top: c.top, scale: c.scale, wTop: c.wTop, wBase: c.wBase, yaw: c.yaw };
+    }
+    if (hz.decay) {
+      var rng = ctx.rng || new KD.RNG(1), spots = HZ.decorSpots(layout, hz, rng), cache = {};
+      for (var i = 0; i < spots.length; i++) {
+        var s = spots[i], key = s.kind + (i % 2), g = cache[key];
+        if (!g) g = cache[key] = DECOR[s.kind](rng, out.theme);
+        out.statics.push({ geom: g, pos: [s.x, 0, s.z], yaw: s.yaw, castShadow: s.kind === 'shield' || s.kind === 'shards', tag: 'decay' });
+        tris += g.idx.length / 3;
+        out.horizonInfo.decor.push(s);
+        if (s.kind === 'crow' && E.life && E.life.spot) E.life.spot(out, 'ground', { x: s.x + 1.2, z: s.z });
+      }
+      // Act 3: ash in the air (a little more where the mood already has some), tinted toward the castle's violet
+      if (hz.act === 3 && out.life && out.life.air) {
+        var L = out.life = U.assign({}, out.life);
+        L.air = U.assign({}, L.air); L.air.ash = max(L.air.ash || 0, 0.45);
+        L.colors = U.assign({}, L.colors || {}); if (!L.colors.ash) L.colors.ash = '#5f5868';
+      }
+    }
+    return tris;
+  };
+
+  // ------------------------------------------------------------------ runtime: the ghostfire beacon
+  var _m = new Float32Array(16);
+  HZ.runtime = function (asm, renderer, opts) {
+    var info = asm.horizonInfo, hz = asm.horizon;
+    if (!info || !info.castle || !hz || hz.low || !renderer || !renderer.instance) return null;
+    var q = KD.gfx && KD.gfx.quality;
+    if (q && q.name === 'low') return null;
+    var c = info.castle, k = hz.cfg.beacon, s = c.scale, t = 0, fc = col(HZ.FIRE), fl = -c.wTop, M = KD.gfx.m4;
+    var x = c.top[0], y = c.top[1], z = c.top[2];
+    return {
+      update: function (dt) {
+        t += dt || 0;
+        var br = 0.72 + 0.28 * (sin(t * 0.7) * 0.6 + sin(t * 1.9 + 1.3) * 0.4), r1 = 4.2 * s * (0.9 + 0.12 * br);
+        M.compose(_m, [x, y + 2 * s, z], [0, t * 0.25, 0], [r1, r1 * 2.6, r1]);
+        renderer.instance('ico', _m, 0, fc[0], fc[1], fc[2], 1, fl, k * (0.55 + 0.45 * br), 0);
+        var r2 = 2.4 * s * (0.85 + 0.2 * br);
+        M.compose(_m, [x, y + 9 * s, z], [0, -t * 0.4, 0], [r2, r2 * 3.4, r2]);
+        renderer.instance('cone', _m, 0, fc[0] * 1.1, fc[1] * 1.1, fc[2], 1, fl, k * (0.6 + 0.4 * br), 0);
+      },
+      dispose: function () {}
+    };
+  };
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
