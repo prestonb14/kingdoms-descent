@@ -3532,7 +3532,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.46';
+  KD.VERSION = '0.7.47';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -22574,6 +22574,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.47', date: '2026-10-10', title: 'Actions cancel running', notes: [
+      'Running now stops the moment you attack, use a skill, dodge, or press any other action',
+      'Tap sprint again to get back to running'
+    ] },
     { version: '0.7.46', date: '2026-10-10', title: 'Controller menus, polished', notes: [
       'Controller menus remember less and help more: a new window starts at the top, closing one puts you back where you were',
       'Button hints now sit in window footers or a free corner, never over buttons',
@@ -103264,6 +103268,26 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (x > width - margin) return U.clamp(1 - (width - x) / margin, 0, 1);
     return 0;
   };
+  // [sprint-cancel] Owner: "When you're running I want other buttons to cancel run." Pressing any other action (attack, a skill,
+  // the ultimate, dodge, interact, potion, bandage) while the sprint is on ends it; the sprint comes back only when it is
+  // switched on again (the sprint key/button released and pressed again, the pad's L3 clicked again, the touch stick pushed
+  // back to its rim). It lives in the input struct the sim receives (sprint: false), so co-op stays in sync.
+  IN.SPRINT_CANCELLERS = ['primary', 'skill1', 'skill2', 'skill3', 'skill4', 'ultimate', 'dodge', 'interact', 'potion', 'bandage'];
+  /** newSprintGate() -> { blocked } : per-device memory of "a run was cancelled and the sprint is still held". */
+  IN.newSprintGate = function () { return { blocked: false }; };
+  IN.sprintGate = IN.newSprintGate();
+  /** otherActionHeld(held) -> true when any action that cancels a run is held. */
+  IN.otherActionHeld = function (held) {
+    for (var i = 0; i < IN.SPRINT_CANCELLERS.length; i++) if (held(IN.SPRINT_CANCELLERS[i])) return true;
+    return false;
+  };
+  /** applySprintCancel(out, held, gate): clears out.sprint when another action is (or was, since the sprint went on) pressed. */
+  IN.applySprintCancel = function (out, held, gate) {
+    if (!out.sprint) { gate.blocked = false; return out; }
+    if (IN.otherActionHeld(held)) gate.blocked = true;
+    if (gate.blocked) out.sprint = false;
+    return out;
+  };
   IN.emptyIntent = function () {
     return { mx: 0, mz: 0, aimYaw: undefined, aimX: undefined, aimZ: undefined, sprint: false, dodge: false, primary: false, skill: [false, false, false, false], ultimate: false, potion: false, interact: false };
   };
@@ -103288,6 +103312,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     out.sprint = !!held('sprint'); out.dodge = !!held('dodge'); out.primary = !!held('primary');
     out.skill[0] = !!held('skill1'); out.skill[1] = !!held('skill2'); out.skill[2] = !!held('skill3'); out.skill[3] = !!held('skill4');
     out.ultimate = !!held('ultimate'); out.potion = !!held('potion'); out.interact = !!held('interact');
+    if (opts.gate) IN.applySprintCancel(out, held, opts.gate);      // [sprint-cancel] any other action ends the run
     return out;
   };
 
@@ -103441,8 +103466,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (!IN.gameplayEnabled) return IN.emptyIntent();
     var T = IN.touch;
     if (IN.pad.active && KD.pad && KD.pad.intent) return KD.pad.intent(camYaw, aimPoint, origin);      // [pad-play] the pad aims (docs/CONTROLLER.md)
-    if (T.on) return IN.buildIntent(IN.actionDown, camYaw, null, { mode: 'touch', origin: origin, axisX: IN.pad.x + T.x, axisY: IN.pad.y + T.y });
-    return IN.buildIntent(IN.actionDown, camYaw, aimPoint, { mode: IN.mode, origin: origin, axisX: IN.pad.x, axisY: IN.pad.y });
+    if (T.on) return IN.buildIntent(IN.actionDown, camYaw, null, { mode: 'touch', origin: origin, axisX: IN.pad.x + T.x, axisY: IN.pad.y + T.y, gate: IN.sprintGate });
+    return IN.buildIntent(IN.actionDown, camYaw, aimPoint, { mode: IN.mode, origin: origin, axisX: IN.pad.x, axisY: IN.pad.y, gate: IN.sprintGate });   // [sprint-cancel] gate
   };
   /** Screen point to aim through: the screen centre while the pointer is locked, else the cursor. */
   IN.aimScreen = function () {
@@ -104029,6 +104054,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     // sprint: L3 toggles it on; it stays on while the stick is pushed
     if (pad.pressedRaw(M.sprint)) ps.latch = !ps.latch;
     if (L.mag < 0.25) ps.latch = false;
+    if (ps.latch && P.cancelsSprint(pad.buttons)) ps.latch = false;     // [sprint-cancel] any other action ends the run; click L3 again to run
     pad.buttons.sprint = ps.latch;
     // menu buttons: only while no window is open (inside windows the menu navigation owns the pad)
     var free = IN.gameplayEnabled && !modalOpen();
@@ -104040,6 +104066,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     }
     if (free && pad.pressedRaw(11)) ps.recenter = true;
   };
+
+  /** [sprint-cancel] cancelsSprint(buttons) -> true when an action other than sprint (attack, skill, dodge, use, potion, bandage) is down. */
+  P.cancelsSprint = function (buttons) { return IN.otherActionHeld(function (a) { return !!buttons[a]; }); };
 
   /** setActive(on): the pad became (or stopped being) the device in use. Fires padActive and refreshes every key label. */
   P.setActive = function (on) {
@@ -104068,7 +104097,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   /** intent(camYaw, aimPoint, origin) -> the sim input struct from the pad (and any keys still held). Same shape as always. */
   P.intent = function (camYaw, aimPoint, origin) {
     var top = !!(KD.game && KD.game.view === 'top');
-    var out = IN.buildIntent(IN.actionDown, camYaw, null, { mode: 'lock', origin: origin, axisX: pad.x, axisY: pad.y });
+    var out = IN.buildIntent(IN.actionDown, camYaw, null, { mode: 'lock', origin: origin, axisX: pad.x, axisY: pad.y, gate: IN.sprintGate });   // [sprint-cancel] gate
     var o = origin || null, world = KD.game && KD.game.world;
     if (!o) return out;
     var list = enemiesNear(world, o), cls = o.hero && KD.get ? safeCls(o.hero.classId) : null;
@@ -108262,6 +108291,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       e.preventDefault(); e.stopPropagation(); st.lastTouch = st.lastCtl = now();
       try { b.setPointerCapture(e.pointerId); } catch (err) { /* already gone */ }
       b.classList.add('tc-down'); b._pid = e.pointerId;
+      if (action !== 'sprint' && IN.SPRINT_CANCELLERS && IN.SPRINT_CANCELLERS.indexOf(action) >= 0) st.sprintOff = true;   // [sprint-cancel] another button ends the run
       IN.touchPress(action);
     });
     function up(e) { if (b._pid !== e.pointerId) return; b._pid = null; b.classList.remove('tc-down'); st.lastTouch = st.lastCtl = now(); IN.touchRelease(action); }
@@ -108349,7 +108379,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   T.HOLD_PLAY_MS = 520; // in play a tooltip needs a deliberate hold on the element itself
   /** Called every frame: the stick at its rim sprints, unless the player is attacking. */
   function syncSprint() {
-    var sp = !!st.move && (st.mag || 0) >= T.SPRINT_AT && !fighting();
+    if (!st.move || (st.mag || 0) < T.SPRINT_AT) st.sprintOff = false;    // [sprint-cancel] back off the rim: the next push to it runs again
+    var sp = !!st.move && (st.mag || 0) >= T.SPRINT_AT && !fighting() && !st.sprintOff;
     if (sp !== st.sprint) { st.sprint = sp; if (sp) IN.touchPress('sprint'); else IN.touchRelease('sprint'); if (st.stick) st.stick.classList.toggle('tc-sprint', sp); }
   }
   function endMove() {
@@ -108384,7 +108415,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       var dx = e.clientX - m.x, dy = e.clientY - m.y, v = T.stickVector(dx, dy, px(T.STICK_R));
       IN.touch.x = v.x; IN.touch.y = v.y; placeKnob(dx, dy);
       st.mag = v.mag;
-      var sp = v.mag >= T.SPRINT_AT && !fighting();        // sprinting blocks attacks: a held attack or skill button wins
+      if (v.mag < T.SPRINT_AT) st.sprintOff = false;       // [sprint-cancel]
+      var sp = v.mag >= T.SPRINT_AT && !fighting() && !st.sprintOff;        // sprinting blocks attacks: a held attack or skill button wins
       if (sp !== st.sprint) { st.sprint = sp; if (sp) IN.touchPress('sprint'); else IN.touchRelease('sprint'); st.stick.classList.toggle('tc-sprint', sp); }
       e.preventDefault(); return;
     }
