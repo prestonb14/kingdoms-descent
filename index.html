@@ -3351,6 +3351,99 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 .kd-compact .tr-guide-t > div > span, .kd-compact .tr-guide-next { font-size: calc(11.5 * var(--u)); }
 
 /* =====================================================================================================
+   [story] Narrator subtitles, area title cards, the death and victory moment (src/ui/60_story.js, docs/STORY.md).
+   Painted text over a soft ink smear, readable over the camera finish. Phone rules behind .kd-compact.
+   ===================================================================================================== */
+
+/* ------------------------------------------------------------------------------------------ narrator subtitle */
+.story-sub { position: absolute; left: 0; right: 0; bottom: 21%; display: flex; justify-content: center; pointer-events: none; z-index: 2;
+  animation: story-sub-in .6s ease-out both, story-sub-out .7s ease-in calc(var(--story-ms, 4200ms) - 700ms) forwards; }
+.story-sub.story-out { animation: story-sub-out .7s ease-in forwards; }
+.story-sub-ink { position: relative; max-width: min(calc(640 * var(--u)), 70vw); padding: calc(8 * var(--u)) calc(44 * var(--u)) calc(9 * var(--u)); text-align: center;
+  background: radial-gradient(ellipse 50% 50% at 50% 50%, rgba(8, 6, 5, .74) 0%, rgba(8, 6, 5, .58) 55%, rgba(8, 6, 5, 0) 100%); }
+.story-sub-text { font-family: var(--kd-font-display); font-style: italic; font-size: calc(19 * var(--u)); line-height: 1.3; letter-spacing: .015em; color: #efe2c4;
+  text-shadow: 0 calc(1 * var(--u)) 0 #000, 0 0 calc(3 * var(--u)) #000, 0 0 calc(10 * var(--u)) rgba(0, 0, 0, .85); }
+.story-sub-mark { display: none; }
+.kd-compact .story-sub { bottom: auto; top: 17%; }
+.kd-compact .story-sub-ink { max-width: 56vw; padding: calc(5 * var(--u)) calc(30 * var(--u)) calc(6 * var(--u)); }
+.kd-compact .story-sub-text { font-size: calc(15.5 * var(--u)); line-height: 1.25; }
+@keyframes story-sub-in { from { opacity: 0; transform: translateY(calc(6 * var(--u))); filter: blur(calc(2 * var(--u))); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes story-sub-out { to { opacity: 0; transform: translateY(calc(-4 * var(--u))); } }
+
+/* ------------------------------------------------------------------------------------------ area title card */
+.story-card { position: absolute; left: 0; right: 0; top: 17%; display: flex; justify-content: center; pointer-events: none; z-index: 2;
+  animation: story-card-in .9s cubic-bezier(.2, .7, .2, 1) both, story-card-out .9s ease-in calc(var(--story-ms, 3400ms) - 300ms) forwards; }
+.story-card-band { position: relative; min-width: min(calc(560 * var(--u)), 84vw); max-width: 90vw; padding: calc(12 * var(--u)) calc(90 * var(--u)) calc(14 * var(--u)); text-align: center;
+  background: linear-gradient(90deg, rgba(10, 8, 6, 0) 0%, rgba(10, 8, 6, .62) 18%, rgba(10, 8, 6, .72) 50%, rgba(10, 8, 6, .62) 82%, rgba(10, 8, 6, 0) 100%); }
+.story-card-band::before, .story-card-band::after { content: ""; position: absolute; left: 12%; right: 12%; height: calc(1.5 * var(--u));
+  background: linear-gradient(90deg, rgba(212, 162, 74, 0), rgba(212, 162, 74, .75) 30%, rgba(255, 233, 180, .9) 50%, rgba(212, 162, 74, .75) 70%, rgba(212, 162, 74, 0)); }
+.story-card-band::before { top: 0; }
+.story-card-band::after { bottom: 0; }
+.story-card-pre { font-family: var(--kd-font-display); font-variant: small-caps; letter-spacing: .32em; font-size: calc(13 * var(--u)); color: #c9a45a; text-shadow: 0 calc(1 * var(--u)) 0 #000; }
+.story-card-name { font-family: var(--kd-font-display); font-variant: small-caps; font-weight: 700; font-size: calc(46 * var(--u)); letter-spacing: .09em; line-height: 1.05; color: #f3e3bb;
+  text-shadow: 0 calc(2 * var(--u)) 0 #000, 0 0 calc(4 * var(--u)) #000, 0 0 calc(22 * var(--u)) rgba(0, 0, 0, .9), 0 0 calc(40 * var(--u)) rgba(212, 162, 74, .35); }
+.story-card-rule { display: flex; align-items: center; gap: calc(10 * var(--u)); margin: calc(5 * var(--u)) auto calc(5 * var(--u)); width: calc(300 * var(--u)); max-width: 80%; color: #b88d3e; }
+.story-card-rule::before, .story-card-rule::after { content: ""; flex: 1; height: calc(1.5 * var(--u)); background: linear-gradient(90deg, transparent, currentColor 80%); }
+.story-card-rule::after { transform: scaleX(-1); }
+.story-card-sub { font-family: var(--kd-font-display); font-style: italic; font-size: calc(18 * var(--u)); color: #e6d8bb; text-shadow: 0 calc(1 * var(--u)) 0 #000, 0 0 calc(8 * var(--u)) #000; }
+.story-card-repeat .story-card-name { font-size: calc(36 * var(--u)); }
+.story-card-repeat .story-card-band { padding-top: calc(8 * var(--u)); padding-bottom: calc(10 * var(--u)); }
+.kd-compact .story-card { top: 13%; }
+.kd-compact .story-card-band { padding: calc(6 * var(--u)) calc(50 * var(--u)) calc(8 * var(--u)); min-width: 60vw; }
+.kd-compact .story-card-name { font-size: calc(32 * var(--u)); }
+.kd-compact .story-card-repeat .story-card-name { font-size: calc(27 * var(--u)); }
+.kd-compact .story-card-sub { font-size: calc(14 * var(--u)); }
+.kd-compact .story-card-pre { font-size: calc(11 * var(--u)); }
+.kd-compact .story-card-rule { margin: calc(2 * var(--u)) auto; }
+@keyframes story-card-in { from { opacity: 0; letter-spacing: .02em; transform: scale(1.04); } to { opacity: 1; transform: none; } }
+@keyframes story-card-out { to { opacity: 0; transform: translateY(calc(-6 * var(--u))); } }
+
+/* ------------------------------------------------------------------------------------------ death and victory */
+.story-death { position: absolute; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; overflow: hidden; cursor: pointer;
+  animation: story-fade-in .6s ease-out both; }
+.story-death.story-out { animation: story-fade-out .9s ease-in forwards; pointer-events: none !important; }
+.story-ash { position: absolute; inset: 0; background: radial-gradient(ellipse 70% 60% at 50% 45%, rgba(38, 34, 31, .82) 0%, rgba(14, 12, 11, .95) 70%, rgba(4, 4, 4, .98) 100%);
+  animation: story-ash-in 1.8s ease-out both; }
+.story-won .story-ash { background: radial-gradient(ellipse 70% 60% at 50% 45%, rgba(64, 44, 18, .78) 0%, rgba(20, 14, 8, .94) 70%, rgba(6, 4, 2, .98) 100%); }
+.story-flakes { position: absolute; inset: 0; pointer-events: none; }
+.story-flake { position: absolute; top: -4%; width: calc(5 * var(--u)); height: calc(4 * var(--u)); border-radius: 40% 60% 50% 45%; background: #8d8780; opacity: 0;
+  transform: scale(var(--fl-s, 1)); animation: story-flake var(--fl-d, 7s) linear var(--fl-del, 0s) infinite; }
+.story-won .story-flake { top: auto; bottom: -4%; background: #ffcf7a; box-shadow: 0 0 calc(6 * var(--u)) rgba(255, 170, 60, .9); animation-name: story-ember; width: calc(3 * var(--u)); height: calc(3 * var(--u)); border-radius: 50%; }
+.story-death-body { position: relative; max-width: min(calc(820 * var(--u)), 90vw); text-align: center; padding: calc(10 * var(--u)) calc(20 * var(--u)); }
+.story-death-pre { font-family: var(--kd-font-display); font-variant: small-caps; letter-spacing: .4em; font-size: calc(17 * var(--u)); color: #a99f92;
+  animation: story-rise 1.2s ease-out .5s both; }
+.story-death-who { font-family: var(--kd-font-display); font-variant: small-caps; font-weight: 700; font-size: calc(54 * var(--u)); line-height: 1.05; letter-spacing: .06em; color: #e7ddcc;
+  text-shadow: 0 calc(2 * var(--u)) 0 #000, 0 0 calc(24 * var(--u)) rgba(0, 0, 0, .9); animation: story-rise 1.4s ease-out .9s both; }
+.story-won .story-death-who { color: #ffe6a8; text-shadow: 0 calc(2 * var(--u)) 0 #000, 0 0 calc(30 * var(--u)) rgba(255, 170, 60, .45); }
+.story-death-line { margin-top: calc(6 * var(--u)); font-family: var(--kd-font-display); font-size: calc(20 * var(--u)); color: #c9bfae; animation: story-rise 1.2s ease-out 1.4s both; }
+.story-death .story-card-rule { color: #7d1e17; margin-top: calc(12 * var(--u)); animation: story-rise 1s ease-out 1.6s both; }
+.story-won .story-card-rule { color: #c9a45a; }
+.story-death-epi { margin-top: calc(10 * var(--u)); font-family: var(--kd-font-display); font-style: italic; font-size: calc(21 * var(--u)); color: #ddd2bf; animation: story-rise 1.4s ease-out 2s both; }
+.story-death-voice { margin-top: calc(14 * var(--u)); min-height: calc(24 * var(--u)); font-family: var(--kd-font-display); font-style: italic; font-size: calc(17 * var(--u)); color: #9e958a; opacity: 0; transition: opacity 1s ease-out; }
+.story-death-voice.story-in { opacity: 1; }
+.story-death-skip { position: absolute; bottom: calc(18 * var(--u)); left: 0; right: 0; text-align: center; font-size: calc(13 * var(--u)); color: #6f685f; letter-spacing: .08em; animation: story-fade-in 1s ease-out 2.5s both; }
+.story-short .story-death-pre, .story-short .story-death-who, .story-short .story-death-line, .story-short .story-card-rule { animation-delay: .1s; animation-duration: .6s; }
+.kd-compact .story-death-who { font-size: calc(36 * var(--u)); }
+.kd-compact .story-death-pre { font-size: calc(13 * var(--u)); }
+.kd-compact .story-death-line { font-size: calc(15 * var(--u)); }
+.kd-compact .story-death-epi { font-size: calc(16 * var(--u)); margin-top: calc(6 * var(--u)); }
+.kd-compact .story-death-voice { font-size: calc(13.5 * var(--u)); margin-top: calc(8 * var(--u)); }
+.kd-compact .story-death .story-card-rule { margin-top: calc(6 * var(--u)); }
+.kd-compact .story-death-skip { bottom: calc(8 * var(--u)); }
+@keyframes story-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes story-fade-out { to { opacity: 0; } }
+@keyframes story-ash-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes story-rise { from { opacity: 0; transform: translateY(calc(8 * var(--u))); filter: blur(calc(3 * var(--u))); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes story-flake { 0% { opacity: 0; transform: translate(0, 0) rotate(0deg) scale(var(--fl-s, 1)); } 10% { opacity: .75; } 85% { opacity: .5; }
+  100% { opacity: 0; transform: translate(calc(var(--fl-x, 0) * var(--u)), 108vh) rotate(320deg) scale(var(--fl-s, 1)); } }
+@keyframes story-ember { 0% { opacity: 0; transform: translate(0, 0) scale(var(--fl-s, 1)); } 10% { opacity: .9; } 80% { opacity: .6; }
+  100% { opacity: 0; transform: translate(calc(var(--fl-x, 0) * var(--u)), -108vh) scale(var(--fl-s, 1)); } }
+
+/* no interface motion: everything simply appears and goes */
+.kd-no-motion .story-sub, .kd-no-motion .story-card, .kd-no-motion .story-death, .kd-no-motion .story-death *, .kd-no-motion .story-ash { animation: none !important; transition: none !important; }
+.kd-no-motion .story-flake { display: none; }
+
+/* =====================================================================================================
    Painted UI (task w8 painted UI). Owner: uikit paint pass. Documented in docs/UIKIT.md section 11.
    Makes the kit match the hand-painted dark toon world: painted wood and iron window frames with filigree
    corners, title rails, painted buttons and tabs, liquid gauges, painted slot rims with a lit cooldown edge,
@@ -3693,7 +3786,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.53';
+  KD.VERSION = '0.7.54';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -22870,6 +22963,384 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/data/70_story_lines.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  KD.data = KD.data || {};
+
+  /**
+   * [story] The narrator's lines, the area title cards' lore lines and the epitaph pieces of the death screen.
+   * Logic in src/meta/60_story.js (KD.story), screens in src/ui/60_story.js. Docs: docs/STORY.md.
+   * Plain English, no em dashes. Placeholders: {name} {class} {area} {boss} {level} {kills}.
+   * A moment's pool is built from the general lines plus the class, area, act or boss lines that fit (those count double).
+   */
+  var S = KD.data.story = KD.data.story || {};
+
+  // ------------------------------------------------------------------------------------------ area title cards
+  S.lore = {
+    farm_village: 'The harvest was never brought in. Something else was.',
+    dark_forest: 'The paths remember who walked in. Not who walked out.',
+    mire_swamp: 'Every step here is a bargain with the mud.',
+    bandit_camp: 'When the crown fell, the knives went into business.',
+    old_mill: 'The wheel still turns. Nobody has asked what it grinds.',
+    crossroads: 'All roads meet here, and all of them charge a toll.',
+    mountain_trail: 'The mountain does not hate you. It simply does not care.',
+    river_road: 'The river carried trade once. Now it carries the dead.',
+    frozen_outpost: 'They held their post. The cold held them.',
+    gatehouse_pass: 'A gate built to keep enemies out. It kept the rot in.',
+    lower_town: 'Below the walls, mercy is sold by the ounce.',
+    market_district: 'Everything has a price. Today it is you.',
+    sewers: 'The city poured its sins down here. They pooled.',
+    harbor: 'No ship has left in a year. Something keeps them moored.',
+    rooftops: 'Up here the city looks almost peaceful. Almost.',
+    city_gates: 'The last wall between the kingdom and its king.',
+    courtyard: 'The gardens are kept immaculate. By whom is the question.',
+    armory: 'Steel waiting for hands. Some found them.',
+    library: 'Every book here was written to be forgotten.',
+    chapel: 'The choir sings for a god who stopped listening.',
+    dungeons: 'The prisoners were forgotten. Their screams were not.',
+    towers: 'High enough to see the whole ruin at once.',
+    throne_room: 'The crown sits on a head with nothing inside it.',
+    ruined_abbey: 'The sick were sent here to be forgotten. They were not.',
+    bone_fair: 'Step right up. Bring your fear. Leave your bones.',
+    war_camp: 'A warlord came to pick the carcass clean.'
+  };
+  S.loreAct = { 1: 'The outskirts rot first.', 2: 'The pass to the city, held by the dead.', 3: 'The city that ate itself.', 4: 'The castle, and the king inside it.', 0: 'A place the maps forgot.' };
+
+  // ------------------------------------------------------------------------------------------ narrator lines
+  S.lines = {
+    // entering an area
+    area: {
+      any: [
+        'Another road. Another chance to be wrong about it.',
+        'Mind your footing. The ground here keeps what it takes.',
+        'Onward, then. The dark is patient, but it is not polite.',
+        'Fresh ground. It will not stay fresh for long.',
+        'Count the shadows. Then count them again.',
+        'Somewhere ahead, something has already smelled you.',
+        'The kingdom fell slowly. You have a chance to fall faster.',
+        'Hope is a lantern with very little oil. Spend it wisely.',
+        'New place, old hunger.',
+        'Every map ends somewhere. Most of them end in a grave.',
+        'The rot was here before you. It plans to be here after.',
+        'Walk softly. Strike hard. Pray the order holds.',
+        'The quiet here is not peace. It is waiting.',
+        'Forward. There is nothing behind you worth going back for.',
+        'A fine place to die. Try not to take the offer.',
+        'Breathe in. That smell is the kingdom now.'
+      ],
+      act1: [
+        'The outskirts. Where the end of the world began with a bad harvest.',
+        'Farmland gone sour. The crows are the only ones eating well.',
+        'Out here the rot is young. Young things are hungry.',
+        'Simple folk lived here. Simple things killed them.'
+      ],
+      act2: [
+        'The wild pass. The cold up here bites harder than the wolves.',
+        'The road to the city, paved with those who walked it first.',
+        'Higher ground. Longer falls.',
+        'The pass belongs to the dead now. They do not take kindly to trespass.'
+      ],
+      act3: [
+        'The city. A thousand windows and not one honest face behind them.',
+        'Streets that ate their own. Mind the alleys.',
+        'The city is still alive, in the way a wound is alive.',
+        'Here even the rats have learned to bargain.'
+      ],
+      act4: [
+        'The castle. Every stone here remembers a crown.',
+        'Inside the walls at last. The air tastes of old blood and older oaths.',
+        'Somewhere above, the Hollow King listens to your footsteps.',
+        'The heart of the ruin. It still beats, barely.'
+      ],
+      hidden: [
+        'A place off every map. Fate dragged you here by the collar.',
+        'This was not on the road. The road, it seems, had other plans.',
+        'You were never meant to find this. Something wanted you to anyway.'
+      ],
+      areas: {
+        farm_village: ['The fields are full and the houses are empty. Mind the scarecrows.', 'A farm village. The wolves came for the sheep and stayed for the farmers.', 'Home, once, for somebody. Now it is a larder.'],
+        dark_forest: ['The trees lean in to listen. Do not give them anything to repeat.', 'Webs in every branch. Something here is very good at waiting.', 'The forest grew teeth while nobody was looking.'],
+        mire_swamp: ['The swamp drinks everything. Rain, light, the careless.', 'Keep to the boards. The water is not water.', 'Leeches, bogs and a mother who never stops feeding.'],
+        bandit_camp: ['Thieves and deserters. Loyal to nothing but the next meal.', 'The bandits built a wall. Walls make people brave and stupid.', 'Every crate here was stolen. So was every life.'],
+        old_mill: ['The Sack-Cult preaches here. Their sermons have a grinding sound.', 'Black grain and blacker hymns. Do not eat the bread.', 'The wheel turns for no river. Ask yourself what drives it.'],
+        crossroads: ['Every road meets here. So does everything that hunts them.', 'The toll is due. It is rarely paid in coin.', 'Something crowned stands at the crossing. It expects you to kneel.'],
+        mountain_trail: ['Loose stone above, a long drop below. Choose your enemies carefully.', 'The harpies nest where the air is thin and the corpses are many.', 'Climb. The mountain has buried better climbers.'],
+        river_road: ['The bridges hold. For now. Everything holds, for now.', 'The river remembers every body it was given.', 'A trade road with nothing left to trade but blood.'],
+        frozen_outpost: ['A garrison that never got the order to leave. Discipline outlives the soldier.', 'The cold here is old and has a long memory.', 'Frozen sentries. Some of them still salute.'],
+        gatehouse_pass: ['The pass to the city. A broken banner still flies over it.', 'Walls, towers, murder holes. Someone loved this place very much.', 'General Varr keeps his post. Death did not relieve him.'],
+        lower_town: ['The slums under the wall. Crooked streets for crooked folk.', 'Down here a knife is a form of conversation.', 'The poor were the first to be eaten. Nobody noticed the difference.'],
+        market_district: ['Everything is for sale in the market. Sell nothing you will miss.', 'Stalls, scales and smiling faces. Count your fingers after every handshake.', 'Silverhand runs this market. Her prices include you.'],
+        sewers: ['The city flushed its secrets down here. They learned to swim.', 'Mind the water. It is the wrong colour and it knows your name.', 'Tunnels, filth and a sovereign who rules them both.'],
+        harbor: ['Ships moored in black water. Not one has sailed in a year.', 'The smugglers fear what lives under the piers. So should you.', 'The sea brought trade. Then it brought something with a mouth.'],
+        rooftops: ['Tiles, chimneys and a long way down. Do not look. Then do.', 'A road of slate above the dying city. The bells are ringing for you.', 'Up here the gargoyles watch. Some of them move.'],
+        city_gates: ['The last great gate. Beyond it, the castle hill.', 'Siege engines, rubble and an iron warden who never sleeps.', 'Break this gate and the king will know you are coming.'],
+        courtyard: ['Hedges trimmed by no living hand. The statues watch you pass.', 'The hounds are hungry. The Houndmaster is hungrier.', 'A garden for a king. It grows bones now.'],
+        armory: ['Armour walks these halls with nobody inside. Do not ask it to stop.', 'The forges are still warm. Somebody is still making weapons. For whom?', 'Racks of steel. Every blade has an opinion about you.'],
+        library: ['The books shuffle themselves when your back is turned. Keep it turned at your peril.', 'Knowledge is power. Here it is also teeth.', 'Silence in the library. The punishment is severe.'],
+        chapel: ['The choir has not stopped singing since the king fell. Their throats are long past bleeding.', 'Stained glass and stained floors. Pray quietly.', 'A house of god, with the god evicted.'],
+        dungeons: ['Chains, cells and the block. The jailer still keeps count.', 'The prisoners were forgotten. Forgotten things grow bitter.', 'Down here the walls have heard every confession. None were believed.'],
+        towers: ['The top of the world, or what is left of it.', 'Wind and wyverns. Hold onto something that is not a ledge.', 'From up here, the whole ruin is visible. It is a lot of ruin.'],
+        throne_room: ['The long hall. At the end of it, the Hollow King.', 'This is where it all began. Fitting, if it all ends here too.', 'Kneel, says the throne room. Do not.'],
+        ruined_abbey: ['A roofless abbey for the sick and the unwanted. The plague kept them company.', 'The monks prayed for mercy. Something else answered.'],
+        bone_fair: ['The fair is in town. It only comes where people are afraid.', 'Rides, games and prizes. All of the prizes are bones.'],
+        war_camp: ['A warlord smelled a kingdom dying and came to feed.', 'Drums, banners and a camp full of people who enjoy their work.']
+      },
+      classes: {
+        ironbound: ['Shield up, Ironbound. The world is about to swing at you.', 'Iron does not bend. It does dent. Mind the dents.'],
+        hexblade: ['Curse first, ask questions never. A Hexblade wastes nothing.', 'Your blade hums with spite. Let it sing.'],
+        thornwarden: ['Keep your distance, Thornwarden. Distance is the only friend out here.', 'Set your snares. Something always walks into them.'],
+        gravecaller: ['So many fresh dead around here. Your favourite kind of company.', 'The graves here are shallow, Gravecaller. Convenient.', 'Every corpse is a recruit to you. What a rich land this is.'],
+        emberscribe: ['Ink and fire, Emberscribe. Write something loud.', 'Burn it all. Spell it correctly.'],
+        gloamblade: ['Stay in the shadows, Gloamblade. You know the way.', 'A knife in the dark solves most problems. The rest need two knives.'],
+        lanternbearer: ['Hold the light high, Lanternbearer. Everything out there hates it.', 'One small flame against the whole dark. Stubborn. Good.'],
+        bannerlord: ['Raise the banner. Even the dead respect a flag.', 'Lead from the front, Bannerlord. That is where the glory and the graves are.'],
+        wildmask: ['Put on a face the wilds will fear.', 'The beast in you is restless. Let it off the leash.'],
+        clockwright: ['Wind the springs, Clockwright. The rot has no gears to break.', 'Steam and steel against the plague. A fair fight, finally.']
+      }
+    },
+    // first sight of a boss
+    boss: {
+      any: [
+        'There it is. Big, angry and between you and the way out.',
+        'Ah. That is what has been eating everyone.',
+        'A champion of the rot. Show it what rot fears.',
+        'This one will not die easily. Few worth killing do.',
+        'Steady. It bleeds. Everything bleeds eventually.',
+        'Learn its tells, or learn the floor.',
+        'The ground shakes when it moves. Make it shake less.',
+        'It has killed better than you. It has not killed you yet.',
+        'Here is your trouble. All of it, in one body.',
+        'Watch its hands. Then its feet. Then everything.'
+      ],
+      act: [
+        'A lord of this land, crowned by the rot. Uncrown it.',
+        'This one holds the road. Take the road from it.',
+        'The act ends here, one way or another.'
+      ],
+      final: [
+        'The Hollow King. The crown, the rot, the end of the road.',
+        'There sits the king. Nothing inside him but hunger and habit.',
+        'Every step of the descent led here. Do not waste them.'
+      ],
+      roaming: [
+        'It was not supposed to be here. Neither were you.',
+        'A wanderer of the ruin. It found you first.',
+        'A hunter. And you smell like prey.'
+      ],
+      bosses: {
+        greymaw: ['Greymaw. The alpha of a pack that ate a village.', 'The great wolf. Keep your throat behind your shield.'],
+        hollow_treant: ['The forest woke up angry. This is its fist.'],
+        bog_mother: ['The Bog Mother. She has many children. They are all hungry.'],
+        captain_redtooth: ['Captain Redtooth. A deserter with a crown of his own making.'],
+        grindwell: ['Grindwell, the prophet of the sack. His sermon is short and very loud.'],
+        crowned_stag: ['The Crowned Stag. Royalty of the outskirts. Old, proud and full of thorns.'],
+        gale_matriarch: ['The Gale Matriarch. Mind the wind. She is the wind.'],
+        tide_wyrm: ['The Tide Wyrm. The river grew a spine.'],
+        ice_warden: ['The Ice Warden still guards the vault. Some orders never end.'],
+        general_varr: ['General Varr. His banner broke. His will did not.'],
+        beggar_prince: ['The Beggar Prince. All the crown he ever needed was other people.'],
+        madam_silverhand: ['Madam Silverhand. She will sell you your own death at a discount.'],
+        ooze_sovereign: ['The Ooze Sovereign. A king of filth, and it knows its subjects.'],
+        maw_of_the_deep: ['The Maw of the Deep. That is a lot of teeth for one harbour.'],
+        bell_ringer: ['The Bell Ringer. Every toll is for somebody. Make it not you.'],
+        iron_warden: ['The Iron Warden. The gate itself, given legs.'],
+        houndmaster_orsk: ['Houndmaster Orsk. Kill the master and the dogs forget their manners.'],
+        captain_valdric: ['Captain Valdric. Loyal to a dead king. Loyalty, it seems, is contagious.'],
+        archmagus_seln: ['Archmagus Seln. She read every book here. Every one ends with you dead.'],
+        high_priest_ombre: ['High Priest Ombre. He still preaches. The sermon is about you.'],
+        jailer_marrow: ['Jailer Marrow. He kept count of the prisoners. You are next on the list.'],
+        windlord_caul: ['Windlord Caul. Up here the wind obeys him. You do not have to.'],
+        hollow_king: ['The Hollow King. Bow, or do the other thing.'],
+        plague_saint: ['The Plague Saint. Holy, in the way a fever is holy.'],
+        the_barker: ['The Barker. The show is starting, and you are the act.'],
+        warlord_drog: ['Warlord Drog. He came for the bones of a kingdom. Yours will do.']
+      }
+    },
+    // health low
+    low: {
+      any: [
+        'Your blood is on the outside now. That is the wrong side.',
+        'Steady. Death is close enough to smell your breath.',
+        'You are dying. Do it later.',
+        'One more mistake. Make sure it is theirs.',
+        'The light dims. Fight in what is left of it.',
+        'Hold on. The grave can wait a little longer.',
+        'Bleeding is fine. Stopping is not.',
+        'That hurt. The next one will hurt more. Move.',
+        'Pain is a teacher. This lesson is nearly over.',
+        'Back away, or go down swinging. Choose quickly.'
+      ],
+      classes: {
+        ironbound: ['Cracks in the iron. Hold the line anyway.'],
+        hexblade: ['Your curses outlive you only if you let them. Do not let them.'],
+        thornwarden: ['They are too close, Thornwarden. Make distance or make peace.'],
+        gravecaller: ['Careful, Gravecaller. You are nearly one of your own soldiers.', 'Your minions are watching. They would welcome you.'],
+        emberscribe: ['Your ink runs red, Emberscribe. Write faster.'],
+        gloamblade: ['Back into the dark, Gloamblade. It is safer there than here.'],
+        lanternbearer: ['Heal thyself, Lanternbearer. Nobody else is going to.'],
+        bannerlord: ['The banner wavers. So does its lord.'],
+        wildmask: ['The beast is wounded. Wounded beasts bite hardest.'],
+        clockwright: ['Springs snapping, gears grinding. Patch it before it stops.']
+      }
+    },
+    // many kills in a short time
+    streak: {
+      any: [
+        'A slaughter. The crows will write songs about you.',
+        'They keep coming. They keep dying. A fair arrangement.',
+        'Look at that. The ground is redder than when you arrived.',
+        'Efficient. Grim, but efficient.',
+        'A good harvest. The best this land has seen in years.',
+        'Mow them down. They were never going to listen anyway.',
+        'Corpses enough to build a hill. Do not climb it yet.',
+        'The rot sends its children. You send them back.',
+        'Somebody is having a very good day. It is not them.',
+        'That is not a fight. That is a butchery with paperwork.'
+      ],
+      classes: {
+        gravecaller: ['So many new recruits, and all of them volunteered.'],
+        gloamblade: ['Quick, quiet and thorough. The way the work should be done.'],
+        emberscribe: ['A whole chapter, written in ash.'],
+        ironbound: ['They broke on you like waves on a wall.'],
+        thornwarden: ['Not one of them got close. Well shot.'],
+        bannerlord: ['That is how a charge is meant to go.']
+      }
+    },
+    // level up (rarely)
+    level: {
+      any: [
+        'Stronger. The dark has noticed, and it is taking notes.',
+        'Experience is what you get when you survive the lesson.',
+        'Another notch on the blade. Another reason for them to fear you.',
+        'Growing stronger. The descent grows deeper to match.',
+        'You learn. The rot learns too. Race it.',
+        'A little harder to kill now. Only a little.'
+      ],
+      classes: {
+        gravecaller: ['More souls, more servants. The dead approve.'],
+        lanternbearer: ['The light burns a little brighter. So does the target.'],
+        ironbound: ['More iron. More patience. More bruises to come.']
+      }
+    },
+    // the hero's own death (shown on the death screen)
+    death: {
+      any: [
+        'And so the road ends, as roads do, in the dirt.',
+        'Another name for the rot to forget.',
+        'Courage, it turns out, is not armour.',
+        'The kingdom claims one more. It was never full.',
+        'Rest now. The dark will keep you company.',
+        'You were brave. You were also outnumbered.',
+        'Death is patient. Today it did not have to be.',
+        'Remember this place. Next time, walk around it.',
+        'Fallen, but not forgotten. Not yet, anyway.',
+        'The descent ends here. Another will begin. It always does.'
+      ],
+      classes: {
+        ironbound: ['Even iron breaks, if you hit it often enough.'],
+        hexblade: ['The last curse was on you.'],
+        thornwarden: ['They got close. Close is where hunters die.'],
+        gravecaller: ['The Gravecaller joins the ranks. A promotion, of sorts.', 'You raised so many. Nobody will raise you.'],
+        emberscribe: ['The ink dries. The page is closed.'],
+        gloamblade: ['Even shadows end where the light finds them.'],
+        lanternbearer: ['The lantern goes out. The dark rushes in to fill the space.'],
+        bannerlord: ['The banner falls. Someone else will pick it up.'],
+        wildmask: ['The beast is hunted down at last.'],
+        clockwright: ['The springs unwind. The clock stops.']
+      },
+      boss: [
+        'It was bigger than you. That was always the problem.',
+        'So close to its heart. So close to the floor.'
+      ]
+    },
+    // the Hollow King is dead
+    victory: {
+      any: [
+        'The Hollow King is dead. The crown rolls to the floor and nobody picks it up.',
+        'It is over. The kingdom will not thank you. It is too busy rotting.',
+        'You did it. The dark lost one. Remember the feeling.',
+        'The throne is empty. Let it stay that way.',
+        'The descent ends at the top of the stairs. Funny, that.'
+      ],
+      classes: {
+        gravecaller: ['The king is dead. You could raise him, but some things should stay down.'],
+        lanternbearer: ['Light in the throne room, at last.'],
+        gloamblade: ['A king killed by a shadow. The oldest story in the realm.']
+      }
+    },
+    // walking into Hearthmoor
+    hub: {
+      any: [
+        'Hearthmoor. Smoke from the chimneys, at least.',
+        'Back among the living. They look about as tired as you.',
+        'A warm fire, a cold meal and a village that still believes in you.',
+        'The village waits. It always waits. That is what villages are for.',
+        'Home, such as it is. The walls are new. The fear is not.',
+        'Rest. The road will be just as cruel tomorrow.'
+      ],
+      afterDeath: [
+        'They carried what was left of your spoils home. The rest stayed in the ditch.',
+        'Another hero buried. The village digs graves faster than it builds houses.',
+        'Hearthmoor mourns for an evening. Then it asks who is next.'
+      ],
+      afterWin: [
+        'They are ringing the bell in Hearthmoor. For once, it is not a warning.',
+        'The village cheers. Enjoy it. The rot does not stay down forever.'
+      ]
+    },
+    // a building rebuilt or raised
+    upgrade: {
+      any: [
+        'Stone on stone. The village grows a little harder to kill.',
+        'Built with spoils carried out of the dark. Fitting.',
+        'One more roof between the people and the night.',
+        'Progress. Slow, stubborn progress.'
+      ],
+      buildings: {
+        smithy: ['The forge is lit. Somewhere, a blade is being taught to hate.'],
+        shrine: ['The shrine stands again. Whether anyone is listening is another matter.'],
+        apothecary: ['Bandages, tinctures and a herbwife who has seen worse than you.'],
+        market: ['Trade returns. Coin is the first thing to come back from the dead.'],
+        yard: ['The old sergeant has a yard again. Recruits will regret that.'],
+        barracks: ['Swords for hire, under a proper roof. Loyalty sold by the day.'],
+        maproom: ['Maps of a kingdom that keeps changing shape. Ink is cheap.'],
+        relichouse: ['Relics, curses and a curator who does not touch any of them.']
+      }
+    }
+  };
+
+  // ------------------------------------------------------------------------------------------ epitaphs (death screen)
+  // Each entry: { when: test name, text }. KD.story.epitaph picks one that fits the run (seeded by the run).
+  S.epitaphs = [
+    { when: 'early', text: 'Barely out of the gate. The rot did not even have to try.' },
+    { when: 'early', text: 'Set out at dawn. Did not see dusk.' },
+    { when: 'manyKills', text: 'Took {kills} with them. It was not enough, but it was a start.' },
+    { when: 'manyKills', text: 'Slew {kills} and feared none of them. Then one more came.' },
+    { when: 'fewKills', text: 'Struck {kills} blows that counted. The last one did not.' },
+    { when: 'bosses', text: 'Felled {bosses} of the rot\'s champions. The next one was waiting.' },
+    { when: 'bosses', text: 'Slayer of {bossName}. Undone at {area}.' },
+    { when: 'deep', text: 'Walked further than most. Fell harder than most, too.' },
+    { when: 'deep', text: 'Saw the castle on the hill. Never saw the throne.' },
+    { when: 'killedByBoss', text: 'Faced {killer} with open eyes. Closed them there.' },
+    { when: 'killedByBoss', text: 'Went looking for {killer}. Found it.' },
+    { when: 'long', text: 'Lasted {time} on the road. The road lasts longer.' },
+    { when: 'any', text: 'Brave, stubborn and now quiet.' },
+    { when: 'any', text: 'Died as they lived: in a hurry, in a bad place.' },
+    { when: 'any', text: 'Here lies a hero. The kingdom is full of them.' },
+    { when: 'any', text: 'They did not run. Perhaps they should have.' },
+    { when: 'any', text: 'Remembered by Hearthmoor. Forgotten by everyone else.' }
+  ];
+  S.victoryLines = [
+    'Climbed every stair of the descent and put the Hollow King in the ground.',
+    'Walked through the rot, the city and the castle, and came out the other side.',
+    'The crown is broken. The hero is not.'
+  ];
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/data/99_patch_notes.js
 (function (root) {
   'use strict';
@@ -22883,6 +23354,13 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.54', date: '2026-10-11', title: 'The Narrator Speaks', notes: [
+      'A grim narrator now comments on your descent: new areas, first sight of a boss, close calls, big kill streaks and more',
+      'Every area opens with a painted title card and a line of lore',
+      'Falling in battle now gets a proper send-off: who fell, to what, where, and an epitaph from your run',
+      'Beating the Hollow King gets a moment of its own',
+      'Switch any of it in Settings, Interface, Story'
+    ] },
     { version: '0.7.52', date: '2026-10-11', title: 'Hearthmoor rises', notes: [
       'Hearthmoor now stands behind its own screen: ruins and a refugee campfire at first, then forges, stalls, a chapel and lit windows as you rebuild',
       'Every building you raise grows in the village itself, with its keeper standing out front',
@@ -54318,6 +54796,254 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   S.claim = function () {
     if (!KD.online || !KD.online.signedIn()) return Promise.resolve({ ok: false, status: 401, error: 'auth' });
     return KD.online.call('POST', '/v1/stats/claim', {});
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/meta/60_story.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+
+  /**
+   * [story] KD.story: the narrator, the area title cards and the death screen, the parts that need no DOM (they load and
+   * are tested in Node). Lines live in src/data/70_story_lines.js, the screens in src/ui/60_story.js. Docs: docs/STORY.md.
+   * Everything here is local to one screen: it reads the run and the world, never writes to the simulation.
+   */
+  var ST = KD.story = KD.story || {};
+
+  // ------------------------------------------------------------------------------------------ settings
+  ST.KEY = 'kd.story';
+  ST.DEFAULTS = { narrator: true, titleCards: true, deathScreen: 'full' };
+  ST.settings = ST.settings || clone(ST.DEFAULTS);
+  var storage = null;
+  function clone(o) { var r = {}, k; for (k in o) r[k] = o[k]; return r; }
+  /** Pure: the defaults, overridden by valid saved values. */
+  ST.merge = function (saved) {
+    var out = clone(ST.DEFAULTS);
+    if (saved && typeof saved === 'object') {
+      if (typeof saved.narrator === 'boolean') out.narrator = saved.narrator;
+      if (typeof saved.titleCards === 'boolean') out.titleCards = saved.titleCards;
+      if (saved.deathScreen === 'full' || saved.deathScreen === 'short') out.deathScreen = saved.deathScreen;
+    }
+    return out;
+  };
+  ST.load = function (st) {
+    if (st) storage = st;
+    var saved = null;
+    try { saved = storage ? JSON.parse(storage.getItem(ST.KEY) || 'null') : null; } catch (e) { saved = null; }
+    ST.settings = ST.merge(saved);
+    return ST.settings;
+  };
+  ST.get = function (k) { return ST.settings[k]; };
+  ST.set = function (k, v) {
+    var next = clone(ST.settings); next[k] = v;
+    next = ST.merge(next);
+    if (next[k] !== v) return false;
+    ST.settings = next;
+    if (storage) { try { storage.setItem(ST.KEY, JSON.stringify(ST.settings)); } catch (e) { /* storage blocked */ } }
+    return true;
+  };
+  ST.reset = function () { Object.keys(ST.DEFAULTS).forEach(function (k) { ST.set(k, ST.DEFAULTS[k]); }); };
+
+  // ------------------------------------------------------------------------------------------ text helpers
+  /** fill('Hi {name}', { name: 'Mara' }) -> 'Hi Mara'. Unknown keys are left out cleanly. */
+  ST.fill = function (text, vars) {
+    vars = vars || {};
+    return String(text || '').replace(/\{(\w+)\}/g, function (m, k) { return vars[k] !== undefined && vars[k] !== null ? String(vars[k]) : ''; }).replace(/\s+/g, ' ').trim();
+  };
+  function cap(s) { s = String(s || ''); return s.charAt(0).toUpperCase() + s.slice(1); }
+  /** A killer's name for a sentence: 'Greymaw, the Alpha Wolf' -> 'Greymaw'; 'bog_leech' -> 'a Bog Leech'. */
+  ST.killerName = function (cause) {
+    cause = String(cause || '').trim();
+    if (!cause || cause === 'slain' || cause === 'the kingdom' || cause === 'abandoned') return '';
+    if (cause.indexOf(',') > 0) cause = cause.slice(0, cause.indexOf(',')).trim();
+    if (/_/.test(cause) || /^[a-z]/.test(cause)) {
+      var words = cause.replace(/_/g, ' ').split(' ').map(cap).join(' ');
+      return (/^[AEIOU]/.test(words) ? 'an ' : 'a ') + words;
+    }
+    return cause;
+  };
+  ST.areaName = function (id) { return id && KD.has && KD.has('areas', id) ? KD.get('areas', id).name : ''; };
+  ST.className = function (id) { return id && KD.has && KD.has('classes', id) ? KD.get('classes', id).name : cap(id || 'hero'); };
+  ST.bossName = function (id) {
+    var hit = '';
+    (KD.list ? KD.list('areas') : []).forEach(function (a) { if (!hit && a.boss && a.boss.id === id) hit = a.boss.name; });
+    if (!hit) (KD.data.roamingBosses || []).forEach(function (b) { if (!hit && b.id === id) hit = b.name; });
+    return hit ? hit.split(',')[0].trim() : '';
+  };
+  /** 'Mara the Gravecaller', or 'the Gravecaller' when the hero kept the class name. */
+  ST.who = function (name, classId) {
+    var cls = ST.className(classId);
+    name = String(name || '').trim();
+    return name && name !== cls ? name + ' the ' + cls : 'the ' + cls;
+  };
+  function fmtTime(sec) { sec = Math.max(0, Math.round(sec || 0)); var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60); return h > 0 ? h + (h === 1 ? ' hour ' : ' hours ') + m + (m === 1 ? ' minute' : ' minutes') : Math.max(1, m) + (m === 1 ? ' minute' : ' minutes'); }
+  ST.fmtTime = fmtTime;
+  function hash(s) { s = String(s); var h = 2166136261; for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h >>> 0; }
+
+  // ------------------------------------------------------------------------------------------ death and victory text
+  /**
+   * deathText(summary) -> { kind: 'dead'|'won'|'abandoned', title, line, who, level, killer, area, epitaph }
+   *   'Here fell Mara the Gravecaller, Level 12, slain by Greymaw at Farm Village'
+   */
+  ST.deathText = function (s) {
+    s = s || {};
+    var who = ST.who(s.name, s.classId), Who = cap(who), level = s.level || 1;
+    var area = ST.areaName(s.deathArea) || (s.result === 'won' ? 'Throne Room' : ''), killer = ST.killerName(s.cause);
+    if (s.result === 'won') return { kind: 'won', title: 'Here ends the descent', who: Who, level: level, killer: '', area: area,
+      line: 'Here ends the descent of ' + who + ', Level ' + level + '. The Hollow King is dead.', epitaph: ST.victoryLine(s) };
+    if (s.result === 'abandoned') return { kind: 'abandoned', title: 'Here the road was abandoned', who: Who, level: level, killer: '', area: area,
+      line: Who + ', Level ' + level + ', turned back' + (area ? ' at ' + area : '') + '.', epitaph: '' };
+    var line = 'Here fell ' + who + ', Level ' + level + ', ' + (killer ? 'slain by ' + killer : 'slain') + (area ? ' at ' + area : '');
+    return { kind: 'dead', title: 'Here fell', who: Who, level: level, killer: killer, area: area, line: line, epitaph: ST.epitaph(s) };
+  };
+  /** Which epitaph tests a run passes (names in S.epitaphs[].when). */
+  ST.epitaphTags = function (s) {
+    var tags = { any: true }, kills = s.kills || 0, bosses = (s.bossesKilled || []).length;
+    var areaRec = s.deathArea && KD.has && KD.has('areas', s.deathArea) ? KD.get('areas', s.deathArea) : null, killer = ST.killerName(s.cause);
+    if ((s.slot || 1) <= 2) tags.early = true;
+    if ((s.slot || 1) >= 8) tags.deep = true;
+    if (kills >= 150) tags.manyKills = true;
+    if (kills > 0 && kills < 40) tags.fewKills = true;
+    if (bosses >= 1) tags.bosses = true;
+    if ((s.playTime || 0) >= 1800) tags.long = true;
+    if (killer && areaRec && areaRec.boss && areaRec.boss.name.split(',')[0].trim() === killer) tags.killedByBoss = true;
+    if (killer && (KD.data.roamingBosses || []).some(function (b) { return b.name === killer; })) tags.killedByBoss = true;
+    return tags;
+  };
+  /** epitaph(summary): one short line that fits the run; the same run always gets the same one. */
+  ST.epitaph = function (s) {
+    s = s || {};
+    var D = KD.data.story || {}, tags = ST.epitaphTags(s), list = (D.epitaphs || []).filter(function (e) { return tags[e.when]; });
+    var special = list.filter(function (e) { return e.when !== 'any'; });
+    if (special.length) list = special;      // a line about this run beats a general one
+    if (!list.length) return '';
+    var pick = list[hash((s.id || '') + ':' + (s.seed || 0) + ':' + (s.kills || 0)) % list.length];
+    var bk = s.bossesKilled || [], last = bk.length ? bk[bk.length - 1] : null;
+    return ST.fill(pick.text, { kills: (s.kills || 0).toLocaleString ? String(s.kills || 0) : s.kills, bosses: bk.length, bossName: last ? ST.bossName(last) || 'a champion' : '', area: ST.areaName(s.deathArea) || 'the road',
+      killer: ST.killerName(s.cause) || 'the dark', time: fmtTime(s.playTime) });
+  };
+  ST.victoryLine = function (s) { var L = (KD.data.story && KD.data.story.victoryLines) || ['']; return L[hash((s && s.id) || 'won') % L.length]; };
+
+  // ------------------------------------------------------------------------------------------ area title cards
+  /** titleCard(area, visits) -> { name, sub, ms, repeat }: 3.4 s the first time, 1.9 s after that (visits = earlier visits). */
+  ST.titleCard = function (area, visits) {
+    if (!area) return null;
+    var D = KD.data.story || {}, sub = (D.lore && D.lore[area.id]) || (D.loreAct && D.loreAct[area.act]) || area.blurb || '';
+    var repeat = (visits || 0) > 0;
+    return { name: area.name, sub: sub, ms: repeat ? ST.TUNE.cardRepeat : ST.TUNE.cardFirst, repeat: repeat };
+  };
+
+  // ------------------------------------------------------------------------------------------ the narrator
+  /**
+   * Moments and their rules. gap: seconds since the last line of any kind before this moment may speak; cd: seconds
+   * between two lines of this moment; chance: how often it speaks when allowed; ttl: how long a line may wait for a quiet
+   * moment (a boss mid-attack) before it is dropped.
+   */
+  ST.TUNE = {
+    cardFirst: 3400, cardRepeat: 1900, lineMs: 4200, recent: 30, deathMs: { full: 6400, won: 7000, short: 2600 },
+    moments: {
+      area: { gap: 8, cd: 0, chance: 1, ttl: 6 },
+      boss: { gap: 3, cd: 20, chance: 1, ttl: 10 },
+      low: { gap: 25, cd: 120, chance: 1, ttl: 1.5 },
+      streak: { gap: 25, cd: 75, chance: 1, ttl: 2 },
+      level: { gap: 30, cd: 240, chance: 0.3, ttl: 3 },
+      death: { gap: 0, cd: 0, chance: 1, ttl: 10 },
+      victory: { gap: 0, cd: 0, chance: 1, ttl: 10 },
+      hub: { gap: 10, cd: 45, chance: 1, ttl: 4 },
+      upgrade: { gap: 4, cd: 6, chance: 1, ttl: 3 }
+    },
+    streak: { kills: 7, window: 5 },
+    low: { at: 0.25, rearm: 0.45 }
+  };
+  ST.MOMENTS = Object.keys(ST.TUNE.moments);
+
+  /**
+   * pool(moment, info) -> the candidate lines (specific ones twice, so they come up more often).
+   * info: { classId, areaId, act, bossId, tier, building, after: 'dead'|'won', byBoss }
+   */
+  ST.pool = function (moment, info) {
+    info = info || {};
+    var L = (KD.data.story && KD.data.story.lines && KD.data.story.lines[moment]) || {}, out = [];
+    var add = function (arr, w) { (arr || []).forEach(function (t) { for (var i = 0; i < w; i++) out.push(t); }); };
+    add(L.any, 1);
+    if (L.classes && info.classId) add(L.classes[info.classId], 2);
+    if (moment === 'area') {
+      if (info.act === 0) add(L.hidden, 1); else if (info.act) add(L['act' + info.act], 1);
+      if (L.areas && info.areaId) add(L.areas[info.areaId], 2);
+    } else if (moment === 'boss') {
+      if (info.tier === 'finalboss') add(L.final, 2); else if (info.tier === 'actboss') add(L.act, 1); else if (info.tier === 'roaming' || info.tier === 'nemesis') add(L.roaming, 2);
+      if (L.bosses && info.bossId) add(L.bosses[info.bossId], 3);
+    } else if (moment === 'death') {
+      if (info.byBoss) add(L.boss, 2);
+    } else if (moment === 'hub') {
+      if (info.after === 'dead') add(L.afterDeath, 2); else if (info.after === 'won') add(L.afterWin, 3);
+    } else if (moment === 'upgrade') {
+      if (L.buildings && info.building) add(L.buildings[info.building], 3);
+    }
+    return out;
+  };
+
+  /**
+   * new KD.story.Narrator({ rng, recent }) keeps the timing for one screen. say(moment, info, now) -> the line or null.
+   * now is in seconds (any clock that only goes forward). Lines heard lately are skipped while others are left.
+   */
+  function Narrator(o) {
+    o = o || {};
+    this.rng = o.rng || Math.random;
+    this.recent = (o.recent || []).slice(-ST.TUNE.recent);
+    this.lastAt = -1e9; this.lastBy = {};
+  }
+  Narrator.prototype.allowed = function (moment, now) {
+    var m = ST.TUNE.moments[moment];
+    if (!m || !ST.settings.narrator) return false;
+    if (now - this.lastAt < m.gap) return false;
+    if (this.lastBy[moment] !== undefined && now - this.lastBy[moment] < m.cd) return false;
+    return true;
+  };
+  Narrator.prototype.pick = function (moment, info) {
+    var pool = ST.pool(moment, info), recent = this.recent, fresh = pool.filter(function (t) { return recent.indexOf(t) < 0; });
+    if (!fresh.length) {        // every line heard lately: the one heard longest ago
+      var best = null, bi = 1e9;
+      pool.forEach(function (t) { var i = recent.indexOf(t); if (i < bi) { bi = i; best = t; } });
+      return best;
+    }
+    return fresh[Math.floor(this.rng() * fresh.length) % fresh.length];
+  };
+  Narrator.prototype.say = function (moment, info, now) {
+    if (!this.allowed(moment, now)) return null;
+    var m = ST.TUNE.moments[moment];
+    if (m.chance < 1 && this.rng() >= m.chance) { this.lastBy[moment] = now; return null; }      // a skipped roll still waits its cooldown
+    var t = this.pick(moment, info);
+    if (!t) return null;
+    this.lastAt = now; this.lastBy[moment] = now;
+    var i = this.recent.indexOf(t); if (i >= 0) this.recent.splice(i, 1);
+    this.recent.push(t);
+    if (this.recent.length > ST.TUNE.recent) this.recent.shift();
+    return ST.fill(t, info && info.vars);
+  };
+  ST.Narrator = Narrator;
+
+  /**
+   * Kill streaks: new KD.story.Streak(). kill(now) -> true when this kill completes a streak (TUNE.streak.kills kills
+   * within TUNE.streak.window seconds); the count starts again after a streak.
+   */
+  function Streak() { this.t = []; }
+  Streak.prototype.kill = function (now) {
+    var w = ST.TUNE.streak.window, t = this.t;
+    t.push(now);
+    while (t.length && now - t[0] > w) t.shift();
+    if (t.length >= ST.TUNE.streak.kills) { t.length = 0; return true; }
+    return false;
+  };
+  ST.Streak = Streak;
+  /** Low health with a rearm: lowEdge(state, frac) -> true once each time health drops under TUNE.low.at after being above TUNE.low.rearm. */
+  ST.lowEdge = function (state, frac) {
+    if (frac > ST.TUNE.low.rearm) { state.armed = true; return false; }
+    if (frac > 0 && frac <= ST.TUNE.low.at && state.armed !== false) { state.armed = false; return true; }
+    return false;
   };
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -108434,6 +109160,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       var g = ctx.game;
       g.events.on('area', function (a) {
         if (!a || !a.area || !UI.banner) return;
+        if (!a.arena && KD.story && KD.story.titleCardsOn && KD.story.titleCardsOn()) return;      // [story] the painted area title card shows instead (src/ui/60_story.js)
         var act = KD.data.acts && KD.data.acts[a.area.act], meta = a.layout && a.layout.meta && a.layout.meta.arena;
         if (a.arena) UI.banner(meta && meta.name ? meta.name : H.splitName(a.area.boss.name).name, meta && meta.desc ? meta.desc : 'There is no way back.', { kind: 'area', ms: 2300 });
         else UI.banner(a.area.name, (act ? act.name + '. ' : '') + (a.area.blurb || ''), { kind: 'area', ms: 3600 });
@@ -113020,6 +113747,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
           row('Enemy health bars', c.onoff(ST.get('healthBars'), function (on) { ST.set('healthBars', on); })),
           row('Loot name plates', c.onoff(ST.get('lootLabels'), function (on) { ST.set('lootLabels', on); }), 'Rare and better drops')
         ]),
+        KD.bossIntro && KD.bossIntro.settingsRow ? c.sec('Cinematics', [safe(function () { return KD.bossIntro.settingsRow(row, F); }, 'boss entrances')]) : null,      // [boss intro] Boss entrances (src/ui/27_boss_intro.js)
         c.sec('Minimap', [
           row('Minimap', F.segmented([{ id: 'on', label: c.compact ? 'With the view' : 'Turns with the camera' }, { id: 'off', label: 'North up' }], ST.get('minimapRotate') ? 'on' : 'off', function (id) { ST.set('minimapRotate', id === 'on'); })),
           row('Minimap zoom', F.slider({ min: 50, max: 200, step: 10, value: Math.round(ST.get('minimapZoom') * 100), format: c.pct, label: 'minimap zoom', onInput: function (x) { ST.set('minimapZoom', x / 100); } }))
@@ -113043,7 +113771,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
           KD.art && KD.art.settingsRow ? safe(function () { return KD.art.settingsRow(art, F); }, 'gravecaller look') : null,      // [art] Gravecaller look (src/gfx/48_hero_art.js)
           KD.art && KD.art.settingsRowFor ? safe(function () { return KD.art.settingsRowFor('gloamblade', art, F); }, 'gloamblade look') : null      // [gloamblade art] Gloamblade look
         ], 'New is the hand-painted look. Classic is the first one.'),
-        KD.gfx && KD.gfx.finish && KD.gfx.finish.settingsRows ? c.sec('Camera finish', safe(function () { return KD.gfx.finish.settingsRows(row, F, c); }, 'camera finish'), 'The last touch on every frame. Lighter defaults on a phone.') : null      // [camera finish] src/gfx/12_renderer_post.js
+        KD.gfx && KD.gfx.finish && KD.gfx.finish.settingsRows ? c.sec('Camera finish', safe(function () { return KD.gfx.finish.settingsRows(row, F, c); }, 'camera finish'), 'The last touch on every frame. Lighter defaults on a phone.') : null,      // [camera finish] src/gfx/12_renderer_post.js
+        // [w8 atmosphere] Atmosphere group: each round 5 module adds its rows here (On / Off)
+        c.sec('Atmosphere', [
+          KD.env && KD.env.horizon && KD.env.horizon.settingsRows ? safe(function () { return KD.env.horizon.settingsRows(row, F, c); }, 'horizon') : null,      // [w8 horizon] castle on the horizon, signs of the fallen kingdom (src/gfx/58_env_horizon.js)
+          KD.env && KD.env.tod && KD.env.tod.settingsRow ? safe(function () { return KD.env.tod.settingsRow(row, F); }, 'time of day') : null      // [w8 day] time of day along the run (src/gfx/58_env_tod.js)
+        ], 'Mood and story touches. Switch any of them off.')
       ];
     },
     audio: function (c) {
@@ -113060,7 +113793,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         ]),
         c.sec('Soundtrack', [
           // [w8 music] the adaptive score (New) or the first music (Classic), kept by KD.audio.score itself
-          A && A.score && A.score.setStyle ? row('Music style', F.segmented([{ id: 'new', label: 'New' }, { id: 'classic', label: 'Classic' }], A.score.style(), function (id) { A.score.setStyle(id); }), 'New follows the fight and the area') : null
+          A && A.score && A.score.setStyle ? row('Music style', F.segmented([{ id: 'new', label: 'New' }, { id: 'classic', label: 'Classic' }], A.score.style(), function (id) { A.score.setStyle(id); }), 'New follows the fight and the area') : null,
+          A && A.score && A.score.leitRow ? safe(function () { return A.score.leitRow(row, F); }, 'main theme') : null      // [w8 day] src/audio/21_music_theme.js
         ])
       ];
     },
@@ -113104,7 +113838,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         c.sec('Comfort', [
           KD.fx && KD.fx.juice && KD.fx.juice.settingsRow ? safe(function () { return KD.fx.juice.settingsRow(row, F); }, 'screen shake') : null,      // [combat juice] Screen shake (src/gfx/44_fx_juice.js)
           row('Low-health vignette', c.onoff(ST.get('vignette'), function (on) { ST.set('vignette', on); }), 'and the red hit flash')
-        ])
+        ]),
+        KD.story && KD.story.settingsRows ? c.sec('Story', safe(function () { return KD.story.settingsRows(row, F, c); }, 'story')) : null      // [story] Narrator, Area title cards, Death screen (src/ui/60_story.js)
       ];
     },
     online: function (c) {
@@ -113121,6 +113856,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       var H = F.settings.HUD_DEFAULTS;
       ['damageNumbers', 'healthBars', 'lootLabels', 'minimapRotate', 'minimapZoom'].forEach(function (k) { F.settings.set(k, H[k]); });
       if (KD.game && KD.game.setView && KD.game.view !== 'follow') KD.game.setView('follow');
+      if (KD.bossIntro && KD.bossIntro.reset) KD.bossIntro.reset();      // [boss intro] Boss entrances back to Full
     },
     graphics: function () {
       var D = F.settings.DEFAULTS;
@@ -113132,13 +113868,16 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       if (KD.env && KD.env.mood && KD.env.mood.set && KD.env.mood.setting() !== 'grim') KD.env.mood.set('grim');
       if (KD.style && KD.style.set && KD.style.setting() !== 'grim') KD.style.set('grim');
       if (KD.gfx && KD.gfx.finish && KD.gfx.finish.reset) KD.gfx.finish.reset();      // [camera finish] back to this quality level's defaults
+      if (KD.env && KD.env.horizon && KD.env.horizon.reset) KD.env.horizon.reset();      // [w8 horizon] both On
       if (KD.art && KD.art.set && KD.art.has) ['gravecaller', 'gloamblade'].forEach(function (cl) { if (KD.art.has(cl) && KD.config.art[cl] === 'classic') KD.art.set(cl, 'tripo'); });
+      if (KD.env && KD.env.tod && KD.env.tod.reset) KD.env.tod.reset();      // [w8 day] time of day back on
     },
     audio: function () {
       var D = F.settings.DEFAULTS, A = KD.audio;
       ['master', 'sfx', 'music', 'muted'].forEach(function (k) { F.settings.set(k, D[k]); });
       if (A && A.amb && A.amb.setVolume) A.amb.setVolume(0.8);
       if (A && A.score && A.score.setStyle) A.score.setStyle('new');
+      if (A && A.score && A.score.setLeit) A.score.setLeit(true);      // [w8 day] main theme back on
     },
     controls: function () {
       var IN = KD.input;
@@ -113156,6 +113895,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       F.settings.set('motion', true); F.settings.set('vignette', true);
       var J = KD.fx && KD.fx.juice; if (J && J.setShake) J.setShake(J.reduced && J.reduced() ? 'off' : 'low');
       KD.ui.scale.set(1);
+      if (KD.story && KD.story.reset) KD.story.reset();      // [story]
     }
   };
   SW.RESET = RESET;
@@ -122551,6 +123291,268 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (KD.ui.events && KD.ui.events.on) KD.ui.events.on('device', guard(function () { if (!S.win) return; if (S.G) S.G.reset(); S.pinch = null; chrome(); S.view.w = 0; draw(); }));
     return api;
   });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/ui/60_story.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  if (typeof document === 'undefined') return;       // browser only (the rules are in src/meta/60_story.js)
+  var ST = KD.story = KD.story || {};
+
+  /**
+   * [story] The narrator's painted subtitles, the area title cards and the death / victory moment. Docs: docs/STORY.md.
+   * Local to this screen: it listens to the game and the world, never writes to the simulation (co-op: every player
+   * hears their own narrator and sees their own death screen). Settings: Interface > Story (saved under kd.story).
+   */
+  var RECENT_KEY = 'kd.storyRecent', VISITS_KEY = 'kd.storyVisits';
+  var V = { game: null, nar: null, sub: null, subT: 0, card: null, cardT: 0, pending: [], streak: null, low: {}, world: null, tick: 0, death: null, lastEnd: null };
+  function store() { try { return root.localStorage; } catch (e) { return null; } }
+  function readJSON(k, d) { try { var s = store(); var v = s ? JSON.parse(s.getItem(k) || 'null') : null; return v || d; } catch (e) { return d; } }
+  function writeJSON(k, v) { try { var s = store(); if (s) s.setItem(k, JSON.stringify(v)); } catch (e) { /* storage blocked */ } }
+  function now() { return performance.now() / 1000; }
+  function el() { return KD.ui.el.apply(KD.ui, arguments); }
+  function compact() { return !!(KD.ui && KD.ui.compact); }
+
+  ST.load(store());
+  V.nar = new ST.Narrator({ recent: readJSON(RECENT_KEY, []) });
+  V.streak = new ST.Streak();
+
+  // ------------------------------------------------------------------------------------------ subtitles
+  /** subtitle(text, ms): the narrator's painted line at the bottom of the screen (one at a time; a new one replaces it). */
+  ST.subtitle = function (text, ms) {
+    if (!text || !KD.ui || !KD.ui.layer) return null;
+    ST.clearSubtitle(true);
+    ms = ms || ST.TUNE.lineMs;
+    var n = el('div.story-sub', { style: { '--story-ms': ms + 'ms' }, attrs: { role: 'status', 'aria-live': 'polite' } }, el('div.story-sub-ink', [el('span.story-sub-mark', { text: '' }), el('span.story-sub-text', { text: text })]));
+    KD.ui.layer('toast').appendChild(n);
+    V.sub = n;
+    try { if (KD.audio && KD.audio.play) KD.audio.play('ui_open', { vol: 0.35 }); } catch (e) { /* audio is optional */ }
+    // gone when its fade-out has played (CSS), so a slow frame never cuts a line short; a timer backs that up
+    n.addEventListener('animationend', function (e) { if (e.animationName === 'story-sub-out' && V.sub === n) ST.clearSubtitle(true); });
+    V.subT = setTimeout(function () { if (V.sub === n) ST.clearSubtitle(); }, KD.ui.noMotion ? ms : ms + 8000);
+    return n;
+  };
+  ST.clearSubtitle = function (now_) {
+    clearTimeout(V.subT);
+    var n = V.sub; V.sub = null;
+    if (!n) return;
+    if (now_ || KD.ui.noMotion) { KD.ui.unmount(n); return; }
+    n.classList.add('story-out'); setTimeout(function () { KD.ui.unmount(n); }, 700);
+  };
+  /** A boss is close and attacking: lines wait (they never cover a telegraph). */
+  ST.bossBusy = function (world, p) {
+    if (!world || !p) return false;
+    var cs = world.chars || world.entities || [];
+    for (var i = 0; i < cs.length; i++) {
+      var e = cs[i];
+      if (!e || e.dead || e.kind !== 'enemy' || !(e.boss || e.tier === 'boss' || e.tier === 'actboss' || e.tier === 'finalboss' || e.tier === 'roaming')) continue;
+      var dx = e.x - p.x, dz = e.z - p.z;
+      if (dx * dx + dz * dz > 34 * 34) continue;
+      if (e.cast || (e.act && (e.act.state === 'windup' || e.act.state === 'active'))) return true;
+    }
+    return false;
+  };
+  /** request(moment, info, delay): asks the narrator for a line; it waits for a quiet moment up to the moment's ttl. */
+  ST.request = function (moment, info, delay) {
+    if (!ST.settings.narrator || !ST.TUNE.moments[moment]) return false;
+    var t = now(), m = ST.TUNE.moments[moment];
+    V.pending = V.pending.filter(function (q) { return q.moment !== moment; });
+    V.pending.push({ moment: moment, info: info || {}, at: t + (delay || 0), until: t + (delay || 0) + m.ttl });
+    pump();
+    return true;
+  };
+  function pump() {
+    if (!V.pending.length) return;
+    var t = now(), g = V.game, w = g && g.world, p = g && g.player;
+    var busy = g && g.state === 'play' && (ST.bossBusy(w, p) || !!(KD.bossIntro && KD.bossIntro.active && KD.bossIntro.active()));      // a boss entrance plays: wait
+    V.pending = V.pending.filter(function (q) { return q.until >= t; });
+    for (var i = 0; i < V.pending.length; i++) {
+      var q = V.pending[i];
+      if (q.at > t) continue;
+      if (busy && q.moment !== 'death' && q.moment !== 'victory') continue;
+      if (V.death && q.moment !== 'death' && q.moment !== 'victory') continue;
+      V.pending.splice(i, 1);
+      var line = V.nar.say(q.moment, q.info, t);
+      if (line) { writeJSON(RECENT_KEY, V.nar.recent); if (q.info.show) q.info.show(line); else ST.subtitle(line); }
+      return;
+    }
+  }
+  setInterval(pump, 250);
+  function infoFor(extra) {
+    var g = V.game, run = g && g.run, a = g && g.area ? g.area() : null, out = { classId: run && run.hero ? run.hero.classId : null, areaId: a ? a.id : null, act: a ? a.act : null };
+    for (var k in extra) out[k] = extra[k];
+    out.vars = { name: run && run.hero ? run.hero.name : '', 'class': run && run.hero ? ST.className(run.hero.classId) : '', area: a ? a.name : '' };
+    return out;
+  }
+
+  // ------------------------------------------------------------------------------------------ area title cards
+  var ROMAN = ['', 'I', 'II', 'III', 'IV'];
+  /** titleCardsOn(): the painted card replaces the plain area banner (src/ui/10_hud_feed.js asks). */
+  ST.titleCardsOn = function () { return !!ST.settings.titleCards; };
+  ST.showCard = function (area, visits, onDone) {
+    var c = ST.titleCard(area, visits);
+    if (!c || !KD.ui || !KD.ui.layer) return null;
+    V.cardDone = null; ST.clearCard();      // a new card: the old one's line is not wanted any more
+    var pre = area.act ? 'Act ' + ROMAN[area.act] : 'Off the map';
+    var n = el('div.story-card' + (c.repeat ? '.story-card-repeat' : ''), { style: { '--story-ms': c.ms + 'ms' }, attrs: { role: 'status' } }, el('div.story-card-band', [
+      el('div.story-card-pre', { text: pre }),
+      el('div.story-card-name', { text: c.name }),
+      el('div.story-card-rule', el('span.kd-divider-mark')),
+      c.sub ? el('div.story-card-sub', { text: c.sub }) : null
+    ]));
+    KD.ui.layer('toast').appendChild(n);
+    V.card = n; V.cardDone = onDone || null;
+    // the card goes when its fade-out has played (a slow first frame after loading must not eat it); a timer backs that up
+    n.addEventListener('animationend', function (e) { if (e.animationName === 'story-card-out' && V.card === n) ST.clearCard(); });
+    V.cardT = setTimeout(function () { if (V.card === n) ST.clearCard(); }, KD.ui.noMotion ? c.ms : c.ms + 8000);
+    return c;
+  };
+  ST.clearCard = function () {
+    clearTimeout(V.cardT);
+    var fn = V.cardDone; V.cardDone = null;
+    if (V.card) { KD.ui.unmount(V.card); V.card = null; }
+    if (fn) { try { fn(); } catch (e) { console.error('story: after the card', e); } }
+  };
+  function afterFrames(fn) { var raf = root.requestAnimationFrame || function (f) { return setTimeout(f, 16); }; raf(function () { raf(fn); }); }
+  function onArea(e) {
+    if (!e || !e.area || e.arena || e.resync) return;
+    var area = e.area, visits = readJSON(VISITS_KEY, {}), n = visits[area.id] || 0, info = infoFor({ areaId: area.id, act: area.act });
+    visits[area.id] = n + 1; writeJSON(VISITS_KEY, visits);
+    var line = function () { if (V.game && V.game.state === 'play') ST.request('area', info, 0.4); };
+    // the card waits for the first drawn frames of the new area (building it can hold the page for a moment)
+    if (ST.settings.titleCards) afterFrames(function () { if (V.game && V.game.state === 'play' && !ST.showCard(area, n, line)) line(); });      // the narrator speaks once the card has gone
+    else ST.request('area', info, 1.2);
+  }
+
+  // ------------------------------------------------------------------------------------------ world events
+  function onWorld(e) {
+    var world = e && e.world, g = V.game;
+    if (!world || V.world === world) return;
+    V.world = world; V.low = {}; V.streak = new ST.Streak(); V.bossSeen = {};
+    var me = function () { return g.player; };
+    world.events.on('bossPhase', function (b) {
+      if (!b || !b.e || !b.start || V.bossSeen[b.e.id] || world !== g.world) return;
+      V.bossSeen[b.e.id] = true;
+      ST.request('boss', infoFor({ bossId: b.e.defId, tier: b.e.tier }), e.arena ? 1.4 : 0.8);
+    });
+    world.events.on('death', function (d) {
+      if (!d || world !== g.world) return;
+      var p = me();
+      if (p && d.kind === 'enemy' && d.credit === p && V.streak.kill(now())) ST.request('streak', infoFor({}));
+    });
+    world.events.on('levelup', function (l) { if (l && l.player === me()) ST.request('level', infoFor({}), 2.6); });
+  }
+  function onFrame() {
+    var g = V.game, p = g && g.player, t = now();
+    if (!p || g.state !== 'play' || t - V.tick < 0.25) return;
+    V.tick = t;
+    var frac = p.hpMax > 0 ? p.hp / p.hpMax : 1;
+    if (!p.dead && ST.lowEdge(V.low, frac)) ST.request('low', infoFor({}));
+  }
+
+  // ------------------------------------------------------------------------------------------ death and victory
+  var FLAKES = { full: 34, phone: 18 };
+  /**
+   * deathMoment(summary, done): the hero's fall (or the king's), the screen fading to ash, then done(). Full: about 6 s with
+   * the epitaph and the narrator; Short: about 2.5 s with the line alone. A tap, a click or a key skips it.
+   */
+  ST.deathMoment = function (s, done) {
+    var d = ST.deathText(s), full = ST.settings.deathScreen !== 'short', won = d.kind === 'won';
+    if (d.kind === 'abandoned') { done(); return null; }
+    ST.clearSubtitle(true); ST.clearCard(); if (KD.ui.banner && KD.ui.banner.clear) KD.ui.banner.clear();
+    var DM = ST.TUNE.deathMs, ms = full ? (won ? DM.won : DM.full) : DM.short, flakes = [], nfl = full ? (compact() ? FLAKES.phone : FLAKES.full) : 0;
+    for (var i = 0; i < nfl; i++) {
+      var r = function () { return Math.random(); };
+      flakes.push(el('i.story-flake', { style: { left: (r() * 100).toFixed(1) + '%', '--fl-d': (5 + r() * 5).toFixed(2) + 's', '--fl-del': (-r() * 6).toFixed(2) + 's', '--fl-x': ((r() - 0.5) * 120).toFixed(0), '--fl-s': (0.5 + r() * 1.1).toFixed(2) } }));
+    }
+    var voice = el('div.story-death-voice');
+    var lineBits = won ? [el('span', { text: 'Level ' + d.level })]
+      : [el('span', { text: 'Level ' + d.level }), el('span.story-dot', { text: ' · ' }), el('span', { text: (d.killer ? 'slain by ' + d.killer : 'slain') + (d.area ? ' at ' + d.area : '') })];
+    var n = el('div.story-death' + (won ? '.story-won' : '') + (full ? '' : '.story-short'), { style: { '--story-ms': ms + 'ms' }, attrs: { role: 'dialog', 'aria-label': d.line } }, [
+      el('div.story-ash'), el('div.story-flakes', flakes),
+      el('div.story-death-body', [
+        el('div.story-death-pre', { text: d.title }),
+        el('div.story-death-who', { text: d.who }),
+        el('div.story-death-line', lineBits),
+        el('div.story-card-rule', el('span.kd-divider-mark')),
+        full && d.epitaph ? el('div.story-death-epi', { text: d.epitaph }) : null,
+        voice
+      ]),
+      el('div.story-death-skip', { text: compact() ? 'Tap to go on' : 'Click or press any key' })
+    ]);
+    KD.ui.layer('toast').appendChild(n);
+    n.style.pointerEvents = 'auto';
+    V.death = n;
+    if (full) ST.request(won ? 'victory' : 'death', infoFor({ byBoss: ST.epitaphTags(s).killedByBoss, show: function (line) { voice.textContent = line; voice.classList.add('story-in'); } }), won ? 2.4 : 2.0);
+    var ended = false, timer = 0;
+    var finish = function (quick) {
+      if (ended) return; ended = true;
+      clearTimeout(timer);
+      root.removeEventListener('keydown', onKey, true);
+      V.pending = V.pending.filter(function (q) { return q.moment !== 'death' && q.moment !== 'victory'; });
+      try { done(); } catch (e) { console.error('story: after the death screen', e); }
+      n.classList.add('story-out');
+      setTimeout(function () { KD.ui.unmount(n); if (V.death === n) V.death = null; }, quick || KD.ui.noMotion ? 0 : 900);
+    };
+    var onKey = function (e) { if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ' || e.key.length === 1) { e.preventDefault(); e.stopPropagation(); finish(true); } };
+    setTimeout(function () { if (!ended) { n.addEventListener('pointerdown', function (e) { e.preventDefault(); finish(true); }); root.addEventListener('keydown', onKey, true); } }, 500);
+    timer = setTimeout(function () { finish(false); }, ms);
+    n.finish = finish;
+    return n;
+  };
+  function wrapOver() {
+    var F = KD.flow, O = F && F.over;
+    if (!O || !O.show || O._story) return;
+    O._story = true;
+    var show = O.show;
+    O.show = function (game, result, opts) {
+      var args = arguments, self = this, s = result && result.summary;
+      V.lastEnd = s ? { result: s.result, at: now() } : null;
+      if (!s || (opts && opts.boot) || (game && game.query && game.query.auto && !game.query.story) || s.result === 'abandoned') return show.apply(self, args);
+      // the music turns at once; the summary (with its Spoils block) follows the moment
+      try { F.music(s.result === 'won' ? 'victory' : 'death'); } catch (e) { /* audio is optional */ }
+      ST.deathMoment(s, function () { if (game && game.state === 'over') show.apply(self, args); });
+    };
+  }
+
+  // ------------------------------------------------------------------------------------------ Hearthmoor
+  function wireHub() {
+    var H = KD.flow && KD.flow.hub;
+    if (!H || !H.events || H._story) return;
+    H._story = true;
+    H.events.on('open', function () {
+      var le = V.lastEnd, after = le && now() - le.at < 600 ? le.result : null;
+      ST.request('hub', infoFor({ after: after === 'won' ? 'won' : (after === 'dead' ? 'dead' : null) }), 1.2);
+      V.lastEnd = null;
+    });
+    H.events.on('upgrade', function (e) { ST.request('upgrade', infoFor({ building: e && e.id }), 0.5); });
+  }
+
+  // ------------------------------------------------------------------------------------------ settings rows (Interface > Story)
+  /** settingsRows(row, F, c) -> the Story rows of the Settings window (src/ui/20_flow_52_settings.js). */
+  ST.settingsRows = function (row, F, c) {
+    return [
+      row('Narrator', c.onoff(ST.settings.narrator, function (on) { ST.set('narrator', on); if (!on) { ST.clearSubtitle(true); V.pending = []; } }), 'short spoken-style lines on screen'),
+      row('Area title cards', c.onoff(ST.settings.titleCards, function (on) { ST.set('titleCards', on); if (!on) ST.clearCard(); }), 'the name of each new place'),
+      row('Death screen', F.segmented([{ id: 'full', label: 'Full' }, { id: 'short', label: 'Short' }], ST.settings.deathScreen, function (id) { ST.set('deathScreen', id); }), 'Full has the epitaph')
+    ];
+  };
+
+  // ------------------------------------------------------------------------------------------ wiring
+  if (KD.screens && KD.screens.register) KD.screens.register('story', function (game) {
+    V.game = game;
+    ST.load(store());
+    game.events.on('area', onArea);
+    game.events.on('world', onWorld);
+    game.events.on('frame', onFrame);
+    game.events.on('state', function (e) { if (e && e.state !== 'play') { ST.clearCard(); V.pending = V.pending.filter(function (q) { return q.moment === 'death' || q.moment === 'victory' || q.moment === 'hub' || q.moment === 'upgrade'; }); } });
+    wrapOver(); wireHub();
+    return ST;
+  });
+  wrapOver(); wireHub();
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
