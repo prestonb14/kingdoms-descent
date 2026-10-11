@@ -3851,7 +3851,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.55';
+  KD.VERSION = '0.7.56';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -23497,6 +23497,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.56', date: '2026-10-11', title: 'Boss entrances', notes: [
+      'Bosses now make an entrance: the camera meets them, they roar, and their name and title are painted across the screen',
+      'Phase changes flash the name of the new phase',
+      'Any key, button or tap skips it, and a boss you have already met gets a quicker one',
+      'Settings > Gameplay > Boss entrances: Full, Short or Off'
+    ] },
     { version: '0.7.55', date: '2026-10-11', title: 'Narrator in Hearthmoor', notes: [
       'The narrator\'s lines in Hearthmoor now sit in the open middle of the village screen'
     ] },
