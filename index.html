@@ -1904,7 +1904,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 .hub-spoils-lab { font-size: calc(10 * var(--u)); letter-spacing: .08em; text-transform: uppercase; color: var(--kd-text-dim); }
 .hub-goal { font-size: calc(12.5 * var(--u)); color: var(--kd-parch-200); line-height: 1.3; }
 .hub-backpay { font-size: calc(11.5 * var(--u)); color: var(--kd-good); line-height: 1.3; }
-.hub-carry { width: calc(290 * var(--u)); flex: none; padding: calc(8 * var(--u)) calc(12 * var(--u)); display: flex; flex-direction: column; max-height: calc(176 * var(--u)); }
+.hub-carry { width: calc(290 * var(--u)); margin-top: calc(10 * var(--u)); padding: calc(8 * var(--u)) calc(12 * var(--u)); display: flex; flex-direction: column; max-height: calc(196 * var(--u)); background: rgba(14, 9, 5, .62); }
 .hub-carry .kd-scroll, .hub-carry-scroll { min-height: 0; flex: 1 1 auto; }
 .hub-carry-h { font-family: var(--kd-font-display); font-variant: small-caps; letter-spacing: .06em; color: var(--kd-brass-300); font-size: calc(14 * var(--u)); margin-bottom: calc(4 * var(--u)); }
 .hub-carry-list { margin: 0; padding-left: calc(16 * var(--u)); font-size: calc(11.5 * var(--u)); line-height: 1.34; color: var(--kd-text); }
@@ -1963,9 +1963,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 .kd-compact .hub-title { font-size: calc(24 * var(--u)); }
 .kd-compact .hub-plate { width: calc(330 * var(--u)); padding: calc(6 * var(--u)) calc(10 * var(--u)); gap: calc(4 * var(--u)); }
 .kd-compact .hub-goal { font-size: calc(11.5 * var(--u)); }
-.kd-compact .hub-scene { flex: 0 0 0; }
-.kd-compact .hub-grid.hub-row { flex: 1 1 auto; min-height: 0; display: flex; overflow-x: auto; overflow-y: hidden; gap: calc(8 * var(--u)); padding-bottom: calc(4 * var(--u)); scroll-snap-type: x proximity; }
-.kd-compact .hub-row .hub-tile { flex: 0 0 calc(232 * var(--u)); min-height: 0; scroll-snap-align: start; }
+.kd-compact .hub-scene { flex: 1 1 0; }
+.kd-compact .hub-grid.hub-row { flex: none; display: flex; overflow-x: auto; overflow-y: hidden; gap: calc(8 * var(--u)); padding-bottom: calc(4 * var(--u)); scroll-snap-type: x proximity; }
+.kd-compact .hub-row .hub-tile { flex: 0 0 calc(250 * var(--u)); height: calc(196 * var(--u)); min-height: 0; scroll-snap-align: start; }
 .kd-compact .hub-tile-name { font-size: calc(16 * var(--u)); }
 .kd-compact .hub-tile-now, .kd-compact .hub-tile-next { font-size: calc(12.5 * var(--u)); }
 .kd-compact .hub-tile .kd-btn { min-height: calc(40 * var(--u)); }
@@ -3661,7 +3661,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.51';
+  KD.VERSION = '0.7.52';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -22851,6 +22851,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.52', date: '2026-10-11', title: 'Hearthmoor rises', notes: [
+      'Hearthmoor now stands behind its own screen: ruins and a refugee campfire at first, then forges, stalls, a chapel and lit windows as you rebuild',
+      'Every building you raise grows in the village itself, with its keeper standing out front',
+      'After an upgrade the view glides over to the building you just rebuilt'
+    ] },
     { version: '0.7.51', date: '2026-10-11', title: 'The village that grows', notes: [
       'Hearthmoor is here: a village you rebuild with the Spoils every run brings home, win or lose',
       'Eight buildings give every new run a small head start: coin, bandages, a better weapon, a blessing or a Relic to choose',
@@ -52445,7 +52450,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (st.xpToLevel2 >= 1) out.push('Start at level 2'); else if (st.xpToLevel2 > 0) out.push('Start halfway to level 2');
     if (st.blessingOffer) out.push('Choose 1 of ' + st.blessingOffer + ' blessings' + ((T().BLESSING_SCALE[st.shrine] || 1) > 1 ? ' (half again as strong)' : '') + (st.blessingRerolls ? ', one redraw' : ''));
     if (st.relicOffer) out.push('Take 1 of ' + st.relicOffer + ' Relics');
-    if (f.routeExtraAll) out.push('One more road at every road choice' + (f.routeExtra ? ', two at the first of each act' : ''));
+    if (f.routeExtraAll) out.push('More roads at every road choice');
     else if (f.routeExtra) out.push('One more road at the first choice of each act');
     if (f.hiddenFateLess) out.push('Hidden detours at ' + f.hiddenFateLess + ' less Fate');
     if (f.freeRespec) out.push('+' + plural(f.freeRespec, 'free respec point', 'free respec points') + ' every act');
@@ -52670,6 +52675,187 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   }
   V._install = install;
   install();
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/meta/48_village_scene.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var V = KD.village = KD.village || {};
+
+  /**
+   * HEARTHMOOR, the place (owner: hub, docs/HUB.md section 8). Pure: builds a plain layout of the village for a set of
+   * building levels, so the scene behind the village screen shows what has been rebuilt: ruins and rubble at level 0, the
+   * building at level 1, more of it (sheds, racks, stalls, lit windows) as it rises, banners, lamps and braziers at the top.
+   * The village as a whole grows too: a refugee camp around a campfire when nothing is built, lamps along the road, then
+   * banners on the square. The renderer side (camera, figures at the buildings, the evening mood) is src/gfx/68_env_hub.js.
+   *
+   *   V.sceneLayout(levels) -> layout (KD.gen layout schema; areaId 'hearthmoor', theme 'farmland')
+   *   V.SCENE = { w, d, plaza, camera, slots: { [buildingId]: { x, z, rot } } }
+   *   layout.hub = { npcs: [{ id, x, z, yaw, building, kind }], focus: { [buildingId]: { x, z } } }
+   */
+  var PI = Math.PI;
+  var SC = V.SCENE = {
+    w: 60, d: 52, plaza: { x: 30, z: 25, r: 8.5 },
+    camera: { eye: [30, 14, -5], at: [30, -4.5, 25] },
+    slots: {
+      smithy: { x: 11, z: 15, rot: PI / 2 }, apothecary: { x: 11, z: 29, rot: PI / 2 },
+      yard: { x: 14, z: 42, rot: PI }, shrine: { x: 25, z: 43, rot: PI }, relichouse: { x: 36, z: 43, rot: PI }, maproom: { x: 47, z: 42, rot: PI },
+      barracks: { x: 49, z: 15, rot: -PI / 2 }, market: { x: 49, z: 29, rot: -PI / 2 }
+    }
+  };
+
+  /** What each building looks like at each level: [kind, lx, lz, lrot, params, opts] in the slot's frame (front = +z, toward the square). */
+  function ruin(w, d) { return [['house', 0, 0, 0, { w: w, d: d, style: 'ruin' }], ['pile', -w / 2 + 0.6, d / 2 + 1.4, 0, { r: 0.7, style: 'rubble' }], ['log', w / 2 - 1, d / 2 + 1.5, 0.6, { len: 2 }]]; }
+  var LOOKS = {
+    smithy: function (L) {
+      if (!L) return ruin(5, 4);
+      var out = [['forge', 0, 1.2, 0, { w: 3, d: 2 }]];
+      if (L >= 2) out.push(['shed', 0, -2.3, 0, { w: 5, d: 3 }, { lit: true }]);
+      else out.push(['pile', 1.5, -1.6, 0, { r: 0.8, style: 'wood' }]);
+      if (L >= 3) out.push(['rack', -2.8, 1.0, PI / 2, { w: 2, d: 1, style: 'armor' }]);
+      if (L >= 4) { out.push(['rack', 2.8, 1.0, -PI / 2, { w: 2, d: 1, style: 'weapons' }]); out.push(['banner_pole', -2.6, 3.4, 0, { style: 'crown' }]); }
+      return out;
+    },
+    apothecary: function (L) {
+      if (!L) return ruin(6, 5);
+      var out = [];
+      if (L === 1) out.push(['shack', 0, -0.5, 0, { w: 4, d: 3, style: 'plank' }]);
+      else out.push(['house', 0, -1, 0, { w: 6, d: 5, roof: 'thatch', style: 'cottage' }, { lit: L >= 2 }]);
+      out.push(['table', 2.2, 2.6, 0, { w: 2, d: 1, style: 'alchemy' }]);
+      if (L >= 3) { out.push(['rack', -3.2, 2.8, 0, { w: 2, d: 1, style: 'bottles' }]); out.push(['bench', 0, 3.2, 0, { w: 2, d: 0.8 }]); }
+      if (L >= 4) { out.push(['crop_row', -1, 5.2, 0, { len: 5, crop: 'cabbage' }]); out.push(['lamp_post', 3.6, 4.4, 0, { style: 'wood' }]); }
+      return out;
+    },
+    yard: function (L) {
+      if (!L) return [['pile', 0, 0, 0, { r: 0.9, style: 'wood' }], ['fence', 0, 3.5, 0.15, { len: 3, style: 'rail' }]];
+      var out = [['dummy', -1.8, 0.5, 0, { style: 'straw' }], ['dummy', 1.8, 0.5, 0, { style: 'straw' }], ['fence', 0, -2.4, 0, { len: 7, style: 'rail' }]];
+      if (L >= 2) { out.push(['dummy', 0, -0.6, 0, { style: 'target' }]); out.push(['rack', 4.6, 0.2, -PI / 2, { w: 2, d: 1, style: 'weapons' }]); }
+      if (L >= 3) { out.push(['dummy', -3.6, 0.6, 0, { style: 'armor' }]); out.push(['bench', 0, 3.4, 0, { w: 2, d: 0.8 }]); out.push(['banner_pole', -3.4, 3.6, 0, { style: 'war' }]); }
+      return out;
+    },
+    shrine: function (L) {
+      if (!L) return [['standing_stone', 0, 0, 0, { h: 2.4, style: 'broken' }], ['grave', -2.2, 1, 0, { w: 1, d: 2, style: 'stone' }], ['grave', 2.2, 1, 0, { w: 1, d: 2, style: 'cross' }], ['pile', 1, 3, 0, { r: 0.7, style: 'rubble' }]];
+      var out = [];
+      if (L === 1) out.push(['shrine', 0, 0, 0, { w: 2, d: 2, fate: 'order' }]);
+      else out.push(['chapel', 0, -1.5, 0, { w: 7, d: 8 }, { lit: true }]);
+      out.push(['brazier', -2, 3.6, 0, { style: 'candles' }]);
+      if (L >= 3) out.push(['bell', -5.2, -1, 0, { w: 2, d: 2 }]);
+      if (L >= 4) out.push(['brazier', 2, 3.6, 0, { style: 'candles' }]);
+      return out;
+    },
+    relichouse: function (L) {
+      if (!L) return ruin(5, 5);
+      var out = [];
+      if (L === 1) out.push(['cart', 0, 0, 0, { w: 2, d: 3.4, style: 'loot' }], ['chest', 1.8, 2.2, 0, { w: 1, d: 1, tier: 'large' }]);
+      else out.push(['house', 0, -0.5, 0, { w: 5, d: 5, style: 'vault', roof: 'hip' }, { lit: L >= 3 }]);
+      if (L >= 2) out.push(['chest', 2, 3, 0, { w: 1, d: 1, tier: 'large' }]);
+      if (L >= 3) { out.push(['lamp_post', -2.6, 3.2, 0, { style: 'iron' }]); out.push(['lamp_post', 3.6, 3.8, 0, { style: 'iron' }]); }
+      return out;
+    },
+    maproom: function (L) {
+      if (!L) return [['tower', 0, 0, 0, { r: 2.2, h: 5, style: 'ruin' }], ['pile', 3.6, 3.4, 0, { r: 0.8, style: 'rubble' }]];
+      var out = [];
+      if (L === 1) out.push(['tent', 0, -0.5, 0, { w: 4, d: 3, style: 'merchant' }], ['table', 0, 2.4, 0, { w: 2, d: 1, style: 'map' }]);
+      else { out.push(['house', -1, -0.5, 0, { w: 5, d: 4, style: 'town', roof: 'gable' }, { lit: true }]); out.push(['table', 1.6, 2.8, 0, { w: 2, d: 1, style: 'map' }]); out.push(['sign', -3.6, 2.6, 0, { style: 'post' }]); }
+      if (L >= 3) out.push(['tower', 3.6, -1, 0, { w: 3, d: 3, h: 9, style: 'watch' }]);
+      return out;
+    },
+    barracks: function (L) {
+      if (!L) return ruin(7, 4);
+      var out = [];
+      if (L === 1) out.push(['tent', 0, -0.4, 0, { w: 4, d: 3, style: 'camp' }], ['campfire', 0, 2.8, 0, {}]);
+      else { out.push(['barracks', 0, -1.4, 0, { w: 8, d: 4.5, style: 'timber' }]); out.push(['rack', 3, 2.6, 0, { w: 2, d: 1, style: 'weapons' }]); }
+      if (L >= 3) { out.push(['banner_pole', -3.4, 2.8, 0, { style: 'crown' }]); out.push(['brazier', -1.9, 4.2, 0, { style: 'iron' }]); }
+      return out;
+    },
+    market: function (L) {
+      if (!L) return [['cart', 0, 0, 0.3, { w: 2, d: 3.4, style: 'broken' }], ['pile', 3, 3.2, 0, { r: 0.8, style: 'sacks' }]];
+      var out = [];
+      if (L === 1) out.push(['cart', 0, 0.5, 0, { w: 2, d: 3.4, style: 'merchant' }]);
+      else out.push(['stall', -1.8, 1.4, 0, { w: 3, d: 2, style: 'market' }]);
+      if (L >= 3) { out.push(['stall', 2.2, 1.4, 0, { w: 3, d: 2, style: 'crown' }]); out.push(['crate', 0.2, -0.8, 0, { size: 1 }]); out.push(['barrel', -4, -0.6, 0, { style: 'wood' }]); }
+      if (L >= 4) { out.push(['house', 0, -4.6, 0, { w: 7, d: 4, style: 'guild', roof: 'gable' }, { lit: true }]); out.push(['lamp_post', 3.8, 3.4, 0, { style: 'iron' }]); }
+      return out;
+    }
+  };
+  V.SCENE_LOOKS = LOOKS;
+  /** Where the building's keeper stands (slot frame), by building: in front, beside the door. */
+  var KEEPER = { smithy: [1.8, 2.6], apothecary: [1.2, 3.3], yard: [0.6, 2.2], shrine: [-0.8, 4.4], relichouse: [-1, 3.4], maproom: [0, 4], barracks: [-1.4, 3.6], market: [-1.8, 3.4] };
+
+  function toWorld(s, lx, lz) { var c = Math.cos(s.rot), n = Math.sin(s.rot); return [s.x + lx * c + lz * n, s.z - lx * n + lz * c]; }
+
+  /** sceneLayout(levels) -> the village as a layout. Deterministic for the levels. */
+  V.sceneLayout = function (levels) {
+    levels = levels || {};
+    var G = KD.gen, S = G.SURF, total = 0, id;
+    for (id in levels) total += levels[id] || 0;
+    var b = new G.Builder({ id: 'hearthmoor', archetype: 'village', theme: 'farmland', size: [SC.w, SC.d] }, 4242, {}, 'arena');      // 'arena': hand-placed props skip the trap-gap rule (nobody walks here)
+    b.fillSurf(S.grass);
+    var pz = SC.plaza;
+    // the square, the road in from the south (where the heroes set out) and footpaths to every building
+    b.disc(pz.x, pz.z, pz.r + 1.5, S.dirt);
+    b.disc(pz.x, pz.z, pz.r, S.road_dirt);
+    b.strip([[pz.x, 0], [pz.x, pz.z]], 4, S.road_dirt);
+    Object.keys(SC.slots).forEach(function (k) { var s = SC.slots[k]; b.strip([[s.x, s.z], [pz.x, pz.z]], 2, S.path); });
+    var hub = { npcs: [], focus: {}, total: total };
+    var add = function (kind, x, z, rot, params, extra) {
+      var p = b.add(kind, x, z, rot, params);
+      if (p && extra) for (var k in extra) p[k] = extra[k];
+      return p;
+    };
+    // the buildings
+    KD.data.villageBuildings.forEach(function (bd) {
+      var s = SC.slots[bd.id], L = Math.min(levels[bd.id] || 0, bd.levels.length);
+      if (!s) return;
+      hub.focus[bd.id] = { x: s.x, z: s.z, level: L };
+      (LOOKS[bd.id](L) || []).forEach(function (e) {
+        var w = toWorld(s, e[1], e[2]);
+        add(e[0], w[0], w[1], s.rot + (e[3] || 0), e[4], e[5]);
+      });
+      if (L > 0) {
+        var kp = KEEPER[bd.id], kw = toWorld(s, kp[0], kp[1]);
+        hub.npcs.push({ id: 'keeper_' + bd.id, x: kw[0], z: kw[1], yaw: s.rot, building: bd.id, kind: 'keeper', level: L, color: bd.color });
+      }
+    });
+    // the heart of the village: the well, and the campfire the refugees huddle round until the village is rebuilt
+    add('well', pz.x - 3.2, pz.z + 2.4, 0, {});
+    if (total < 20) add('campfire', pz.x + 2.6, pz.z - 1.2, 0, {});
+    else add('fountain', pz.x + 3, pz.z - 1.2, 0, { r: 1.8, style: 'tiered' });
+    var refugees = Math.max(1, Math.min(4, 4 - Math.floor(total / 7)));
+    var tents = [[pz.x + 6.5, pz.z - 4.5, -0.5], [pz.x - 7.4, pz.z - 4, 0.6], [pz.x + 7, pz.z + 4.6, -2.4]];
+    tents.slice(0, Math.max(0, 3 - Math.floor(total / 6))).forEach(function (t) { add('tent', t[0], t[1], t[2], { w: 3, d: 3, style: 'camp' }); });
+    for (var r = 0; r < refugees; r++) {
+      var a = r * 2.1 + 0.4;
+      hub.npcs.push({ id: 'refugee_' + r, x: pz.x + 2.6 + Math.sin(a) * 1.8, z: pz.z - 1.2 + Math.cos(a) * 1.8, yaw: a + PI, kind: 'refugee', level: 0 });
+    }
+    // the road grows lamps, the square grows banners
+    var lamps = Math.min(4, Math.floor(total / 5));
+    for (var l = 0; l < lamps; l++) {
+      var lz = 3 + l * 3.4;
+      add('lamp_post', pz.x - 2.8, lz, 0, { style: 'iron' });
+      add('lamp_post', pz.x + 2.8, lz, 0, { style: 'iron' });
+    }
+    if (total >= 10) { add('banner_pole', pz.x - 5.8, pz.z + 6.4, 0, { style: 'crown' }); add('banner_pole', pz.x + 5.8, pz.z + 6.4, 0, { style: 'lantern' }); }
+    if (total >= 18) { add('banner_pole', pz.x - 4.6, pz.z - 7.2, 0, { style: 'choir' }); add('banner_pole', pz.x + 4.6, pz.z - 7.2, 0, { style: 'crown' }); add('notice_board', pz.x - 6.6, pz.z - 1, PI / 2, { w: 2, d: 1 }); }
+    if (total >= 28) { add('statue', pz.x, pz.z + 5.2, PI, { w: 2, d: 2, style: 'king' }); }
+    if (total < 6) { add('cart', pz.x - 6.5, pz.z - 10.5, 0.4, { w: 2, d: 3.4, style: 'broken' }); add('pile', pz.x + 4.6, 7.5, 0, { r: 0.8, style: 'rubble' }); }
+    else add('cart', pz.x - 6.5, pz.z - 10.5, 0.4, { w: 2, d: 3.4, style: 'hay' });
+    // the edges: woods behind, fields and fences to the sides
+    add('grove', SC.w / 2, SC.d - 1.5, 0, { w: SC.w - 2, d: 2, species: 'oak' });
+    add('grove', 2, 27, 0, { w: 3, d: 24, species: 'oak' });
+    add('grove', SC.w - 2, 27, 0, { w: 3, d: 24, species: 'pine' });
+    [[9, 8, 0.3], [51, 8, -0.2], [21, 34, 0], [40, 35, 0]].forEach(function (t, i) { add('tree', t[0], t[1], t[2], { species: i % 3 === 0 ? 'dead' : 'oak', size: 2 + (i % 2) }); });
+    [[17, 4, 0], [43, 4, 0]].forEach(function (f) { add('fence', f[0], f[1], f[2], { len: 6, style: total >= 8 ? 'picket' : 'rail' }); });
+    b.points.spawn = { x: pz.x, z: 2.5, yaw: 0 }; b.points.exit = { x: pz.x, z: SC.d - 6, yaw: 0 }; b.points.camp = { x: pz.x, z: pz.z };
+    b.path = [[pz.x, 2.5], [pz.x, pz.z]];
+    var layout = b.finish();
+    layout.kind = 'area';
+    layout.hub = hub;
+    return layout;
+  };
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -98203,6 +98389,157 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/gfx/68_env_hub.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  if (typeof document === 'undefined') return;       // browser only
+
+  /**
+   * Hearthmoor on screen (owner: hub, docs/HUB.md section 8): the 3D village behind the village screen. The layout comes
+   * from KD.village.sceneLayout(levels) (src/meta/48_village_scene.js); this file adds the evening mood ('hearthmoor', the
+   * grim Farm Village palette at dusk, windows lit only where a building has risen far enough), the keepers standing at
+   * the rebuilt buildings and the refugees round the fire, and the camera (a slow sway over the square that glides to a
+   * building when it is upgraded). Purely visual: nothing here touches a run, a world or the simulation.
+   *
+   *   KD.hubScene.show(game, levels)   build it in place of the menu's fly-over (again after an upgrade)
+   *   KD.hubScene.focus(buildingId)    glide the camera to a building for a few seconds
+   *   KD.hubScene.hide(game)           back to the fly-over of the main menu
+   *   KD.hubScene.active               true while it is on screen
+   */
+  var HS = KD.hubScene = KD.hubScene || {};
+  var V = KD.village, E = KD.env;
+  var sin = Math.sin, cos = Math.cos, max = Math.max;
+  HS.active = false;
+  var st = { npcs: [], focus: null, focusAt: 0, t: 0, view: null, key: '' };
+
+  // ------------------------------------------------------------------ the mood: the grim farm palette at dusk
+  var LIT = { house: 1, inn: 1, chapel: 1, barn: 1, shed: 1 };
+  function copy(p, o) { var q = {}, k; for (k in p) q[k] = p[k]; for (k in o) q[k] = o[k]; return q; }
+  function glowWindows(g) {
+    var pos = g.pos, col = g.col, aux = g.aux, n = pos.length / 3;
+    if (!aux) return;
+    for (var i = 0; i < n; i++) {
+      var r0 = col[i * 3], g0 = col[i * 3 + 1], b0 = col[i * 3 + 2];
+      if (r0 > 0.2 && r0 < 0.42 && b0 > 0 && r0 / b0 > 1.9 && g0 / r0 > 0.62 && g0 / r0 < 0.86) { aux[i * 4] = max(aux[i * 4], 0.7); col[i * 3] = r0 * 1.2; }
+    }
+  }
+  function preset() {
+    if (E.mood.PRESETS.hearthmoor) return E.mood.PRESETS.hearthmoor;
+    var G = E.mood.PRESETS.grim_farm;
+    if (!G) return null;
+    var env = copy(G.env, {
+      sunDir: [0.35, 0.32, 0.88], sunColor: [1.0, 0.66, 0.42], sunIntensity: 0.92,
+      skyColor: [0.36, 0.36, 0.62], skyIntensity: 0.42, zenith: [0.09, 0.08, 0.17], horizon: [0.62, 0.42, 0.36],
+      fogDensity: 0.0075, fogStart: 18, mist: 0.18, mistStart: 24, mistColor: [0.55, 0.46, 0.46],
+      exposure: 1.04, vignette: 0.52, gradeHigh: [1.06, 0.98, 0.86]
+    });
+    return E.mood.register('hearthmoor', {
+      env: env, palette: G.palette, look: G.look, piece: null,
+      // windows glow only where the layout says the building has risen far enough (piece.lit), not by chance
+      post: function (p, g, ctx) {
+        G.post(LIT[p.kind] ? copy(p, { kind: 'hub_' + p.kind }) : p, g, ctx);
+        if (p.lit && LIT[p.kind]) glowWindows(g);
+      },
+      dress: G.dress, runtime: G.runtime,
+      life: copy(G.life || {}, { critters: { birds: 0, crows: 0.5, moths: 1, rats: 0.3, frogs: 0.3, butterflies: 0 } })
+    });
+  }
+
+  // ------------------------------------------------------------------ the people
+  var KEEPER_LOOK = {
+    smithy: { build: 'heavy', head: 'bare', armor: 'leather', weapon: 'hammer', extras: ['apron'] },
+    apothecary: { build: 'normal', head: 'hood', armor: 'cloth', weapon: 'none', extras: ['apron', 'backpack'] },
+    yard: { build: 'heavy', head: 'helm', armor: 'mail', weapon: 'sword', offhand: 'shield', extras: ['pauldrons'] },
+    shrine: { build: 'normal', head: 'hood', armor: 'robe', weapon: 'staff', extras: [] },
+    relichouse: { build: 'thin', head: 'hat', armor: 'robe', weapon: 'none', extras: [] },
+    maproom: { build: 'normal', head: 'hat', armor: 'cloth', weapon: 'none', extras: ['backpack'] },
+    barracks: { build: 'heavy', head: 'helm', armor: 'mail', weapon: 'spear', offhand: 'shield', extras: ['pauldrons'] },
+    market: { build: 'normal', head: 'hat', armor: 'cloth', weapon: 'none', extras: ['backpack', 'apron'] }
+  };
+  function figure(n, i) {
+    var M = KD.models;
+    if (!(M && M.Visual && M.has && M.has('humanoid') && KD.gfx && KD.gfx.Actor)) return null;
+    var look = n.kind === 'keeper' ? (KEEPER_LOOK[n.building] || {}) : { build: i % 2 ? 'thin' : 'normal', head: 'hood', armor: 'cloth', weapon: 'none', extras: i % 2 ? [] : ['backpack'] };
+    var main = n.kind === 'keeper' ? n.color : ['#5a4c3e', '#4a4a52', '#5e4a3a', '#3e4a40'][i % 4];
+    var spec = { plan: 'humanoid', species: 'human', build: look.build || 'normal', head: look.head || 'bare', armor: look.armor || 'cloth',
+      weapon: look.weapon || 'none', offhand: look.offhand || 'none', colors: { main: main, alt: '#4a3c30', skin: '#d8ad86', metal: '#8f98a6' },
+      extras: look.extras || [], seed: KD.util.hash('hub:' + n.id) };
+    var e = { id: -5000 - i, kind: 'npc', team: 2, defId: 'npc_hub', name: n.id, model: spec, x: n.x, z: n.z, y: 0, yaw: n.yaw, yaw0: n.yaw, r: 0.45, h: 1.8, vx: 0, vz: 0, speed: 0,
+      scale: n.kind === 'refugee' ? 0.94 : 1, level: 1, tier: 'normal', role: 'support', hp: 1, hpMax: 1, dead: false, hidden: false, removed: false, broken: 0, guarding: false,
+      stealthed: false, statuses: [], anim: { clip: 'idle', t: i * 0.9, speed: n.kind === 'refugee' ? 0.7 : 1 }, act: { state: 'idle', skill: null, t: 0, dur: 0 }, fx: { flash: 0, alpha: 1, tint: null } };
+    try { return { e: e, v: new M.Visual(e), n: n }; } catch (err) { return null; }
+  }
+
+  // ------------------------------------------------------------------ the camera
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  var FOCUS_S = 4.2;
+  function now() { return root.performance && root.performance.now ? root.performance.now() : Date.now(); }
+  function view(cam, t, dt) {
+    var C = V.SCENE.camera, F = KD.flow, compact = F && F.isCompact && F.isCompact();
+    st.t += dt || 0;
+    var left = st.focus ? FOCUS_S - (now() - st.focusAt) / 1000 : 0;      // wall-clock: a slow frame never stretches the glide
+    var w = left > 0 ? Math.min(1, left / 0.8, (FOCUS_S - left) / 1.2) : 0;
+    w = w * w * (3 - 2 * w);
+    var sway = sin(st.t * 0.07) * 4.5, bob = sin(st.t * 0.11) * 0.6;
+    var ex = C.eye[0] + sway, ey = C.eye[1] + bob, ez = C.eye[2];
+    var ax = C.at[0] + sway * 0.3, ay = C.at[1] + (compact ? -1.5 : 0), az = C.at[2];
+    if (w > 0) {
+      var f = st.focus;
+      // closer and turned toward the building, still looking a little below it so it stands above the tiles
+      ex = lerp(ex, f.x * 0.6 + C.eye[0] * 0.4, w); ez = lerp(ez, f.z - 18, w); ey = lerp(ey, 11, w);
+      ax = lerp(ax, f.x * 0.85 + C.at[0] * 0.15, w); az = lerp(az, f.z + 2, w); ay = lerp(ay, -4.5 + (compact ? -1.5 : 0), w);
+    }
+    cam.lookAt([ex, ey, ez], [ax, ay, az]);
+  }
+
+  // ------------------------------------------------------------------ show / hide
+  HS.show = function (game, levels) {
+    if (!game || !game.renderer || !V || !V.sceneLayout || !E || !E.build) return false;
+    try {
+      var key = JSON.stringify(levels || {});
+      if (st.key === key && game.layout === HS.layout && game.backdropView === view && game.env) return true;
+      if (game.teardownWorld) game.teardownWorld();
+      preset();
+      var layout = V.sceneLayout(levels || {});
+      game.layout = layout; game.backdrop = true;
+      var env = E.build(layout, game.renderer, { backdrop: true, game: game, mood: 'hearthmoor' });
+      st.npcs = (layout.hub.npcs || []).map(figure).filter(Boolean);
+      st.key = key;
+      game.env = {
+        __proto__: env,
+        update: function (dt, world, r) {
+          if (env.update) env.update(dt, world, r);
+          for (var i = 0; i < st.npcs.length; i++) {
+            var np = st.npcs[i]; np.e.anim.t += dt;
+            try { np.v.update(np.e, dt); np.v.submit(r); } catch (err) { /* a figure is never worth a frame */ }
+          }
+        },
+        dispose: function () { st.npcs.forEach(function (np) { try { np.v.dispose(); } catch (err) { /* ignore */ } }); st.npcs = []; if (env.dispose) env.dispose(); }
+      };
+      HS.env = env;
+      if (game.camera && game.camera.setBlocker) game.camera.setBlocker(null);
+      game.renderer.env.seeRadius = 0;
+      game.backdropView = view;
+      HS.active = true;
+      HS.layout = layout;
+      return true;
+    } catch (e) { console.error('hub scene failed', e); HS.hide(game); return false; }
+  };
+  HS.focus = function (id) {
+    var f = HS.layout && HS.layout.hub && HS.layout.hub.focus[id];
+    if (!f) return;
+    st.focus = f; st.focusAt = now();
+  };
+  HS.hide = function (game) {
+    if (!(game && game.backdropView === view)) { HS.active = false; return; }
+    HS.active = false; st.key = ''; st.focus = null;
+    if (game) { game.backdropView = null; if (game.state === 'menu' && game.loadBackdrop) game.loadBackdrop(); }
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/gfx/70_assets.js
 (function (root) {
   'use strict';
@@ -113079,9 +113416,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var go = KD.ui.button('New Run', { kind: 'primary', icon: 'sword', className: 'flow-big-btn', onClick: function () { unscene(game); F.menu.openNewRun(game); } });
     s.appendChild(el('div.hub-shade'));
     s.appendChild(el('div.hub-top', [
-      el('div.hub-titles', [el('div.flow-head-title.hub-title', { text: V.name() }), el('div.flow-head-sub', { text: compact ? 'The village that grows' : 'The village that grows with every run' })]),
+      el('div.hub-titles', [el('div.flow-head-title.hub-title', { text: V.name() }), el('div.flow-head-sub', { text: compact ? 'The village that grows' : 'The village that grows with every run' }),
+        compact ? null : carryPanel(a)]),
       el('div.flow-grow'),
-      compact ? null : carryPanel(a),
       plate
     ]));
     s.appendChild(el('div.flow-grow.hub-scene', { attrs: { 'aria-hidden': 'true' } }));
@@ -122559,6 +122896,7 @@ P['gravecaller_tripo'] = 'Z2xURgIAAACoBQYAaBkAAEpTT057ImFzc2V0Ijp7InZlcnNpb24iOi
 
   // ------------------------------------------------------------------ menu backdrop
   G.loadBackdrop = function () {
+    G.backdropView = null;      // [hub] the fly-over has its own camera again
     try {
       teardownWorld();
       var layout = KD.gen.area('farm_village', 7, {});
@@ -122649,7 +122987,8 @@ P['gravecaller_tripo'] = 'Z2xURgIAAACoBQYAaBkAAEpTT057ImFzc2V0Ijp7InZlcnNpb24iOi
         backdropT += dt;
         if (G.layout) {
           var L = G.layout, cx = L.w / 2, cz = L.d * 0.42, ang = backdropT * 0.03 + 0.8;
-          cam.lookAt([cx + Math.sin(ang) * 46, 17, cz + Math.cos(ang) * 46], [cx, 2.5, cz]);
+          if (G.backdropView) G.backdropView(cam, backdropT, dt);      // [hub] Hearthmoor's own camera (src/gfx/68_env_hub.js)
+          else cam.lookAt([cx + Math.sin(ang) * 46, 17, cz + Math.cos(ang) * 46], [cx, 2.5, cz]);
           r.begin(cam);
           if (G.env && G.env.update) G.env.update(dt, null, r);
           r.particles.update(dt);
