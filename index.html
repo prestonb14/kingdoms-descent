@@ -3851,7 +3851,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.58';
+  KD.VERSION = '0.7.59';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -23497,6 +23497,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.59', date: '2026-10-11', title: 'A day on the road, and a theme', notes: [
+      'The road now runs through one whole day: dawn at the farm, golden dusk in the city, night at the castle',
+      'A new main theme plays from the title screen to the throne, darker each act',
+      'It rings out bright when you win and breaks apart when you fall',
+      'Both can be switched off in Settings'
+    ] },
     { version: '0.7.57', date: '2026-10-11', title: 'The castle on the horizon', notes: [
       'The Hollow King\'s castle now waits on the horizon, a little closer every act',
       'The road shows a fallen kingdom: abandoned carts, torn royal banners and dead crows, later burnt wagons, toppled statues and fallen soldiers',
@@ -91438,6 +91444,247 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/gfx/58_env_tod.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var E = KD.env = KD.env || {};
+
+  /**
+   * [w8 day] KD.env.tod: TIME OF DAY along a run (docs/ENV.md "Time of day"). A run walks through one day:
+   *
+   *   slot 1            Farm Village            dawn
+   *   slots 2-4         Act 1                   morning to midday (the Crossroads)
+   *   slots 5-7         Act 2                   afternoon
+   *   slots 8-11        Act 3                   golden dusk, the City Gates at the last light
+   *   slots 12-16       Act 4                   night at the castle
+   *
+   * The hour comes from the area's road slot (run.area.slot), never from the real clock, so every player of a shared
+   * run sees the same sky. It is a MODIFIER on top of the area's own mood preset: tints multiply the preset's colours,
+   * the sun keeps its side of the sky and only rises or sinks, and each area has a weight (0 = pinned, its own light
+   * stays as it is: the moonlit Dark Forest, the cellars and halls of the castle). Purely visual: nothing here is read
+   * by the simulation, nothing uses a sim RNG.
+   *
+   *   tod.enabled() / tod.set(on)     the "Time of day changes" setting (Graphics > Atmosphere), localStorage kd.tod
+   *   tod.hourFor(slot)               the hour of a road slot (5.8 dawn .. 24 midnight)
+   *   tod.sample(hour)                the blended phase at that hour: tints, sun height, light and critter multipliers
+   *   tod.state(layout, opts, mood)   the state for an area build or null (off, no run, menu backdrop, weight 0)
+   *   tod.theme(theme, st)            a theme copy with the env shifted         tod.life(def, st)  night critters, glow
+   *   tod.lights(out, st)             lit windows, torches and lanterns brighter at dusk and night
+   * Query: ?tod=0|1 switches it for a page, ?todslot=N forces a slot (screenshots).
+   * Hooks: 50_env_core.js E.assemble (three marked lines). Tests: node tools/test.js env_tod.
+   */
+  var T = E.tod = E.tod || {};
+  var U = KD.util;
+  var cfg = KD.config = KD.config || {}, art = cfg.art = cfg.art || {};
+  T.KEY = 'kd.tod';
+  if (art.tod === undefined) art.tod = true;
+  T.forceSlot = null;
+  (function () {
+    try {
+      var q = root.location && root.location.search ? root.location.search : '';
+      var m = /[?&]tod=(\d)/.exec(q);
+      if (m) { art.tod = m[1] !== '0'; T.fromQuery = true; }
+      else { var s = root.localStorage ? root.localStorage.getItem(T.KEY) : null; if (s === '0' || s === '1') art.tod = s === '1'; }
+      var fs = /[?&]todslot=(\d+)/.exec(q);
+      if (fs) T.forceSlot = +fs[1];
+    } catch (e) { /* storage blocked: the default stays */ }
+  })();
+  T.enabled = function () { return art.tod !== false; };
+  T.events = KD.Emitter ? new KD.Emitter() : null;
+  /** Switch it on or off, remember it, relight the area on screen. */
+  T.set = function (on, o) {
+    o = o || {};
+    on = !!on;
+    var changed = (art.tod !== false) !== on;
+    art.tod = on;
+    if (o.save !== false) { try { if (root.localStorage) root.localStorage.setItem(T.KEY, on ? '1' : '0'); } catch (e) { /* storage blocked */ } }
+    if (changed && o.restyle !== false) {
+      var g = KD.game, h = g && g.env;
+      if (h && h.restyle) { try { h.restyle(); } catch (err) { if (typeof console !== 'undefined') console.error('KD.env.tod: restyle failed', err); } }
+    }
+    if (T.events) T.events.emit('change', { on: on });
+    return on;
+  };
+  /** The "Time of day changes" row (Settings > Graphics > Atmosphere). */
+  T.settingsRow = function (row, F) {
+    if (!row || !F || !F.segmented) return null;
+    return row('Time of day changes', F.segmented([{ id: 'on', label: 'On' }, { id: 'off', label: 'Off' }], T.enabled() ? 'on' : 'off', function (id) { T.set(id === 'on'); }), 'dawn to night along the road');
+  };
+  T.reset = function () { if (!T.enabled()) T.set(true); };
+
+  // ------------------------------------------------------------------ the day
+  /** Road slot -> hour of the day. Hidden detours keep the slot they branch from. */
+  T.HOURS = { 1: 5.8, 2: 8.4, 3: 10.4, 4: 12.4, 5: 14.2, 6: 15.2, 7: 16.2, 8: 17.3, 9: 17.9, 10: 18.4, 11: 19.1, 12: 21.2, 13: 22, 14: 22.8, 15: 23.4, 16: 24 };
+  T.hourFor = function (slot) {
+    slot = Math.round(+slot || 1);
+    if (slot < 1) slot = 1; if (slot > 16) slot = 16;
+    return T.HOURS[slot];
+  };
+  T.phaseName = function (h) { return h < 7.5 ? 'dawn' : h < 11.5 ? 'morning' : h < 14 ? 'midday' : h < 16.8 ? 'afternoon' : h < 20 ? 'dusk' : 'night'; };
+  /**
+   * Key phases. Tints multiply the area preset's colours (1 = unchanged): sun (key light colour), sky (ambient from
+   * above), gnd (bounce), zen / hor (sky dome), mist (low mist and fog colour). sunI, skyI, gndI multiply intensities;
+   * elev is the sun (or moon) height 0..1, az turns the sun along the sky a little (radians); fog multiplies the fog
+   * density, exp adds to the exposure, sat multiplies the saturation; lights / lightR scale point lights, glow the
+   * halos of the living world; air / critters add densities (night: fireflies and moths) or scale (birds).
+   */
+  var W1 = [1, 1, 1];
+  T.PHASES = [
+    { h: 5.8, name: 'dawn', sun: [1.0, 0.8, 0.74], sunI: 0.84, sky: [0.94, 0.88, 1.06], skyI: 0.96, gnd: [0.95, 0.9, 1], gndI: 0.95, zen: [0.82, 0.72, 1.0], hor: [1.18, 0.92, 0.98],
+      mist: [1.06, 0.98, 1.06], elev: 0.2, az: -0.55, fog: 1.25, exp: 0.02, sat: 0.95, glowS: 0.85, lights: 1.2, lightR: 1.05, glow: 1.15, clouds: 1,
+      air: { motes: 0.25 }, critters: { birds: 0.3 }, scale: {} },
+    { h: 9.5, name: 'morning', sun: [1.0, 0.97, 0.92], sunI: 1.0, sky: [0.98, 1.0, 1.04], skyI: 1, gnd: W1, gndI: 1, zen: [0.96, 1.0, 1.05], hor: [1.0, 1.0, 1.02],
+      mist: W1, elev: 0.55, az: -0.25, fog: 1.05, exp: 0, sat: 1, glowS: 1, lights: 0.85, lightR: 1, glow: 0.85, clouds: 1, air: {}, critters: {}, scale: {} },
+    { h: 12.5, name: 'midday', sun: [1.0, 1.0, 0.98], sunI: 1.06, sky: W1, skyI: 1.02, gnd: W1, gndI: 1.02, zen: [0.98, 1.0, 1.04], hor: W1,
+      mist: W1, elev: 0.84, az: 0, fog: 0.95, exp: 0, sat: 1.02, glowS: 1, lights: 0.75, lightR: 1, glow: 0.8, clouds: 1, air: {}, critters: {}, scale: {} },
+    { h: 15.5, name: 'afternoon', sun: [1.0, 0.93, 0.82], sunI: 1.02, sky: [1.0, 0.97, 0.95], skyI: 1, gnd: [1.03, 0.98, 0.92], gndI: 1, zen: [0.98, 0.96, 0.98], hor: [1.06, 0.98, 0.9],
+      mist: [1.03, 1.0, 0.96], elev: 0.5, az: 0.25, fog: 1, exp: 0, sat: 1.03, glowS: 1.05, lights: 0.85, lightR: 1, glow: 0.9, clouds: 1, air: {}, critters: {}, scale: {} },
+    { h: 18.2, name: 'dusk', sun: [1.0, 0.7, 0.44], sunI: 0.94, sky: [0.96, 0.84, 0.9], skyI: 0.94, gnd: [1.05, 0.88, 0.8], gndI: 0.92, zen: [0.78, 0.6, 0.92], hor: [1.3, 0.86, 0.62],
+      mist: [1.12, 0.94, 0.86], elev: 0.2, az: 0.55, fog: 1.1, exp: 0.02, sat: 1.04, glowS: 1.35, lights: 1.35, lightR: 1.1, glow: 1.3, clouds: 1,
+      air: { fireflies: 0.15 }, critters: { moths: 0.35 }, scale: {} },
+    { h: 21.6, name: 'night', sun: [0.6, 0.74, 1.2], sunI: 0.66, sky: [0.66, 0.77, 1.2], skyI: 0.92, gnd: [0.62, 0.66, 0.84], gndI: 0.8, zen: [0.34, 0.4, 0.62], hor: [0.42, 0.5, 0.76],
+      mist: [0.62, 0.7, 0.96], elev: 0.62, az: 0.2, fog: 1.0, exp: 0.08, sat: 0.84, glowS: 0.55, lights: 1.75, lightR: 1.22, glow: 1.6, clouds: 0,
+      air: { fireflies: 0.6, pollen: -1 }, critters: { moths: 0.7 }, scale: { birds: 0.15, butterflies: 0 } },
+    { h: 24.5, name: 'midnight', sun: [0.56, 0.72, 1.22], sunI: 0.62, sky: [0.62, 0.74, 1.22], skyI: 0.9, gnd: [0.6, 0.64, 0.84], gndI: 0.78, zen: [0.3, 0.36, 0.58], hor: [0.38, 0.46, 0.74],
+      mist: [0.58, 0.66, 0.96], elev: 0.66, az: 0.15, fog: 1.0, exp: 0.09, sat: 0.82, glowS: 0.5, lights: 1.85, lightR: 1.25, glow: 1.7, clouds: 0,
+      air: { fireflies: 0.7, pollen: -1 }, critters: { moths: 0.8 }, scale: { birds: 0.1, butterflies: 0 } }
+  ];
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  function lerp3(a, b, t) { return [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)]; }
+  function blendMap(a, b, t, base) {
+    var out = {}, k;
+    for (k in a) out[k] = lerp(a[k], b[k] !== undefined ? b[k] : base, t);
+    for (k in b) if (out[k] === undefined) out[k] = lerp(base, b[k], t);
+    return out;
+  }
+  /** The phase at an hour, blended between the two key phases around it. */
+  T.sample = function (h) {
+    var P = T.PHASES, i = 0;
+    h = +h || 12;
+    if (h <= P[0].h) return U.assign({ hour: h, name: P[0].name }, P[0]);
+    while (i < P.length - 2 && h > P[i + 1].h) i++;
+    var a = P[i], b = P[i + 1], t = Math.max(0, Math.min(1, (h - a.h) / (b.h - a.h)));
+    t = t * t * (3 - 2 * t);
+    var o = { hour: h, name: T.phaseName(h) };
+    ['sun', 'sky', 'gnd', 'zen', 'hor', 'mist'].forEach(function (k) { o[k] = lerp3(a[k], b[k], t); });
+    ['sunI', 'skyI', 'gndI', 'elev', 'az', 'fog', 'exp', 'sat', 'glowS', 'lights', 'lightR', 'glow', 'clouds'].forEach(function (k) { o[k] = lerp(a[k], b[k], t); });
+    o.air = blendMap(a.air, b.air, t, 0); o.critters = blendMap(a.critters, b.critters, t, 0); o.scale = blendMap(a.scale, b.scale, t, 1);
+    return o;
+  };
+
+  /**
+   * How much each area follows the clock. w: weight of the sky and the sun (0 = pinned to its own light); lw: weight of
+   * the lights and critters (default = w); indoor: no sky critters (fireflies, birds). Areas not listed follow fully
+   * (T.DEFAULT_W). Strong identities are pinned or limited.
+   */
+  T.DEFAULT_W = 0.68;
+  T.AREAS = {
+    farm_village: { w: 0.62 },
+    dark_forest: { w: 0, lw: 0.4 },                 // the moonlit forest stays night whatever the hour
+    mire_swamp: { w: 0.55 },
+    bandit_camp: { w: 0.55 },                       // its own warm sunset keeps a voice
+    frozen_outpost: { w: 0.45 },
+    rooftops: { w: 0.4 },                           // a dusk place already
+    city_gates: { w: 0.6 },
+    sewers: { w: 0, lw: 0.35, indoor: true },
+    courtyard: { w: 0.82 }, towers: { w: 0.82 },    // the castle under the night sky
+    armory: { w: 0.1, lw: 0.45, indoor: true }, library: { w: 0.1, lw: 0.45, indoor: true }, chapel: { w: 0.12, lw: 0.45, indoor: true },
+    dungeons: { w: 0, lw: 0.3, indoor: true }, throne_room: { w: 0, lw: 0.3, indoor: true },
+    ruined_abbey: { w: 0.55 }, bone_fair: { w: 0.3 }, war_camp: { w: 0.55 }
+  };
+
+  /** The state for one area build, or null. opts.tod: false = off, a number = that hour (tools). */
+  T.state = function (layout, opts) {
+    opts = opts || {};
+    if (!layout || opts.tod === false || opts.backdrop) return null;
+    var hour = null;
+    if (typeof opts.tod === 'number') hour = opts.tod;
+    else {
+      if (!T.enabled()) return null;
+      var run = opts.run || (opts.game && opts.game.run) || null, slot = T.forceSlot;
+      if (slot == null) slot = run && run.area && run.area.areaId === layout.areaId ? run.area.slot : null;
+      if (slot == null) return null;
+      hour = T.hourFor(slot);
+    }
+    var a = T.AREAS[layout.areaId] || {}, w = a.w !== undefined ? a.w : T.DEFAULT_W, lw = a.lw !== undefined ? a.lw : w;
+    if (w <= 0 && lw <= 0) return null;
+    var ph = T.sample(hour);
+    return { hour: hour, name: ph.name, phase: ph, w: w, lw: lw, indoor: !!a.indoor, areaId: layout.areaId };
+  };
+
+  function tint(c, k, w) { return [c[0] * lerp(1, k[0], w), c[1] * lerp(1, k[1], w), c[2] * lerp(1, k[2], w)]; }
+  function col(v, fb) { if (Array.isArray(v)) return v.slice(0, 3); if (typeof v === 'string' && v[0] === '#' && KD.gfx && KD.gfx.color) return KD.gfx.color._get(v).slice(0, 3); return fb.slice(); }
+  // the renderer's own defaults (12_renderer.js) for a preset that leaves a field out
+  var DEF = { sunDir: [0.48, 0.74, 0.47], sunColor: [1.0, 0.92, 0.76], sunIntensity: 1.4, skyColor: [0.66, 0.78, 0.98], skyIntensity: 0.52, groundColor: [0.72, 0.62, 0.46], groundIntensity: 0.48,
+    zenith: [0.20, 0.47, 0.90], horizon: [0.72, 0.86, 0.97], fogDensity: 0.0052, sunGlow: 1.0, exposure: 1.0, saturation: 1.1, mistColor: [0.6, 0.6, 0.66], clouds: true };
+  T.DEF = DEF;
+  /** Readability floor at night: the ambient never drops under this share of the area's own (phones, telegraphs). */
+  T.AMBIENT_FLOOR = 0.82;
+
+  /** A theme copy whose env carries the hour. */
+  T.theme = function (theme, st) {
+    if (!theme || !st || st.w <= 0) return theme;
+    var e0 = theme.env || {}, e = U.assign({}, e0), p = st.phase, w = st.w, k;
+    function num(key) { return typeof e0[key] === 'number' ? e0[key] : DEF[key]; }
+    e.sunColor = tint(col(e0.sunColor, DEF.sunColor), p.sun, w);
+    e.sunIntensity = num('sunIntensity') * lerp(1, p.sunI, w);
+    e.skyColor = tint(col(e0.skyColor, DEF.skyColor), p.sky, w);
+    e.skyIntensity = num('skyIntensity') * Math.max(T.AMBIENT_FLOOR, lerp(1, p.skyI, w));
+    e.groundColor = tint(col(e0.groundColor, DEF.groundColor), p.gnd, w);
+    e.groundIntensity = num('groundIntensity') * Math.max(T.AMBIENT_FLOOR, lerp(1, p.gndI, w));
+    e.zenith = tint(col(e0.zenith, DEF.zenith), p.zen, w);
+    e.horizon = tint(col(e0.horizon, DEF.horizon), p.hor, w);
+    e.fogDensity = num('fogDensity') * lerp(1, p.fog, w);
+    e.sunGlow = num('sunGlow') * lerp(1, p.glowS, w);
+    e.exposure = num('exposure') + p.exp * w;
+    e.saturation = num('saturation') * lerp(1, p.sat, w);
+    if (e0.mistColor || e0.mist) e.mistColor = tint(col(e0.mistColor, DEF.mistColor), p.mist, w);
+    // the sun keeps its side of the sky (the area's shadows stay designed) and rises or sinks; it turns a little with the day
+    var sd = col(e0.sunDir, DEF.sunDir), len = Math.sqrt(sd[0] * sd[0] + sd[1] * sd[1] + sd[2] * sd[2]) || 1;
+    sd = [sd[0] / len, sd[1] / len, sd[2] / len];
+    var el0 = Math.asin(Math.max(-1, Math.min(1, sd[1]))), az0 = Math.atan2(sd[0], sd[2]);
+    var el = lerp(el0, Math.asin(Math.max(0.12, Math.min(0.95, p.elev))), w), az = az0 + p.az * w;
+    el = Math.max(0.16, el);                       // never a grazing sun: shadows would cross the whole screen
+    e.sunDir = [Math.cos(el) * Math.sin(az), Math.sin(el), Math.cos(el) * Math.cos(az)];
+    // white clouds under a night sky look wrong: they go with the light
+    var cl = e0.clouds !== undefined ? e0.clouds : DEF.clouds;
+    if (cl && lerp(1, p.clouds, w) < 0.55) e.clouds = false;
+    for (k in e) if (Array.isArray(e[k])) e[k] = e[k].map(function (v) { return Math.round(v * 10000) / 10000; });
+    var t = U.assign({}, theme);
+    t.env = e; t.tod = { hour: st.hour, name: st.name, w: w };
+    return t;
+  };
+
+  /** Night critters and brighter halos (KD.env.life def, already resolved). */
+  T.life = function (d, st) {
+    if (!d || !st || st.lw <= 0) return d;
+    var p = st.phase, lw = st.lw, o = U.assign({}, d), k;
+    o.air = U.assign({}, d.air || {}); o.critters = U.assign({}, d.critters || {});
+    o.glow = Math.min(2, (typeof d.glow === 'number' ? d.glow : 1) * lerp(1, p.glow, lw));
+    for (k in p.air) {
+      if (st.indoor && k === 'fireflies') continue;
+      o.air[k] = Math.max(0, Math.min(3, (o.air[k] || 0) + p.air[k] * lw * (p.air[k] < 0 ? (o.air[k] || 0) : 1)));
+    }
+    for (k in p.critters) o.critters[k] = Math.max(0, Math.min(3, (o.critters[k] || 0) + p.critters[k] * lw));
+    for (k in p.scale) if (o.critters[k] !== undefined && !st.indoor) o.critters[k] = Math.max(0, o.critters[k] * lerp(1, p.scale[k], lw));
+    return o;
+  };
+
+  /** Brighter lights at dusk and night, softer at midday (the area's own lights, before they are added). */
+  T.lights = function (out, st) {
+    if (!out || !st || st.lw <= 0 || !out.lights) return;
+    var p = st.phase, ki = lerp(1, p.lights, st.lw), kr = lerp(1, p.lightR, st.lw);
+    out.lights = out.lights.map(function (l) {
+      // the defaults of 54_env_dynamic.js for a light that leaves them out (a fire flickers and burns a bit brighter)
+      var i0 = l.intensity || (l.flicker !== undefined ? (l.flicker >= 0.5 ? 1.15 : 0.85) : 1);
+      return U.assign({}, l, { intensity: i0 * ki, r: (l.r || 7) * kr });
+    });
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/gfx/60_env_arch.js
 (function (root) {
   'use strict';
@@ -103316,6 +103563,200 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   MU.Player = Player;
   /** The live player (or null before audio unlocks). */
   SC.live = function () { var s = A._state; return s && s.player && s.player.info ? s.player : null; };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/audio/21_music_theme.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var A = KD.audio = KD.audio || {};
+
+  /**
+   * [w8 day] The MAIN THEME of Kingdom's Descent: one short melody (a leitmotif) that comes back all through the
+   * adaptive score of 20_music_w8.js (docs/AUDIO.md section 5c). It is woven in through the score's own structure:
+   * a phrase kind 'L' (the theme, in the playing theme's key, instruments and tempo) that answers the first A phrase
+   * of a cycle, the title theme's motif, and the two stings. Nothing of the score file is edited.
+   *
+   *   The melody (scale degrees, 0 = the tonic):  0 . 4 . . 3 | 2 . 1 2 0 .   "up a fifth, then home by steps"
+   *   menu (title, Hearthmoor)  the full statement on the flute, and the title theme's own motif IS the theme
+   *   camp                      warm, on the lute, in the camp's major-ish Mixolydian
+   *   act 1                     the full statement on the flute, the answer climbs to the octave (D Dorian)
+   *   act 2                     sung by a solo voice, lower than the flute, the answer falls away (E Aeolian)
+   *   act 3                     half speed on a low lute (A Dorian)
+   *   act 4                     half speed, a low voice in C Phrygian (the flat second): the darkest
+   *   victory                   a bright D major statement over the sting's chord (the area's music dips under it)
+   *   death                     the flute starts the theme and breaks off on a flat, unresolved note; the lament
+   *                             after it sings the broken head
+   *
+   *   score.leitOn() / score.setLeit(on)   the "Main theme in music" setting (Audio), localStorage kd.mainTheme
+   *   score.LEIT                           per theme: lead instrument, variant, octave
+   *   score.leitMelody(themeId)            the 4 bars of the theme for that theme (tools, tests)
+   * Off: the themes, forms and stings are exactly the score's own.
+   */
+  var SC = A.score;
+  if (!SC || !SC.Composer || !SC.THEMES) return;
+  var THEMES = SC.THEMES, Comp = SC.Composer, KEY = 'kd.mainTheme', on = true;
+  function store() { try { return root.localStorage || null; } catch (e) { return null; } }
+  (function () {
+    try {
+      var q = root.location && root.location.search ? /[?&]maintheme=(\d)/.exec(root.location.search) : null;
+      if (q) { on = q[1] !== '0'; return; }
+      var s = store(), v = s && s.getItem(KEY);
+      if (v === '0') on = false;
+    } catch (e) { /* storage blocked */ }
+  })();
+  SC.leitOn = function () { return on; };
+  /** Switch the main theme on or off (o.save false: not remembered). It is heard from the next cycle of the music. */
+  SC.setLeit = function (v, o) {
+    on = !!v;
+    if (!o || o.save !== false) { try { var s = store(); if (s) s.setItem(KEY, on ? '1' : '0'); } catch (e) { /* storage blocked */ } }
+    return on;
+  };
+  /** The "Main theme in music" row (Settings > Audio > Soundtrack). */
+  SC.leitRow = function (row, F) {
+    if (!row || !F || !F.segmented) return null;
+    return row('Main theme in music', F.segmented([{ id: 'on', label: 'On' }, { id: 'off', label: 'Off' }], on ? 'on' : 'off', function (id) { SC.setLeit(id === 'on'); }), 'one melody from the title to the throne');
+  };
+
+  // ---------------------------------------------------------------- the melody, [step, length, degree] per bar
+  var MEL = {
+    6: {
+      head: [[[0, 2, 0], [2, 3, 4], [5, 1, 3]], [[0, 2, 2], [2, 1, 1], [3, 1, 2], [4, 2, 0]]],
+      rise: [[[0, 2, 2], [2, 1, 4], [3, 3, 7]], [[0, 2, 6], [2, 1, 5], [3, 3, 4]]],
+      fall: [[[0, 2, 1], [2, 1, 2], [3, 3, -1]], [[0, 2, 0], [2, 1, -1], [3, 3, -3]]],
+      broken: [[[0, 3, 0], [3, 3, 4]], [[0, 4, 3], [4, 2, 2]]]
+    },
+    8: {
+      head: [[[0, 2, 0], [2, 4, 4], [6, 2, 3]], [[0, 3, 2], [3, 1, 1], [4, 1, 2], [5, 3, 0]]],
+      rise: [[[0, 3, 2], [3, 1, 4], [4, 4, 7]], [[0, 3, 6], [3, 1, 5], [4, 4, 4]]],
+      fall: [[[0, 3, 1], [3, 1, 2], [4, 4, -1]], [[0, 3, 0], [3, 1, -1], [4, 4, -3]]],
+      broken: [[[0, 4, 0], [4, 4, 4]], [[0, 5, 3], [5, 3, 2]]]
+    }
+  };
+  SC.LEIT_MEL = MEL;
+  /**
+   * Per theme. lead: instrument; form: 'rise' (head + an answer up to the octave), 'fall' (head + an answer that sinks),
+   * 'slow' (the head at half speed over four bars); oct: lead octave (lower = darker); prog: the chords under it;
+   * motif: the theme's own two-bar motif becomes the head ('head') or the broken head ('broken') while the theme is on;
+   * insert: the L phrase follows the first A of a cycle ('replace': takes its place; false: motif only).
+   */
+  var LEIT = SC.LEIT = {
+    menu: { lead: 'flute', form: 'rise', prog: [0, 5, 0, 4], motif: 'head', insert: 'replace' },
+    camp: { lead: 'lute', form: 'rise', prog: [0, 5, 0, 4] },
+    act1: { lead: 'flute', form: 'rise', prog: [0, 5, 0, 4] },
+    act2: { lead: 'voice', form: 'fall', oct: 1, prog: [0, 5, 4, 0] },
+    act3: { lead: 'lute', form: 'slow', oct: 0, prog: [0, 4, 5, 0] },
+    act4: { lead: 'voice', form: 'slow', oct: 0, prog: [0, 4, 5, 0] },
+    lament: { motif: 'broken', insert: false }
+  };
+  function toNotes(bars) { return bars.map(function (b) { return b.map(function (n) { return { s: n[0], len: n[1], deg: n[2] }; }); }); }
+  /** The theme's 4 melody bars ({ s, len, deg } per note) for a theme id, or null. */
+  SC.leitMelody = function (id) {
+    var C = LEIT[id], T = THEMES[id];
+    if (!C || !C.form || !T) return null;
+    var M = MEL[T.steps] || MEL[6], spb = T.steps;
+    if (C.form !== 'slow') return toNotes(M.head.concat(M[C.form]));
+    // half speed: the head's notes, twice as long, spread over four bars (a note may ring over a bar line)
+    var out = [[], [], [], []];
+    M.head.forEach(function (bar, bi) {
+      bar.forEach(function (n) {
+        var s = (bi * spb + n[0]) * 2, b = Math.floor(s / spb);
+        out[b].push({ s: s - b * spb, len: n[1] * 2, deg: n[2] });
+      });
+    });
+    return out;
+  };
+  // themes with the head (or the broken head) as their own motif while the main theme is on
+  var MOTIF_T = {};
+  Object.keys(LEIT).forEach(function (id) {
+    var C = LEIT[id], T = THEMES[id];
+    if (!C.motif || !T) return;
+    var M = MEL[T.steps] || MEL[6], t = Object.create(T);
+    t.motif = M[C.motif].map(function (b) { return b.map(function (n) { return n.slice(); }); });
+    MOTIF_T[id] = t;
+  });
+
+  // ---------------------------------------------------------------- weaving it into the composer
+  var P = Comp.prototype, startCycle = P.startCycle, phrase = P.phrase, melody = P.melody;
+  P.startCycle = function () {
+    if (!this._T0) this._T0 = this.T;
+    this.T = on && MOTIF_T[this.id] ? MOTIF_T[this.id] : this._T0;
+    startCycle.call(this);
+    var C = LEIT[this.id];
+    this.leit = false;
+    if (!on || !C || C.insert === false || !C.form) return;
+    // the theme once per cycle: always in the first cycles, then in two cycles out of three (never tiresome on loop)
+    var r = new SC.Rand('kd-leit-' + this.id + '-' + this.seed + '-' + this.cycle);
+    if (this.cycle >= 2 && r.next() < 0.34) return;
+    var f = this.form.slice(), i = f.indexOf('A');
+    if (i < 0) i = f.indexOf('A2');
+    if (i < 0) return;
+    if (C.insert === 'replace') f[i] = 'L'; else f.splice(i + 1, 0, 'L');      // the area's own A phrase stays, the theme answers it
+    this.form = f; this.leit = true;
+  };
+  P.melody = function (kind, prog) {
+    if (this._leitMel) return this._leitMel;
+    return melody.call(this, kind, prog);
+  };
+  /** Phrase 'L': an A phrase whose melody, lead, octave and chords are the main theme's. */
+  P.phrase = function (kind) {
+    if (kind !== 'L') return phrase.call(this, kind);
+    var C = LEIT[this.id], mel = SC.leitMelody(this.id);
+    if (!C || !mel) return phrase.call(this, 'A');
+    var T0 = this.T, lead0 = this.lead, T1 = Object.create(T0);
+    T1.progs = [C.prog || T0.progs[0]].concat(T0.progs.slice(1));
+    if (C.oct != null) T1.leadOct = C.oct;
+    this.T = T1; this.lead = C.lead || lead0; this._leitMel = mel;
+    var ph;
+    try { ph = phrase.call(this, 'A'); } finally { this.T = T0; this.lead = lead0; this._leitMel = null; }
+    ph.kind = 'L';
+    return ph;
+  };
+
+  // ---------------------------------------------------------------- the stings
+  var SV = THEMES.sting_victory, SD = THEMES.sting_death;
+  if (SV && SV.sting && !SV._leit) {
+    var victory = SV.sting;
+    /** Victory: the sting, then the theme in D major on the flute over horns and strummed chords. */
+    SV.sting = function (ev) {
+      if (!on) return victory(ev);
+      victory(function (v, t, d, m, vel, o) { if (v === 'flute' && t > 2) return; ev(v, t, d, m, vel, o); });   // its last flute note makes way
+      var t0 = 2.62, st = 0.17, i;
+      [[0, 2, 74], [2, 3, 81], [5, 1, 79], [6, 2, 78], [8, 1, 76], [9, 1, 78], [10, 6, 74]].forEach(function (n) {
+        ev('flute', t0 + n[0] * st, n[1] * st * 0.95 + (n[0] === 10 ? 1.1 : 0), n[2], n[0] === 10 ? 0.62 : 0.7);
+      });
+      ev('horn', t0, 6 * st, 50, 0.42); ev('horn', t0 + 6 * st, 4 * st, 45, 0.4); ev('horn', t0 + 10 * st, 1.9, 50, 0.48);
+      var D = [62, 66, 69, 74], Aa = [57, 64, 69, 73];
+      for (i = 0; i < 4; i++) ev('lute', t0 + 6 * st + i * 0.022, 0.9, Aa[i], 0.5 - i * 0.05);
+      for (i = 0; i < 4; i++) ev('lute', t0 + 10 * st + i * 0.024, 2, D[i], 0.62 - i * 0.05);
+      ev('dum', t0 + 6 * st, 0, 0, 0.5); ev('boom', t0 + 10 * st, 0, 0, 0.7); ev('dum', t0 + 10 * st, 0, 0, 0.6);
+      ev('bell', t0 + 10 * st, 3, 86, 0.3, { ratio: 3.51 });
+    };
+    SV._leit = true;
+  }
+  if (SD && SD.sting && !SD._leit) {
+    var death = SD.sting;
+    /** Death: the flute begins the theme in A minor and breaks off on a flat, unresolved note. */
+    SD.sting = function (ev) {
+      if (!on) return death(ev);
+      death(function (v, t, d, m, vel, o) { if (v === 'flute') return; ev(v, t, d, m, vel, o); });
+      ev('flute', 1.0, 0.7, 69, 0.5); ev('flute', 1.72, 1.05, 76, 0.46); ev('flute', 2.85, 0.32, 74, 0.38);
+      ev('flute', 3.55, 2.1, 71.7, 0.36);                 // the second of the scale, a little flat, never resolved
+    };
+    SD._leit = true;
+  }
+  /** Victory over a playing theme: the area's music dips for a few seconds so the bright statement is heard. */
+  var play = SC.Player.prototype.play;
+  SC.Player.prototype.play = function (mood, fade, when) {
+    var cur = this.cur, was = this.mood, r = play.call(this, mood, fade, when);
+    if (on && mood === 'victory' && was !== 'victory' && cur && cur === this.cur && cur.levelNode && this.ctx) {
+      var t = when == null ? this.ctx.currentTime + 0.06 : when, g = cur.levelNode.gain, base = g.value;
+      try { g.setTargetAtTime(base * 0.35, t + 2.3, 0.25); g.setTargetAtTime(base, t + 6.4, 1.2); } catch (e) { /* a fake context in tests */ }
+    }
+    return r;
+  };
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
