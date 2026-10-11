@@ -3532,7 +3532,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.47';
+  KD.VERSION = '0.7.48';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -3555,6 +3555,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   KD.config = KD.config || { oaths: false, events: false, potions: false, trees: { gravecaller: true, gloamblade: true } };
   if (KD.config.events === undefined) KD.config.events = false;
   if (KD.config.potions === undefined) KD.config.potions = false;
+  if (KD.config.bossMarks === undefined) KD.config.bossMarks = true;   // [boss-marks] owner: body-telling bosses (Greymaw) draw a red ground mark for every attack again; false = only their area moves (src/sim/27_boss_strings.js)
   if (KD.config.trees === undefined) KD.config.trees = { gravecaller: true, gloamblade: true }; // [w8 gloamblade tree] owner turned it on
   // The online service (accounts, friends, invites, co-op rooms: the kd-online repository on Cloudflare Workers).
   // Fill in its address once it is deployed, e.g. 'https://kd-online.<your-subdomain>.workers.dev'. Empty = the game
@@ -22574,6 +22575,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.48', date: '2026-10-10', title: 'Greymaw\'s red marks are back', notes: [
+      'Greymaw marks the ground again: every bite, rake, lunge and leap shows its red area before it lands',
+      'He keeps his new combos, quicker chains and body tells, so watch both the wolf and the floor'
+    ] },
     { version: '0.7.47', date: '2026-10-10', title: 'Actions cancel running', notes: [
       'Running now stops the moment you attack, use a skill, dodge, or press any other action',
       'Tap sprint again to get back to running'
@@ -30870,7 +30875,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     // (owner, second test: area attacks show their red area again: a move with `mark: true` draws it, KD.sim.boss.strings.markCast)
     var bodyTells = !!(e.def && e.def.telegraph === 'body');
     if (def.telegraph !== false && (def.telegraph || e.kind === 'enemy') && windup > 0 && !bodyTells) S.ai.telegraphCast(world, e, cast);
-    else if (bodyTells && def.mark && windup > 0 && S.boss && S.boss.strings) S.boss.strings.markCast(world, e, cast);
+    else if (bodyTells && windup > 0 && S.boss && S.boss.strings && (S.boss.strings.marked ? S.boss.strings.marked(e, def) : def.mark)) S.boss.strings.markCast(world, e, cast);   // [boss-marks] KD.config.bossMarks
     if (windup <= 0) { cast.state = 'active'; cast.t = 0; cast.dur = cast.activeDur; e.act.state = 'active'; e.act.dur = cast.dur; K.fire(world, e, cast); }
     return { ok: true, cast: cast };
   };
@@ -33286,7 +33291,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var t = { id: world._nextId++, shape: rec.shape || 'circle', x: rec.x || 0, z: rec.z || 0, yaw: rec.yaw || 0, r: rec.r || 0, inner: rec.inner || 0,
       arc: rec.arc || 0, len: rec.len || 0, wid: rec.wid || 0, t: 0, dur: Math.max(0.05, rec.dur || 0.5), src: rec.src || null,
       team: rec.team === undefined ? (rec.src ? rec.src.team : 1) : rec.team, follow: rec.follow || null, mode: rec.mode || 'fixed', dist: rec.dist || 0,
-      cast: rec.cast || null, ability: rec.ability || null, done: false, cancelled: false };
+      cast: rec.cast || null, ability: rec.ability || null, done: false, cancelled: false, step: rec.step || null };      // [boss-marks] step
     if (t.follow) place(t);
     world.telegraphs.push(t);
     world.events.emit('telegraph', { tele: t, phase: 'start', id: t.id, shape: t.shape, x: t.x, z: t.z, yaw: t.yaw, r: t.r, inner: t.inner, arc: t.arc, len: t.len, wid: t.wid, dur: t.dur, src: t.src, team: t.team, ability: t.ability });
@@ -33300,6 +33305,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       var rx = c.aimX - f.x, rz = c.aimZ - f.z, rl = Math.sqrt(rx * rx + rz * rz), rd = Math.min(rl, t.dist);
       if (rl > 1e-4) { t.x = f.x + rx / rl * rd; t.z = f.z + rz / rl * rd; } else { t.x = f.x; t.z = f.z; }
       t.yaw = c.aimYaw; return;
+    }
+    if (t.step && c) {                 // [boss-marks] a step-in bite: the cone sits where the step ends; frozen once it is released
+      if (c.fired) return;
+      var st = t.step, tg = c.target;
+      t.dist = tg && !tg.removed && !tg.dead ? Math.min(st.dist, Math.max(0, U.dist(f.x, f.z, tg.x, tg.z) - (f.r || 0) - (tg.r || 0) - st.keep)) : st.dist;
     }
     var yaw = c ? c.aimYaw : (t.mode === 'fixed' ? t.yaw : f.yaw);
     t.yaw = yaw;
@@ -35038,7 +35048,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   St.onCast = function (world, e, cast) {
     if (!(e.def && e.def.telegraph === 'body')) return;
     var def = cast.inst.def;
-    if (def.noGlint || def.mark || !hurts(def.effects)) return;
+    if (def.noGlint || def.mark || !hurts(def.effects)) return;      // [boss-marks] moves marked only by the switch keep their glint too
     var left = cast.dur - cast.t + St.hitDelay(def) / (cast.speed || 1), at = Math.max(0, left - St.GLINT_LEAD);
     world.schedule(at, function (w) {
       if (e.dead || e.removed || e.cast !== cast || cast.state !== 'windup') return;
@@ -35051,9 +35061,30 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     for (var i = 0; i < list.length; i++) if (list[i] && list[i].mult > 0) return list[i].t || 0;
     return 0;
   };
+  /**
+   * [boss-marks] Owner (v0.8): "Make it for now so the boss that you took the ground effects from have it again."
+   * Switch KD.config.bossMarks (src/core/00_base.js, default ON; a boss definition may also say `bossMarks: false`):
+   * while it is on, EVERY damaging attack of a body-telling boss draws its red mark sized to its real hit shape (bites
+   * and rakes their cone where the step-in ends, lunges and runs their lane, leaps their landing), on top of the body
+   * language, the chains, Hounding Snap and the aim lock, which all stay. Off: only `mark: true` moves draw (as v0.7).
+   */
+  St.marksAll = function (e) {
+    return !!(e && e.def && e.def.telegraph === 'body' && e.def.bossMarks !== false && !(KD.config && KD.config.bossMarks === false));
+  };
+  /** marked(e, def) -> true when this cast of a body-telling boss draws its ground mark. */
+  St.marked = function (e, def) { return !!def.mark || (St.marksAll(e) && hurts(def.effects)); };
   /** A marked move starts: its red area, filling over the wind-up (and the flight of a leap). */
   St.markCast = function (world, e, cast) {
     var def = cast.inst.def, rec = null, list = def.effects || [], fly = 0, i;
+    var f0 = list[0], mel = null;                                     // [boss-marks] a step-in bite: a harmless step, then the jaws
+    if (f0 && f0.type === 'dash' && !f0.onEnd && !(f0.mult > 0) && f0.dir === 'target') {
+      for (i = 1; i < list.length && !mel; i++) if (list[i] && list[i].type === 'melee' && list[i].mult > 0) mel = list[i];
+      if (mel) {
+        var inst = cast.inst, rm = inst.rangeMul || 1;
+        rec = { shape: 'cone', r: (mel.range || 2.2) * rm + e.r, arc: Math.min(Math.PI * 2, (mel.arc || 100) * Math.PI / 180 * (inst.arcMul || 1)), mode: 'front', dist: 0,
+          step: { dist: f0.dist || 5, keep: f0.keep === undefined ? 0.3 : f0.keep } };
+      }
+    }
     for (i = 0; i < list.length && !rec; i++) {
       var fx = list[i]; if (!fx) continue;
       if (fx.type === 'dash' && fx.onEnd && hurts(fx.onEnd)) {        // a leap: the landing blast, centred where it lands
