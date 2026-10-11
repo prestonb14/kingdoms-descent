@@ -538,15 +538,18 @@ html.kd-pad-on .hud-reticle { display: none; }      /* the cursor ring means not
 
 /* the ring: a brass double rim with a soft lantern glow and a small wax gem on top, matching src/ui/90_paint.css */
 .pad-ring { position: fixed; left: 0; top: 0; width: 0; height: 0; pointer-events: none; display: none; z-index: 5; box-sizing: border-box;
-  border: calc(2 * var(--u)) solid #e9c873; border-radius: 4px;
-  box-shadow: 0 0 0 calc(1 * var(--u)) #1a1004, 0 0 0 calc(3 * var(--u)) rgba(200, 154, 66, .55), 0 0 calc(14 * var(--u)) calc(2 * var(--u)) rgba(255, 196, 90, .55), inset 0 0 0 calc(1 * var(--u)) #1a1004, inset 0 0 calc(10 * var(--u)) rgba(255, 210, 120, .28);
-  transition: transform .09s ease-out, width .09s ease-out, height .09s ease-out; animation: pad-ring-glow 1.6s ease-in-out infinite; }
+  border: calc(2 * var(--u)) solid #f0d488; border-radius: 4px; will-change: transform;
+  box-shadow: 0 0 0 calc(1 * var(--u)) #1a1004, 0 0 0 calc(3 * var(--u)) rgba(200, 154, 66, .55), inset 0 0 0 calc(1 * var(--u)) #1a1004;
+  transition: transform .09s ease-out, width .09s ease-out, height .09s ease-out; }
+/* the lantern glow breathes on its own layer (opacity only: no repaint, cheap on phones) */
+.pad-ring::after { content: ''; position: absolute; inset: calc(-3 * var(--u)); border-radius: inherit; pointer-events: none; will-change: opacity;
+  box-shadow: 0 0 calc(12 * var(--u)) calc(2 * var(--u)) rgba(255, 196, 90, .6), inset 0 0 calc(8 * var(--u)) rgba(255, 210, 120, .3); animation: pad-ring-glow 1.6s ease-in-out infinite; }
 html.kd-pad-nav .pad-ring.pad-on { display: block; }
 .pad-ring-gem { position: absolute; left: 50%; top: calc(-6 * var(--u)); width: calc(9 * var(--u)); height: calc(9 * var(--u)); margin-left: calc(-4.5 * var(--u));
   transform: rotate(45deg); background: radial-gradient(circle at 35% 30%, #ffd2c0, #e0402c 40%, #3a0806); border: calc(1 * var(--u)) solid #c89a42; box-shadow: 0 0 0 calc(1 * var(--u)) #1a1004, 0 0 calc(6 * var(--u)) rgba(255, 120, 80, .6); }
-@keyframes pad-ring-glow { 0%, 100% { border-color: #e9c873; } 50% { border-color: #fff0bd; } }
-.kd-no-motion .pad-ring, .kd-reduce-motion .pad-ring { animation: none; transition: none; }
-@media (prefers-reduced-motion: reduce) { .pad-ring { animation: none; transition: none; } }
+@keyframes pad-ring-glow { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
+.kd-no-motion .pad-ring, .kd-reduce-motion .pad-ring, .kd-no-motion .pad-ring::after, .kd-reduce-motion .pad-ring::after { animation: none; transition: none; }
+@media (prefers-reduced-motion: reduce) { .pad-ring, .pad-ring::after { animation: none; transition: none; } }
 /* the browser's own focus outline is replaced by the ring while the pad drives */
 html.kd-pad-nav #kd-ui :focus, html.kd-pad-nav #kd-ui :focus-visible { outline: none; }
 
@@ -592,6 +595,8 @@ html.kd-pad-nav .pad-hints.pad-on { display: flex; }
 /* the bag's mouse-key line (right click, Alt, Ctrl) means nothing on a pad: the card and the hint bar name the pad buttons */
 html.kd-pad-nav .win-hints > :not(.kd-badge) { display: none; }
 .kd-tooltip .pad-g { vertical-align: middle; }
+.pad-hints { transition: opacity .35s ease; }
+.pad-hints.pad-dim { opacity: 0; }
 
 /* =====================================================================================================
    Kingdom's Descent HUD.   Owner: hud.   Documented in docs/HUD.md.
@@ -3527,7 +3532,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.45';
+  KD.VERSION = '0.7.46';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -22569,6 +22574,13 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.46', date: '2026-10-10', title: 'Controller menus, polished', notes: [
+      'Controller menus remember less and help more: a new window starts at the top, closing one puts you back where you were',
+      'Button hints now sit in window footers or a free corner, never over buttons',
+      'L2 and R2 flip the tabs in your bag, hero sheet and skills',
+      'Item cards show your controller\'s buttons, and confirm-with-Circle works in every menu',
+      'The focus ring glows more smoothly and costs less'
+    ] },
     { version: '0.7.45', date: '2026-10-10', title: 'Menus on a controller', notes: [
       'Every menu now works with a PlayStation or Xbox controller: move with the D-pad or stick, Cross or A to pick, Circle or B to go back',
       'A glowing brass ring shows where you are, with button hints at the bottom',
@@ -104623,7 +104635,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (!key) { this.on = null; return false; }
     if (key !== this.on) { this.on = key; this.next = now + this.delay; this.n = 0; this.f = 0; return true; }
     this.f++;
-    if (now >= this.next && this.f >= (this.n ? 2 : 6)) { this.n++; this.f = 0; this.next = now + (this.n > 8 ? this.rate * 0.6 : this.rate); return true; }
+    if (now >= this.next && this.f >= (this.n ? 2 : 10)) { this.n++; this.f = 0; this.next = now + (this.n > 8 ? this.rate * 0.6 : this.rate); return true; }
     return false;
   };
   /** stickDir(x, y, dead) -> 'up' | 'down' | 'left' | 'right' | null (y down is positive, as the Gamepad API reports). */
@@ -104905,8 +104917,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   /** The panel the right stick scrolls: the nearest scrolling box around the focus, else the biggest one in the window. */
   function scroller(n, sc) {
     for (var p = n ? n.parentElement : null; p && p !== sc.node.parentElement; p = p.parentElement) if (scrollable(p)) return p;
-    var best = null, ba = 0, all = sc.node.querySelectorAll('*');
-    for (var i = 0; i < all.length && i < 4000; i++) { var q = all[i]; if (q.clientHeight > 40 && scrollable(q)) { var a = q.clientWidth * q.clientHeight; if (a > ba) { ba = a; best = q; } } }
+    var best = null, ba = 0, all = sc.node.querySelectorAll('.kd-scroll, [class*="scroll"], [class*="list"], [class*="body"]');
+    for (var i = 0; i < all.length && i < 400; i++) { var q = all[i]; if (q.clientHeight > 40 && scrollable(q)) { var a = q.clientWidth * q.clientHeight; if (a > ba) { ba = a; best = q; } } }
     if (!best && scrollable(sc.node)) best = sc.node;
     return best;
   }
@@ -105126,7 +105138,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var n = S.el, out = [[0, isText(n) ? 'Type' : 'Select']];
     if (isRange(n) || (n && n.tagName === 'SELECT')) out.push(['dpad', 'Adjust']);
     if (hasViews(n)) { out.push([3, 'Details']); out.push([11, 'Compare']); out.push([2, 'Quick use']); }
-    out.push([1, sc && sc.win ? (sc.win.closable ? 'Close' : 'Back') : 'Back']);
+    if (!(sc && sc.key === 's:menu')) out.push([1, sc && sc.win ? (sc.win.closable ? 'Close' : 'Back') : 'Back']);      // (the title menu has nowhere to go back to)
     var rows = sc ? tabRows(sc) : [], ring = inRingNow(sc);
     if (ring) { out.push(['lr1', 'Bag, hero, skills, tree']); if (rows.length) out.push(['lr2', 'Tabs']); }
     else { if (rows.length) out.push(['lr1', 'Tabs']); if (rows.length > 1) out.push(['lr2', 'More tabs']); }
@@ -105144,17 +105156,31 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    * place(sc): the bar goes to the first free spot along the bottom: the centre, the left corner, the right corner, then just
    * above the screen's own button row. Free = over no button, card or field of the screen (it never hides what it explains).
    */
-  var SPOTS = [{ left: '50%', right: 'auto', tx: '-50%' }, { left: '16px', right: 'auto', tx: '0' }, { left: 'auto', right: '16px', tx: '0' }];
-  function place(sc) {
-    var H = S.hints, st = H.style, list = focusables(sc).map(rectOf);
+  var SPOTS = [{ left: '50%', right: 'auto', tx: '-50%' }, { left: '16px', right: 'auto', tx: '0' }, { left: 'auto', right: '16px', tx: '0' },
+    { left: '50%', right: 'auto', tx: '-50%', lift: true }, { left: '50%', right: 'auto', tx: '-50%', top: true }, { left: '16px', right: 'auto', tx: '0', top: true }, { left: 'auto', right: '16px', tx: '0', top: true }];
+  /** Rects of the words on a screen (each text run), for the hint bar to keep clear of. */
+  function textRects(node) {
+    var out = [], tw = document.createTreeWalker(node, NodeFilter.SHOW_TEXT), t, k = 0, rg = document.createRange();
+    while ((t = tw.nextNode()) && k++ < 1500) {
+      if (!t.nodeValue.trim() || !t.parentElement || !visible(t.parentElement)) continue;
+      rg.selectNodeContents(t); var r = rg.getBoundingClientRect(); if (r.width > 1 && r.height > 1) out.push(r);
+    }
+    return out;
+  }
+  function place(sc, fresh) {
+    var H = S.hints, st = H.style, list = focusables(sc).map(rectOf).concat(fresh || !S.placeText ? (S.placeText = textRects(sc.node)) : S.placeText);
     var ff = sc.node.querySelector('.flow-foot, .kd-choice-foot'), fr = ff && visible(ff) ? ff.getBoundingClientRect() : null;
     var hits = function () { var r = H.getBoundingClientRect(); for (var i = 0; i < list.length; i++) { var q = list[i]; if (q.left < r.right && q.right > r.left && q.top < r.bottom && q.bottom > r.top) return true; } return false; };
+    if (!fresh && st.left && !hits()) return S.placeFree;   // a check later on: it stays put while its spot is still free
     for (var i = 0; i < SPOTS.length; i++) {
-      st.left = SPOTS[i].left; st.right = SPOTS[i].right; st.transform = 'translateX(' + SPOTS[i].tx + ')'; st.bottom = '';
-      if (!hits()) return;
+      if (SPOTS[i].lift && !(fr && fr.top > innerHeight * 0.5)) continue;          // (just above the screen's own button row)
+      st.left = SPOTS[i].left; st.right = SPOTS[i].right; st.transform = 'translateX(' + SPOTS[i].tx + ')'; st.top = SPOTS[i].top ? '6px' : '';
+      st.bottom = SPOTS[i].top ? 'auto' : SPOTS[i].lift ? Math.round(innerHeight - fr.top + 6) + 'px' : '';
+      if (!hits()) return (S.placeFree = true);
     }
-    st.left = '50%'; st.right = 'auto'; st.transform = 'translateX(-50%)';
-    st.bottom = fr && fr.top > innerHeight * 0.5 ? Math.round(innerHeight - fr.top + 6) + 'px' : '';
+    st.left = '50%'; st.right = 'auto'; st.transform = 'translateX(-50%)'; st.top = ''; st.bottom = '';
+    S.placeFree = !hits();
+    return S.placeFree;
   }
   /** shown(n): false while the window around it is still fading in (the ring waits for it). */
   function shown(n) { var o = 1; for (var p = n; p && p !== document.body && o > 0.4; p = p.parentElement) o *= +getComputedStyle(p).opacity; return o > 0.4; }
@@ -105166,7 +105192,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   function paint() {
     ensureNodes(); if (!S.ring) return;
     var sc = S.active ? scope() : null, h = sc && sc.win ? PN.handlers[sc.win.id] : null, rr = h && h.ring ? h.ring() : null;
-    var show = !!(sc && (rr || (S.el && S.el.isConnected && shown(S.el))));
+    if (S.el !== S.shownEl || !S.shownOk || (PN.frameNo || 0) - (S.shownAt || 0) > 8) { S.shownEl = S.el; S.shownAt = PN.frameNo || 0; S.shownOk = !!(S.el && shown(S.el)); }
+    var show = !!(sc && (rr || (S.el && S.el.isConnected && S.shownOk)));
     S.ring.classList.toggle('pad-on', show);
     // a new window or screen: the ring jumps there (it only glides between neighbours)
     S.ring.classList.toggle('pad-jump', !show || !S.ringOn || S.ringKey !== (sc && sc.key) + (rr ? '#' : ''));
@@ -105177,7 +105204,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       else { var r = S.el.getBoundingClientRect(), g = 3; x = r.left - g; y = r.top - g; w = r.width + g * 2; hh = r.height + g * 2; var br = getComputedStyle(S.el).borderTopLeftRadius; rad = br && br !== '0px' ? 'calc(' + br + ' + ' + g + 'px)' : '4px'; }
       var st = S.ring.style; st.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(y) + 'px)'; st.width = Math.round(w) + 'px'; st.height = Math.round(hh) + 'px'; st.borderRadius = rad;
     }
-    var hs = sc ? hintList(sc) : null, key = hs ? P.type + swapped() + JSON.stringify(hs) : '';
+    // the hint list is worked out again when the focus or the screen changes (and now and then), not every frame
+    var hk = sc ? sc.key + '|' + (S.picker ? 'p' : '') + (rr ? 'r' + (h.onNodes && h.onNodes()) : '') : '';
+    if (hk !== S.hintFor || S.el !== S.hintEl || (PN.frameNo || 0) - (S.hintAt || 0) > 30) { S.hintFor = hk; S.hintEl = S.el; S.hintAt = PN.frameNo || 0; S.hintList = sc ? hintList(sc) : null; }
+    var hs = sc ? S.hintList : null, key = hs ? P.type + swapped() + JSON.stringify(hs) : '';
     // the hints sit in the window's footer row (left of its buttons) when it has one, else in a small bar at the bottom
     var foot = hs && sc.win ? footOf(sc.node) : null, host = foot || KD.ui.layer('tooltip');
     if (S.hints.parentNode !== host) { if (foot) foot.insertBefore(S.hints, foot.firstChild); else host.appendChild(S.hints); }
@@ -105187,14 +105217,20 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       S.hintSig = key; KD.ui.clear(S.hints);
       if (hs) hs.forEach(function (x) { var gb = swapped() && (x[0] === 0 || x[0] === 1) ? 1 - x[0] : x[0]; S.hints.appendChild(KD.ui.el('span.pad-hint', [glyphEl(gb), KD.ui.el('span.pad-hint-t', { text: x[1] })])); });
     }
-    if (foot) { if (S.hints.style.left) { S.hints.style.left = S.hints.style.right = S.hints.style.bottom = S.hints.style.transform = ''; } S.placeKey = null; }
-    else if (hs && (S.placeKey !== key + sc.key || ++S.placeN > 40)) { S.placeKey = key + sc.key; S.placeN = 0; place(sc); }
+    if (foot) { if (S.hints.style.left) { S.hints.style.left = S.hints.style.right = S.hints.style.bottom = S.hints.style.top = S.hints.style.transform = ''; } S.placeKey = null; }
+    else if (hs && (S.placeKey !== key + sc.key || ++S.placeN > 90)) { var fresh = S.placeKey !== key + sc.key; S.placeKey = key + sc.key; S.placeN = 0; place(sc, fresh); if (fresh) S.fadeAt = performance.now() + 2600; }
+    // no free spot (a full phone screen): the bar shows for a moment when the hints change, then fades so it hides nothing
+    S.hints.classList.toggle('pad-dim', !foot && !!hs && !S.placeFree && performance.now() > (S.fadeAt || 0));
   }
   PN.hints = function () { var sc = scope(); return sc ? hintList(sc).map(function (x) { return x[1]; }) : []; };
 
   // ------------------------------------------------------------------------------------------ the loop
   function frame(ts) {
     S.raf = requestAnimationFrame(frame);
+    var t0 = performance.now();
+    try { padTick(ts); } finally { var c = performance.now() - t0; PN.cost = PN.cost === undefined ? c : PN.cost * 0.95 + c * 0.05; }      // PN.cost: ms per frame (smoothed)
+  }
+  function padTick(ts) {
     var dt = S.t ? Math.min(0.1, (ts - S.t) / 1000) : 0.016; S.t = ts; PN.frameNo = (PN.frameNo || 0) + 1;
     readPad();
     if (!P.connected) { if (S.active) setActive(false); return; }
@@ -105202,6 +105238,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     for (i = 0; i < 17; i++) if (pressed(i)) anyPress = true;
     var stickMoved = Math.abs(P.ax[0]) > 0.5 || Math.abs(P.ax[1]) > 0.5 || Math.abs(P.ax[2]) > 0.5 || Math.abs(P.ax[3]) > 0.5;
     var sc = scope();
+    // a window that was not open last frame is new: it starts on its first sensible element (not where it was last time)
+    var W = KD.ui && KD.ui.windows, wl = W && W.list ? W.list() : [];
+    if (sc && sc.win && (S.openIds || []).indexOf(sc.win.id) < 0) delete S.mem[sc.key];
+    S.openIds = wl;
     if (S.hush) {                   // the buttons that closed the last window are still down: the game must not act on them
       if (!anyHeld() && !down(6) && !down(7)) { S.hush = false; if (KD.input && KD.input.pad) KD.input.pad.capturing = false; }
     }
@@ -105220,8 +105260,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       if (h && h.enter) h.enter(sc);
     }
     if (!S.active) return;
-    var list = focusables(sc);
-    if (!(h && h.onNodes && h.onNodes())) ensureFocus(sc, list);
+    // (cheap while the focus is still there: the whole list is only gathered when it has to be found again)
+    var keep = S.el && S.el.isConnected && sc.node.contains(S.el) && usable(S.el) && visible(S.el);
+    if (keep) S.last = rectOf(S.el);
+    else if (!(h && h.onNodes && h.onNodes())) ensureFocus(sc, focusables(sc));
     // directions (D-pad, left stick) with repeat
     var dir = down(12) ? 'up' : down(13) ? 'down' : down(14) ? 'left' : down(15) ? 'right' : PN.stickDir(P.ax[0], P.ax[1]);
     if (waking) { S.rep.fire(dir || null, ts); S.wake = true; paint(); return; }       // the first press after the mouse only shows the ring
