@@ -1814,6 +1814,38 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 .kd-compact .flow-runs-foot { display: none; }
 .kd-compact .flow-menu-buttons.flow-menu-has-continue { width: auto; margin-top: 0; gap: calc(7 * var(--u)); }
 
+/* [settings tabs] The Settings window: kit tabs over a parchment page of grouped rows (src/ui/20_flow_52_settings.js). */
+.flow-setwin .flow-set-tabs { padding-top: calc(4 * var(--u)); }
+.flow-setwin .flow-set-tabs > .kd-tabs-bar { flex: none; padding: 0 calc(10 * var(--u)); }
+.flow-setwin .flow-set-tabs > .kd-tabs-body { padding: calc(12 * var(--u)) calc(18 * var(--u)) calc(16 * var(--u)); }
+.flow-setwin .flow-set { display: flex; flex-direction: column; gap: calc(14 * var(--u)); }
+.flow-set-group { display: flex; flex-direction: column; }
+.flow-set-group > .kd-h3.flow-set-head { margin: 0 0 calc(2 * var(--u)); padding-bottom: calc(3 * var(--u)); border-bottom: var(--u) solid rgba(87, 66, 43, .45); }
+.flow-set-gnote { font-size: calc(11 * var(--u)); color: var(--kd-ink-soft); font-style: italic; margin: calc(2 * var(--u)) 0 calc(2 * var(--u)); }
+.flow-setwin .flow-set-row { padding: calc(4 * var(--u)) calc(6 * var(--u)); min-height: calc(36 * var(--u)); border-bottom: var(--u) dashed rgba(87, 66, 43, .22); border-radius: calc(3 * var(--u)); }
+.flow-setwin .flow-set-row:last-child { border-bottom-color: transparent; }
+.flow-setwin .flow-set-row:hover { background: rgba(120, 86, 40, .08); }
+.flow-set-name { font-size: calc(12.5 * var(--u)); }
+.flow-setwin .flow-set-hint { font-size: calc(11 * var(--u)); margin-top: calc(1 * var(--u)); }
+.flow-setwin .flow-set-ctl { display: flex; align-items: center; justify-content: flex-end; }
+.flow-set-keys .flow-keys { grid-template-columns: repeat(2, 1fr); gap: calc(6 * var(--u)) calc(26 * var(--u)); margin-top: calc(6 * var(--u)); }
+.flow-set-keys .flow-keys-col .kd-h3 { font-size: calc(12.5 * var(--u)); }
+.flow-set-foot { margin-right: auto; font-size: calc(11 * var(--u)); }
+
+/* phones: a compact strip of tabs that swipes sideways, finger-sized rows */
+.kd-compact .flow-setwin .flow-set-tabs { padding-top: calc(2 * var(--u)); }
+.kd-compact .flow-setwin .flow-set-tabs > .kd-tabs-bar { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; gap: calc(4 * var(--u)); padding: 0 calc(4 * var(--u)); }
+.kd-compact .flow-setwin .flow-set-tabs > .kd-tabs-bar::-webkit-scrollbar { display: none; }
+.kd-compact .flow-setwin .flow-set-tabs .kd-tab { flex: none; min-height: calc(40 * var(--u)); padding: calc(4 * var(--u)) calc(12 * var(--u)) calc(5 * var(--u)); font-size: calc(13 * var(--u)); margin-top: 0; }
+.kd-compact .flow-setwin .flow-set-tabs > .kd-tabs-body { padding: calc(6 * var(--u)) calc(12 * var(--u)) calc(10 * var(--u)); }
+.kd-compact .flow-setwin .flow-set { gap: calc(8 * var(--u)); }
+.kd-compact .flow-setwin .flow-set-row { min-height: calc(46 * var(--u)); padding: calc(2 * var(--u)) calc(4 * var(--u)); }
+.kd-compact .flow-set-name { font-size: calc(13.5 * var(--u)); }
+.kd-compact .flow-set-gnote { font-size: calc(11 * var(--u)); }
+/* the open tab keeps its ink while the pointer rests on it (the painted hover colour is meant for the dark closed tabs) */
+.kd-paint .kd-tab.kd-tab-active:hover { color: var(--kd-ink); }
+.flow-set-reset { white-space: nowrap; }
+
 /* Patch notes window and update banner (src/ui/20_flow_55_patchnotes.js). Kit windows, buttons and tokens only. */
 .flow-pn { display: flex; flex-direction: column; gap: calc(6 * var(--u)); }
 .flow-pn-intro { font-size: calc(12.5 * var(--u)); padding-bottom: calc(2 * var(--u)); }
@@ -3532,7 +3564,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.48';
+  KD.VERSION = '0.7.49';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -22575,6 +22607,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.49', date: '2026-10-11', title: 'Cinematic camera finish', notes: [
+      'New camera finish: a soft ink outline round heroes and monsters',
+      'Glowing eyes, fires and magic now bloom softly',
+      'Subtle film grain and darker corners for a cinematic look',
+      'Turn each one on or off under Settings, Graphics, Camera finish'
+    ] },
     { version: '0.7.48', date: '2026-10-10', title: 'Greymaw\'s red marks are back', notes: [
       'Greymaw marks the ground again: every bite, rake, lunge and leap shows its red area before it lands',
       'He keeps his new combos, quicker chains and body tells, so watch both the wolf and the floor'
@@ -54286,7 +54324,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     '  p = vec3(dot(iM0, lp), dot(iM1, lp), dot(iM2, lp));',
     '  vec3 c0 = cross(iM1.xyz, iM2.xyz), c1 = cross(iM2.xyz, iM0.xyz), c2 = cross(iM0.xyz, iM1.xyz);',
     '  n = vec3(dot(c0, n), dot(c1, n), dot(c2, n)) * (dot(iM0.xyz, c0) < 0.0 ? -1.0 : 1.0);',
-    '  tint = pow(max(iTint.rgb, 0.0), vec3(2.2)); alpha = iTint.a; flash = iPar.x; emis += iPar.y; metal = max(metal, iPar.z);',
+    '  tint = pow(max(iTint.rgb, 0.0), vec3(2.2)); alpha = iTint.a + iPar.w; flash = iPar.x; emis += iPar.y; metal = max(metal, iPar.z);   // [camera finish] iPar.w = 1: an inked (outlined) opaque character',
     '#endif',
     '  n = normalize(n);',
     '  float sw = aAux.y;',
@@ -54415,7 +54453,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     '  float fl = clamp(vMat.z, 0.0, 1.0);',
     '  col = mix(col, vec3(1.1), fl * fl);',
     '  col = applyFog(col, vPos);',
-    '  oCol = vec4(tonemap(col), vMat.w);',
+    '  oCol = vec4(tonemap(col), vMat.w > 0.9995 ? vMat.w - 1.0 : vMat.w);',   // [camera finish] opaque: alpha = ink mask (1 an inked character, 0 the rest); see-through things: their alpha
     '}'
   ].join('\n');
 
@@ -55271,7 +55309,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     d[o + 4] = m1; d[o + 5] = m5; d[o + 6] = m9; d[o + 7] = m[mo + 13];
     d[o + 8] = m2; d[o + 9] = m6; d[o + 10] = m10; d[o + 11] = m[mo + 14];
     d[o + 12] = r; d[o + 13] = g; d[o + 14] = b; d[o + 15] = a;
-    d[o + 16] = flash || 0; d[o + 17] = emissive || 0; d[o + 18] = metal || 0; d[o + 19] = 0;
+    d[o + 16] = flash || 0; d[o + 17] = emissive || 0; d[o + 18] = metal || 0; d[o + 19] = a >= 0.999 ? (this._ink || 0) : 0;   // [camera finish] renderer._ink: 1 while characters are submitted
     if (a < 0.999 && a >= 0.5) {   // half-solid things still cast a shadow
       var k2 = mesh * 8 + L_SHADOW + mir, L2 = lists[k2] || newList(lists, k2);
       if (L2.n === L2.cap) growList(L2);
@@ -55590,11 +55628,13 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     }
 
     // ---- main pass
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     var bw = gl.drawingBufferWidth || this.canvas.width, bh = gl.drawingBufferHeight || this.canvas.height;   // a phone may give less than was asked for
+    var post = this._postBegin ? this._postBegin(bw, bh, camera) : null;   // [camera finish] 12_renderer_post.js: null = no finish at all (nothing extra is drawn)
+    this._postOn = !!(post && post.fbo);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this._postOn ? post.fbo : null);
     gl.viewport(0, 0, bw, bh);
     F.screenI[0] = 1 / bw; F.screenI[1] = 1 / bh;     // [mood presets] vignette
-    gl.clearColor(0.6, 0.75, 0.95, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.clearColor(0.6, 0.75, 0.95, this._postOn ? 0 : 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, this._shadowOn ? this._shadowTex : this._dummyShadow);
     var key = this._key;
     prog = this._prog('litS' + key); this._common(prog);
@@ -55616,6 +55656,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       }
     }
     if (this._extPass) this._extPass('opaque');           // [art skins] skinned characters (and their outlines)
+    var postA = !this._postOn;                            // [camera finish] from here on nothing writes the ink mask (alpha), except water clearing it
+    if (!postA) gl.colorMask(true, true, true, false);
 
     // ---- sky and clouds (behind everything already drawn)
     gl.depthFunc(gl.LEQUAL); gl.depthMask(false);
@@ -55664,12 +55706,14 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var wb = this.scene.waterBatches;
     if (wb.length) {
       prog = this._prog('water' + key); this._common(prog);
+      if (!postA) { gl.colorMask(true, true, true, true); gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.ZERO); }   // [camera finish] water hides the ink of what is under it
       for (i = 0; i < wb.length; i++) {
         b = wb[i];
         if (!G.m4.aabbInFrustum(F.planes, b.min[0], b.min[1], b.min[2], b.max[0], b.max[1], b.max[2])) continue;
         gl.bindVertexArray(b.vao); gl.drawElements(gl.TRIANGLES, b.nAll, gl.UNSIGNED_INT, 0);
         st.drawCalls++; st.triangles += b.nAll / 3;
       }
+      if (!postA) { gl.colorMask(true, true, true, false); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA); }   // [camera finish]
     }
 
     // ---- transparent instances: depth pre-pass, then one clean blended layer
@@ -55679,7 +55723,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       var sd = st.drawCalls, stt = st.triangles, si = st.instances;
       this._drawInst(L_TRANSP);
       st.drawCalls = sd; st.triangles = stt; st.instances = si;
-      gl.colorMask(true, true, true, true); gl.depthMask(false); gl.depthFunc(gl.LEQUAL); gl.enable(gl.BLEND);
+      gl.colorMask(true, true, true, postA); gl.depthMask(false); gl.depthFunc(gl.LEQUAL); gl.enable(gl.BLEND);   // [camera finish] postA
       this._drawInst(L_TRANSP);
     }
     if (this._extPass) this._extPass('transp');           // [art skins] fading skinned characters
@@ -55701,7 +55745,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       gl.enable(gl.CULL_FACE);
     }
 
-    gl.bindVertexArray(null); gl.disable(gl.BLEND); gl.depthMask(true); gl.depthFunc(gl.LESS);
+    if (post) this._postEnd(post, bw, bh);                // [camera finish] resolve, bloom, the one combined pass (or the light overlay)
+    gl.bindVertexArray(null); gl.disable(gl.BLEND); gl.depthMask(true); gl.depthFunc(gl.LESS); gl.colorMask(true, true, true, true);
     var lists = this._lists;
     for (i = 0; i < lists.length; i++) if (lists[i]) lists[i].n = 0;
     this._instTotal = 0;
@@ -55786,6 +55831,376 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   G.Scene = Scene;
   G.Decals = Decals;
   G.Lights = Lights;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/gfx/12_renderer_post.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var G = KD.gfx = KD.gfx || {};
+
+  /**
+   * [camera finish] KD.gfx.finish: the last touch on every frame of the game, so it reads as one painted, filmed picture
+   * (docs/GFX.md "Camera finish"). Four switches, each saved in this browser (localStorage 'kd.finish'):
+   *
+   *   outline    a thin, soft ink line round heroes, enemies and allies (screen space: the ink mask the lit shader writes
+   *              into alpha for characters submitted while renderer._ink = 1, and the depth buffer). Never on the ground,
+   *              water or buildings: a line is drawn only where a character is in front of something farther away.
+   *   bloom      a soft, restrained glow round bright, coloured things (glowing eyes, fire, magic, emissive parts),
+   *              built at half resolution (a quarter on 'low').
+   *   grain      fine animated film grain.
+   *   vignette   a gentle darkening of the corners. Takes over the area mood's own vignette (env.vignette), never both.
+   *   strength   one slider, 50% to 150%, on all of the above.
+   *
+   * Defaults follow the quality level in force (renderer.level.name): 'high' all on; 'medium' all but grain; 'low' (a
+   * phone) outline and vignette only. A switch the player set stays as set on every level.
+   *
+   * Cost: everything off draws nothing extra (render() takes the direct path). Vignette and grain alone: one blended
+   * full-screen triangle over the finished picture, no extra buffer. Outline or bloom: the scene goes into an offscreen
+   * buffer (multisampled when the canvas is), is resolved, and ONE combined pass draws ink, bloom, vignette and grain;
+   * bloom adds three small passes at reduced resolution.
+   *
+   * Area moods may tune it (all optional, on renderer.env): inkColor [r,g,b] sRGB (default: a dark shade of the mood's
+   * own shadow tint, gradeShadow), inkStrength, bloomStrength, grainStrength (multipliers, 1 = as is).
+   *
+   * Pure parts (Node): finish.KEYS, finish.LEVEL_DEFAULTS, finish.resolve(levelName, saved), finish.plan(flags).
+   */
+  var FIN = G.finish = G.finish || {};
+  FIN.KEYS = ['outline', 'bloom', 'grain', 'vignette'];
+  FIN.STORE = 'kd.finish';
+  FIN.LEVEL_DEFAULTS = {
+    low: { outline: true, bloom: false, grain: false, vignette: true, strength: 1 },
+    medium: { outline: true, bloom: true, grain: false, vignette: true, strength: 1 },
+    high: { outline: true, bloom: true, grain: true, vignette: true, strength: 1 }
+  };
+  /** Pure: the switches in force on a quality level, given what the player saved ({ outline: false, ... } or null). */
+  FIN.resolve = function (level, saved) {
+    var d = FIN.LEVEL_DEFAULTS[level] || FIN.LEVEL_DEFAULTS.high, o = {}, i, k;
+    for (i = 0; i < FIN.KEYS.length; i++) { k = FIN.KEYS[i]; o[k] = saved && typeof saved[k] === 'boolean' ? saved[k] : d[k]; }
+    var s = saved && typeof saved.strength === 'number' && isFinite(saved.strength) ? saved.strength : d.strength;
+    o.strength = Math.max(0.5, Math.min(1.5, s));
+    return o;
+  };
+  /**
+   * Pure: what render() does for these switches: { mode: 'off' | 'overlay' | 'full', passes, depth, bloomDiv }.
+   * passes = extra draw calls per frame. 'off' must be 0 (nothing at all is drawn or allocated).
+   */
+  FIN.plan = function (f, level) {
+    if (!f) return { mode: 'off', passes: 0, depth: false, bloomDiv: 0 };
+    var full = !!(f.outline || f.bloom);
+    if (full) return { mode: 'full', passes: 1 + (f.bloom ? 3 : 0), depth: !!f.outline, bloomDiv: f.bloom ? (level === 'low' ? 4 : 2) : 0 };
+    if (f.vignette || f.grain) return { mode: 'overlay', passes: 1, depth: false, bloomDiv: 0 };
+    return { mode: 'off', passes: 0, depth: false, bloomDiv: 0 };
+  };
+
+  // ------------------------------------------------------------------ saved switches
+  FIN.saved = null; FIN.version = 0;
+  function store() { try { return root.localStorage || null; } catch (e) { return null; } }
+  FIN.load = function () {
+    var s = store(), v = null;
+    try { v = s ? JSON.parse(s.getItem(FIN.STORE) || 'null') : null; } catch (e) { v = null; }
+    FIN.saved = v && typeof v === 'object' ? v : {};
+    try {      // ?finish=off in the page address: everything off for this page (measuring, not saved)
+      var qs = root.location && /[?&]finish=(off|on)\b/.exec(root.location.search || '');
+      if (qs) FIN.KEYS.forEach(function (k) { FIN.saved[k] = qs[1] === 'on'; });
+    } catch (e2) { /* no location */ }
+    FIN.version++;
+    return FIN.saved;
+  };
+  function save() { var s = store(); try { if (s) s.setItem(FIN.STORE, JSON.stringify(FIN.saved)); } catch (e) { /* private window: this session only */ } FIN.version++; }
+  function levelName() { var r = KD.game && KD.game.renderer; return (r && r.level && r.level.name) || (G.quality && G.quality.name) || 'high'; }
+  /** The switches in force now (on the game's quality level). */
+  FIN.current = function () { if (!FIN.saved) FIN.load(); return FIN.resolve(levelName(), FIN.saved); };
+  FIN.get = function (k) { return FIN.current()[k]; };
+  /** set('outline' | 'bloom' | 'grain' | 'vignette', true/false) or set('strength', 0.5..1.5): saved, applies next frame. */
+  FIN.set = function (k, v) {
+    if (!FIN.saved) FIN.load();
+    if (FIN.KEYS.indexOf(k) >= 0) FIN.saved[k] = !!v;
+    else if (k === 'strength') FIN.saved.strength = Math.max(0.5, Math.min(1.5, +v || 1));
+    else return false;
+    save();
+    return true;
+  };
+  /** Back to the defaults of the quality level (Settings, "Reset this tab"). */
+  FIN.reset = function () { FIN.saved = {}; save(); };
+  /** Settings rows (src/ui/20_flow_52_settings.js, Graphics tab, "Camera finish"). */
+  FIN.settingsRows = function (row, F, c) {
+    var cur = FIN.current(), onoff = function (k) { return F.segmented([{ id: 'on', label: 'On' }, { id: 'off', label: 'Off' }], cur[k] ? 'on' : 'off', function (id) { FIN.set(k, id === 'on'); }); };
+    return [
+      row('Outlines', onoff('outline'), 'soft ink line round characters'),
+      row('Bloom', onoff('bloom'), 'glow on eyes, fire and magic'),
+      row('Film grain', onoff('grain'), 'fine moving grain'),
+      row('Vignette', onoff('vignette'), 'darker corners'),
+      row('Finish strength', F.slider({ min: 50, max: 150, step: 10, value: Math.round(cur.strength * 100), format: function (x) { return Math.round(x) + '%'; }, label: 'finish strength', onChange: function (x) { FIN.set('strength', x / 100); } }), 'all four at once')
+    ];
+  };
+
+  // ------------------------------------------------------------------ shaders
+  var VS_FULL = [
+    'layout(location=0) in vec2 aPos;',
+    'out vec2 vUv;',
+    'void main() { vUv = aPos * 0.5 + 0.5; gl_Position = vec4(aPos, 0.0, 1.0); }'
+  ].join('\n');
+  var FS_HASH = 'float fhash(vec2 p) { vec3 q = fract(vec3(p.xyx) * 0.1031); q += dot(q, q.yzx + 33.33); return fract((q.x + q.y) * q.z); }';
+  /** The combined pass: ink, bloom, vignette and grain over the resolved scene. */
+  var FS_COMP = [
+    FS_HASH,
+    'uniform sampler2D uCol; uniform sampler2D uDep; uniform sampler2D uBlm;',
+    'uniform vec4 uSz;',    // 1/w, 1/h, ink radius (px), time
+    'uniform vec4 uFx;',    // ink strength, bloom strength, vignette strength, grain strength
+    'uniform vec4 uInkC;',  // ink colour (display space), vignette inner radius
+    'uniform vec2 uPrj;',   // projection [10], [14]: depth -> distance
+    'in vec2 vUv; out vec4 oCol;',
+    'float lz(float d) { return uPrj.y / (d * 2.0 - 1.0 + uPrj.x); }',
+    'void main() {',
+    '  vec4 c4 = texture(uCol, vUv); vec3 col = c4.rgb;',
+    '#ifdef INK',
+    '  vec2 r = uSz.xy * uSz.z; const float D = 0.7071;',
+    '  vec2 o[8]; o[0] = vec2(1.0, 0.0); o[1] = vec2(-1.0, 0.0); o[2] = vec2(0.0, 1.0); o[3] = vec2(0.0, -1.0);',
+    '  o[4] = vec2(D, D); o[5] = vec2(-D, D); o[6] = vec2(D, -D); o[7] = vec2(-D, -D);',
+    '  float m[8]; float ms = 0.0;',
+    '  for (int i = 0; i < 8; i++) { m[i] = texture(uCol, vUv + o[i] * r).a; ms += m[i]; }',
+    '  if (ms > 0.04) {',     // a character is near: compare distances (most pixels never get here)
+    '    float d0 = lz(texture(uDep, vUv).r), e = 0.0, dn = 1e9;',
+    '    for (int i = 0; i < 8; i++) {',
+    '      if (m[i] < 0.02) continue;',
+    '      float dq = lz(texture(uDep, vUv + o[i] * r).r); float t = 0.12 + dq * 0.012;',
+    '      e += m[i] * smoothstep(t, t * 2.6, d0 - dq); dn = min(dn, dq);',
+    '    }',
+    '    e = clamp(e * 0.5, 0.0, 1.0) * mix(1.0, 0.45, smoothstep(22.0, 70.0, dn));',   // far characters: a lighter line
+    '    vec3 ink = mix(col * 0.2, uInkC.rgb, 0.55);',
+    '    col = mix(col, ink, e * uFx.x);',
+    '  }',
+    '#endif',
+    '#ifdef BLOOM',
+    '  vec3 b = texture(uBlm, vUv).rgb * uFx.y;',
+    '  col += b * (1.0 - col * 0.55);',
+    '#endif',
+    '  if (uFx.z > 0.0) { vec2 q = vUv - 0.5; q.x *= 1.25; col *= 1.0 - uFx.z * smoothstep(uInkC.w, uInkC.w + 0.55, length(q)); }',
+    '  if (uFx.w > 0.0) {',
+    '    float n = fhash(gl_FragCoord.xy + fract(uSz.w * 7.31) * vec2(417.0, 289.0)) - 0.5;',
+    '    float l = dot(col, vec3(0.2126, 0.7152, 0.0722));',
+    '    col += n * uFx.w * (0.35 + 0.65 * (1.0 - abs(l * 2.0 - 1.0)));',
+    '  }',
+    '  oCol = vec4(clamp(col, 0.0, 1.0), 1.0);',
+    '}'
+  ].join('\n');
+  /** Overlay (vignette and grain only, no offscreen buffer): blended as dst * 2 * src, so 0.5 changes nothing. */
+  var FS_OVER = [
+    FS_HASH,
+    'uniform vec4 uSz; uniform vec4 uFx; uniform vec4 uInkC;',
+    'in vec2 vUv; out vec4 oCol;',
+    'void main() {',
+    '  float k = 1.0;',
+    '  if (uFx.z > 0.0) { vec2 q = vUv - 0.5; q.x *= 1.25; k = 1.0 - uFx.z * smoothstep(uInkC.w, uInkC.w + 0.55, length(q)); }',
+    '  if (uFx.w > 0.0) k *= 1.0 + (fhash(gl_FragCoord.xy + fract(uSz.w * 7.31) * vec2(417.0, 289.0)) - 0.5) * uFx.w * 3.0;',
+    '  oCol = vec4(vec3(0.5 * k), 1.0);',
+    '}'
+  ].join('\n');
+  /** Bloom source: bright AND coloured (glowing things, not a white sky or snow), at reduced size. */
+  var FS_BRIGHT = [
+    'uniform sampler2D uCol; uniform sampler2D uDep;',
+    'uniform vec4 uSz;',    // source texel x, y, has depth, threshold
+    'in vec2 vUv; out vec4 oCol;',
+    'vec3 pick(vec2 uv) {',
+    '  vec3 c = texture(uCol, uv).rgb;',
+    '  float mx = max(c.r, max(c.g, c.b)), mn = min(c.r, min(c.g, c.b)), sat = (mx - mn) / max(mx, 1e-3);',
+    '  float k = smoothstep(uSz.w, 1.0, mx) * (0.25 + 0.75 * sat);',
+    '  if (uSz.z > 0.5 && texture(uDep, uv).r > 0.99999) k *= 0.2;',     // the sky glows far less
+    '  return c * k;',
+    '}',
+    'void main() {',
+    '  vec2 t = uSz.xy;',
+    '  vec3 s = pick(vUv + vec2(-t.x, -t.y)) + pick(vUv + vec2(t.x, -t.y)) + pick(vUv + vec2(-t.x, t.y)) + pick(vUv + vec2(t.x, t.y));',
+    '  oCol = vec4(s * 0.25, 1.0);',
+    '}'
+  ].join('\n');
+  var FS_BLUR = [
+    'uniform sampler2D uSrc; uniform vec2 uDir;',     // texel step along the blur direction
+    'in vec2 vUv; out vec4 oCol;',
+    'void main() {',
+    '  vec3 c = texture(uSrc, vUv).rgb * 0.2270270;',
+    '  c += (texture(uSrc, vUv + uDir * 1.3846154).rgb + texture(uSrc, vUv - uDir * 1.3846154).rgb) * 0.3162162;',
+    '  c += (texture(uSrc, vUv + uDir * 3.2307692).rgb + texture(uSrc, vUv - uDir * 3.2307692).rgb) * 0.0702703;',
+    '  oCol = vec4(c, 1.0);',
+    '}'
+  ].join('\n');
+  FIN._shaders = { VS_FULL: VS_FULL, FS_COMP: FS_COMP, FS_OVER: FS_OVER, FS_BRIGHT: FS_BRIGHT, FS_BLUR: FS_BLUR };
+
+  // ------------------------------------------------------------------ renderer hooks (browser)
+  var Renderer = G.Renderer;
+  if (!Renderer) return;
+
+  function tex(gl, fmt, w, h, filter) {
+    var t = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texStorage2D(gl.TEXTURE_2D, 1, fmt, w, h);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    return t;
+  }
+  function fbo(gl, color, depth) {
+    var f = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, f);
+    if (color) gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, color, 0);
+    if (depth) gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, depth, 0);
+    return f;
+  }
+  /** GPU resources of the finish for one size; rebuilt when the size, the sample count or the bloom size change. */
+  Renderer.prototype._finishRes = function (w, h, samples, bloomDiv) {
+    var gl = this.gl, R = this._fin;
+    if (R && R.token === this._progs && R.w === w && R.h === h && R.samples === samples && R.bloomDiv === bloomDiv) return R;
+    this._finishFree();
+    R = this._fin = { token: this._progs, w: w, h: h, samples: samples, bloomDiv: bloomDiv, ok: false, bytes: 0 };
+    R.col = tex(gl, gl.RGBA8, w, h, gl.LINEAR);
+    R.dep = tex(gl, gl.DEPTH_COMPONENT24, w, h, gl.NEAREST);
+    R.rs = fbo(gl, R.col, R.dep);
+    R.bytes = w * h * 8;
+    var ok = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+    if (samples > 0 && ok) {
+      R.msC = gl.createRenderbuffer(); gl.bindRenderbuffer(gl.RENDERBUFFER, R.msC); gl.renderbufferStorageMultisample(gl.RENDERBUFFER, samples, gl.RGBA8, w, h);
+      R.msD = gl.createRenderbuffer(); gl.bindRenderbuffer(gl.RENDERBUFFER, R.msD); gl.renderbufferStorageMultisample(gl.RENDERBUFFER, samples, gl.DEPTH_COMPONENT24, w, h);
+      R.ms = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, R.ms);
+      gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.RENDERBUFFER, R.msC);
+      gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, R.msD);
+      ok = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+      R.bytes += w * h * samples * 8;
+    }
+    if (ok && bloomDiv) {
+      R.bw = Math.max(1, Math.round(w / bloomDiv)); R.bh = Math.max(1, Math.round(h / bloomDiv));
+      R.bA = tex(gl, gl.RGBA8, R.bw, R.bh, gl.LINEAR); R.bB = tex(gl, gl.RGBA8, R.bw, R.bh, gl.LINEAR);
+      R.fA = fbo(gl, R.bA, null); ok = ok && gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+      R.fB = fbo(gl, R.bB, null); ok = ok && gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+      R.bytes += R.bw * R.bh * 8;
+    }
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.bindRenderbuffer(gl.RENDERBUFFER, null); gl.bindTexture(gl.TEXTURE_2D, null);
+    R.ok = ok;
+    return R;
+  };
+  Renderer.prototype._finishFree = function () {
+    var gl = this.gl, R = this._fin;
+    this._fin = null;
+    if (!R || R.token !== this._progs || this.lost) return;      // a lost context took them already
+    [R.col, R.dep, R.bA, R.bB].forEach(function (t) { if (t) gl.deleteTexture(t); });
+    [R.rs, R.ms, R.fA, R.fB].forEach(function (f) { if (f) gl.deleteFramebuffer(f); });
+    [R.msC, R.msD].forEach(function (b) { if (b) gl.deleteRenderbuffer(b); });
+  };
+  Renderer.prototype._finishProg = function (name, defs) {
+    var key = 'fin_' + name + (defs ? ':' + defs.join(',') : ''), p = this._progs[key];
+    if (p) return p;
+    var S = G._shaders, src = { comp: FS_COMP, over: FS_OVER, bright: FS_BRIGHT, blur: FS_BLUR }[name];
+    p = this._progs[key] = new S.Program(this.gl, VS_FULL, src, defs || []);
+    return p;
+  };
+
+  /**
+   * Which renderer gets the finish: the game's own (KD.game.renderer), or any renderer whose `finish` field is set to a
+   * switches object (a preview may opt in). Returns this frame's plan, or null for the direct path.
+   */
+  Renderer.prototype._postBegin = function (w, h) {
+    var f = this.finish;
+    if (f === undefined) f = (KD.game && KD.game.renderer === this) ? FIN._flags(this) : null;
+    if (!f || this._finFailed) { if (this._fin && !f) this._finishFree(); this.stats.post = 'off'; this.stats.postPasses = 0; return null; }
+    var lv = this.level.name, plan = FIN.plan(f, lv);
+    if (plan.mode === 'off') { if (this._fin) this._finishFree(); this.stats.post = 'off'; this.stats.postPasses = 0; return null; }
+    var P = this._postP || (this._postP = { mode: 'off', fbo: null, flags: null, plan: null, res: null });
+    P.flags = f; P.plan = plan; P.mode = plan.mode; P.fbo = null; P.res = null;
+    if (plan.mode === 'full') {
+      var want = this._samples > 0 ? Math.min(lv === 'low' ? 2 : 4, this._finMaxS === undefined || this._finTok !== this._progs ? (this._finTok = this._progs, this._finMaxS = this.gl.getParameter(this.gl.MAX_SAMPLES) || 0) : this._finMaxS) : 0;
+      var R = this._finishRes(w, h, want, plan.bloomDiv);
+      if (!R.ok) { this._finFailed = true; this._finishFree(); console.warn('KD.gfx: camera finish buffers are not available here, finish off'); this.stats.post = 'off'; this.stats.postPasses = 0; return null; }
+      P.res = R; P.fbo = R.ms || R.rs;
+    } else if (this._fin) this._finishFree();
+    // the area mood's vignette is taken over by the finish (never two vignettes)
+    if (f.vignette) { P.moodVig = this.env.vignette || 0; this._f.grade[2] = 0; } else P.moodVig = 0;
+    return P;
+  };
+  /** The switches the game renderer uses this frame (cached until the settings or the quality level change). */
+  FIN._flags = function (r) {
+    var lv = r.level.name;
+    if (FIN._cache && FIN._cacheV === FIN.version && FIN._cacheL === lv) return FIN._cache;
+    if (!FIN.saved) FIN.load();
+    FIN._cache = FIN.resolve(lv, FIN.saved); FIN._cacheV = FIN.version; FIN._cacheL = lv;
+    return FIN._cache;
+  };
+
+  var _inkC = [0, 0, 0];
+  Renderer.prototype._postEnd = function (P, w, h) {
+    var gl = this.gl, st = this.stats, f = P.flags, e = this.env, k = f.strength, R = P.res, vao = this._skyVao, prog, u, n = 0;
+    var t = this.time;
+    gl.disable(gl.DEPTH_TEST); gl.depthMask(false); gl.disable(gl.CULL_FACE); gl.colorMask(true, true, true, true);
+    gl.bindVertexArray(vao);
+    // vignette: the finish's own, or the area mood's when that is stronger; grain: fine, a touch stronger on a phone (fewer pixels)
+    var vig = f.vignette ? Math.max(0.24 * k, (P.moodVig || 0) * Math.min(1.2, k)) : 0;
+    var vigR = f.vignette ? (P.moodVig > 0.24 * k ? (e.vignetteRadius || 0.32) : 0.42) : 0.42;
+    var grain = f.grain ? 0.032 * k * (e.grainStrength === undefined ? 1 : e.grainStrength) : 0;
+    if (P.mode === 'overlay') {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, w, h);
+      prog = this._finishProg('over'); gl.useProgram(prog.p); u = prog.u;
+      gl.uniform4f(u.uSz, 1 / w, 1 / h, 0, t); gl.uniform4f(u.uFx, 0, 0, vig, grain); gl.uniform4f(u.uInkC, 0, 0, 0, vigR);
+      gl.enable(gl.BLEND); gl.blendFunc(gl.DST_COLOR, gl.SRC_COLOR);
+      gl.drawArrays(gl.TRIANGLES, 0, 3); n++;
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA); gl.disable(gl.BLEND);
+    } else {
+      gl.disable(gl.BLEND);
+      // resolve the multisampled scene (colour, and depth for the ink)
+      if (R.ms) {
+        gl.bindFramebuffer(gl.READ_FRAMEBUFFER, R.ms); gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, R.rs);
+        gl.blitFramebuffer(0, 0, w, h, 0, 0, w, h, gl.COLOR_BUFFER_BIT | (f.outline ? gl.DEPTH_BUFFER_BIT : 0), gl.NEAREST);
+        gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null); gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
+      }
+      var bloom = f.bloom ? 0.85 * k * (e.bloomStrength === undefined ? 1 : e.bloomStrength) : 0;
+      if (f.bloom) {
+        gl.viewport(0, 0, R.bw, R.bh);
+        prog = this._finishProg('bright'); gl.useProgram(prog.p); u = prog.u;
+        gl.bindFramebuffer(gl.FRAMEBUFFER, R.fA);
+        gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, R.dep); gl.uniform1i(u.uDep, 1);
+        gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, R.col); gl.uniform1i(u.uCol, 0);
+        gl.uniform4f(u.uSz, 0.5 / w * P.plan.bloomDiv * 0.5, 0.5 / h * P.plan.bloomDiv * 0.5, f.outline ? 1 : 0, 0.62);
+        gl.drawArrays(gl.TRIANGLES, 0, 3); n++;
+        prog = this._finishProg('blur'); gl.useProgram(prog.p); u = prog.u; gl.uniform1i(u.uSrc, 0);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, R.fB); gl.bindTexture(gl.TEXTURE_2D, R.bA); gl.uniform2f(u.uDir, 1 / R.bw, 0);
+        gl.drawArrays(gl.TRIANGLES, 0, 3); n++;
+        gl.bindFramebuffer(gl.FRAMEBUFFER, R.fA); gl.bindTexture(gl.TEXTURE_2D, R.bB); gl.uniform2f(u.uDir, 0, 1 / R.bh);
+        gl.drawArrays(gl.TRIANGLES, 0, 3); n++;
+      }
+      // the one combined pass, into the canvas
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, w, h);
+      var defs = []; if (f.outline) defs.push('INK'); if (f.bloom) defs.push('BLOOM');
+      prog = this._finishProg('comp', defs); gl.useProgram(prog.p); u = prog.u;
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, R.col); gl.uniform1i(u.uCol, 0);
+      if (u.uDep) { gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, R.dep); gl.uniform1i(u.uDep, 1); }
+      if (u.uBlm) { gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, R.bA); gl.uniform1i(u.uBlm, 2); }
+      gl.activeTexture(gl.TEXTURE0);
+      // ink radius: about 1.1 px at 720 lines, never under 1 px
+      gl.uniform4f(u.uSz, 1 / w, 1 / h, Math.max(1, h / 720 * 1.1), t);
+      var inkK = f.outline ? 0.9 * Math.min(1.3, k) * (e.inkStrength === undefined ? 1 : e.inkStrength) : 0;
+      gl.uniform4f(u.uFx, Math.min(1, inkK), bloom, vig, grain);
+      inkColor(e, _inkC);
+      gl.uniform4f(u.uInkC, _inkC[0], _inkC[1], _inkC[2], vigR);
+      var cam = this._prepared, pr = cam && cam.proj;
+      if (u.uPrj) gl.uniform2f(u.uPrj, pr ? pr[10] : -1, pr ? pr[14] : -0.5);
+      gl.drawArrays(gl.TRIANGLES, 0, 3); n++;
+      gl.bindTexture(gl.TEXTURE_2D, null);
+    }
+    gl.enable(gl.DEPTH_TEST); gl.enable(gl.CULL_FACE);
+    st.drawCalls += n; st.postPasses = n; st.post = P.mode;
+  };
+  /** The ink colour: the area's own (env.inkColor), else a dark shade of its shadow tint, else a cool near-black. */
+  function inkColor(e, out) {
+    var c = null;
+    if (e.inkColor) c = G.color._get(e.inkColor);
+    if (c) { out[0] = c[0]; out[1] = c[1]; out[2] = c[2]; return out; }
+    out[0] = 0.07; out[1] = 0.06; out[2] = 0.09;
+    if (e.grade > 0 && e.gradeShadow) {
+      var s = G.color._get(e.gradeShadow);
+      out[0] += s[0] * 0.25; out[1] += s[1] * 0.25; out[2] += s[2] * 0.25;
+    }
+    return out;
+  }
+  FIN._inkColor = inkColor;
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -57581,7 +57996,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     '  vec3 p; vec3 n; skin(p, n);',
     '  vPos = p; vNrm = n; vUV = aUV;',
     '  vCol = pow(max(uTint.rgb, 0.0), vec3(2.2));',
-    '  vMat = vec4(uPar.y, uPar.z, uPar.x, uTint.a);',
+    '  vMat = vec4(uPar.y, uPar.z, uPar.x, uTint.a + uPar.w);',   // [camera finish] uPar.w = 1: inked (outlined) opaque character
     '  float ndl = max(dot(n, uSunDirV), 0.0);',
     '  vShadow = (uShadowMat * vec4(p + n * (uShadowP.x * (0.25 + 1.5 * (1.0 - ndl))), 1.0)).xyz;',
     '  gl_Position = uViewProj * vec4(p, 1.0);',
@@ -57672,7 +58087,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       d.mesh = mesh; d.nb = Math.min(nb, MAX_BONES); d.bones.set(nb * 12 <= bones.length ? bones.subarray(0, d.nb * 12) : bones);
       d.src = bones; d.slot = null;
       d.tint[0] = r; d.tint[1] = g; d.tint[2] = b; d.tint[3] = a;
-      d.par[0] = flash || 0; d.par[1] = emissive || 0; d.par[2] = 0; d.par[3] = 0;
+      d.par[0] = flash || 0; d.par[1] = emissive || 0; d.par[2] = 0; d.par[3] = a >= 0.999 ? (this._ink || 0) : 0;   // [camera finish]
       d.hasOutline = !!outline;
       if (outline) { d.outline[0] = outline[0]; d.outline[1] = outline[1]; d.outline[2] = outline[2]; d.outline[3] = width === undefined ? 0.03 : width; }
       // detail level: the lower one at the phone quality level, or far from the camera (the hips bone carries the position)
@@ -57929,7 +58344,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         // the same two steps as transparent instances: depth only, then one clean blended layer
         gl.disable(gl.BLEND); gl.colorMask(false, false, false, false); gl.depthMask(true); gl.depthFunc(gl.LESS);
         for (i = 0; i < Q.n; i++) { d = Q.list[i]; if (d.tint[3] >= 0.999 || !ok(d)) continue; g = bind(this, d, prog, cpu); gl.drawElements(gl.TRIANGLES, g.count, g.type, 0); }
-        gl.colorMask(true, true, true, true); gl.depthMask(false); gl.depthFunc(gl.LEQUAL); gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        gl.colorMask(true, true, true, !this._postOn); gl.depthMask(false); gl.depthFunc(gl.LEQUAL); gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);   // [camera finish] keep the ink mask
         for (i = 0; i < Q.n; i++) { d = Q.list[i]; if (d.tint[3] >= 0.999 || !ok(d)) continue; g = bind(this, d, prog, cpu); gl.drawElements(gl.TRIANGLES, g.count, g.type, 0); st.drawCalls++; st.triangles += g.count / 3; }
         gl.depthMask(true); gl.depthFunc(gl.LESS); gl.disable(gl.BLEND);
       }
@@ -111191,77 +111606,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   function sensToStep(s) { return Math.round(U.clamp((s - SENS_MIN) / (SENS_MAX - SENS_MIN), 0, 1) * 19) + 1; }
   function stepToSens(n) { return SENS_MIN + (SENS_MAX - SENS_MIN) * (n - 1) / 19; }
   P.sensToStep = sensToStep; P.stepToSens = stepToSens;
-  function settingsBody(game) {
-    var el = KD.ui.el, ST = F.settings, v = ST.values, IN = KD.input, touch = F.isTouch(), compact = F.isCompact();
-    var quality = touch ? F.qualityLevels() : null;       // phones and tablets: one "Graphics quality" choice when the renderer offers presets
-    var pct = function (x) { return Math.round(x) + '%'; };
-    var row = function (label, control, hint) { return el('div.flow-set-row', [el('div.flow-set-label', [el('span', { text: label }), hint ? el('span.flow-set-hint', { text: hint }) : null]), el('div.flow-set-ctl', control)]); };
-    var onoff = function (value, fn) { return F.segmented([{ id: 'on', label: 'On' }, { id: 'off', label: 'Off' }], value ? 'on' : 'off', function (id) { fn(id === 'on'); }); };
-    var vol = function (key) { return F.slider({ min: 0, max: 100, step: 5, value: Math.round(v[key] * 100), format: pct, label: key + ' volume', onInput: function (x) { ST.set(key, x / 100); }, onChange: function () { F.sound('ui_click'); } }); };
-    return el('div.flow-set', [
-      el('div.flow-set-col', [
-        el('div.kd-h3', { text: 'Sound' }),
-        row('Master volume', vol('master')), row('Effects', vol('sfx')), row('Music', vol('music')),
-        // [w8 music] music style: the adaptive score (New) or the first music (Classic); kept by KD.audio.score itself
-        KD.audio && KD.audio.score && KD.audio.score.setStyle ? row('Music style', F.segmented([{ id: 'new', label: 'New' }, { id: 'classic', label: 'Classic' }], KD.audio.score.style(), function (id) { KD.audio.score.setStyle(id); })) : null,
-        // [w8 sound] ambience volume (area sounds: wind, birds, water, crowds); kept by KD.audio.amb itself
-        KD.audio && KD.audio.amb ? row('Ambience', F.slider({ min: 0, max: 100, step: 5, value: Math.round(KD.audio.amb.getVolume() * 100), format: pct, label: 'ambience volume', onInput: function (x) { KD.audio.amb.setVolume(x / 100); }, onChange: function () { F.sound('ui_click'); } })) : null,
-        row('Mute everything', onoff(v.muted, function (on) { ST.set('muted', on); })),
-        el('div.kd-h3', { text: 'Controls' }),
-        // touch: no mouse, no mouse capture, no keys. The camera is dragged with a finger.
-        KD.game && KD.game.setView ? row('Camera view', F.segmented([{ id: 'follow', label: 'Behind the hero' }, { id: 'top', label: 'Top down' }], KD.game.view || 'follow', function (id) { KD.game.setView(id); }), 'top down never turns: nothing to steer but the hero') : null,
-        touch ? row('Camera drag sensitivity', F.slider({ min: 1, max: 20, step: 1, value: F.dragToStep(IN.TOUCH_SENS), label: 'camera drag sensitivity', onInput: function (n) { IN.TOUCH_SENS = F.stepToDrag(n); }, onChange: function () { IN.save(); } }), 'how far a drag turns the view')
-          : row('Mouse sensitivity', F.slider({ min: 1, max: 20, step: 1, value: sensToStep(IN.sensitivity), label: 'mouse sensitivity', onInput: function (n) { IN.sensitivity = stepToSens(n); }, onChange: function () { IN.save(); } })),
-        row('Invert vertical look', onoff(IN.invertY, function (on) { IN.invertY = on; IN.save(); })),
-        touch ? null : row('Aim', F.segmented([
-          { id: 'auto', label: 'Auto', tip: 'Captures the mouse when the browser allows it, otherwise aims with the cursor.' },
-          { id: 'lock', label: 'Mouse look', tip: 'The mouse turns the camera; aim is the centre of the screen.' },
-          { id: 'cursor', label: 'Cursor', tip: 'The cursor stays free and the hero aims at the ground under it. Hold the right button to turn.' }], IN.aimMode, function (id) { IN.setAimMode(id); })),
-        touch ? null : row('Keys', KD.ui.button('Key bindings', { small: true, icon: 'key', onClick: function () { P.openBindings(game); } })),
-        KD.pad && KD.pad.settingsRows ? KD.pad.settingsRows(row, F, game) : null      // [pad-play] Controller: vibration, stick sensitivity, dead zone, aim assist, layout (src/ui/04_pad.js)
-      ]),
-      el('div.flow-set-col', [
-        el('div.kd-h3', { text: 'Display' }),
-        // a phone lays everything out for 860 x 460 units: much bigger than that would not fit, so the range is narrower there
-        row('Interface size', F.slider({ min: compact ? 80 : 75, max: compact ? 115 : 150, step: 5, value: U.clamp(Math.round(KD.ui.scale.user * 100), compact ? 80 : 75, compact ? 115 : 150), format: pct, label: 'interface size', onChange: function (x) { KD.ui.scale.set(x / 100); } }), 'applies when released'),
-        // (the renderer draws the lighter of this level and the player's own shadows / render scale, so those two rows are left out here)
-        quality ? row('Graphics quality', F.segmented(quality, F.qualityValue(), function (id) { try { KD.gfx.quality.set(id); } catch (e) { console.error(e); } }), 'lower is faster and saves battery') : null,
-        quality ? null : row('Shadows', F.segmented([{ id: 'off', label: 'Off' }, { id: 'low', label: 'Low' }, { id: 'high', label: 'High' }], v.shadows, function (id) { ST.set('shadows', id); })),
-        quality ? null : row('Render scale', F.slider({ min: 50, max: 100, step: 5, value: Math.round(v.renderScale * 100), format: pct, label: 'render scale', onChange: function (x) { ST.set('renderScale', x / 100); } }), 'lower is faster'),
-        KD.art && KD.art.settingsRow ? KD.art.settingsRow(row, F) : null,      // [art] Gravecaller look: New / Classic (src/gfx/48_hero_art.js)
-        KD.art && KD.art.settingsRowFor ? KD.art.settingsRowFor('gloamblade', row, F) : null,      // [gloamblade art] Gloamblade look: New / Classic
-        KD.env && KD.env.mood && KD.env.mood.settingsRow ? KD.env.mood.settingsRow(row, F) : null,      // [mood presets] Area look: New / Classic (src/gfx/55_env_mood.js)
-        KD.style && KD.style.settingsRow ? KD.style.settingsRow(row, F) : null,      // [enemy style] Enemy look: New / Classic (src/gfx/49_style_kit.js)
-        row('Minimap', F.segmented([{ id: 'on', label: compact ? 'With the view' : 'Turns with the camera' }, { id: 'off', label: 'North up' }], ST.get('minimapRotate') ? 'on' : 'off', function (id) { ST.set('minimapRotate', id === 'on'); })),
-        row('Minimap zoom', F.slider({ min: 50, max: 200, step: 10, value: Math.round(ST.get('minimapZoom') * 100), format: pct, label: 'minimap zoom', onInput: function (x) { ST.set('minimapZoom', x / 100); } })),
-        row('Damage numbers', onoff(ST.get('damageNumbers'), function (on) { ST.set('damageNumbers', on); }), 'floating numbers and words'),
-        KD.fx && KD.fx.juice && KD.fx.juice.settingsRow ? KD.fx.juice.settingsRow(row, F) : null,      // [combat juice] Screen shake: Off / Low / Full (src/gfx/44_fx_juice.js)
-        row('Enemy health bars', onoff(ST.get('healthBars'), function (on) { ST.set('healthBars', on); })),
-        row('Loot name plates', onoff(ST.get('lootLabels'), function (on) { ST.set('lootLabels', on); }), 'Rare and better drops'),
-        row('Low-health vignette', onoff(ST.get('vignette'), function (on) { ST.set('vignette', on); }), 'and the hit flash'),
-        row('Interface motion', onoff(v.motion, function (on) { ST.set('motion', on); }), 'animations and transitions'),
-        F.online && F.online.settingsRows ? F.online.settingsRows(game, row) : null,      // name, Link another device (src/ui/26_online_10_screens.js)
-        el('div.flow-set-note.kd-dim', { text: 'Settings are kept in this browser and apply at once.' })
-      ])
-    ]);
-  }
-  P.openSettings = function (game) {
-    var w;
-    var reset = KD.ui.button('Defaults', { onClick: function () {
-      var D = F.settings.DEFAULTS, H = F.settings.HUD_DEFAULTS; Object.keys(D).forEach(function (k) { if (k !== 'v') F.settings.set(k, D[k]); }); Object.keys(H).forEach(function (k) { F.settings.set(k, H[k]); });
-      KD.input.sensitivity = 0.0026; KD.input.invertY = false; KD.input.setAimMode('auto');
-      if (F.isTouch()) {
-        KD.input.TOUCH_SENS = F.DRAG_DEFAULT; KD.input.save();
-        // the graphics level goes back to what this device starts with
-        try { var Q = KD.gfx && KD.gfx.quality, d = Q && Q.pick && Q.set ? Q.pick(KD.device) : null; if (d) Q.set(d.auto ? 'auto' : d.name); } catch (e) { console.error(e); }
-      }
-      KD.ui.scale.set(1);
-      w.setContent(settingsBody(game));
-    } });
-    w = F.window('flow-settings', { title: 'Settings', icon: 'gear', width: F.isCompact() ? 860 : 760, content: settingsBody(game), onClose: function () { F.sound('ui_close'); },
-      footer: [reset, KD.ui.button('Done', { kind: 'primary', onClick: function () { KD.ui.windows.close('flow-settings'); } })] });
-    return w;
-  };
+  // [settings tabs] the Settings window (its tabs, rows and "Reset this tab") lives in src/ui/20_flow_52_settings.js:
+  // P.openSettings(game, tab). New settings rows go there, in their tab, as one small marked line.
 
   // ------------------------------------------------------------------------------------------ how to play
   /** The first-time help panel: controls (live bindings), the loop of a run in six lines, and what the strange words mean. */
@@ -111314,7 +111660,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   };
 
   // ------------------------------------------------------------------------------------------ key bindings
-  function bindingsBody(game, refresh) {
+  function bindingsBody(game, refresh, winId) {      // [settings tabs] winId: the window it sits in (also the Controls tab of Settings)
     var el = KD.ui.el, IN = KD.input, groups = {}, order = [];
     IN.ACTIONS.forEach(function (a) { if (a.id === 'potion' && !F.potionsOn()) return; if (!groups[a.group]) { groups[a.group] = []; order.push(a.group); } groups[a.group].push(a); });
     var keyBtn = function (a, slot) {
@@ -111324,12 +111670,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
           b.setLabel('Press a key…'); b.classList.add('kd-btn-primary');
           // while a key is awaited Esc must only cancel the capture (not close the window), and the click that ends a
           // mouse capture must not start another one
-          var win = KD.ui.windows.get('flow-keys'), was = win ? win.closable : true;
+          var win = KD.ui.windows.get(winId || 'flow-keys'), was = win ? win.closable : true;
           if (win) win.closable = false;
           var swallow = function (e) { e.stopPropagation(); e.preventDefault(); };
           IN.capture().then(function (c) {
             if (c && /^Mouse/.test(c)) { window.addEventListener('click', swallow, true); setTimeout(function () { window.removeEventListener('click', swallow, true); }, 250); }
-            setTimeout(function () { var w2 = KD.ui.windows.get('flow-keys'); if (w2) w2.closable = was; }, 0);
+            setTimeout(function () { var w2 = KD.ui.windows.get(winId || 'flow-keys'); if (w2) w2.closable = was; }, 0);
             if (c) { var r = IN.bind(a.id, c, slot); if (r && r.replaced && r.replaced.length) KD.ui.toast(IN.codeLabel(c) + ' was taken from: ' + r.replaced.map(function (id) { var x = IN.ACTIONS.filter(function (q) { return q.id === id; })[0]; return x ? x.name : id; }).join(', '), { kind: 'warn', icon: 'key' }); }
             refresh();
           });
@@ -111343,10 +111689,251 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       })]);
     }));
   }
+  P.bindingsBody = bindingsBody;      // [settings tabs]
   P.openBindings = function (game) {
     var w, refresh = function () { if (KD.ui.windows.isOpen('flow-keys')) w.setContent(bindingsBody(game, refresh)); };
     w = F.window('flow-keys', { title: 'Key Bindings', icon: 'key', width: 880, content: bindingsBody(game, refresh), onClose: function () { F.sound('ui_close'); },
       footer: [KD.ui.button('Reset to defaults', { onClick: function () { KD.input.resetBindings(); refresh(); } }), KD.ui.button('Done', { kind: 'primary', onClick: function () { KD.ui.windows.close('flow-keys'); } })] });
+    return w;
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/ui/20_flow_52_settings.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var F = KD.flow = KD.flow || {};
+
+  /**
+   * [settings tabs] The Settings window, one tab per group: Gameplay, Graphics, Audio, Controls, Controller,
+   * Interface, Online. Opened from the main menu and the pause menu through KD.flow.pause.openSettings(game, tab).
+   * Every setting is saved exactly where it always was (kd.settings, kd.hud, kd.input, kd.ui, kd.pad, kd.view,
+   * kd.screenShake, kd.art, kd.artEnv, kd.artEnemies, kd.musicStyle, kd.ambVol): this file only lays the rows out.
+   *
+   * Adding a setting: put one row in the right tab's builder below (TAB_ROWS), as one small line marked with your task.
+   * row(label, control, hint) builds a row; sec(title, rows) a titled group. Tabs are kit tabs (KD.ui.tabs), so the
+   * controller menu layer switches them with L1 / R1. "Reset this tab" puts back the defaults of that tab only.
+   */
+  var SW = F.settingsWin = F.settingsWin || {};
+  SW.TABS = [
+    { id: 'gameplay', label: 'Gameplay', icon: 'sword' },
+    { id: 'graphics', label: 'Graphics', icon: 'eye' },
+    { id: 'audio', label: 'Audio', icon: 'sound' },
+    { id: 'controls', label: 'Controls', icon: 'key' },
+    { id: 'controller', label: 'Controller', icon: 'disc' },
+    { id: 'interface', label: 'Interface', icon: 'scroll' },
+    { id: 'online', label: 'Online', icon: 'chain' }
+  ];
+  SW.last = SW.last || 'gameplay';
+  if (typeof document === 'undefined') return;       // browser only from here on
+  var U = KD.util, P = F.pause = F.pause || {};
+
+  // ------------------------------------------------------------------------------------------ small builders
+  function ctx(game) {
+    var el = KD.ui.el, c = { game: game, el: el, touch: F.isTouch(), compact: F.isCompact(), ST: F.settings, IN: KD.input };
+    c.row = function (label, control, hint) {
+      if (!control) return null;
+      return el('div.flow-set-row', { data: { set: label } }, [el('div.flow-set-label', [el('span.flow-set-name', { text: label }), hint ? el('span.flow-set-hint', { text: hint }) : null]), el('div.flow-set-ctl', control)]);
+    };
+    c.onoff = function (value, fn) { return F.segmented([{ id: 'on', label: 'On' }, { id: 'off', label: 'Off' }], value ? 'on' : 'off', function (id) { fn(id === 'on'); }); };
+    c.pct = function (x) { return Math.round(x) + '%'; };
+    c.sec = function (title, rows, note) {
+      rows = flat(rows).filter(function (n) { return n && !(n.classList && n.classList.contains('kd-h3')); });
+      if (!rows.length) return null;
+      return el('div.flow-set-group', [title ? el('div.kd-h3.flow-set-head', { text: title }) : null, note ? el('div.flow-set-gnote', { text: note }) : null, rows]);
+    };
+    return c;
+  }
+  function flat(a) { var out = []; (function walk(x) { if (Array.isArray(x)) x.forEach(walk); else if (x) out.push(x); })(a); return out; }
+  function safe(fn, what) { try { return fn(); } catch (e) { console.error('settings: ' + what, e); return null; } }
+
+  // ------------------------------------------------------------------------------------------ the tabs
+  var TAB_ROWS = {
+    gameplay: function (c) {
+      var ST = c.ST, row = c.row;
+      return [
+        c.sec('Camera', [
+          KD.game && KD.game.setView ? row('Camera view', F.segmented([{ id: 'follow', label: 'Behind the hero' }, { id: 'top', label: 'Top down' }], KD.game.view || 'follow', function (id) { KD.game.setView(id); }), 'top down never turns') : null
+        ]),
+        c.sec('On screen', [
+          row('Damage numbers', c.onoff(ST.get('damageNumbers'), function (on) { ST.set('damageNumbers', on); }), 'floating numbers and words'),
+          row('Enemy health bars', c.onoff(ST.get('healthBars'), function (on) { ST.set('healthBars', on); })),
+          row('Loot name plates', c.onoff(ST.get('lootLabels'), function (on) { ST.set('lootLabels', on); }), 'Rare and better drops')
+        ]),
+        c.sec('Minimap', [
+          row('Minimap', F.segmented([{ id: 'on', label: c.compact ? 'With the view' : 'Turns with the camera' }, { id: 'off', label: 'North up' }], ST.get('minimapRotate') ? 'on' : 'off', function (id) { ST.set('minimapRotate', id === 'on'); })),
+          row('Minimap zoom', F.slider({ min: 50, max: 200, step: 10, value: Math.round(ST.get('minimapZoom') * 100), format: c.pct, label: 'minimap zoom', onInput: function (x) { ST.set('minimapZoom', x / 100); } }))
+        ])
+      ];
+    },
+    graphics: function (c) {
+      var ST = c.ST, v = ST.values, row = c.row, quality = c.touch ? F.qualityLevels() : null;      // phones and tablets: one "Graphics quality" choice when the renderer offers presets
+      return [
+        // (the renderer draws the lighter of the quality level and the player's own shadows / render scale, so those two rows are left out there)
+        c.sec('Quality', quality ? [row('Graphics quality', F.segmented(quality, F.qualityValue(), function (id) { try { KD.gfx.quality.set(id); } catch (e) { console.error(e); } }), 'lower is faster and saves battery')] : [
+          row('Shadows', F.segmented([{ id: 'off', label: 'Off' }, { id: 'low', label: 'Low' }, { id: 'high', label: 'High' }], v.shadows, function (id) { ST.set('shadows', id); })),
+          row('Render scale', F.slider({ min: 50, max: 100, step: 5, value: Math.round(v.renderScale * 100), format: c.pct, label: 'render scale', onChange: function (x) { ST.set('renderScale', x / 100); } }), 'lower is faster')
+        ]),
+        c.sec('Art style', [
+          KD.env && KD.env.mood && KD.env.mood.settingsRow ? safe(function () { return KD.env.mood.settingsRow(row, F); }, 'area look') : null,      // [mood presets] Area look (src/gfx/55_env_mood.js)
+          KD.style && KD.style.settingsRow ? safe(function () { return KD.style.settingsRow(row, F); }, 'enemy look') : null,      // [enemy style] Enemy look (src/gfx/49_style_kit.js)
+          KD.art && KD.art.settingsRow ? safe(function () { return KD.art.settingsRow(row, F); }, 'gravecaller look') : null,      // [art] Gravecaller look (src/gfx/48_hero_art.js)
+          KD.art && KD.art.settingsRowFor ? safe(function () { return KD.art.settingsRowFor('gloamblade', row, F); }, 'gloamblade look') : null      // [gloamblade art] Gloamblade look
+        ], 'New is the hand-painted look. Classic is the original.'),
+        KD.gfx && KD.gfx.finish && KD.gfx.finish.settingsRows ? c.sec('Camera finish', safe(function () { return KD.gfx.finish.settingsRows(row, F, c); }, 'camera finish'), 'The last touch on every frame. Lighter defaults on a phone.') : null      // [camera finish] src/gfx/12_renderer_post.js
+      ];
+    },
+    audio: function (c) {
+      var ST = c.ST, v = ST.values, row = c.row, A = KD.audio;
+      var vol = function (key, label) { return F.slider({ min: 0, max: 100, step: 5, value: Math.round(v[key] * 100), format: c.pct, label: label, onInput: function (x) { ST.set(key, x / 100); }, onChange: function () { F.sound('ui_click'); } }); };
+      return [
+        c.sec('Volume', [
+          row('Master volume', vol('master', 'master volume')),
+          row('Mute everything', c.onoff(v.muted, function (on) { ST.set('muted', on); })),
+          row('Music', vol('music', 'music volume')),
+          row('Effects', vol('sfx', 'effects volume')),
+          // [w8 sound] ambience volume, kept by KD.audio.amb itself
+          A && A.amb ? row('Ambience', F.slider({ min: 0, max: 100, step: 5, value: Math.round(A.amb.getVolume() * 100), format: c.pct, label: 'ambience volume', onInput: function (x) { A.amb.setVolume(x / 100); }, onChange: function () { F.sound('ui_click'); } }), 'wind, birds, water, crowds') : null
+        ]),
+        c.sec('Soundtrack', [
+          // [w8 music] the adaptive score (New) or the first music (Classic), kept by KD.audio.score itself
+          A && A.score && A.score.setStyle ? row('Music style', F.segmented([{ id: 'new', label: 'New' }, { id: 'classic', label: 'Classic' }], A.score.style(), function (id) { A.score.setStyle(id); }), 'New follows the fight and the area') : null
+        ])
+      ];
+    },
+    controls: function (c) {
+      var IN = c.IN, row = c.row, el = c.el, out = [];
+      // touch: no mouse, no mouse capture, no keys. The camera is dragged with a finger.
+      out.push(c.sec(c.touch ? 'Camera' : 'Mouse', [
+        c.touch ? row('Camera drag sensitivity', F.slider({ min: 1, max: 20, step: 1, value: F.dragToStep(IN.TOUCH_SENS), label: 'camera drag sensitivity', onInput: function (n) { IN.TOUCH_SENS = F.stepToDrag(n); }, onChange: function () { IN.save(); } }), 'how far a drag turns the view')
+          : row('Mouse sensitivity', F.slider({ min: 1, max: 20, step: 1, value: P.sensToStep(IN.sensitivity), label: 'mouse sensitivity', onInput: function (n) { IN.sensitivity = P.stepToSens(n); }, onChange: function () { IN.save(); } })),
+        row('Invert vertical look', c.onoff(IN.invertY, function (on) { IN.invertY = on; IN.save(); })),
+        c.touch ? null : row('Aim', F.segmented([
+          { id: 'auto', label: 'Auto', tip: 'Captures the mouse when the browser allows it, otherwise aims with the cursor.' },
+          { id: 'lock', label: 'Mouse look', tip: 'The mouse turns the camera; aim is the centre of the screen.' },
+          { id: 'cursor', label: 'Cursor', tip: 'The cursor stays free and the hero aims at the ground under it. Hold the right button to turn.' }], IN.aimMode, function (id) { IN.setAimMode(id); }), 'Cursor keeps the pointer free')
+      ]));
+      if (!c.touch && P.bindingsBody) {      // keys are for keyboards: the bindings live right here on a PC
+        var box = el('div.flow-set-keys');
+        var refresh = function () { KD.ui.clear(box); box.appendChild(P.bindingsBody(c.game, refresh, 'flow-settings')); };
+        refresh();
+        out.push(c.sec('Key bindings', [box], 'Click a key, then press the new one. Esc cancels. Right-click clears the second key.'));
+      }
+      return out;
+    },
+    controller: function (c) {
+      if (!(KD.pad && KD.pad.settingsRows)) return [];
+      return [c.sec(null, safe(function () { return KD.pad.settingsRows(c.row, F, c.game); }, 'controller'))];      // [pad-play] src/ui/04_pad.js
+    },
+    interface: function (c) {
+      var ST = c.ST, v = ST.values, row = c.row, compact = c.compact, lo = compact ? 80 : 75, hi = compact ? 115 : 150;
+      return [
+        c.sec('Interface', [
+          // a phone lays everything out for 860 x 460 units: much bigger than that would not fit, so the range is narrower there
+          row('Interface size', F.slider({ min: lo, max: hi, step: 5, value: U.clamp(Math.round(KD.ui.scale.user * 100), lo, hi), format: c.pct, label: 'interface size', onChange: function (x) { KD.ui.scale.set(x / 100); } }), 'applies when you let go'),
+          row('Interface motion', c.onoff(v.motion, function (on) { ST.set('motion', on); }), 'animations and transitions')
+        ]),
+        c.sec('Comfort', [
+          KD.fx && KD.fx.juice && KD.fx.juice.settingsRow ? safe(function () { return KD.fx.juice.settingsRow(row, F); }, 'screen shake') : null,      // [combat juice] Screen shake (src/gfx/44_fx_juice.js)
+          row('Low-health vignette', c.onoff(ST.get('vignette'), function (on) { ST.set('vignette', on); }), 'and the red hit flash')
+        ])
+      ];
+    },
+    online: function (c) {
+      if (!(F.online && F.online.settingsRows)) return [];
+      var rows = safe(function () { return F.online.settingsRows(c.game, c.row); }, 'online');      // name, Link another device, Friends (src/ui/26_online_10_screens.js)
+      return [c.sec(null, rows)];
+    }
+  };
+  SW.TAB_ROWS = TAB_ROWS;
+
+  // ------------------------------------------------------------------------------------------ reset, one tab at a time
+  var RESET = {
+    gameplay: function () {
+      var H = F.settings.HUD_DEFAULTS;
+      ['damageNumbers', 'healthBars', 'lootLabels', 'minimapRotate', 'minimapZoom'].forEach(function (k) { F.settings.set(k, H[k]); });
+      if (KD.game && KD.game.setView && KD.game.view !== 'follow') KD.game.setView('follow');
+    },
+    graphics: function () {
+      var D = F.settings.DEFAULTS;
+      if (F.isTouch() && F.qualityLevels()) {
+        // the graphics level goes back to what this device starts with
+        try { var Q = KD.gfx && KD.gfx.quality, d = Q && Q.pick && Q.set ? Q.pick(KD.device) : null; if (d) Q.set(d.auto ? 'auto' : d.name); } catch (e) { console.error(e); }
+      }
+      F.settings.set('shadows', D.shadows); F.settings.set('renderScale', D.renderScale);
+      if (KD.env && KD.env.mood && KD.env.mood.set && KD.env.mood.setting() !== 'grim') KD.env.mood.set('grim');
+      if (KD.style && KD.style.set && KD.style.setting() !== 'grim') KD.style.set('grim');
+      if (KD.gfx && KD.gfx.finish && KD.gfx.finish.reset) KD.gfx.finish.reset();      // [camera finish] back to this quality level's defaults
+      if (KD.art && KD.art.set && KD.art.has) ['gravecaller', 'gloamblade'].forEach(function (cl) { if (KD.art.has(cl) && KD.config.art[cl] === 'classic') KD.art.set(cl, 'tripo'); });
+    },
+    audio: function () {
+      var D = F.settings.DEFAULTS, A = KD.audio;
+      ['master', 'sfx', 'music', 'muted'].forEach(function (k) { F.settings.set(k, D[k]); });
+      if (A && A.amb && A.amb.setVolume) A.amb.setVolume(0.8);
+      if (A && A.score && A.score.setStyle) A.score.setStyle('new');
+    },
+    controls: function () {
+      var IN = KD.input;
+      IN.invertY = false;
+      if (F.isTouch()) IN.TOUCH_SENS = F.DRAG_DEFAULT;
+      else { IN.sensitivity = 0.0026; IN.setAimMode(KD.game && KD.game.view === 'top' ? 'cursor' : 'auto'); IN.resetBindings(); }
+      IN.save();
+    },
+    controller: function () {
+      var PD = KD.pad; if (!PD || !PD.DEFAULTS) return;
+      Object.keys(PD.DEFAULTS).forEach(function (k) { PD.settings[k] = PD.DEFAULTS[k]; });
+      if (PD.resetMap) PD.resetMap(); else if (PD.save) PD.save();
+    },
+    interface: function () {
+      F.settings.set('motion', true); F.settings.set('vignette', true);
+      var J = KD.fx && KD.fx.juice; if (J && J.setShake) J.setShake(J.reduced && J.reduced() ? 'off' : 'low');
+      KD.ui.scale.set(1);
+    }
+  };
+  SW.RESET = RESET;
+  /** reset(tabId): that tab's settings back to their defaults (no questions asked; the window asks first). */
+  SW.reset = function (id) { if (RESET[id]) safe(function () { RESET[id](); return 1; }, 'reset ' + id); };
+
+  // ------------------------------------------------------------------------------------------ the window
+  /** body(game, tab) -> the tabs node: only the tabs that have rows on this device. */
+  SW.body = function (game, tab, onTab) {
+    var c = ctx(game), list = [], built = {};
+    SW.where = {};      // row label -> tab id (checkers and menus jump to a row with win.showRow(label))
+    SW.TABS.forEach(function (t) {
+      var rows = flat(safe(function () { return TAB_ROWS[t.id](c); }, t.id) || []);
+      if (!rows.length) return;
+      built[t.id] = rows;
+      rows.forEach(function (n) { if (n.querySelectorAll) [n].concat([].slice.call(n.querySelectorAll('[data-set]'))).forEach(function (r) { var l = r.getAttribute && r.getAttribute('data-set'); if (l) SW.where[l] = t.id; }); });
+      list.push({ id: t.id, label: t.label, icon: t.icon, content: function () { return c.el('div.flow-set.flow-set-' + t.id, rows); } });
+    });
+    if (!built[tab]) tab = list.length ? list[0].id : null;
+    var tabs = KD.ui.tabs({ active: tab, surface: 'parchment', className: 'flow-set-tabs', tabs: list, onChange: function (id) { SW.last = id; F.sound('ui_click'); if (onTab) onTab(id); } });
+    F.swipeRow(tabs.querySelector('.kd-tabs-bar'));
+    if (c.touch) tabs.body.classList.add('kd-scroll');      // touch: the page only lets marked boxes scroll under a finger
+    SW.last = tabs.active();
+    if (onTab) onTab(SW.last);
+    return tabs;
+  };
+  P.openSettings = function (game, tab) {
+    var w, el = KD.ui.el;
+    game = game || KD.game;
+    var tabsNow = function () { return w && w.node ? w.node.querySelector('.flow-set-tabs') : null; };
+    var reset, sync = function (id) { if (reset) reset.disabled = !RESET[id]; };      // Online has nothing to reset
+    var rebuild = function (id) { if (KD.ui.windows.isOpen('flow-settings')) w.setContent(SW.body(game, id, sync)); };
+    reset = KD.ui.button(F.isCompact() ? 'Reset tab' : 'Reset this tab', { icon: 'arrow_left', className: 'flow-set-reset', onClick: function () {
+      var t = tabsNow(), id = t ? t.active() : SW.last, name = (SW.TABS.filter(function (x) { return x.id === id; })[0] || { label: 'these' }).label;
+      F.confirm({ title: 'Reset ' + name + ' settings?', text: 'Every setting on the ' + name + ' tab goes back to its default. The other tabs stay as they are.', yes: 'Reset', no: 'Cancel' })
+        .then(function (ok) { if (ok) { SW.reset(id); rebuild(id); } });
+    } });
+    w = F.window('flow-settings', { title: 'Settings', icon: 'gear', width: F.isCompact() ? 860 : 820, height: F.isCompact() ? 460 : 600, surface: 'none', flush: true, className: 'flow-fillwin.flow-setwin',
+      content: SW.body(game, tab || SW.last, sync), onClose: function () { F.sound('ui_close'); },
+      footer: [F.isCompact() ? null : el('span.flow-set-foot.kd-dim', { text: 'Saved in this browser. Changes apply at once.' }), reset,
+        KD.ui.button('Done', { kind: 'primary', onClick: function () { KD.ui.windows.close('flow-settings'); } })] });
+    sync(SW.last);
+    w.selectTab = function (id) { var t = tabsNow(); if (t) t.select(id); return w; };
+    w.showRow = function (label) { var id = SW.where[label]; if (id) w.selectTab(id); return id || null; };
     return w;
   };
 })(typeof window !== 'undefined' ? window : globalThis);
@@ -121121,7 +121708,7 @@ P['gravecaller_tripo'] = 'Z2xURgIAAACoBQYAaBkAAEpTT057ImFzc2V0Ijp7InZlcnNpb24iOi
         if (co && p && p.dead) { for (var pi = 0; pi < world.players.length; pi++) if (!world.players[pi].dead) { eye = world.players[pi]; break; } }    // fallen: watch a living friend
         if (eye) cam.update(dt, { x: eye.x, y: eye.y || 0, z: eye.z });
         r.begin(cam);
-        G.visuals.forEach(function (v) { v.submit(r); });
+        r._ink = 1; G.visuals.forEach(function (v) { v.submit(r); }); r._ink = 0;      // [camera finish] heroes, enemies and allies carry the ink outline
         if (G.env && G.env.update) G.env.update(vdt, world, r);
         if (G.fx && G.fx.update) G.fx.update(vdt, world, r, cam);
         r.particles.update(vdt);
