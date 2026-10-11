@@ -2224,6 +2224,70 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 /* phones: the account plate sits just above the line; the hit area starts below it and grows downwards instead */
 .kd-compact .olc-hit { top: calc(10 * var(--u)); bottom: calc(-14 * var(--u)); }
 
+/* [boss intro] Boss entrances: letterbox bars, the painted title card, the skip hint, the phase flash (src/ui/27_boss_intro.js). */
+.bi-root { position: absolute; inset: 0; pointer-events: none; z-index: 5; --bi-in: .5s; --bi-card: .55s; }
+.bi-root.bi-fast { --bi-in: .3s; --bi-card: .35s; }
+.bi-bar { position: absolute; left: 0; right: 0; height: 9vh; background: #050304; transform: scaleY(0); transition: transform var(--bi-in) cubic-bezier(.2, .7, .2, 1); }
+.bi-bar-top { top: 0; transform-origin: top; box-shadow: 0 calc(6 * var(--u)) calc(18 * var(--u)) rgba(0, 0, 0, .55); }
+.bi-bar-bot { bottom: 0; transform-origin: bottom; box-shadow: 0 calc(-6 * var(--u)) calc(18 * var(--u)) rgba(0, 0, 0, .55); }
+.bi-mini .bi-bar { height: 6vh; }
+.bi-root.bi-in .bi-bar { transform: scaleY(1); }
+.bi-root.bi-out .bi-bar { transform: scaleY(0); transition-duration: .4s; }
+
+/* the card sits in the lower third, over the bottom bar, clear of the boss in the middle of the frame */
+.bi-card { position: absolute; left: 50%; bottom: calc(9vh + 2vh); width: min(92vw, calc(980 * var(--u))); transform: translateX(-50%); text-align: center; opacity: 0; }
+.bi-mini .bi-card { width: min(84vw, calc(760 * var(--u))); bottom: calc(6vh + 2vh); }
+.bi-stroke { position: absolute; left: -4%; top: -14%; width: 108%; height: 128%; overflow: visible; clip-path: inset(0 100% 0 0); transition: clip-path var(--bi-card) cubic-bezier(.3, .6, .25, 1); filter: drop-shadow(0 calc(4 * var(--u)) calc(10 * var(--u)) rgba(0, 0, 0, .6)); }
+.bi-ink { fill: #120a0b; opacity: .86; }
+.bi-wax { fill: #7a1a14; opacity: .85; }
+.bi-wax2 { fill: #5a1410; opacity: .55; }
+.bi-text { position: relative; padding: calc(16 * var(--u)) calc(30 * var(--u)) calc(20 * var(--u)); }
+.bi-kicker { font-family: var(--kd-font-display); font-variant: small-caps; font-weight: 700; font-size: calc(15 * var(--u)); letter-spacing: .32em; color: #c99b5a; text-shadow: 0 var(--u) 0 #000; opacity: 0; transition: opacity .4s ease .1s; }
+.bi-name { font-family: var(--kd-font-display); font-variant: small-caps; font-weight: 700; font-size: calc(66 * var(--u)); line-height: 1; letter-spacing: .3em; color: #f2e2c6; white-space: nowrap;
+  text-shadow: 0 calc(3 * var(--u)) 0 #000, 0 0 calc(6 * var(--u)) #000, 0 0 calc(26 * var(--u)) rgba(0, 0, 0, .9), 0 0 calc(46 * var(--u)) rgba(190, 52, 36, .55);
+  opacity: 0; transform: translateY(calc(6 * var(--u))); transition: opacity var(--bi-card) ease, letter-spacing calc(var(--bi-card) * 2.2) cubic-bezier(.2, .7, .2, 1), transform var(--bi-card) ease; }
+.bi-mini .bi-name { font-size: calc(48 * var(--u)); }
+.bi-epi { margin-top: calc(8 * var(--u)); font-family: var(--kd-font-display); font-style: italic; font-size: calc(22 * var(--u)); letter-spacing: .04em; color: #e8cfae; text-shadow: 0 var(--u) 0 #000, 0 0 calc(10 * var(--u)) #000;
+  opacity: 0; transform: translateY(calc(6 * var(--u))); transition: opacity .45s ease calc(var(--bi-card) * .7), transform .45s ease calc(var(--bi-card) * .7); }
+.bi-mini .bi-epi { font-size: calc(18 * var(--u)); }
+.bi-card.on { opacity: 1; }
+.bi-card.on .bi-stroke { clip-path: inset(0 0 0 0); }
+.bi-card.on .bi-kicker, .bi-card.on .bi-epi { opacity: 1; transform: none; }
+.bi-card.on .bi-name { opacity: 1; transform: none; letter-spacing: .1em; }
+.bi-card.off, .bi-root.bi-out .bi-card { opacity: 0; transform: translate(-50%, calc(8 * var(--u))); transition: opacity .4s ease, transform .4s ease; }
+
+.bi-skip { position: absolute; right: calc(22 * var(--u)); bottom: calc(9vh - 2.6em); font-family: var(--kd-font-body); font-size: calc(12.5 * var(--u)); letter-spacing: .06em; color: rgba(232, 214, 186, .62); opacity: 0; transition: opacity .5s ease .8s; }
+.bi-mini .bi-skip { bottom: calc(6vh - 2.6em); }
+.bi-root.bi-in .bi-skip { opacity: 1; }
+.bi-root.bi-out .bi-skip { opacity: 0; transition-delay: 0s; }
+
+/* while an entrance plays the rest of the HUD steps aside (and comes back with the fight) */
+#kd-ui.kd-bi-on .kd-layer-hud > *:not(.bi-root):not(.bi-phase), #kd-ui.kd-bi-on .kd-layer-world > * { opacity: 0 !important; transition: opacity .35s ease !important; }
+#kd-ui.kd-bi-back .kd-layer-hud > *:not(.bi-root):not(.bi-phase), #kd-ui.kd-bi-back .kd-layer-world > * { transition: opacity .45s ease !important; }
+#kd-ui.kd-bi-on .kd-banner-wrap { display: none; }
+
+/* phones: the card is two short lines that fit 844 x 390 */
+#kd-ui.kd-compact .bi-name { font-size: calc(42 * var(--u)); }
+#kd-ui.kd-compact .bi-mini .bi-name { font-size: calc(34 * var(--u)); }
+#kd-ui.kd-compact .bi-epi { font-size: calc(16 * var(--u)); margin-top: calc(4 * var(--u)); }
+#kd-ui.kd-compact .bi-kicker { font-size: calc(12 * var(--u)); }
+#kd-ui.kd-compact .bi-text { padding: calc(10 * var(--u)) calc(20 * var(--u)) calc(12 * var(--u)); }
+#kd-ui.kd-compact .bi-skip { font-size: calc(11 * var(--u)); }
+
+/* the phase beat: under the boss bar, gone in two seconds */
+.bi-phase { position: absolute; left: 50%; top: 21%; transform: translateX(-50%); text-align: center; pointer-events: none; animation: bi-phase 2.2s ease forwards; white-space: nowrap; }
+.bi-phase-name { font-family: var(--kd-font-display); font-variant: small-caps; font-weight: 700; font-size: calc(34 * var(--u)); letter-spacing: .14em; color: #ffd9c8;
+  text-shadow: 0 calc(2 * var(--u)) 0 #000, 0 0 calc(5 * var(--u)) #000, 0 0 calc(22 * var(--u)) rgba(0, 0, 0, .9), 0 0 calc(34 * var(--u)) rgba(207, 67, 54, .7); }
+.bi-phase-sub { margin-top: calc(2 * var(--u)); font-family: var(--kd-font-display); font-style: italic; font-size: calc(15 * var(--u)); color: #e8cfae; text-shadow: 0 var(--u) 0 #000, 0 0 calc(8 * var(--u)) #000; }
+.bi-phase-rage .bi-phase-name { color: #ff9a84; }
+#kd-ui.kd-compact .bi-phase { top: 24%; }
+#kd-ui.kd-compact .bi-phase-name { font-size: calc(26 * var(--u)); }
+@keyframes bi-phase { 0% { opacity: 0; transform: translate(-50%, calc(-8 * var(--u))) scale(1.08); } 12% { opacity: 1; transform: translate(-50%, 0) scale(1); } 75% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, calc(6 * var(--u))); } }
+@media (prefers-reduced-motion: reduce) { .bi-phase { animation-duration: 1.6s; } .bi-name { transition: opacity .3s ease; } }
+/* the narrator's line (src/ui/60_story.js) moves to the top while the card holds the bottom; its area card waits out of sight */
+#kd-ui.kd-bi-on .story-sub { bottom: auto; top: calc(9vh + 1.5vh); }
+#kd-ui.kd-bi-on .story-card { opacity: 0; }
+
 /* Kingdom's Descent: character windows (src/ui/30_win_*.js). Built on the kit; every size is in --u units. docs/WINDOWS.md */
 
 /* ---------------------------------------------------------------- shared */
@@ -3365,6 +3429,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   text-shadow: 0 calc(1 * var(--u)) 0 #000, 0 0 calc(3 * var(--u)) #000, 0 0 calc(10 * var(--u)) rgba(0, 0, 0, .85); }
 .story-sub-mark { display: none; }
 .kd-compact .story-sub { bottom: auto; top: 17%; }
+.story-sub.story-sub-menu, .kd-compact .story-sub.story-sub-menu { bottom: auto; top: 33%; }
 .kd-compact .story-sub-ink { max-width: 56vw; padding: calc(5 * var(--u)) calc(30 * var(--u)) calc(6 * var(--u)); }
 .kd-compact .story-sub-text { font-size: calc(15.5 * var(--u)); line-height: 1.25; }
 @keyframes story-sub-in { from { opacity: 0; transform: translateY(calc(6 * var(--u))); filter: blur(calc(2 * var(--u))); } to { opacity: 1; transform: none; filter: none; } }
@@ -3786,7 +3851,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.54';
+  KD.VERSION = '0.7.55';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -22963,6 +23028,84 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/data/66_boss_epithets.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  KD.data = KD.data || {};
+
+  /**
+   * [boss intro] The epithet line under a boss's name on its entrance card (src/ui/27_boss_intro.js): "Greymaw" over
+   * "Hunger of the Fields". One per boss-class enemy id; a boss without one shows its tier ("Mini-boss"). Plain
+   * English, short (the card is two lines on a phone), no em dashes. tests/boss_intro_ui.test.js checks every boss has one.
+   */
+  KD.data.bossEpithets = {
+    // Act 1: the outskirts
+    scarecrow_reeve: 'Keeper of the Last Harvest',
+    greymaw: 'Hunger of the Fields',
+    webmothers_brood: 'Ten Thousand Hungry Mouths',
+    hollow_treant: 'The Forest That Remembers',
+    leech_queen: 'She Who Drinks the Mire',
+    bog_mother: 'Midwife of Drowned Things',
+    hookjaw: 'Buyer of Stolen Goods',
+    captain_redtooth: 'King of the Bandit Road',
+    millers_shade: 'He Still Grinds at Night',
+    grindwell: 'Prophet of the Sack',
+    toll_warden: 'Every Road Has a Price',
+    crowned_stag: 'Lord of the Crossroads',
+    // Act 2: the mountains and the river
+    rockjaw: 'The Mountain Bites Back',
+    gale_matriarch: 'Mother of the High Winds',
+    drowned_ferryman: 'Last Ride Across',
+    tide_wyrm: 'The River Given Teeth',
+    frostbitten_sergeant: 'Still Following Orders',
+    ice_warden: 'Keeper of the Frozen Vault',
+    pass_marshal: 'None Shall Pass Alive',
+    general_varr: 'Shield of a Fallen Crown',
+    // Act 3: the city
+    gutter_king: 'Crowned in the Gutter',
+    beggar_prince: 'Heir to Nothing at All',
+    auctioneer: 'Everything Has a Price',
+    madam_silverhand: 'Queen of the Market',
+    plague_alchemist: 'Brewer of Bad Medicine',
+    ooze_sovereign: 'Ruler of What Runs Below',
+    smuggler_admiral: 'Captain of No Flag',
+    maw_of_the_deep: 'The Harbour Hungers',
+    gargoyle_pair: 'Two Watchers in Stone',
+    bell_ringer: 'He Rings for the Dead',
+    siege_foreman: 'Builder of Broken Walls',
+    iron_warden: 'The Gate That Walks',
+    // Act 4: the castle
+    marble_sentinel: 'The Garden Has Eyes',
+    houndmaster_orsk: 'Master of the Royal Pack',
+    haunted_plate: 'Armour With No One Inside',
+    captain_valdric: 'Last Loyal Sword',
+    ink_archivist: 'Keeper of Forbidden Pages',
+    archmagus_seln: 'Mind of the Hollow Court',
+    choir_master: 'His Hymns Draw Blood',
+    high_priest_ombre: 'Voice of the Dark Altar',
+    executioner: 'The Axe Is Never Dull',
+    jailer_marrow: 'Keeper of the Deep Cells',
+    wyvern_rider: 'Death From the Clouds',
+    windlord_caul: 'Master of the High Towers',
+    royal_guard_gauntlet: 'The King\'s Last Wall',
+    hollow_king: 'The Crown That Ate the Kingdom',
+    // roaming bosses, the Nemesis and the hidden places
+    pale_rider: 'Death Rides the Roads',
+    blackbriar_witch: 'Thorns in the Dark Wood',
+    carrion_knight: 'He Feasts Where Armies Fall',
+    hollow_hunter: 'It Has Your Scent',
+    plague_saint: 'Patron of the Sick',
+    the_barker: 'Master of the Bone Fair',
+    warlord_drog: 'Breaker of Armies',
+    // reference content (tests and tools)
+    ref_miniboss: 'Collector of Debts',
+    ref_boss: 'Warden of the Empty Throne'
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/data/70_story_lines.js
 (function (root) {
   'use strict';
@@ -23354,6 +23497,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.55', date: '2026-10-11', title: 'Narrator in Hearthmoor', notes: [
+      'The narrator\'s lines in Hearthmoor now sit in the open middle of the village screen'
+    ] },
     { version: '0.7.54', date: '2026-10-11', title: 'The Narrator Speaks', notes: [
       'A grim narrator now comments on your descent: new areas, first sight of a boss, close calls, big kill streaks and more',
       'Every area opens with a painted title card and a line of lore',
@@ -35649,6 +35795,117 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     setAttacks(e, b.phases[0]);
     if (e.minions) e.minions.forEach(function (m) { if (!m.dead) S.kill(world, m, null, null); });
     if (world.bossEntity === e) world.bossEntity = null;
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/sim/26_boss_intro.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var S = KD.sim = KD.sim || {};
+  var Bs = S.boss = S.boss || {};
+
+  /**
+   * [boss intro] BOSS ENTRANCES: the deterministic half (docs/SIM.md "Boss entrances"; the show is src/ui/27_boss_intro.js).
+   *
+   * When a boss-class enemy starts its fight (Bs.onEngage), the whole world HOLDS for a fixed number of steps while the
+   * game plays the entrance: the camera glides to the boss, it roars, its name and epithet are painted on the screen.
+   * Nothing moves while the world holds (no AI, no casts, no projectiles, no timers, world.time and world.tick stand
+   * still), so the fight that follows is exactly the fight it would have been without the entrance, only later; every
+   * co-op client holds on the same step because the hold starts inside the simulation.
+   *
+   * Switched by the world rules (the host's choice in co-op): rules.bossIntro = { mode: 'full' | 'short' | 'off',
+   * seen: { defId: n } (bosses met before in this run: their entrance is the short one) }. No rules.bossIntro: no holds
+   * (every headless test and tool keeps its old timings).
+   *
+   * Skipping is a lockstep input too: world.introSkip(playerIndex). The host's skip (player 0, also alone) ends the
+   * hold for everyone on that step; a guest's skip is a vote, and the hold ends early once every living hero voted.
+   *
+   * Events: bossIntro { e, kind ('boss' | 'mini'), short, steps, x, z } when a hold starts (emitted after the boss's own
+   * `bossPhase start`), bossIntroEnd { e, skipped, steps (held) } when it ends.
+   */
+  var BI = S.bossIntro = S.bossIntro || {};
+  /** Hold lengths in seconds: area bosses, act bosses and the final boss ('boss'); mini-bosses, roaming bosses and Nemeses ('mini'). */
+  BI.LEN = { boss: { full: 4.2, short: 2.0 }, mini: { full: 2.4, short: 1.3 } };
+  BI.STEP = 1 / 60;          // a hold counts world steps (the game and co-op both step at 60 per second)
+  var MINI = { miniboss: 1, nemesis: 1, roaming: 1 }, BIG = { boss: 1, actboss: 1, finalboss: 1 };
+
+  /** 'boss', 'mini' or null (no entrance: regular enemies, summoned copies, allies). */
+  BI.kindOf = function (e) {
+    if (!e || e.kind !== 'enemy' || !e.boss || e.owner || e.summoned) return null;
+    return BIG[e.tier] ? 'boss' : (MINI[e.tier] ? 'mini' : null);
+  };
+  /** The world's entrance setting: { mode, seen } or null when entrances are off. */
+  BI.config = function (world) {
+    var c = world.rules && world.rules.bossIntro;
+    if (!c || typeof c !== 'object' || (c.mode !== 'full' && c.mode !== 'short')) return null;
+    return c;
+  };
+  /** Steps the entrance of `e` holds the world (0: none). */
+  BI.steps = function (world, e) {
+    var kind = BI.kindOf(e), c = BI.config(world);
+    if (!kind || !c) return 0;
+    return Math.round(BI.LEN[kind][BI.isShort(world, e) ? 'short' : 'full'] / BI.STEP);
+  };
+  /** The short form: chosen in the settings, a boss met before in this run, or met before in this area (a resync). */
+  BI.isShort = function (world, e) {
+    var c = BI.config(world) || {}, ev = world.areaState && world.areaState.events, seen = c.seen || {};
+    return c.mode === 'short' || !!seen[e.defId] || !!(ev && ev.introSeen && ev.introSeen[e.defId]);
+  };
+  /** Is the world holding for an entrance right now? */
+  BI.holding = function (world) { return !!(world && world.introHold); };
+
+  BI.start = function (world, e) {
+    if (world.introHold || world.over) return null;
+    var done = world._introDone || (world._introDone = {});
+    if (done[e.id]) return null;                       // once per boss and world (a leashed boss that comes back does not roar again)
+    var n = BI.steps(world, e); if (!(n > 0)) return null;
+    done[e.id] = true;
+    var short = BI.isShort(world, e), as = world.areaState;
+    if (as) { as.events = as.events || {}; var seen = as.events.introSeen || (as.events.introSeen = {}); seen[e.defId] = 1; }
+    world.introHold = { id: e.id, defId: e.defId, kind: BI.kindOf(e), short: short, len: n, t: 0, votes: {} };
+    return world.introHold;
+  };
+  BI.end = function (world, skipped) {
+    var h = world.introHold; if (!h) return;
+    world.introHold = null;
+    world.events.emit('bossIntroEnd', { e: world.get(h.id), id: h.id, skipped: !!skipped, steps: h.t });
+  };
+  /** A hero asks to skip (a lockstep input: co-op sends it as a command, src/meta/50_coop_intro.js). */
+  BI.skip = function (world, idx) {
+    var h = world.introHold; if (!h) return false;
+    idx = idx | 0;
+    if (idx === 0) { BI.end(world, true); return true; }
+    h.votes[idx] = 1;
+    for (var i = 0; i < world.players.length; i++) { var p = world.players[i]; if (!p.dead && !h.votes[i]) return false; }
+    BI.end(world, true);
+    return true;
+  };
+  S.World.prototype.introSkip = function (idx) { return BI.skip(this, idx); };
+
+  // the fight starts: decide the hold before the boss's own start events go out (the sound and banner listeners can
+  // then tell that an entrance is playing), announce it after them
+  var onEngage = Bs.onEngage;
+  Bs.onEngage = function (world, e) {
+    var fresh = !!(e && e.boss && e.boss.engagedAt < 0), h = fresh ? BI.start(world, e) : null;
+    var r = onEngage.apply(this, arguments);
+    if (h && world.introHold === h) world.events.emit('bossIntro', { e: e, id: e.id, kind: h.kind, short: h.short, steps: h.len, x: e.x, z: e.z });
+    return r;
+  };
+
+  // the hold: a held step only counts itself
+  var step = S.World.prototype._step;
+  S.World.prototype._step = function (dt) {
+    var h = this.introHold;
+    if (h) {
+      h.t++;
+      var e = this.get(h.id);
+      if (h.t >= h.len || !e || e.dead || e.removed) BI.end(this, false);
+      return;
+    }
+    return step.call(this, dt);
   };
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -54285,6 +54542,38 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   };
   /** Leave the session (the transport is closed by the caller). */
   SP.close = function (reason) { this.leaveWorld(); this.role = null; this.events.emit('closed', { reason: reason || 'left' }); };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/meta/50_coop_intro.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var C = KD.coop = KD.coop || {};
+
+  /**
+   * [boss intro] Co-op for boss entrances (src/sim/26_boss_intro.js). Skipping an entrance changes the shared world, so
+   * in a co-op world it travels as a lockstep command ({ o: 'introSkip' }) and every client applies it on the same tick:
+   * the host's skip ends the entrance for everyone, a guest's skip is a vote (all living heroes voted: it ends).
+   */
+  if (!C.Session) return;
+  var SP = C.Session.prototype;
+  var applyCmd = SP.applyCmd;
+  SP.applyCmd = function (c) {
+    if (c && c.o === 'introSkip') {
+      var w = this.world;
+      if (w && w.players[c.p] && KD.sim.bossIntro) KD.sim.bossIntro.skip(w, c.p);
+      return;
+    }
+    return applyCmd.apply(this, arguments);
+  };
+  var enterWorld = SP.enterWorld;
+  SP.enterWorld = function () {
+    var r = enterWorld.apply(this, arguments), self = this, w = this.world;
+    if (w) w.introSkip = function () { if (w.introHold) self.command({ o: 'introSkip' }); return true; };      // the UI's skip goes out as a command
+    return r;
+  };
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -116008,6 +116297,418 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/ui/27_boss_intro.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+
+  /**
+   * [boss intro] BOSS ENTRANCES, the show (the deterministic hold is src/sim/26_boss_intro.js; docs/HUD.md "Boss entrances").
+   *
+   * When a boss fight starts the world holds (every co-op client on the same step) and this file plays the entrance
+   * on top of it: the camera glides from the hero to the boss, the boss turns to the heroes and roars (its own `roar`
+   * clip: quadrupeds rear and howl, humanoids shout), a painted title card shows its name and epithet
+   * (KD.data.bossEpithets) with a music sting, then the camera glides back as the fight begins. Mini-bosses, roaming
+   * bosses and Nemeses get a shorter version; a boss met before in this run (a retry, a second visit) gets the short one.
+   * A phase turn gets a smaller beat: the phase's name flashes under the boss bar.
+   *
+   * Everything here is drawn only: the timeline reads the world's hold counter, the boss's roar and the idle poses of
+   * everyone else are swapped in for the moment a model is drawn and put back at once, the camera move is laid over the
+   * follow camera after it updated. Skip: any key, button or tap (alone at once; co-op: the host's skip ends it for
+   * everyone, a guest's skip is a vote).
+   *
+   * Setting (Gameplay > Cinematics > Boss entrances): Full / Short / Off, saved in localStorage 'kd.bossIntro'. In
+   * co-op the host's setting holds the shared world; everybody sees the same entrance.
+   */
+  var BI = KD.bossIntro = KD.bossIntro || {};
+  BI.KEY = 'kd.bossIntro';
+  BI.MODES = ['full', 'short', 'off'];
+  /**
+   * Timelines in seconds from the start of the hold, per form: camera glide in / out, the roar (start, wind-up, roar,
+   * settle) and the title card (in, out). The hold lengths are the sim's (KD.sim.bossIntro.LEN).
+   */
+  BI.FORMS = {
+    boss_full: { gin: 1.1, gout: 0.95, roar: [0.75, 0.6, 0.5, 0.95], card: [1.15, 3.3], sting: 'full', push: 0.1 },
+    boss_short: { gin: 0.5, gout: 0.45, roar: [0.2, 0.35, 0.35, 0.5], card: [0.4, 1.5], sting: 'short', push: 0.05 },
+    mini_full: { gin: 0.6, gout: 0.5, roar: [0.4, 0.45, 0.4, 0.6], card: [0.55, 1.85], sting: 'short', push: 0.06 },
+    mini_short: { gin: 0.35, gout: 0.3, roar: [0.1, 0.3, 0.3, 0.4], card: [0.2, 1.0], sting: null, push: 0.03 }
+  };
+  var TIER_KICKER = { boss: 'Boss', actboss: 'Act Boss', finalboss: 'Final Boss', miniboss: 'Mini-boss', roaming: 'Roaming Boss', nemesis: 'Nemesis' };
+
+  // ------------------------------------------------------------------------------------------ the setting
+  var mode = 'full';
+  try { var sv = root.localStorage && root.localStorage.getItem(BI.KEY); if (BI.MODES.indexOf(sv) >= 0) mode = sv; } catch (e) { /* storage blocked */ }
+  BI.mode = function () { return mode; };
+  BI.set = function (m) {
+    if (BI.MODES.indexOf(m) < 0) return mode;
+    mode = m;
+    try { root.localStorage.setItem(BI.KEY, m); } catch (e) { /* storage blocked */ }
+    return mode;
+  };
+  BI.reset = function () { BI.set('full'); };
+  /** The Settings row (src/ui/20_flow_52_settings.js, Gameplay tab). */
+  BI.settingsRow = function (row, F) {
+    return row('Boss entrances', F.segmented([{ id: 'full', label: 'Full', tip: 'The camera meets the boss, it roars, its name is painted on the screen.' },
+      { id: 'short', label: 'Short', tip: 'A quick look at the boss and its name.' }, { id: 'off', label: 'Off', tip: 'The fight starts at once.' }], mode, function (id) { BI.set(id); }), 'from the next area on');
+  };
+
+  // the world rules carry the setting (the host's, in co-op) and the bosses this run has met: the sim decides the hold
+  if (KD.run && KD.run.rules && !KD.run.rules._bossIntro) {
+    var rules0 = KD.run.rules;
+    KD.run.rules = function (run) {
+      var out = rules0.apply(this, arguments);
+      if (out && run) out.bossIntro = { mode: mode, seen: run.bossIntros ? JSON.parse(JSON.stringify(run.bossIntros)) : {} };
+      return out;
+    };
+    KD.run.rules._bossIntro = true;
+  }
+
+  if (typeof document === 'undefined') return;       // browser only from here on
+  var U = KD.util;
+
+  // ------------------------------------------------------------------------------------------ state
+  var cur = null;          // the entrance on screen: { id, kind, short, len, form, F, name, epi, kicker, t, endT, outW, ... }
+  var real = 0;            // real seconds (the frame clock)
+  function game() { return KD.game || null; }
+  function world() { var G = game(); return G && G.world; }
+  function holdOf(w) { return w && w.introHold && cur && w.introHold.id === cur.id ? w.introHold : null; }
+  /** Seconds into the entrance (the shared hold counter while it holds, then the local clock). */
+  function clock() {
+    if (!cur) return 0;
+    var h = holdOf(world());
+    if (h) return h.t / 60;
+    return cur.endS + (real - cur.endReal);
+  }
+  function smooth(x) { x = U.clamp(x, 0, 1); return x * x * (3 - 2 * x); }
+  /** 0..1 how much the cinematic camera owns the view right now. */
+  function camWeight() {
+    if (!cur) return 0;
+    var F = cur.F, s = clock(), L = cur.len;
+    if (cur.ended) {
+      if (cur.skipped) return cur.outW * (1 - smooth((real - cur.endReal) / 0.4));
+      return 0;
+    }
+    if (s < F.gin) return smooth(s / F.gin);
+    if (s > L - F.gout) return 1 - smooth((s - (L - F.gout)) / F.gout);
+    return 1;
+  }
+  /** Is the entrance (or a phase beat) of entity id drawing right now? */
+  BI.active = function () { return !!cur; };
+  /** The sound layer asks whether the boss's own start roar should wait for the entrance's roar. */
+  BI.owns = function (e) { var w = world(); return !!(e && w && w.introHold && w.introHold.id === e.id); };
+
+  // ------------------------------------------------------------------------------------------ the shot
+  var V3 = [0, 0, 0];
+  function visualOf(id) { var G = game(); return G && G.visuals ? G.visuals.get(id) : null; }
+  function bossHeight(e) { var v = visualOf(e.id); return Math.max(1.2, (v && v.height ? v.height * (v.scale || 1) : (e.h || 2))); }
+  /** Picks where the camera stands: on the heroes' side, a little to one side, clear of walls. */
+  function planShot(cam, e) {
+    var G = game(), p = G && G.player, h = bossHeight(e), r = e.r || 1;
+    var dx = p ? p.x - e.x : Math.sin(e.yaw || 0), dz = p ? p.z - e.z : Math.cos(e.yaw || 0), d = Math.sqrt(dx * dx + dz * dz) || 1;
+    var base = Math.atan2(dx / d, dz / d);
+    var dist = U.clamp(h * 1.75 + r * 1.6 + 2.6, 4.6, 17), eyeY = Math.max(1.1, h * 0.42), lookY = h * 0.62;      // room above the head for a rearing roar
+    var best = null, tries = [0.5, -0.5, 0.2, -0.2, 0.9, -0.9, 0, Math.PI];
+    for (var i = 0; i < tries.length; i++) {
+      var a = base + tries[i], ux = Math.sin(a), uz = Math.cos(a), lx = e.x, lz = e.z;
+      var ey = eyeY - lookY, len = Math.sqrt(dist * dist + ey * ey), free = dist;
+      if (cam.blocker) free = cam._cast(lx, lookY, lz, ux * dist / len, ey / len, uz * dist / len, len) / len * dist;
+      var score = Math.min(free, dist) - Math.abs(tries[i]) * 0.4;
+      if (!best || score > best.score) best = { score: score, a: a, d: Math.max(2.4, Math.min(dist, free - 0.4)) };
+      if (free >= dist - 0.01 && i < 2) break;
+    }
+    return { a: best.a, d: best.d, eyeY: eyeY, lookY: lookY, h: h };
+  }
+  function applyCamera(cam, dt) {
+    var w = world(), e = cur && w ? w.get(cur.id) : null;
+    if (!e) return;
+    var k = camWeight(); if (!(k > 0.001)) return;
+    if (!cur.shot) cur.shot = planShot(cam, e);
+    var S = cur.shot, s = clock(), drift = (cur.F.push || 0) * U.clamp(s / Math.max(1, cur.len), 0, 1);
+    var a = S.a + drift * 0.6, d = S.d * (1 - drift);
+    var ex = e.x + Math.sin(a) * d, ez = e.z + Math.cos(a) * d, ey = S.eyeY, lx = e.x, ly = S.lookY, lz = e.z;
+    var kk = smooth(k);
+    cam.pos[0] += (ex - cam.pos[0]) * kk; cam.pos[1] += (ey - cam.pos[1]) * kk; cam.pos[2] += (ez - cam.pos[2]) * kk;
+    cam._look[0] += (lx - cam._look[0]) * kk; cam._look[1] += (ly - cam._look[1]) * kk; cam._look[2] += (lz - cam._look[2]) * kk;
+    cam._matrices();
+    cur.camX = ex; cur.camZ = ez;
+  }
+  // the follow camera updates as always, the entrance is laid over it (its own focus keeps following the hero)
+  var Cam = KD.gfx && KD.gfx.Camera;
+  if (Cam && !Cam.prototype._biWrapped) {
+    var camUpdate = Cam.prototype.update;
+    Cam.prototype.update = function (dt, target, opts) {
+      var r = camUpdate.apply(this, arguments);
+      var G = game();
+      if (cur && G && this === G.camera) { try { applyCamera(this, dt); } catch (err) { if (!BI._camErr) { BI._camErr = true; console.error('boss intro camera', err); } } }
+      return r;
+    };
+    Cam.prototype._biWrapped = true;
+  }
+
+  // ------------------------------------------------------------------------------------------ bodies
+  // while the world holds, the boss plays its roar and turns to the heroes; everyone else eases into an idle stance
+  // (a frozen run cycle would look broken). The sim's own fields are put back the moment the model has read them.
+  var ROAR_AN = { clip: 'roar', t: 0, speed: 1 }, ROAR_ACT = { state: 'idle', t: 0, dur: 0 };
+  var IDLE_AN = { clip: 'idle', t: 0, speed: 1 }, IDLE_ACT = { state: 'idle', t: 0, dur: 0 };
+  function roarPose(s) {
+    var R = cur.F.roar, t = s - R[0];
+    if (t < 0) return null;
+    if (t < R[1]) { ROAR_ACT.state = 'windup'; ROAR_ACT.t = t; ROAR_ACT.dur = R[1]; }
+    else if (t < R[1] + R[2]) { ROAR_ACT.state = 'active'; ROAR_ACT.t = t - R[1]; ROAR_ACT.dur = R[2]; }
+    else if (t < R[1] + R[2] + R[3]) { ROAR_ACT.state = 'recover'; ROAR_ACT.t = t - R[1] - R[2]; ROAR_ACT.dur = R[3]; }
+    else return null;
+    ROAR_AN.t = t;
+    return ROAR_ACT;
+  }
+  var Vis = KD.models && KD.models.Visual;
+  if (Vis && !Vis.prototype._biWrapped) {
+    var visUpdate = Vis.prototype.update;
+    Vis.prototype.update = function (e, dt) {
+      var w = cur && world(), h = w && w.introHold;
+      if (!cur || !e || e.dead || (!h && !(cur.ended && cur.id === e.id))) return visUpdate.apply(this, arguments);
+      var an = e.anim, act = e.act, yaw = e.yaw, vx = e.vx, vz = e.vz, spd = e.spd, swapped = false;
+      try {
+        if (e.id === cur.id) {
+          var s = clock(), pose = h ? roarPose(s) : null, k = camWeight();
+          if (pose) { e.anim = ROAR_AN; e.act = pose; swapped = true; }
+          else if (h) { IDLE_AN.t = real; e.anim = IDLE_AN; e.act = IDLE_ACT; swapped = true; }
+          if (cur.camX !== undefined && k > 0) { var fy = Math.atan2(cur.camX - e.x, cur.camZ - e.z); e.yaw = U.angLerp(yaw, fy, smooth(k) * 0.8); }
+          if (h) { e.vx = 0; e.vz = 0; e.spd = 0; }
+        } else if (h && (e.kind === 'player' || e.kind === 'enemy' || e.kind === 'ally')) {
+          IDLE_AN.t = real; e.anim = IDLE_AN; e.act = IDLE_ACT; e.vx = 0; e.vz = 0; e.spd = 0; swapped = true;
+        }
+        return visUpdate.apply(this, arguments);
+      } finally {
+        e.anim = an; e.act = act; e.yaw = yaw; e.vx = vx; e.vz = vz; e.spd = spd;
+        void swapped;
+      }
+    };
+    Vis.prototype._biWrapped = true;
+  }
+
+  // ------------------------------------------------------------------------------------------ the card
+  var el = function () { return KD.ui.el.apply(null, arguments); };
+  var nodes = null;
+  function hash(s) { var h = 2166136261; s = String(s); for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+  /** A ragged brush stroke as an SVG path (its own for every boss). */
+  function strokePath(seed, y0, y1, wob) {
+    var r = seed, rnd = function () { r = (Math.imul(r, 1664525) + 1013904223) >>> 0; return r / 4294967296; };
+    var top = [], bot = [], x, n = 34;
+    for (var i = 0; i <= n; i++) {
+      x = 30 + i * (940 / n);
+      var taper = Math.min(1, i / 5, (n - i) / 4), mid = (y0 + y1) / 2, half = (y1 - y0) / 2 * (0.35 + 0.65 * taper);
+      top.push([x, mid - half + (rnd() - 0.5) * wob * 2]);
+      bot.push([x + (rnd() - 0.5) * 12, mid + half + (rnd() - 0.5) * wob * 2]);
+    }
+    var d = 'M' + top[0][0].toFixed(1) + ' ' + ((y0 + y1) / 2).toFixed(1);
+    top.forEach(function (p) { d += ' L' + p[0].toFixed(1) + ' ' + p[1].toFixed(1); });
+    d += ' L' + (top[n][0] + 22).toFixed(1) + ' ' + ((y0 + y1) / 2 + (rnd() - 0.5) * 10).toFixed(1);
+    for (var j = n; j >= 0; j--) d += ' L' + bot[j][0].toFixed(1) + ' ' + bot[j][1].toFixed(1);
+    return d + ' Z';
+  }
+  function svg(tag, attrs) { var n = document.createElementNS('http://www.w3.org/2000/svg', tag); for (var k in attrs) n.setAttribute(k, attrs[k]); return n; }
+  function buildCard(c) {
+    var seed = hash(c.defId || c.name);
+    var s = svg('svg', { 'class': 'bi-stroke', viewBox: '0 0 1000 200', preserveAspectRatio: 'none', 'aria-hidden': 'true' });
+    s.appendChild(svg('path', { d: strokePath(seed ^ 0x9e37, 34, 176, 9), 'class': 'bi-ink' }));
+    s.appendChild(svg('path', { d: strokePath(seed ^ 0x51ed, 150, 178, 4), 'class': 'bi-wax' }));
+    s.appendChild(svg('path', { d: strokePath(seed ^ 0x2a2a, 22, 44, 3), 'class': 'bi-wax bi-wax2' }));
+    var card = el('div.bi-card', [s, el('div.bi-text', [
+      c.kicker ? el('div.bi-kicker', { text: c.kicker }) : null,
+      el('div.bi-name', { text: c.name }),
+      c.epi ? el('div.bi-epi', { text: c.epi }) : null])]);
+    var skip = el('div.bi-skip', { text: skipText() });
+    var rootN = el('div.bi-root.bi-' + c.kind + (c.short ? '.bi-fast' : ''), [el('div.bi-bar.bi-bar-top'), el('div.bi-bar.bi-bar-bot'), card, skip]);
+    return { root: rootN, card: card, skip: skip };
+  }
+  function skipText() {
+    var IN = KD.input, touch = IN && IN.touch && IN.touch.on, pad = IN && IN.pad && IN.pad.active;
+    var cs = KD.coop && KD.coop.session, guest = cs && cs.world && cs.role === 'guest';
+    if (cur && cur.voted) return 'Waiting for the party';
+    return (pad ? 'Press any button' : touch ? 'Tap' : 'Press any key') + (guest ? ' to vote to skip' : ' to skip');
+  }
+  function uiRoot() { return KD.ui && KD.ui.root ? KD.ui.root : document.getElementById('kd-ui'); }
+  function mountCard() {
+    unmount();
+    nodes = buildCard(cur);
+    KD.ui.layer('hud').appendChild(nodes.root);
+    var r = uiRoot(); if (r) r.classList.add('kd-bi-on');
+    void nodes.root.offsetWidth;          // start the bars' transition from closed
+    nodes.root.classList.add('bi-in');
+  }
+  function unmount() {
+    if (nodes && nodes.root.parentNode) nodes.root.parentNode.removeChild(nodes.root);
+    nodes = null;
+    hudBack();
+  }
+  function hudBack() {
+    var r = uiRoot();
+    if (r && r.classList.contains('kd-bi-on')) {
+      r.classList.add('kd-bi-back'); r.classList.remove('kd-bi-on');      // the HUD fades back in
+      clearTimeout(BI._backT); BI._backT = setTimeout(function () { r.classList.remove('kd-bi-back'); }, 600);
+    }
+  }
+
+  // ------------------------------------------------------------------------------------------ sound
+  var STINGS = {
+    // a low boom and drum, a horn call rising a minor third, a dark choir chord, a tolling bell, then a drum roll into a last hit
+    sting_boss: function (ev) {
+      ev('boom', 0, 0, 0, 0.95); ev('dum', 0, 0, 0, 0.85); ev('bell', 0.02, 4.5, 50, 0.42, { ratio: 1.41 });
+      ev('str', 0.02, 3.2, 38, 0.55, { long: true });
+      ev('horn', 0.08, 0.9, 50, 0.55); ev('horn', 0.95, 1.6, 53, 0.6); ev('horn', 0.95, 1.6, 57, 0.4);
+      [50, 53, 57].forEach(function (m) { ev('choir', 0.12, 2.8, m, 0.42, { a: 0.5 }); });
+      for (var i = 0; i < 5; i++) ev('tak', 1.75 + i * 0.07, 0, 0, 0.3 + i * 0.08);
+      ev('boom', 2.15, 0, 0, 0.85); ev('dum', 2.15, 0, 0, 0.7); ev('bell', 2.15, 3, 45, 0.3, { ratio: 1.41 });
+    },
+    sting_boss_short: function (ev) {
+      ev('boom', 0, 0, 0, 0.85); ev('dum', 0, 0, 0, 0.7); ev('bell', 0.02, 3, 50, 0.32, { ratio: 1.41 });
+      ev('horn', 0.05, 1.1, 53, 0.5); [50, 53].forEach(function (m) { ev('choir', 0.08, 1.6, m, 0.3, { a: 0.3 }); });
+    }
+  };
+  function registerStings() {
+    var SC = KD.audio && KD.audio.score;
+    if (!SC || !SC.THEMES || SC.THEMES.sting_boss) return;
+    SC.THEMES.sting_boss = { desc: 'Boss entrance sting: boom, a horn call, a dark choir chord and a bell.', once: true, vowel: 'a', room: 0.42, root: 50, scale: 'aeolian', steps: 6, step: 0.5, sting: STINGS.sting_boss };
+    SC.THEMES.sting_boss_short = { desc: 'Short boss entrance sting: boom, one horn note and a bell.', once: true, vowel: 'a', room: 0.4, root: 50, scale: 'aeolian', steps: 6, step: 0.5, sting: STINGS.sting_boss_short };
+  }
+  BI.STINGS = STINGS;
+  function playSting(which) {
+    registerStings();
+    var A = KD.audio, SC = A && A.score, P = SC && SC.live ? SC.live() : null;
+    try {
+      var Layer = SC && (SC.Layer || (P && P.cur && P.cur.constructor));      // the score's own layer type (a playing theme is one)
+      if (P && P.layers && Layer && Layer !== Object && SC.style() === 'new' && !P.silent()) {
+        var t = P.ctx.currentTime + 0.03, L = new Layer(P.ctx, P.dest, P.room, which === 'full' ? 'sting_boss' : 'sting_boss_short', t);
+        L.gain.gain.setValueAtTime(1, t); L.killAt = t + 7; P.layers.push(L);
+        return true;
+      }
+      if (A && A.play) return A.play(which === 'full' ? 'fate_shift' : 'boss_phase', { vol: 0.8 });      // the classic music: a stinger sound instead
+    } catch (err) { console.error('boss intro sting', err); }
+    return false;
+  }
+  var mine = false;
+  function sfx(name, e, vol, pitch) { var A = KD.audio; if (A && A.play) try { mine = true; A.play(name, { x: e.x, z: e.z, vol: vol, pitch: pitch }); } catch (err) { /* sound is optional */ } finally { mine = false; } }
+  // the boss's own start roar (src/gfx/43_fx_audio.js, at the first step of the fight) waits for the entrance's roar
+  function wrapAudio() {
+    var A = KD.audio;
+    if (!A || !A.play || A.play._bi) return;
+    var play0 = A.play;
+    A.play = function (name) {
+      var w = world(), h = w && w.introHold;
+      if (name === 'boss_roar' && !mine && h && h.t < 30) return false;      // (it plays inside the fight's first step, before the entrance is on screen)
+      return play0.apply(this, arguments);
+    };
+    A.play._bi = true;
+  }
+  // nobody acts while the world holds: the input is empty (a co-op guest's hero is not drawn running ahead either)
+  function wrapInput() {
+    var IN = KD.input;
+    if (!IN || !IN.intent || IN.intent._bi || !IN.emptyIntent) return;
+    var intent0 = IN.intent;
+    IN.intent = function () { var w = world(); if (w && w.introHold) return IN.emptyIntent(); return intent0.apply(this, arguments); };
+    IN.intent._bi = true;
+  }
+
+  // ------------------------------------------------------------------------------------------ the flow
+  function startIntro(w, ev) {
+    var e = ev.e; if (!e) return;
+    var full = String(e.name || ''), comma = full.indexOf(','), name = comma > 0 ? full.slice(0, comma).trim() : full;
+    var epi = (KD.data.bossEpithets && KD.data.bossEpithets[e.defId]) || (comma > 0 ? full.slice(comma + 1).trim().replace(/^the /, 'The ') : '') || TIER_KICKER[e.tier] || '';
+    var form = ev.kind + '_' + (ev.short ? 'short' : 'full');
+    if (KD.ui && KD.ui.banner && KD.ui.banner.clear) KD.ui.banner.clear();       // the arena's name and the old boss banner make way
+    cur = { id: e.id, defId: e.defId, kind: ev.kind, short: !!ev.short, len: ev.steps / 60, form: form, F: BI.FORMS[form], name: name, epi: epi,
+      kicker: TIER_KICKER[e.tier] || '', ended: false, cardOn: false, cardOff: false, roared: false, stung: false, shot: null };
+    // this run has met the boss: the next time (a retry, a second visit) is the short entrance
+    var G = game(), run = G && G.run;
+    if (run) { run.bossIntros = run.bossIntros || {}; run.bossIntros[e.defId] = (run.bossIntros[e.defId] || 0) + 1; }
+    mountCard();
+  }
+  function endIntro(ev) {
+    if (!cur || (ev && ev.id !== cur.id)) return;
+    cur.ended = true; cur.skipped = !!(ev && ev.skipped); cur.endReal = real; cur.endS = ev ? ev.steps / 60 : clock();
+    cur.outW = (function () { var c = cur, s = c.endS, F = c.F; if (s < F.gin) return smooth(s / F.gin); if (s > c.len - F.gout) return 1 - smooth((s - (c.len - F.gout)) / F.gout); return 1; })();
+    if (nodes) { nodes.root.classList.add('bi-out'); nodes.root.classList.remove('bi-in'); }
+    hudBack();
+  }
+  function tick(dt) {
+    real += dt;
+    if (!cur) return;
+    var w = world(), e = w ? w.get(cur.id) : null, s = clock(), F = cur.F;
+    if (!w || (!e && !cur.ended)) { cur = null; unmount(); return; }
+    if (!cur.ended) {
+      if (!cur.cardOn && s >= F.card[0]) { cur.cardOn = true; if (nodes) nodes.card.classList.add('on'); if (F.sting && !cur.stung) { cur.stung = true; playSting(F.sting); } }
+      if (cur.cardOn && !cur.cardOff && s >= F.card[1]) { cur.cardOff = true; if (nodes) nodes.card.classList.add('off'); }
+      if (!cur.roared && e && s >= F.roar[0] + F.roar[1] * 0.85) { cur.roared = true; sfx('boss_roar', e, cur.kind === 'boss' ? 1.1 : 0.85, cur.kind === 'boss' ? 0.95 : 1.1); var G = game(); if (G && G.camera) G.camera.shake(cur.kind === 'boss' ? 0.35 : 0.2); }
+      if (nodes && (cur.skipTextT === undefined || real - cur.skipTextT > 0.5)) { cur.skipTextT = real; var txt = skipText(); if (nodes.skip.textContent !== txt) nodes.skip.textContent = txt; }
+      pollPad();
+    } else if (real - cur.endReal > (cur.skipped ? 0.45 : 0.5)) { cur = null; unmount(); }
+  }
+
+  // skip: any key, button or tap (not while a menu or window is open)
+  function blocked() {
+    var G = game(), W = KD.ui && KD.ui.windows;
+    return !G || G.state !== 'play' || G.paused || !!(W && W.pausing && W.pausing()) || !!(W && W.anyOpen && W.anyOpen());
+  }
+  function skip() {
+    var w = world();
+    if (!cur || cur.ended || cur.voted || !w || !w.introHold || blocked()) return false;
+    if (clock() < 0.25) return false;                   // a key still held from the last swing does not skip it at once
+    var cs = KD.coop && KD.coop.session, co = cs && cs.world === w, idx = co ? Math.max(0, cs.localIdx) : 0;
+    w.introSkip(idx);
+    if (co && cs.role !== 'host') cur.voted = true;
+    return true;
+  }
+  var IGNORE = { Escape: 1, Tab: 1, Shift: 1, Control: 1, Alt: 1, Meta: 1, CapsLock: 1, F1: 1, F2: 1, F3: 1, F4: 1, F5: 1, F6: 1, F7: 1, F8: 1, F9: 1, F10: 1, F11: 1, F12: 1 };
+  document.addEventListener('keydown', function (ev) { if (cur && !ev.repeat && !IGNORE[ev.key]) skip(); }, true);
+  document.addEventListener('pointerdown', function (ev) {
+    if (!cur) return;
+    var t = ev.target;
+    if (t && t.closest && t.closest('.kd-layer-windows, .kd-layer-modal, .kd-window')) return;
+    skip();
+  }, true);
+  function pollPad() {
+    var pad = KD.input && KD.input.pad;
+    if (!pad || !pad.connected || !pad.pressedRaw) return;
+    for (var i = 0; i < 16; i++) if (i !== 8 && i !== 9 && pad.pressedRaw(i)) { skip(); return; }      // not Select / Start (the menus)
+  }
+
+  // phase turns: a smaller beat, the phase's name flashes under the boss bar
+  var phaseNode = null, phaseTimer = 0;
+  function phaseFlash(ev) {
+    if (mode === 'off' || !ev || ev.start || !ev.e) return;
+    var name = ev.name || '', e = ev.e;
+    if (!name || name === 'Phase') return;
+    var full = String(e.name || ''), comma = full.indexOf(','), who = comma > 0 ? full.slice(0, comma).trim() : full;
+    if (phaseNode && phaseNode.parentNode) phaseNode.parentNode.removeChild(phaseNode);
+    clearTimeout(phaseTimer);
+    phaseNode = el('div.bi-phase' + (ev.enrage ? '.bi-phase-rage' : ''), [el('div.bi-phase-name', { text: name }), el('div.bi-phase-sub', { text: who })]);
+    KD.ui.layer('hud').appendChild(phaseNode);
+    var n = phaseNode;
+    phaseTimer = setTimeout(function () { if (n.parentNode) n.parentNode.removeChild(n); if (phaseNode === n) phaseNode = null; }, 2300);
+  }
+
+  function bindWorld(w) {
+    cur = null; unmount();
+    w.events.on('bossIntro', function (ev) { try { startIntro(w, ev); } catch (err) { console.error('boss intro', err); } });
+    w.events.on('bossIntroEnd', function (ev) { try { endIntro(ev); } catch (err) { console.error('boss intro end', err); } });
+    w.events.on('bossPhase', function (ev) { try { phaseFlash(ev); } catch (err) { console.error('boss phase flash', err); } });
+  }
+  function boot() {
+    var G = game();
+    if (!G || !G.events) { setTimeout(boot, 250); return; }
+    registerStings(); wrapAudio(); wrapInput();
+    G.events.on('world', function (d) { if (d && d.world) bindWorld(d.world); });
+    G.events.on('worldEnd', function () { cur = null; unmount(); });
+    G.events.on('frame', function (f) { try { tick(f && f.dt || 0); } catch (err) { if (!BI._tickErr) { BI._tickErr = true; console.error('boss intro tick', err); } } });
+    if (G.world) bindWorld(G.world);
+  }
+  boot();
+  BI._state = function () { return cur ? { id: cur.id, form: cur.form, s: clock(), w: camWeight(), ended: cur.ended, name: cur.name, epi: cur.epi } : null; };      // tools/boss_intro_shots.py
+  BI.skip = skip;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/ui/30_win_00_core.js
 (function (root) {
   'use strict';
@@ -123326,7 +124027,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (!text || !KD.ui || !KD.ui.layer) return null;
     ST.clearSubtitle(true);
     ms = ms || ST.TUNE.lineMs;
-    var n = el('div.story-sub', { style: { '--story-ms': ms + 'ms' }, attrs: { role: 'status', 'aria-live': 'polite' } }, el('div.story-sub-ink', [el('span.story-sub-mark', { text: '' }), el('span.story-sub-text', { text: text })]));
+    var n = el('div.story-sub' + (V.game && V.game.state !== 'play' ? '.story-sub-menu' : ''), {      // on Hearthmoor and the menus: over the open middle of the screen
+      style: { '--story-ms': ms + 'ms' }, attrs: { role: 'status', 'aria-live': 'polite' } }, el('div.story-sub-ink', [el('span.story-sub-mark', { text: '' }), el('span.story-sub-text', { text: text })]));
     KD.ui.layer('toast').appendChild(n);
     V.sub = n;
     try { if (KD.audio && KD.audio.play) KD.audio.play('ui_open', { vol: 0.35 }); } catch (e) { /* audio is optional */ }
@@ -123540,6 +124242,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       row('Death screen', F.segmented([{ id: 'full', label: 'Full' }, { id: 'short', label: 'Short' }], ST.settings.deathScreen, function (id) { ST.set('deathScreen', id); }), 'Full has the epitaph')
     ];
   };
+
+  /** State for checkers (tools/story_shots.py): what waits, what was said last. */
+  ST._state = function () { return { pending: V.pending.map(function (q) { return q.moment; }), lastAt: V.nar.lastAt, lastBy: V.nar.lastBy, recent: V.nar.recent.slice(-3), now: now(), sub: V.sub ? V.sub.textContent : null }; };
 
   // ------------------------------------------------------------------------------------------ wiring
   if (KD.screens && KD.screens.register) KD.screens.register('story', function (game) {
