@@ -1845,6 +1845,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 /* the open tab keeps its ink while the pointer rests on it (the painted hover colour is meant for the dark closed tabs) */
 .kd-paint .kd-tab.kd-tab-active:hover { color: var(--kd-ink); }
 .flow-set-reset { white-space: nowrap; }
+/* a large interface size on a short screen: the window stays inside the screen (the backdrop keeps 4vh below it) and the tab page scrolls */
+.kd-backdrop > .flow-win.flow-setwin { max-height: calc(96vh - 10 * var(--u)); }
 
 /* Patch notes window and update banner (src/ui/20_flow_55_patchnotes.js). Kit windows, buttons and tokens only. */
 .flow-pn { display: flex; flex-direction: column; gap: calc(6 * var(--u)); }
@@ -3564,7 +3566,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.49';
+  KD.VERSION = '0.7.50';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -22607,6 +22609,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.50', date: '2026-10-11', title: 'Tidier Settings window', notes: [
+      'Settings got a tidy-up: tabs for Gameplay, Graphics, Audio, Controls, Controller, Interface and Online',
+      'All the New or Classic look switches now sit together under Graphics, Art style',
+      'Each tab has its own Reset button that asks first',
+      'Nothing you set is lost'
+    ] },
     { version: '0.7.49', date: '2026-10-11', title: 'Cinematic camera finish', notes: [
       'New camera finish: a soft ink outline round heroes and monsters',
       'Glowing eyes, fires and magic now bloom softly',
@@ -111770,6 +111778,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     },
     graphics: function (c) {
       var ST = c.ST, v = ST.values, row = c.row, quality = c.touch ? F.qualityLevels() : null;      // phones and tablets: one "Graphics quality" choice when the renderer offers presets
+      // Art style rows come from their own modules; this tab gives each one short hint of its own (the group note says what New and Classic mean)
+      var ART_HINT = { 'Area look': 'places, light and weather', 'Enemy look': 'monsters and bosses' };
+      var art = function (label, ctl) { return row(label, ctl, ART_HINT[label] || 'the hero model'); };
       return [
         // (the renderer draws the lighter of the quality level and the player's own shadows / render scale, so those two rows are left out there)
         c.sec('Quality', quality ? [row('Graphics quality', F.segmented(quality, F.qualityValue(), function (id) { try { KD.gfx.quality.set(id); } catch (e) { console.error(e); } }), 'lower is faster and saves battery')] : [
@@ -111777,11 +111788,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
           row('Render scale', F.slider({ min: 50, max: 100, step: 5, value: Math.round(v.renderScale * 100), format: c.pct, label: 'render scale', onChange: function (x) { ST.set('renderScale', x / 100); } }), 'lower is faster')
         ]),
         c.sec('Art style', [
-          KD.env && KD.env.mood && KD.env.mood.settingsRow ? safe(function () { return KD.env.mood.settingsRow(row, F); }, 'area look') : null,      // [mood presets] Area look (src/gfx/55_env_mood.js)
-          KD.style && KD.style.settingsRow ? safe(function () { return KD.style.settingsRow(row, F); }, 'enemy look') : null,      // [enemy style] Enemy look (src/gfx/49_style_kit.js)
-          KD.art && KD.art.settingsRow ? safe(function () { return KD.art.settingsRow(row, F); }, 'gravecaller look') : null,      // [art] Gravecaller look (src/gfx/48_hero_art.js)
-          KD.art && KD.art.settingsRowFor ? safe(function () { return KD.art.settingsRowFor('gloamblade', row, F); }, 'gloamblade look') : null      // [gloamblade art] Gloamblade look
-        ], 'New is the hand-painted look. Classic is the original.'),
+          KD.env && KD.env.mood && KD.env.mood.settingsRow ? safe(function () { return KD.env.mood.settingsRow(art, F); }, 'area look') : null,      // [mood presets] Area look (src/gfx/55_env_mood.js)
+          KD.style && KD.style.settingsRow ? safe(function () { return KD.style.settingsRow(art, F); }, 'enemy look') : null,      // [enemy style] Enemy look (src/gfx/49_style_kit.js)
+          KD.art && KD.art.settingsRow ? safe(function () { return KD.art.settingsRow(art, F); }, 'gravecaller look') : null,      // [art] Gravecaller look (src/gfx/48_hero_art.js)
+          KD.art && KD.art.settingsRowFor ? safe(function () { return KD.art.settingsRowFor('gloamblade', art, F); }, 'gloamblade look') : null      // [gloamblade art] Gloamblade look
+        ], 'New is the hand-painted look. Classic is the first one.'),
         KD.gfx && KD.gfx.finish && KD.gfx.finish.settingsRows ? c.sec('Camera finish', safe(function () { return KD.gfx.finish.settingsRows(row, F, c); }, 'camera finish'), 'The last touch on every frame. Lighter defaults on a phone.') : null      // [camera finish] src/gfx/12_renderer_post.js
       ];
     },
@@ -111825,12 +111836,17 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     },
     controller: function (c) {
       if (!(KD.pad && KD.pad.settingsRows)) return [];
-      return [c.sec(null, safe(function () { return KD.pad.settingsRows(c.row, F, c.game); }, 'controller'))];      // [pad-play] src/ui/04_pad.js
+      var rows = flat(safe(function () { return KD.pad.settingsRows(c.row, F, c.game); }, 'controller') || []);      // [pad-play] src/ui/04_pad.js
+      var pick = function (test) { return rows.filter(function (r) { var l = r.getAttribute && r.getAttribute('data-set'); if (!l || !test(l)) return false; r._taken = 1; return true; }); };
+      var pad = pick(function (l) { return l === 'Controller' || l === 'Vibration' || l === 'Buttons' || /^Confirm with/.test(l); });
+      var sticks = pick(function (l) { return /^Stick |^Invert stick|^Aim assist/.test(l); });
+      var rest = rows.filter(function (r) { return !r._taken; });
+      return [c.sec('Controller', pad), c.sec('Sticks and aim', sticks), c.sec(null, rest)];
     },
     interface: function (c) {
       var ST = c.ST, v = ST.values, row = c.row, compact = c.compact, lo = compact ? 80 : 75, hi = compact ? 115 : 150;
       return [
-        c.sec('Interface', [
+        c.sec('Size and motion', [
           // a phone lays everything out for 860 x 460 units: much bigger than that would not fit, so the range is narrower there
           row('Interface size', F.slider({ min: lo, max: hi, step: 5, value: U.clamp(Math.round(KD.ui.scale.user * 100), lo, hi), format: c.pct, label: 'interface size', onChange: function (x) { KD.ui.scale.set(x / 100); } }), 'applies when you let go'),
           row('Interface motion', c.onoff(v.motion, function (on) { ST.set('motion', on); }), 'animations and transitions')
@@ -111844,7 +111860,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     online: function (c) {
       if (!(F.online && F.online.settingsRows)) return [];
       var rows = safe(function () { return F.online.settingsRows(c.game, c.row); }, 'online');      // name, Link another device, Friends (src/ui/26_online_10_screens.js)
-      return [c.sec(null, rows)];
+      return [c.sec('Account', rows)];
     }
   };
   SW.TAB_ROWS = TAB_ROWS;
@@ -111920,11 +111936,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var w, el = KD.ui.el;
     game = game || KD.game;
     var tabsNow = function () { return w && w.node ? w.node.querySelector('.flow-set-tabs') : null; };
-    var reset, sync = function (id) { if (reset) reset.disabled = !RESET[id]; };      // Online has nothing to reset
+    var reset, sync = function (id) { if (reset) { reset.disabled = !RESET[id]; reset.style.visibility = RESET[id] ? '' : 'hidden'; } };      // Online has nothing to reset
     var rebuild = function (id) { if (KD.ui.windows.isOpen('flow-settings')) w.setContent(SW.body(game, id, sync)); };
     reset = KD.ui.button(F.isCompact() ? 'Reset tab' : 'Reset this tab', { icon: 'arrow_left', className: 'flow-set-reset', onClick: function () {
       var t = tabsNow(), id = t ? t.active() : SW.last, name = (SW.TABS.filter(function (x) { return x.id === id; })[0] || { label: 'these' }).label;
-      F.confirm({ title: 'Reset ' + name + ' settings?', text: 'Every setting on the ' + name + ' tab goes back to its default. The other tabs stay as they are.', yes: 'Reset', no: 'Cancel' })
+      F.confirm({ title: 'Reset ' + name + ' settings?', text: 'Every setting on the ' + name + ' tab goes back to its default' + (id === 'controls' && !F.isTouch() ? ', key bindings too' : '') + '. The other tabs stay as they are.', yes: 'Reset', no: 'Cancel' })
         .then(function (ok) { if (ok) { SW.reset(id); rebuild(id); } });
     } });
     w = F.window('flow-settings', { title: 'Settings', icon: 'gear', width: F.isCompact() ? 860 : 820, height: F.isCompact() ? 460 : 600, surface: 'none', flush: true, className: 'flow-fillwin.flow-setwin',
