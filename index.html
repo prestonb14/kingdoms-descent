@@ -2192,6 +2192,38 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 .kd-compact .ol-code { font-size: calc(30 * var(--u)); }
 .kd-compact .ol-intro, .kd-compact .ol-row-sub, .kd-compact .ol-msg { font-size: calc(12.5 * var(--u)); }
 
+/* [counter] Hidden player counts (src/ui/26_online_30_counter.js, docs/ONLINE.md section 8). Prefix: olc-. */
+
+/* the invisible hit area on the main menu build line: covers the line plus a finger's margin, shows nothing */
+.flow-menu-version.olc-host { pointer-events: auto; }
+.kd-compact .flow-menu-version.olc-host { position: relative; }
+.olc-hit { position: absolute; left: calc(-8 * var(--u)); right: calc(-8 * var(--u)); top: calc(-9 * var(--u)); bottom: calc(-9 * var(--u));
+  background: transparent; cursor: default; touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+.flow-menu-version.olc-host { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+
+/* the panel */
+.olc-body { display: flex; flex-direction: column; gap: calc(8 * var(--u)); min-height: calc(60 * var(--u)); }
+.olc-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: calc(8 * var(--u)); }
+.olc-group.kd-plate { display: flex; flex-direction: column; gap: calc(2 * var(--u)); padding: calc(7 * var(--u)) calc(10 * var(--u)); color: var(--kd-text); }
+.olc-gtitle { font-family: var(--kd-font-display); font-size: calc(14 * var(--u)); color: #ecd08a; margin-bottom: calc(3 * var(--u)); letter-spacing: .02em; }
+.olc-row { display: flex; align-items: baseline; gap: calc(8 * var(--u)); font-size: calc(12.5 * var(--u)); line-height: 1.35; }
+.olc-label { flex: 1 1 auto; min-width: 0; color: var(--kd-text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.olc-val { flex: none; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--kd-parch-100); }
+.olc-note { font-size: calc(13.5 * var(--u)); line-height: 1.4; }
+.olc-dim, .olc-updated { color: var(--kd-ink-soft); font-size: calc(11.5 * var(--u)); }
+.olc-quiet { color: var(--kd-ink-soft); font-style: italic; text-align: center; padding: calc(14 * var(--u)) 0; }
+.olc-claim { align-self: flex-start; }
+.kd-compact .olc-groups { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: calc(6 * var(--u)); }
+.kd-compact .olc-row { font-size: calc(12 * var(--u)); }
+.kd-compact .olc-win .kd-window-body { max-height: calc(var(--kd-vh, 100vh) - 120px); overflow-y: auto; }
+
+/* the build line sat across the bottom menu buttons (What's new, How to play) on PC screens: it moves to the free
+   middle of the bottom edge, so its hidden hit area never swallows a click meant for a button */
+.flow-menu-version.olc-host { left: 50%; transform: translateX(-50%); white-space: nowrap; }
+.kd-compact .flow-menu-version.olc-host { left: auto; transform: none; white-space: normal; }
+/* phones: the account plate sits just above the line; the hit area starts below it and grows downwards instead */
+.kd-compact .olc-hit { top: calc(10 * var(--u)); bottom: calc(-14 * var(--u)); }
+
 /* Kingdom's Descent: character windows (src/ui/30_win_*.js). Built on the kit; every size is in --u units. docs/WINDOWS.md */
 
 /* ---------------------------------------------------------------- shared */
@@ -3661,7 +3693,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.52';
+  KD.VERSION = '0.7.53';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -54078,6 +54110,214 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       case 'invite_answer': O.events.emit('inviteAnswer', { id: d.id, by: d.by, accepted: !!d.accepted }); break;
       case 'resume': if (d.from && d.run && d.run.id) O.events.emit('resume', { from: d.from, run: O.cleanRun(d.run) }); break;
     }
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/meta/53_online_stats.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+
+  /**
+   * KD.onlineStats: player counts for the owner (docs/ONLINE.md section 8; the service side is kd-online src/stats.js).
+   *
+   * 1. The anonymous heartbeat. Every game, signed in or not, makes up a random install id (localStorage 'kd.install',
+   *    nothing else in it) and sends POST /v1/beat { install, v: game version, p: 'phone'|'tablet'|'pc',
+   *    s: 'menu'|'solo'|'coop' } when it starts, every 5 minutes while the page is visible, and a few seconds after it
+   *    changes between menu / solo run / online game. No token, no name, no account: the beat is never tied to an account.
+   *    Sent as text/plain so the browser needs no extra CORS preflight request. Skipped when online play is not set up,
+   *    under automation (navigator.webdriver: screenshot tools never count) and with ?nobeat=1.
+   * 2. The owner's numbers: S.fetchStats() (GET /v1/stats with the account token) and S.claim() (POST /v1/stats/claim).
+   *    S.view(result) turns any answer into what the hidden panel shows (src/ui/26_online_30_counter.js).
+   * 3. S.tapper(): the hidden toggle's gesture (5 quick taps, or a 2 s hold).
+   *
+   * No DOM here: loads in Node, where tests give init() their own fetch, storage, clock and timers.
+   */
+  var S = KD.onlineStats = KD.onlineStats || {};
+  S.KEY = 'kd.install';
+  S.BEAT_MS = 5 * 60 * 1000;          // the service may answer a different `next` (kept between 1 and 30 minutes)
+  S.STATE_DELAY_MS = 4000;            // a change of menu / solo / coop is sent this long after it settles
+  S.TAPS = 5; S.TAP_GAP_MS = 600; S.HOLD_MS = 2000;
+  var env = null, timer = 0, stateT = 0, lastState = null, lastAt = -1e15, running = false, nextMs = S.BEAT_MS;
+
+  // ------------------------------------------------------------------------------------------ pure helpers
+  /** 'phone' | 'tablet' | 'pc' from KD.device (a touch screen with a short side under 540 px is a phone). */
+  S.platform = function (d) {
+    d = d || {};
+    var touch = !!(d.touch || d.ios || d.android);
+    if (!touch) return 'pc';
+    return d.compact || d.portrait ? 'phone' : 'tablet';
+  };
+  /** 'menu' | 'solo' | 'coop' from KD.game and KD.coop.session. */
+  S.stateOf = function (game, session) {
+    if (session) return 'coop';
+    var inRun = !!(game && game.run && (game.state === 'play' || game.state === 'route' || game.state === 'setup' || game.state === 'over'));
+    return inRun ? 'solo' : 'menu';
+  };
+  /** A new random install id: 24 characters of A-Z a-z 0-9 _ -. rnd(n) -> n random bytes (tests pass their own). */
+  S.newId = function (rnd) {
+    var abc = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-', bytes = rnd ? rnd(24) : randomBytes(24), s = '';
+    for (var i = 0; i < 24; i++) s += abc[bytes[i] & 63];
+    return s;
+  };
+  function randomBytes(n) {
+    var c = root.crypto, a = [];
+    if (c && c.getRandomValues) { var u = new Uint8Array(n); c.getRandomValues(u); for (var i = 0; i < n; i++) a.push(u[i]); return a; }
+    for (var j = 0; j < n; j++) a.push(Math.floor(Math.random() * 256));
+    return a;
+  }
+  /** This browser's install id (made and stored the first time; a blocked storage gives a new one per session). */
+  S.installId = function (storage, rnd) {
+    var id = null;
+    try { id = storage && storage.getItem(S.KEY); } catch (e) { id = null; }
+    if (id && /^[A-Za-z0-9_-]{16,64}$/.test(id)) return id;
+    id = S.newId(rnd);
+    try { if (storage) storage.setItem(S.KEY, id); } catch (e) { /* blocked: this session only */ }
+    return id;
+  };
+
+  /**
+   * tapper(o) -> { down(t), up(t), fire }: the hidden gesture. o: { taps, gap, hold, onFire, setTimeout, clearTimeout }.
+   * `taps` presses each within `gap` ms of the one before fire it; so does holding for `hold` ms. down/up take a time in ms.
+   */
+  S.tapper = function (o) {
+    o = o || {};
+    var taps = o.taps || S.TAPS, gap = o.gap || S.TAP_GAP_MS, hold = o.hold || S.HOLD_MS;
+    var st = o.setTimeout || function (f, ms) { return setTimeout(f, ms); }, ct = o.clearTimeout || function (t) { clearTimeout(t); };
+    var n = 0, last = -1e9, holdT = 0, T = {};
+    function fire() { n = 0; last = -1e9; if (holdT) { ct(holdT); holdT = 0; } if (o.onFire) o.onFire(); }
+    T.down = function (t) {
+      n = t - last <= gap ? n + 1 : 1; last = t;
+      if (holdT) ct(holdT);
+      holdT = st(function () { holdT = 0; fire(); }, hold);
+      if (n >= taps) fire();
+    };
+    T.up = function () { if (holdT) { ct(holdT); holdT = 0; } };
+    T.cancel = T.up;
+    T.fire = fire;
+    return T;
+  };
+
+  /**
+   * view(r) -> what the panel shows for an answer of fetchStats / claim:
+   *   { kind: 'numbers', groups: [{ title, rows: [[label, value]] }], updated }   the owner
+   *   { kind: 'claim', text }        nobody owns the counts and this player is signed in
+   *   { kind: 'none', text }         anyone else ("Not available."), also not signed in and not set up
+   *   { kind: 'old', text }          the service is older than the counts (404)
+   *   { kind: 'error', text }        no answer
+   */
+  S.view = function (r, signedIn) {
+    if (!r) return { kind: 'error', text: 'Something went wrong.' };
+    if (r.ok && r.body && r.body.players) return { kind: 'numbers', groups: S.groups(r.body), updated: r.body.at || 0 };
+    if (r.error === 'network') return { kind: 'error', text: 'The online service did not answer. Try again in a moment.' };
+    if (r.status === 404) return { kind: 'old', text: 'The online service needs updating before it can show player counts.' };
+    if (r.status === 403 && r.body && r.body.error === 'no_owner' && signedIn) return { kind: 'claim', text: 'Nobody owns the player counts yet.' };
+    return { kind: 'none', text: 'Not available.' };
+  };
+  function n(x) { x = +x || 0; return String(x).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+  /** The numbers in labelled groups (pure; tests read them). */
+  S.groups = function (b) {
+    var P = b.players || {}, A = b.accounts || {}, L = b.live || {}, pf = P.platforms || {}, g = [];
+    g.push({ title: 'Right now', rows: [
+      ['Online now', n(P.onlineNow)], ['Offline', n(P.offline)], ['Playing a run', n(P.playingNow)], ['In online co-op', n(P.coopNow)],
+      ['Signed in now', n(L.online)], ['In a lobby or run', n((L.lobby || 0) + (L.run || 0))], ['Online games open', n(L.rooms)]] });
+    g.push({ title: 'Players (every game)', rows: [
+      ['Total players', n(P.total)], ['Played today', n(P.today)], ['Last 7 days', n(P.last7)], ['Last 30 days', n(P.last30)], ['New this week', n(P.new7)]] });
+    g.push({ title: 'Accounts (signed in)', rows: [
+      ['Total accounts', n(A.total)], ['With a name', n(A.named)], ['Played today', n(A.today)], ['Last 7 days', n(A.last7)], ['Last 30 days', n(A.last30)],
+      ['New this week', n(A.new7)], ['Friendships', n(A.friendships)]] });
+    g.push({ title: 'Devices (30 days)', rows: [['Phone', n(pf.phone)], ['Tablet', n(pf.tablet)], ['PC', n(pf.pc)]].concat(pf.other ? [['Other', n(pf.other)]] : []) });
+    var v = (P.versions || []).slice(0, 3).map(function (x) { return ['Build ' + x.v, n(x.n)]; });
+    if (b.bestDay) v.push(['Best day (' + b.bestDay.day + ')', n(b.bestDay.players)]);
+    if (v.length) g.push({ title: 'Builds (7 days)', rows: v });
+    return g;
+  };
+
+  // ------------------------------------------------------------------------------------------ the heartbeat
+  /**
+   * init(o): o = { fetch, storage, now, setTimeout, clearTimeout, url: () => service url, version, platform: () => p,
+   *   state: () => 'menu'|'solo'|'coop', visible: () => bool, skip: bool }. Browser defaults read KD.online, KD.device,
+   *   KD.game and document.visibilityState.
+   */
+  S.init = function (o) {
+    o = o || {};
+    var nav = root.navigator || {}, doc = root.document;
+    env = {
+      fetch: o.fetch || (typeof root.fetch === 'function' ? root.fetch.bind(root) : null),
+      storage: o.storage !== undefined ? o.storage : safeStorage(),
+      setTimeout: o.setTimeout || function (f, ms) { return setTimeout(f, ms); },
+      clearTimeout: o.clearTimeout || function (t) { clearTimeout(t); },
+      now: o.now || function () { return Date.now(); },
+      url: o.url || function () { return KD.online && KD.online.url ? KD.online.url() : ''; },
+      version: o.version || function () { return String((KD.flow && KD.flow.VERSION) || KD.VERSION || '?'); },
+      platform: o.platform || function () { return S.platform(KD.device); },
+      state: o.state || function () { return S.stateOf(KD.game, KD.coop ? KD.coop.session : null); },
+      visible: o.visible || function () { return !doc || doc.visibilityState !== 'hidden'; },
+      skip: o.skip !== undefined ? !!o.skip : !!(nav.webdriver || /[?&]nobeat=1/.test((root.location && root.location.search) || ''))
+    };
+    return S;
+  };
+  function safeStorage() { try { var ls = root.localStorage; ls.getItem(S.KEY); return ls; } catch (e) { return null; } }
+  function ready() { if (!env) S.init(); return env; }
+  S.body = function () {
+    var e = ready();
+    return { install: S.installId(e.storage), v: String(e.version()).slice(0, 16), p: e.platform(), s: e.state() };
+  };
+  /** Send one heartbeat. -> Promise<{ ok, status, next } | { ok: false, skipped }>. Never throws. */
+  S.beat = function () {
+    var e = ready(), base = e.url();
+    if (e.skip || !base || !e.fetch) return Promise.resolve({ ok: false, skipped: true });
+    var body;
+    try { body = S.body(); lastState = body.s; lastAt = e.now(); } catch (x) { return Promise.resolve({ ok: false, error: 'body' }); }
+    var p;
+    try { p = e.fetch(base + '/v1/beat', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body), cache: 'no-store', keepalive: true }); }
+    catch (x) { return Promise.resolve({ ok: false, error: 'network' }); }
+    return p.then(function (r) {
+      return r.text().then(function (t) {
+        var b = null; try { b = JSON.parse(t); } catch (x) { b = null; }
+        if (r.ok && b && b.next) nextMs = Math.max(60000, Math.min(30 * 60000, +b.next || S.BEAT_MS));
+        return { ok: r.ok, status: r.status, next: nextMs };
+      });
+    }, function () { return { ok: false, error: 'network' }; });
+  };
+  function tick() {
+    var e = ready();
+    timer = 0;
+    if (!running) return;
+    if (e.visible()) S.beat();
+    timer = e.setTimeout(tick, nextMs);
+  }
+  /** Start: one beat now, then every BEAT_MS while visible. Safe to call again. */
+  S.start = function () {
+    var e = ready();
+    if (running) return false;
+    running = true;
+    if (e.skip || !e.url()) { running = false; return false; }
+    tick();
+    return true;
+  };
+  S.stop = function () { var e = ready(); running = false; lastAt = -1e15; lastState = null; e.clearTimeout(timer); e.clearTimeout(stateT); timer = stateT = 0; };
+  S.running = function () { return running; };
+  /** Call when the game changes state: a new menu / solo / coop is sent once it has held for STATE_DELAY_MS. */
+  S.stateChanged = function () {
+    var e = ready();
+    if (!running) return;
+    e.clearTimeout(stateT);
+    stateT = e.setTimeout(function () { stateT = 0; var s; try { s = e.state(); } catch (x) { return; } if (s !== lastState && e.visible()) S.beat(); }, S.STATE_DELAY_MS);
+  };
+  /** The page became visible again after a long time hidden: beat now, then on the usual timer. */
+  S.wake = function () { var e = ready(); if (!running || e.now() - lastAt < nextMs) return; e.clearTimeout(timer); tick(); };
+
+  // ------------------------------------------------------------------------------------------ the owner's numbers
+  S.fetchStats = function () {
+    if (!KD.online || !KD.online.configured()) return Promise.resolve({ ok: false, status: 0, error: 'not_set_up' });
+    return KD.online.call('GET', '/v1/stats');
+  };
+  S.claim = function () {
+    if (!KD.online || !KD.online.signedIn()) return Promise.resolve({ ok: false, status: 401, error: 'auth' });
+    return KD.online.call('POST', '/v1/stats/claim', {});
   };
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -111126,7 +111366,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       ])
     ]));
     s.appendChild(accountPlate(game));
-    s.appendChild(el('div.flow-menu-version.kd-shadow', { text: 'Kingdom’s Descent · build ' + F.VERSION + ' · saves are kept in this browser' }));
+    var ver = s.appendChild(el('div.flow-menu-version.kd-shadow', { text: 'Kingdom’s Descent · build ' + F.VERSION + ' · saves are kept in this browser' }));
+    if (KD.onlineui && KD.onlineui.counterHook) KD.onlineui.counterHook(ver, game);      // [counter] hidden player counts toggle (src/ui/26_online_30_counter.js)
     return s;
   };
   M.show = function (game) { M.build(game); F.show('menu'); F.music('menu'); if (F.patch) { try { F.patch.check(); } catch (e) { console.error(e); } } };      // [patch notes] update banner, once per version
@@ -114918,6 +115159,109 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     game.events.on('state', safe('state', function () { pushStatus(game); }));
     game.events.on('coop', safe('coop', function () { pushStatus(game); }));
     if (O().signedIn()) { pushStatus(game); O().connect(); O().refreshMe(); }
+    return OU;
+  });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/ui/26_online_30_counter.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  /**
+   * The hidden "Player counts" panel for the owner (docs/ONLINE.md section 8). Nothing about it is visible: on the main
+   * menu the line "Kingdom's Descent · build X" carries an invisible hit area; 5 quick taps / clicks or a 2 s hold open a
+   * small painted window with the counts and Refresh. Anyone but the owner gets "Not available." The first signed-in
+   * player who opens it while nobody owns the counts may claim them (asks first). Also starts the anonymous heartbeat
+   * (KD.onlineStats, src/meta/53_online_stats.js).
+   */
+  var OU = KD.onlineui = KD.onlineui || {};
+  var S = function () { return KD.onlineStats; };
+  var ID = 'ol-counter';
+  function el(a, b, c) { return KD.ui.el(a, b, c); }
+  function F() { return KD.flow; }
+
+  /** Puts the invisible hit area on the build line (called by the menu, src/ui/20_flow_10_menu.js). */
+  OU.counterHook = function (line, game) {
+    if (!line || !S()) return null;
+    line.classList.add('olc-host');
+    var hit = el('span.olc-hit', { attrs: { 'aria-hidden': 'true' } });
+    var t = S().tapper({ onFire: function () { OU.openCounter(game); } });
+    // on the line itself: the hit area is its child, and a finger's touch adjustment may pick the line instead
+    line.addEventListener('pointerdown', function (e) { if (e.button !== undefined && e.button > 0) return; t.down(e.timeStamp || Date.now()); });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (k) { line.addEventListener(k, function () { t.up(); }); });
+    line.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+    line.appendChild(hit);
+    return hit;
+  };
+
+  // ------------------------------------------------------------------------------------------ the panel
+  var P = { busy: false, view: null, msg: '' };
+  function body(game) {
+    var v = P.view, box = el('div.olc-body');
+    if (P.busy && !v) { box.appendChild(el('div.olc-note', { text: 'Loading...' })); return box; }
+    if (!v) return box;
+    if (v.kind === 'numbers') {
+      box.appendChild(el('div.olc-groups', v.groups.map(function (g) {
+        return el('div.olc-group.kd-plate', [el('div.olc-gtitle', { text: g.title })].concat(g.rows.map(function (r) {
+          return el('div.olc-row', [el('span.olc-label', { text: r[0] }), el('span.olc-val', { text: r[1] })]);
+        })));
+      })));
+      if (v.updated) box.appendChild(el('div.olc-note.olc-updated', { text: 'Updated ' + new Date(v.updated).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '. Online now means a game was open in the last 10 minutes.' }));
+    } else if (v.kind === 'claim') {
+      var acc = KD.online.account();
+      box.appendChild(el('div.olc-note', { text: v.text }));
+      box.appendChild(el('div.olc-note.olc-dim', { text: 'Claim them for ' + (acc && acc.name ? KD.names.full(acc.name, acc.tag) : 'this account') + ': only that account (and devices linked to it) will be able to see them.' }));
+      box.appendChild(KD.ui.button('Claim as owner', { icon: 'crown', kind: 'primary', className: 'olc-claim', onClick: function () { claim(game); } }));
+    } else box.appendChild(el('div.olc-note' + (v.kind === 'none' ? '.olc-quiet' : ''), { text: v.text }));
+    if (P.msg) box.appendChild(el('div.ol-msg.ol-msg-bad', { text: P.msg }));
+    return box;
+  }
+  function paint(game) { var w = KD.ui.windows.get && KD.ui.windows.get(ID); if (w) w.setContent(body(game)); }
+  function load(game) {
+    if (P.busy) return;
+    P.busy = true; P.msg = ''; paint(game);
+    S().fetchStats().then(function (r) {
+      P.busy = false;
+      P.view = S().view(r, KD.online && KD.online.signedIn());
+      paint(game);
+    });
+  }
+  function claim(game) {
+    var acc = KD.online.account(), who = acc && acc.name ? KD.names.full(acc.name, acc.tag) : 'This account';
+    F().confirm({ title: 'Claim the player counts?', text: who + ' becomes the only account that can see the player counts. This works once: nobody can claim them after you.', yes: 'Claim', no: 'Cancel', pauses: false }).then(function (ok) {
+      if (!ok) return;
+      S().claim().then(function (r) {
+        if (r.ok) { F().sound('ui_confirm'); load(game); return; }
+        P.view = S().view(r.status === 404 ? r : { ok: false, status: 403, body: { error: 'claimed' } }, true);
+        paint(game);
+      });
+    });
+  }
+  /** Opens the panel (the hidden gesture calls this). */
+  OU.openCounter = function (game) {
+    var f = F();
+    if (!f || !f.window) return null;
+    if (KD.ui.windows.isOpen && KD.ui.windows.isOpen(ID)) { load(game); return KD.ui.windows.get(ID); }
+    P.view = null; P.busy = false;
+    var w = f.window(ID, { title: 'Player counts', icon: 'crown', width: f.isCompact() ? 760 : 600, pauses: false, dismiss: true, className: 'olc-win', content: body(game),
+      footer: [KD.ui.button('Refresh', { icon: 'compass', className: 'olc-refresh', onClick: function () { load(game); } }),
+        KD.ui.button('Close', { kind: 'primary', className: 'olc-close', onClick: function () { KD.ui.windows.close(ID); } })] });
+    load(game);
+    return w;
+  };
+
+  // ------------------------------------------------------------------------------------------ the heartbeat
+  KD.screens.register('online-counter', function (game) {
+    if (!S()) return null;
+    S().init();
+    S().start();
+    if (game && game.events) {
+      game.events.on('state', function () { try { S().stateChanged(); } catch (e) { console.error(e); } });
+      game.events.on('coop', function () { try { S().stateChanged(); } catch (e) { console.error(e); } });
+    }
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') S().wake(); });
     return OU;
   });
 })(typeof window !== 'undefined' ? window : globalThis);
