@@ -3851,7 +3851,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.61';
+  KD.VERSION = '0.7.62';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -4303,6 +4303,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   };
 
   /** Enemy tier multipliers. */
+  /** Owner knob (Oct 12): regular enemies (minion, normal, elite) deal 20% more, every boss tier 30% more (applied in spawn). */
+  B.OWNER_DMG = { regular: 1.2, boss: 1.3 };
+  B.ownerDmg = function (tier) { return tier === 'minion' || tier === 'normal' || tier === 'elite' || !tier ? B.OWNER_DMG.regular : B.OWNER_DMG.boss; };
   B.TIER = {
     minion: { hp: 0.35, dmg: 0.6, xp: 0.3, poise: 0.3, gold: 0.3, loot: 0.3 },
     normal: { hp: 1, dmg: 1, xp: 1, poise: 1, gold: 1, loot: 1 },
@@ -4323,7 +4326,14 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     summoner: { hp: 1.0, dmg: 0.7, speed: 3.0 },
     ambusher: { hp: 0.7, dmg: 1.5, speed: 5.0 }
   };
-  B.PLAYER_SPEED = 5.2;        // m/s jog
+  B.PLAYER_SPEED = 4.68;       // m/s jog (owner, Oct 12: 10% slower, was 5.2; the Gloamblade keeps 5.2 through CLASS_SPEED)
+  B.CLASS_SPEED = { gloamblade: 5.2 / 4.68 };
+  /** Base jog speed of a hero (the class may differ from B.PLAYER_SPEED). */
+  B.heroSpeed = function (p) { var id = p && (p.defId || (p.cls && p.cls.id)); return B.PLAYER_SPEED * (B.CLASS_SPEED[id] || 1); };
+  /** Dodge stamina (owner, Oct 12): each roll costs stamina that comes back slowly. 100 = three rolls; empty to full in about 9 s. */
+  B.STAMINA = { max: 100, dodgeCost: 33, regen: 12, delay: 0.9, gap: 0.45 };
+  /** Owner (Oct 12): hirelings 40% weaker (Health, damage, healing); minions 30% less Health except the lone Grave Knight. */
+  B.MERC_POWER = 0.6; B.MINION_HP = 0.7; B.MINION_HP_KEEP = { grave_knight: 1 };
   B.PLAYER_SPRINT = 1.45;      // multiplier while sprinting (drains nothing, disables attacks)
   /**
    * Classes that fight from range pay for the safety with a little damage (owner: "nerf ranged units a little"):
@@ -23497,6 +23507,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.62', date: '2026-10-12', title: 'A harder descent', notes: [
+      'Enemies hit 20% harder, bosses 30% harder',
+      'Heroes move 10% slower (the Gloamblade keeps his speed)',
+      'Dodging now uses stamina: 3 rolls when full, and it refills slowly',
+      'Hirelings are 40% weaker and minions have 30% less Health (not the Grave Knight)'
+    ] },
     { version: '0.7.61', date: '2026-10-12', title: 'Steadier mouse aim', notes: [
       'Mouse look no longer jumps to a random direction on some mice and browsers',
       'If your browser keeps letting go of the mouse, the game switches to cursor aiming so every click attacks'
@@ -33252,6 +33268,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       o = list[i];
       var pool = poolOf(src, o);
       var amt = ((fx.pct || 0) * pool + (fx.mult || 0) * S.unitDamage(world, src, 'holy', 'spell') + (fx.missing || 0) * Math.min(pool, o.hpMax - o.hp)) * ctx.power;
+      if (src && src.mercHealMult) amt *= src.mercHealMult;      // owner (Oct 12): hireling heals 40% weaker
       if (fx.hot) S.addHot(world, o, amt, fx.hot, src); else S.heal(world, o, amt, src);
     }
     emitFx(ctx, fx.fx || 'heal', { x: src.x, z: src.z, r: fx.radius || 0 });
@@ -33524,7 +33541,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var e = S.makeChar(world, 'player', 0);
     e.hero = hero; e.playerIndex = index; e.defId = hero.classId; e.name = hero.name; e.level = hero.level; e.tier = 'hero'; e.role = 'player';
     e.cls = KD.get('classes', hero.classId);
-    e.r = 0.42; e.h = 1.8; e.mass = 3; e.speed = B.PLAYER_SPEED; e.accel = T.playerAccel;
+    e.r = 0.42; e.h = 1.8; e.mass = 3; e.speed = B.heroSpeed(e); e.accel = T.playerAccel;
     var sp = (index === 0 && as.pos) ? as.pos : (L.points && L.points.spawn) || { x: L.w / 2, z: L.d / 2, yaw: 0 };
     var px = sp.x + (index ? (index % 2 ? 1 : -1) * 1.2 * Math.ceil(index / 2) : 0), pz = sp.z;
     if (!S.isFree(world, px, pz, e.r)) { var f = S.nav.nearestFree(world, px, pz, e.r, 12); if (f) { px = f.x; pz = f.z; } }
@@ -33532,7 +33549,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     e.model = { plan: 'hero', classId: hero.classId, hero: hero };
     e.buf = { dodge: 0, potion: 0, interact: 0, primary: 0, ultimate: 0, s0: 0, s1: 0, s2: 0, s3: 0 };
     e.prev = { dodge: false, potion: false, interact: false, primary: false, ultimate: false, s0: false, s1: false, s2: false, s3: false };
-    e.momentum = 0; e.momT = -100; e.dodgeCd = 0; e.potionCd = 0; e.sprinting = false; e.inBloom = false;
+    e.momentum = 0; e.momT = -100; e.dodgeCd = 0; e.stamina = B.STAMINA.max; e.staminaMax = B.STAMINA.max; e.staminaT = 0; e.potionCd = 0; e.sprinting = false; e.inBloom = false;
     e.resGainT = -100; e.condSig = -1; e.modsAt = -100; e.hots = []; e.safeT = 0; e.msgT = -100;
     e.counters = { kills: 0, potions: 0, damageTaken: 0, damageDealt: 0, dodges: 0, casts: 0 };
     hero.flags = hero.flags || {};
@@ -33849,6 +33866,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     return { aimYaw: yaw, aimX: ax, aimZ: az, target: inp.target || null };
   }
   P.tryDodge = function (world, p, inp) {
+    if (p.stamina === undefined) { p.stamina = p.staminaMax = B.STAMINA.max; p.staminaT = 0; }
+    if (p.stamina < B.STAMINA.dodgeCost) return false;      // [stamina] not enough left for a roll
     if (p.dodgeCd > 0 || p.motion || p.stunned || p.rooted || p.feared || p.broken > 0 || p.hitstun > 0 || world.rulesOf(p).noDodge || p.knobs.noDodge) return false;
     var c = p.cast;
     if (c && c.state === 'active' && !c.inst.def.dodgeCancel) return false;
@@ -33857,7 +33876,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (dx * dx + dz * dz < 0.04) { dx = Math.sin(p.yaw); dz = Math.cos(p.yaw); }
     if (c) K.interrupt(world, p, 'dodge');
     S.startMotion(world, p, dx, dz, D.dist, D.time, { through: true, iframes: D.iframes, kind: 'dodge' });
-    p.dodgeCd = D.cooldown * (world.rulesOf(p).dodgeCdMult || 1) / Math.max(0.2, p.stats.dodgeCdr);
+    // [stamina] a roll costs stamina (B.STAMINA); only a short gap between rolls. Dodge recovery stats speed the refill.
+    p.stamina -= B.STAMINA.dodgeCost; p.staminaT = B.STAMINA.delay;
+    p.dodgeCd = B.STAMINA.gap;
     p.yaw = Math.atan2(dx, dz); p.faceYaw = p.yaw; p.sprinting = false;
     p.counters.dodges++; p.lastDodgeAt = world.time;
     world.events.emit('dodge', { e: p, x: p.x, z: p.z, yaw: p.yaw });
@@ -33940,6 +33961,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       if (p.statsDirty || full || condSig(world, p) !== p.condSig) P.refreshStats(world, p, full); else p.statsT = 0;
     }
     if (p.dodgeCd > 0) p.dodgeCd -= dt;
+    if (p.stamina === undefined) { p.stamina = p.staminaMax = B.STAMINA.max; p.staminaT = 0; }
+    if (p.staminaT > 0) p.staminaT -= dt;
+    else if (p.stamina < p.staminaMax) p.stamina = Math.min(p.staminaMax, p.stamina + dt * B.STAMINA.regen * Math.max(0.2, p.stats.dodgeCdr) / (world.rulesOf(p).dodgeCdMult || 1));
     if (p.potionCd > 0) p.potionCd -= dt;
     // ---- class resource ----
     var R = p.cls.resource;
@@ -33993,7 +34017,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       var a = aimOf(p, inp); c.aimYaw = a.aimYaw; c.aimX = a.aimX; c.aimZ = a.aimZ; if (a.target) c.target = a.target;
     }
     // ---- movement ----
-    var speed = B.PLAYER_SPEED * p.stats.moveSpeed * p.slowMult;
+    var speed = B.heroSpeed(p) * p.stats.moveSpeed * p.slowMult;
     p.sprinting = false;
     if (c) {
       var def = c.inst.def;
@@ -34001,7 +34025,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     } else if (sprintWanted) { speed *= B.PLAYER_SPRINT; p.sprinting = true; }
     if (p.rooted || !canAct) speed = 0;
     if (p.feared && p.fearFrom) {
-      var fy = Math.atan2(p.x - p.fearFrom.x, p.z - p.fearFrom.z), fs = B.PLAYER_SPEED * 0.8 * p.slowMult;
+      var fy = Math.atan2(p.x - p.fearFrom.x, p.z - p.fearFrom.z), fs = B.heroSpeed(p) * 0.8 * p.slowMult;
       p.wx = Math.sin(fy) * fs; p.wz = Math.cos(fy) * fs; p.faceYaw = fy;
     } else {
       p.wx = mx * speed; p.wz = mz * speed;
@@ -34009,7 +34033,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       else if (ml > 0.1 && canAct) p.faceYaw = Math.atan2(mx, mz);
       else p.faceYaw = null;
     }
-    p.speed = B.PLAYER_SPEED * p.stats.moveSpeed;
+    p.speed = B.heroSpeed(p) * p.stats.moveSpeed;
     // ---- persistence ----
     hero.hp = p.hpOut = p.hp; hero.res = p.resOut = p.res;
     p.safeT += dt;
@@ -34209,7 +34233,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         break;
       case 'cooldown': {
         var sec = p.sec || 1;
-        if (p.which === 'dodge') { if (self.dodgeCd !== undefined) self.dodgeCd = Math.max(0, self.dodgeCd - sec); }
+        if (p.which === 'dodge') { if (self.dodgeCd !== undefined) self.dodgeCd = Math.max(0, self.dodgeCd - sec); if (self.stamina !== undefined) self.stamina = Math.min(self.staminaMax || 100, self.stamina + sec * KD.balance.STAMINA.regen); }
         else if (p.which === 'random') { var keys = Object.keys(self.cds).filter(function (k) { return self.cds[k].ready > world.time; }).sort(); if (keys.length) self.cds[keys[Math.floor(world.rng.next() * keys.length)]].ready -= sec; }
         else {
           K.reduceCooldown(world, self, null, sec);
@@ -36498,7 +36522,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     e.speed = RO.speed * (def.speed === undefined ? 1 : def.speed); e.turnRate = def.turn || 0;
     e.hpMax = B.enemyHp(level) * TI.hp * RO.hp * (def.hp === undefined ? 1 : def.hp) * B.partyHp(world.party) * (rules.enemyHpMult || 1) * (opts.hpMult || 1);
     e.hp = e.hpMax;
-    e.dmgBase = B.enemyDmg(level) * TI.dmg * RO.dmg * (def.dmg === undefined ? 1 : def.dmg) * (rules.enemyDmgMult || 1) * (opts.power || 1);
+    e.dmgBase = B.enemyDmg(level) * TI.dmg * (B.ownerDmg ? B.ownerDmg(tier) : 1) * RO.dmg * (def.dmg === undefined ? 1 : def.dmg) * (rules.enemyDmgMult || 1) * (opts.power || 1);
     var BT = B.BOSS_TOUGH;
     if (BT && BT.tiers.indexOf(tier) >= 0 && BT.except.indexOf(def.id) < 0) {      // tougher bosses (owner)
       var fb = tier === 'finalboss' && BT.final ? BT.final : null;
@@ -36583,6 +36607,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   Sp.refreshAlly = function (world, e) {
     var own = e.owner, st = own && own.stats;
     var hpMax = e.hpBase * (st ? st.minionHp : 1), frac = e.hpMax > 0 ? e.hp / e.hpMax : 1;
+    // owner (Oct 12): minions have 30% less Health, except the lone Grave Knight (hirelings and patrols are not minions)
+    if (own && !e.hireling && !(e.def && KD.balance.MINION_HP_KEEP[e.def.id])) hpMax *= KD.balance.MINION_HP;
     if (Math.abs(hpMax - e.hpMax) > 0.01) { e.hpMax = hpMax; e.hp = hpMax * frac; }
     e.dmgBase = e.dmgRaw * (st ? KD.Stats.dmgMult(st, MK) : 1);
     var ms = st && !e.hireling ? st.minionSpeed : 1;
@@ -37342,6 +37368,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var frac = a.hpMax > 0 ? a.hp / a.hpMax : 1;
     a.hpBase = B.playerBaseHp(a.level) * (def.hp === undefined ? 0.6 : def.hp) * st.hpMult;
     a.dmgRaw = B.weaponBase(a.level) * (def.dmg === undefined ? 0.5 : def.dmg) * st.dmgMult;
+    a.hpBase *= B.MERC_POWER; a.dmgRaw *= B.MERC_POWER; a.mercHealMult = B.MERC_POWER;      // owner (Oct 12): hirelings 40% weaker
     var keep = (a.baseMods || []).filter(function (m) { return !m.merc; });
     a.baseMods = keep.concat(st.mods.map(function (m) { return { s: m.s, t: m.t, v: m.v, merc: true }; }));
     a.poiseMax = 40 * (def.poise === undefined ? 1 : def.poise) * (1 + st.poise); a.poise = Math.min(a.poise, a.poiseMax);
@@ -37741,7 +37768,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       var out = escape(world, p, b, tgt, c2c), spd = Math.max(1, p.speed * p.slowMult * (p.cast ? 0.5 : 1));
       var walkT = out / spd + 0.1, care = heavy || hpF < b.careBelow;
       if (out < Infinity) { moveDir(inp, b.escX, b.escZ); sidestep = true; }
-      var canDodge = p.dodgeCd <= 0 && !p.motion && !world.rules.noDodge;
+      var canDodge = p.dodgeCd <= 0 && !(p.stamina < B.STAMINA.dodgeCost) && !p.motion && !world.rules.noDodge;
       if (care && canDodge && danger < walkT && (danger <= 0.3 && b.rollOk || danger <= 0.14)) {
         if (b.rollOk) { inp.mx = b.rollX; inp.mz = b.rollZ; }
         else if (out === Infinity) { var ty = tgt ? Math.atan2(tgt.x - p.x, tgt.z - p.z) : p.yaw; inp.mx = Math.sin(ty + 1.9); inp.mz = Math.cos(ty + 1.9); }
@@ -109470,7 +109497,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       } });
       A.dodgeKey = el('span.kd-key.hud-pip-key'); A.bandageKey = el('span.kd-key.hud-pip-key');
       A.dodge = UI.slot({ size: 24, round: true, glyph: 'roll', color: '#f0e7d2', tip: function () {
-        var D = KD.balance.DODGE; return { title: 'Dodge', lines: [{ text: 'Roll ' + D.dist + ' m. You cannot be hit while rolling.', kind: 'base' }, ctx.rules.noDodge ? { text: 'Forbidden by your Oath.', kind: 'bad' } : { text: 'Recovers in ' + (Math.round(A.dodgeTotal * 10) / 10) + ' s.', kind: 'dim' }] };
+        var D = KD.balance.DODGE; return { title: 'Dodge', lines: [{ text: 'Roll ' + D.dist + ' m. You cannot be hit while rolling.', kind: 'base' }, ctx.rules.noDodge ? { text: 'Forbidden by your Oath.', kind: 'bad' } : { text: 'Each roll uses stamina, which comes back slowly (about 3 rolls when full).', kind: 'dim' }] };
       } });
       A.bandage = UI.slot({ size: 24, glyph: 'bandage', color: '#efe6c8', count: 0, className: 'hud-bandage', onClick: function () { useBandage(ctx); }, tip: function () {
         return { title: 'Bandage', sub: (ctx.hero && ctx.hero.supplies && ctx.hero.supplies.bandage || 0) + ' left', lines: [{ text: 'Restores 30% Health over 4 s. Out of combat only.', kind: 'base' }], footer: A.bandageHot ? [UI.keycap(A.bandageHot), 'use'] : 'Click to use' };
@@ -109538,10 +109565,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       var noPot = !!(KD.config && KD.config.potions === false);                  // potions are switched off: no flask on the bar
       if (noPot !== A._noPot) { A._noPot = noPot; A.potion.style.display = noPot ? 'none' : ''; }
       // dodge pip: the total is whatever the cooldown jumped to
-      var dc = p.dodgeCd > 0 ? p.dodgeCd : 0;
-      if (dc > A.dodgeLast + 0.05) A.dodgeTotal = dc;
-      A.dodgeLast = dc;
-      A.dodge.setCooldown(dc > 0 ? dc / A.dodgeTotal : 0);
+      // [stamina] the dodge slot shows how many rolls the stamina holds; the sweep fills toward the next roll when it is empty
+      var STA = KD.balance.STAMINA, stam = p.stamina === undefined ? STA.max : p.stamina, rolls = Math.floor(stam / STA.dodgeCost + 1e-6);
+      var dc = rolls > 0 ? 0 : (STA.dodgeCost - stam) / STA.dodgeCost;
+      if (rolls !== A.rolls) { A.rolls = rolls; A.dodge.set({ count: rolls }); }
+      A.dodge.setCooldown(dc > 0 ? Math.min(1, dc) : 0);
       var noDodge = !!ctx.rules.noDodge;
       if (noDodge !== A.dodgeOff) { A.dodgeOff = noDodge; A.dodge.classList.toggle('kd-slot-disabled', noDodge); }
       rehold(A.dodgeH); hold(A.dodgeH, 'off', noDodge); hold(A.dodgeH, 'cd', dc > 0);
@@ -125823,7 +125851,7 @@ P['gravecaller_tripo'] = 'Z2xURgIAAACoBQYAaBkAAEpTT057ImFzc2V0Ijp7InZlcnNpb24iOi
     var delay = s && s.inputDelay ? s.inputDelay() : 0, enc = s && s.lastEnc;
     if (!(delay > 0.02) || !p || p.dead || !enc || G.query.nolead) { leadHist.length = 0; leadX = leadZ = 0; return null; }
     var busy = p.stunned || p.rooted || p.feared || p.motion || p.broken > 0 || p.hitstun > 0;
-    var speed = busy ? 0 : KD.balance.PLAYER_SPEED * (p.stats ? p.stats.moveSpeed : 1) * (p.slowMult === undefined ? 1 : p.slowMult);
+    var speed = busy ? 0 : KD.balance.heroSpeed(p) * (p.stats ? p.stats.moveSpeed : 1) * (p.slowMult === undefined ? 1 : p.slowMult);
     if (p.cast && p.cast.inst && p.cast.inst.def) { var def = p.cast.inst.def; speed *= p.cast.state === 'recover' ? (def.recoverMove === undefined ? 0.75 : def.recoverMove) : (def.moveMult === undefined ? 0.35 : def.moveMult); }
     else if (enc[5] & 1) speed *= KD.balance.PLAYER_SPRINT;
     var mx = (enc[0] || 0) / 127, mz = (enc[1] || 0) / 127;
