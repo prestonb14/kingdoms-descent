@@ -3851,7 +3851,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.62';
+  KD.VERSION = '0.7.63';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -15713,7 +15713,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       up: 'A Crown patrol fights beside you in the open.', down: 'Elites roll the Shielded affix three times as often.',
       flags: { patrolAllies: 1, eliteAffixWeights: { shielded: 3 } }, mods: [] },
     { id: 'order_90', fate: 'order', level: 3, at: 90, name: 'Iron Law',
-      up: 'Bosses drop one extra item.', down: 'Bosses use counter-stances that punish repeated attacks.',
+      up: 'Bosses drop one extra item.', down: 'Bosses take iron stances that deflect most of your blows for a moment.',
       flags: { bossExtraItems: 1, bossCounter: true }, mods: [] },
 
     { id: 'dread_30', fate: 'dread', level: 1, at: 30, name: 'Creeping Bloom',
@@ -23507,6 +23507,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.63', date: '2026-10-12', title: 'Order Fate: no more self-damage', notes: [
+      'The Order Fate no longer hits you back when you strike a boss in its iron stance',
+      'The stance still deflects most of your blows for a moment, so wait it out'
+    ] },
     { version: '0.7.62', date: '2026-10-12', title: 'A harder descent', notes: [
       'Enemies hit 20% harder, bosses 30% harder',
       'Heroes move 10% slower (the Gloamblade keeps his speed)',
@@ -30690,6 +30694,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     { id: 'lit', name: 'Radiant', kind: 'debuff', elem: 'holy', dur: 4, stack: 'refresh', quiet: true, color: '#fff2b0', desc: 'Touched by Holy power. Shadow damage causes Eclipse.' },
     { id: 'shade', name: 'Gloomed', kind: 'debuff', elem: 'shadow', dur: 4, stack: 'refresh', quiet: true, color: '#b07bff', desc: 'Touched by Shadow power. Holy damage causes Eclipse.' },
     { id: 'counter', name: 'Counter-stance', kind: 'buff', dur: 2.5, flags: ['counter'], color: '#e2b94a', desc: 'Direct hits are mostly deflected and answered with a counter blow.' },
+    // owner (Oct 12): the Order Fate's stance only deflects; its counter blow hurt heroes far too much
+    { id: 'order_stance', name: 'Iron stance', kind: 'buff', dur: 2.5, flags: ['deflect'], color: '#e2b94a', desc: 'Direct hits are mostly deflected.' },
     { id: 'unstoppable', name: 'Unstoppable', kind: 'buff', dur: 3, flags: ['unstoppable'], color: '#d8d2c4', desc: 'Immune to crowd control and stagger.' },
     { id: 'invulnerable', name: 'Invulnerable', kind: 'buff', dur: 1.5, flags: ['invuln'], color: '#ffffff', desc: 'Takes no damage.' }
   ]);
@@ -30886,7 +30892,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       if (direct && spec.delivery === 'melee' && tStats.thorns > 0 && S.hostile(src, tgt)) {
         S.damage(world, tgt, src, { flat: tStats.thorns, elem: 'phys', thorns: true, noCrit: true });
       }
-      if (direct && tgt.counter && S.hostile(src, tgt) && spec.delivery === 'melee') {
+      if (direct && tgt.counter && tgt.riposte && S.hostile(src, tgt) && spec.delivery === 'melee') {
         S.damage(world, tgt, src, { mult: 0.8, elem: 'phys', thorns: true, noCrit: true });
       }
     }
@@ -31208,7 +31214,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   /** Recomputes cached multipliers and flags from the status list. */
   S.refreshDerived = function (world, e) {
     var slow = 0, taken = 0, dealt = 0, stun = false, root = false, fear = false, frozen = false, stealth = false, taunt = false;
-    var parry = false, counter = false, unstop = false, invuln = false, mods = null, blockFx = false, dmgFx = false;
+    var parry = false, counter = false, riposte = false, unstop = false, invuln = false, mods = null, blockFx = false, dmgFx = false;
     for (var i = 0; i < e.statuses.length; i++) {
       var st = e.statuses[i], d = st.def;
       if (d.slow && st.power > slow) slow = st.power;
@@ -31218,7 +31224,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         var fl = d.flags[f];
         if (fl === 'stun') stun = true; else if (fl === 'root') root = true; else if (fl === 'fear') fear = true;
         else if (fl === 'frozen') frozen = true; else if (fl === 'stealth') stealth = true; else if (fl === 'taunt') taunt = true;
-        else if (fl === 'parry') parry = true; else if (fl === 'counter') counter = true; else if (fl === 'unstoppable') unstop = true;
+        else if (fl === 'parry') parry = true; else if (fl === 'counter') { counter = true; riposte = true; } else if (fl === 'deflect') counter = true; else if (fl === 'unstoppable') unstop = true;
         else if (fl === 'invuln') invuln = true;
       }
       if (st.mods) { mods = mods || []; for (var k = 0; k < st.stacks; k++) for (var m = 0; m < st.mods.length; m++) mods.push(st.mods[m]); }
@@ -31227,7 +31233,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var wasStun = e.stunned;
     e.slowMult = 1 - Math.min(0.9, slow); e.takenMult = 1 + taken; e.dealtMult = 1 - Math.min(0.9, dealt);
     e.stunned = stun; e.rooted = root; e.feared = fear; e.frozen = frozen; e.stealthed = stealth;
-    e.parry = parry; e.counter = counter; e.unstoppable = unstop || !!e.unstoppableBase; e.invulnFlag = invuln;
+    e.parry = parry; e.counter = counter; e.riposte = riposte; e.unstoppable = unstop || !!e.unstoppableBase; e.invulnFlag = invuln;
     e.blockFx = blockFx; e.dmgFx = dmgFx;
     if (!taunt) e.taunter = null;
     if (!fear) e.fearFrom = null;
@@ -35511,9 +35517,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
   /** Shared Fate twists: extra timed mechanics layered on every boss. effects run with the boss as source. */
   Bs.TWISTS = {
-    order: { name: 'Order', desc: 'Shields and counter-stances that punish repeated attacks.', hp: 0.8, timers: [
+    order: { name: 'Order', desc: 'Shields and iron stances that deflect most of your blows.', hp: 0.8, timers: [
       { id: 'order_shield', every: 20, first: 10, at: 'self', effects: [{ type: 'shield', pct: 0.02, dur: 8 }, { type: 'fx', name: 'order_shield' }] },
-      { id: 'order_counter', every: 14, first: 6, at: 'self', effects: [{ type: 'status', at: 'self', target: 'allies', radius: 0.5, status: { id: 'counter', dur: 1.6 } }, { type: 'fx', name: 'counter_stance' }, { type: 'sfx', name: 'counter_stance' }] }] },
+      { id: 'order_counter', every: 14, first: 6, at: 'self', effects: [{ type: 'status', at: 'self', target: 'allies', radius: 0.5, status: { id: 'order_stance', dur: 1.6 } }, { type: 'fx', name: 'counter_stance' }, { type: 'sfx', name: 'counter_stance' }] }] },
     dread: { name: 'Dread', desc: 'Fear zones, shadow copies and hidden adds.', hp: 0.9, timers: [
       { id: 'dread_fear', every: 11, first: 6, at: 'target', effects: [{ type: 'aoe', radius: 3, delay: 1.3, mult: 0.35, elem: 'shadow', status: { id: 'fear', dur: 1.2 }, fx: 'fear_zone', persist: true }] },
       { id: 'dread_copy', every: 24, first: 14, at: 'self', effects: [{ type: 'summon', enemy: 'self', count: 1, cap: 1, tier: 'minion', duration: 12, alpha: 0.45, spread: 4, group: 'shadow_copy' }] },
