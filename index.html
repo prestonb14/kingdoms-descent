@@ -3851,7 +3851,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.60';
+  KD.VERSION = '0.7.61';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -23497,6 +23497,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.61', date: '2026-10-12', title: 'Steadier mouse aim', notes: [
+      'Mouse look no longer jumps to a random direction on some mice and browsers',
+      'If your browser keeps letting go of the mouse, the game switches to cursor aiming so every click attacks'
+    ] },
     { version: '0.7.60', date: '2026-10-12', title: 'Aim and click fixes', notes: [
       'Fixed: a device that only looks like a controller (some mice, wheels, virtual pads) could steal the mouse aim and block clicks',
       'Co-op guests: quick attack and skill presses no longer get lost on the way to the host',
@@ -107362,6 +107366,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   }
   function onMouseMove(e) {
     var m = IN.mouse, dx = e.movementX || 0, dy = e.movementY || 0;
+    // [input fix] some browsers and mice report a single huge jump in captured mouse movement (a known pointer-lock bug,
+    // worse with high polling-rate mice and display scaling): it snapped the camera to a random direction. Drop it.
+    if (IN.locked && (Math.abs(dx) > 220 || Math.abs(dy) > 220)) { st.spikes = (st.spikes || 0) + 1; dx = dy = 0; }
     if (!IN.locked) { m.x = e.clientX; m.y = e.clientY; m.inside = true; }
     if (IN.locked || st.turn) { st.pend.dx += dx; st.pend.dy += dy; }
     if (st.turn) st.turn.moved += Math.abs(dx) + Math.abs(dy);
@@ -107382,8 +107389,13 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (uiBlocking()) { st.hadLock = true; return false; }          // never capture the mouse under an open window
     try {
       st.lockPending = true;
-      var r = st.target.requestPointerLock();
-      if (r && typeof r.catch === 'function') r.catch(function () { st.lockPending = false; /* handled by pointerlockerror or simply not granted this time */ });
+      // [input fix] raw movement (no OS acceleration) where the browser offers it: steadier mouse look, fewer jumps
+      var r = null, tgt = st.target;
+      try { r = tgt.requestPointerLock(st.noRaw ? undefined : { unadjustedMovement: true }); } catch (e1) { st.noRaw = true; r = tgt.requestPointerLock(); }
+      if (r && typeof r.catch === 'function') r.catch(function (err) {
+        st.lockPending = false;
+        if (!st.noRaw && err && /NotSupported/i.test(String(err.name || err))) { st.noRaw = true; try { var r2 = tgt.requestPointerLock(); if (r2 && r2.catch) r2.catch(function () { st.lockPending = false; }); } catch (e2) { /* not granted */ } }
+      });
       return true;
     } catch (e) { st.lockPending = false; st.lockErrors = (st.lockErrors || 0) + 1; if (st.lockErrors >= 4) IN.lockDenied = true; return false; }
   };
@@ -107405,6 +107417,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (IN.locked) { IN.lockDenied = false; st.lockTries = 0; st.lockErrors = 0; st.turn = null; }
     if (was && !IN.locked) {
       st.down = {};
+      // [input fix] a browser that keeps dropping the captured mouse on its own (not by Esc or a window) made clicks go to
+      // re-capturing instead of attacking: after 4 such drops in 30 s (Esc counts too, so the limit is generous), aim with the free cursor for this session
+      if (!st.wantUnlock) {
+        var tnow = Date.now(); st.drops = (st.drops || []).filter(function (t) { return tnow - t < 30000; }); st.drops.push(tnow);
+        if (st.drops.length >= 4) { IN.lockDenied = true; IN.events.emit('lockFallback', {}); }
+      }
       // the browser takes Esc for itself to release the pointer, so treat an unexpected release as "pause"
       if (!st.wantUnlock && IN.gameplayEnabled) emitAction('pause', 'Escape');
     }
