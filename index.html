@@ -3851,7 +3851,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.59';
+  KD.VERSION = '0.7.60';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -23497,6 +23497,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.60', date: '2026-10-12', title: 'Aim and click fixes', notes: [
+      'Fixed: a device that only looks like a controller (some mice, wheels, virtual pads) could steal the mouse aim and block clicks',
+      'Co-op guests: quick attack and skill presses no longer get lost on the way to the host',
+      'Co-op guests: mouse aim no longer flips backwards near your hero'
+    ] },
     { version: '0.7.59', date: '2026-10-11', title: 'A day on the road, and a theme', notes: [
       'The road now runs through one whole day: dawn at the farm, golden dusk in the city, night at the castle',
       'A new main theme plays from the title screen to the throne, darker each act',
@@ -54079,6 +54084,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         break;
       case 'in':
         this.hostIn[from] = d.i;
+        // [coop input fix] a guest's quick press and release can both arrive between two host ticks: keep the pressed
+        // buttons until the next tick reads them, so no attack, skill or dodge press is ever lost
+        if (d.i && d.i.length > 5) { this.hostLatch = this.hostLatch || {}; this.hostLatch[from] = (this.hostLatch[from] | 0) | (d.i[5] | 0); }
         if (d.c && this.world) { var idx = this.idxOf(from); if (idx >= 0) d.c.forEach(function (c) { if (c && c.o !== 'gone') { c.p = idx; self.hostCmds.push(c); } }); }
         break;
       case 'hash':
@@ -54363,7 +54371,13 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         while (this.acc >= C.TICK && n < 6) {
           this.acc -= C.TICK; n++;
           var self = this, me = enc.slice(); me[5] |= this.latch; this.latch = 0;
-          var inputs = this.roster.map(function (p, idx) { return idx === self.localIdx ? me : (self.hostIn[p.id] || C.EMPTY_INPUT); });
+          var hl = this.hostLatch || {};
+          var inputs = this.roster.map(function (p, idx) {
+            if (idx === self.localIdx) return me;
+            var gi = self.hostIn[p.id]; if (!gi) return C.EMPTY_INPUT;
+            if (hl[p.id]) { gi = gi.slice(); gi[5] = (gi[5] | 0) | hl[p.id]; hl[p.id] = 0; }      // [coop input fix]
+            return gi;
+          });
           b = { t: 'k', n: this.tick + 1, i: inputs };
           if (this.hostCmds.length) { b.c = this.hostCmds; this.hostCmds = []; }
           this.send('*', b);
@@ -107828,18 +107842,27 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (!list) { if (pad.connected) setDisconnected(); return; }
     var g = choosePad(list);
     if (!g) { setDisconnected(); return; }
-    if (!pad.connected || g.index !== pad.index || String(g.id || '') !== pad.id) setConnected(g);
+    var fresh = false;
+    if (!pad.connected || g.index !== pad.index || String(g.id || '') !== pad.id) { setConnected(g); fresh = true; }
     P.normalize(g, cal, norm);
     var any = false;
     for (i = 0; i < P.NB; i++) {
       var v = norm.v[i] || 0; pad.value[i] = v;
       pad.raw[i] = i === 6 || i === 7 ? v > 0.3 : v > 0.5;
+      if (fresh) prevRaw[i] = pad.raw[i];      // [coop input fix] a button already down when the device appears (a stuck or phantom device) is no press
       if (pad.raw[i] && !prevRaw[i]) { any = true; emit('padButton', { index: i, name: P.BTN[i], type: pad.type }); }
     }
     var S = P.settings, L = P.radial(norm.ax[0], norm.ax[1], S.dead), R = P.radial(norm.ax[2], norm.ax[3], S.dead);
     pad.x = L.x + 0; pad.y = -L.y + 0; pad.lx = pad.rx = R.x + 0; pad.ly = pad.ry = R.y + 0; pad.lmag = L.mag; pad.rmag = R.mag;
     if (pad.capturing) { for (k in pad.buttons) pad.buttons[k] = false; pad.x = pad.y = pad.lx = pad.ly = pad.rx = pad.ry = 0; return; }
-    if (any || L.mag > 0.4 || R.mag > 0.4) { if (!pad.active) P.setActive(true); }
+    // [coop input fix] only a stick that is PUSHED (crosses 0.4 from below) wakes the pad. Some devices that are not
+    // controllers (gaming mice, wheels, virtual pads) show up with an axis stuck at full: before, that stole the aim from
+    // the mouse every frame (aim pointing backwards, clicks doing nothing).
+    var lOn = L.mag > 0.4, rOn = R.mag > 0.4;
+    if (fresh) { ps.lOn = lOn; ps.rOn = rOn; }
+    var pushed = (lOn && !ps.lOn) || (rOn && !ps.rOn);
+    ps.lOn = lOn; ps.rOn = rOn;
+    if (any || pushed) { if (!pad.active) P.setActive(true); }
     // per action
     var M = P.map;
     for (k in M) pad.buttons[k] = !!pad.raw[M[k]];
@@ -125765,7 +125788,11 @@ P['gravecaller_tripo'] = 'Z2xURgIAAACoBQYAaBkAAEpTT057ImFzc2V0Ijp7InZlcnNpb24iOi
     if (G.botOn) return KD.sim.bot(world, idx);
     if (G.debugInput) return G.debugInput;                 // tests: a scripted input
     var a = KD.input.aimScreen(), aim = G.camera.screenToGround(a.x, a.y);
-    var inp = KD.input.intent(G.camera.yaw, aim, p);
+    // [coop input fix] a guest's own hero is drawn ahead of the shared world (leadOf); aim from where it is drawn, not from
+    // where the sim has it, or a cursor near the hero points the wrong way (even backwards)
+    var org = p;
+    if (idx !== 0 && (leadX || leadZ)) org = { x: p.x + leadX, z: p.z + leadZ, y: p.y, id: p.id };
+    var inp = KD.input.intent(G.camera.yaw, aim, org);
     return KD.touch && KD.input.touch && KD.input.touch.on ? KD.touch.assist(world, p, inp) : inp;
   }
   /**
