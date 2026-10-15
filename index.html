@@ -3851,7 +3851,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.66';
+  KD.VERSION = '0.7.67';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -23507,6 +23507,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.67', date: '2026-10-15', title: 'Gloamblade knife work', notes: [
+      'The Gloamblade now holds both daggers in a proper reverse grip, blades along the forearms',
+      'Twin Daggers strikes with both hands, swaps the lead hand each swing and ends a string with a cross-slash finisher',
+      'Every Gloamblade skill has its own move: lunging backstabs, wire chokes, smoke slams, a kneeling Night\'s Embrace and more'
+    ] },
     { version: '0.7.66', date: '2026-10-15', title: 'Gloamblade dagger carry', notes: [
       'The Gloamblade now carries both daggers with the blades laid back along his forearms while he walks and runs'
     ] },
@@ -60998,6 +61003,442 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/gfx/32_anim_gloamblade.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+
+  /**
+   * The Gloamblade's own attack animation (round 6 animation polish, gloamblade-attacks agent). Visual only: it reads the
+   * sim's cast phases (e.act, e.cast) and never changes timings, hits, ranges or damage.
+   *
+   * Only the Tripo hero uses it: KD.art (48_hero_art.js) calls the hook below when it dresses a Gloamblade with the
+   * 'tripo' look, which
+   *   - moves both dagger grips into the fists of the art body and turns them to a reverse (ice-pick) grip, blade
+   *     running back along the forearm, edge out (KD.gloamAnim.grip(rig)); the classic look keeps the old grip,
+   *   - gives the hero its own clip table (opts.clips, KD.anim.humanoid): every Gloamblade ability gets its own motion,
+   *     picked by the ability id (e.act.skill), with variations for the frequent ones.
+   *
+   * Twin Daggers (two hits, `interval` apart) always uses both hands: one hand per hit, and the lead hand alternates from
+   * cast to cast; every third swing of a string is a cross-slash then double-stab finisher (visual counter only, the
+   * sim has no combo chain for it). Every strike pose lands exactly on the sim's hit moment: the fire moment (end of
+   * the wind-up) and each later hit `interval / attack speed` after it.
+   *
+   *   KD.gloamAnim.grip(rig)          set the reverse grip on a rig (joints weapon / offhand): rest rotation + position
+   *   KD.gloamAnim.GRIP               { posR, posL, rotR, rotL }  the grip (hand space, rig metres at scale 1)
+   *   KD.gloamAnim.STANCE             pose spec of a low assassin guard for the reverse grip (for the locomotion layer)
+   *   KD.gloamAnim.CLIPS              the clip table (anim name -> dispatcher by ability id)
+   *   KD.gloamAnim.SKILLS             ability id -> clip function(c)
+   *   KD.gloamAnim.variant(e)         the variation the current cast plays (0..)
+   *   KD.gloamAnim.hitTimes(id, speed) seconds after the fire moment of every hit of the ability
+   * Docs: docs/RIG.md "Hero clips (round 6)". Tests: tests/anim_gloamblade.test.js. Strips: tools/hero_anim_strips.py.
+   */
+  var GA = KD.gloamAnim = KD.gloamAnim || {};
+  var PI = Math.PI, sin = Math.sin, min = Math.min, max = Math.max;
+
+  // ------------------------------------------------------------------ the grip
+  // Measured on the Tripo glove (hand-space vertex bounds): the rig's palm point is at the wrist end of the big glove,
+  // so the handle goes lower, into the closed fingers, and a little toward the palm (inward).
+  var TILT = 0.3, CANT = 0.12;
+  GA.GRIP = {
+    posR: [0.03, -0.155, 0.0], posL: [-0.03, -0.15, 0.0],
+    // Rx(PI + tilt) * Rz(PI): blade out of the little-finger side, tilted back toward the forearm, edge facing out
+    rotR: [PI + TILT, -CANT, PI], rotL: [PI + TILT, CANT, -PI]
+  };
+  /** Put both daggers in a reverse grip on this rig (call before the Actor is made). */
+  GA.grip = function (rig) {
+    var J = rig && rig.joints; if (!J) return false;
+    var G = GA.GRIP, w = J.weapon, o = J.offhand;
+    if (w) { w.pos = G.posR.slice(); w.rot = G.rotR.slice(); }
+    if (o) { o.pos = G.posL.slice(); o.rot = G.rotL.slice(); }
+    return true;
+  };
+  /** A low guard for the reverse grip: fists up in front of the chest, blades lying back along the forearms. */
+  GA.STANCE = { armR: [-0.55, 0.15, -0.32], foreR: -1.75, handR: [0.8, 0.1, 0], armL: [-0.75, -0.2, 0.3], foreL: -1.85, handL: [0.8, -0.1, 0] };
+
+  // ------------------------------------------------------------------ poses (built on first use: KD.anim loads after this file)
+  var A = null, CH = null, P = null, M = null, ready = false;
+  var S = {};          // pose sets by name
+  function mir(p) { return A.mirrorPose(p); }
+  function build() {
+    A = KD.anim; CH = A.CH; P = A.pose; M = A.mirrorPose;
+    var ST_L = [0.04, 0, 0.16, 0, 0.15], ST_R = [-0.08, 0, -0.14, 0, -0.5];
+    var LUNGE_L = [0.04, 0, 0.26, 0, 0.12], LUNGE_R = [-0.08, 0.02, -0.17, 0.35, -0.45];
+
+    // --- Twin Daggers A: right hook, then left ice-pick stab (B is the mirror: left hook, right stab)
+    // reverse grip: wrist rx about +0.8 lays the blade back along the forearm (hook slashes cut with it), about -0.5
+    // points it down and forward at the end of a downward hammer stab
+    S.tdA = {
+      ant: P({ hips: [0, -0.32, 0], hipsPos: [0, -0.16, -0.05], chest: [0.15, -0.5, 0.04], head: [-0.08, 0.48, 0],
+        armR: [-1.15, -1.05, -0.3], foreR: -1.25, handR: [0.85, -0.2, 0], armL: [-1.05, 0.0, 0.16], foreL: -1.6, handL: [0.7, 0.1, 0], footL: ST_L, footR: ST_R }),
+      h1: P({ hips: [0.05, 0.25, 0], hipsPos: [0, -0.18, 0.11], chest: [0.24, 0.45, 0], head: [-0.15, -0.4, 0],
+        armR: [-1.42, 0.3, 0], foreR: -0.45, handR: [0.9, -0.3, 0], armL: [-2.35, 0.1, 0.22], foreL: -1.5, handL: [0.2, 0.1, 0], footL: LUNGE_L, footR: LUNGE_R }),
+      h2: P({ hips: [0.1, -0.2, 0], hipsPos: [0, -0.21, 0.16], chest: [0.36, -0.36, 0], head: [-0.22, 0.3, 0],
+        armR: [0.25, -0.05, -0.25], foreR: -1.75, handR: [0.8, -0.1, 0], armL: [-1.15, -0.12, 0.05], foreL: -0.22, handL: [-0.55, 0.05, 0], footL: LUNGE_L, footR: LUNGE_R }),
+      fol: P({ hips: [0.12, -0.26, 0], hipsPos: [0, -0.22, 0.17], chest: [0.42, -0.42, 0], head: [-0.24, 0.36, 0],
+        armR: [0.3, -0.05, -0.25], foreR: -1.8, handR: [0.8, -0.1, 0], armL: [-0.95, -0.15, 0.08], foreL: -0.3, handL: [-0.5, 0.05, 0], footL: LUNGE_L, footR: LUNGE_R })
+    };
+    S.tdB = { ant: M(S.tdA.ant), h1: M(S.tdA.h1), h2: M(S.tdA.h2), fol: M(S.tdA.fol) };
+    // --- Twin Daggers C (finisher): arms crossed high, scissor both blades out, then a double stab with a lunge
+    var WIDE_L = [0.07, 0, 0.12, 0, 0.3], WIDE_R = [-0.07, 0, -0.1, 0, -0.35], DL_L = [0.06, 0, 0.32, 0, 0.12], DL_R = [-0.07, 0.03, -0.2, 0.45, -0.3];
+    S.tdC = {
+      ant: P({ hips: [0.1, 0, 0], hipsPos: [0, -0.2, -0.06], chest: [0.12, 0, 0], head: [-0.02, 0, 0],
+        armR: [-1.9, 0.55, -0.1], foreR: -1.6, handR: [0.8, 0.3, 0], armL: [-1.9, -0.55, 0.1], foreL: -1.6, handL: [0.8, -0.3, 0], footL: WIDE_L, footR: WIDE_R }),
+      h1: P({ hips: [0.12, 0, 0], hipsPos: [0, -0.23, 0.08], chest: [0.3, 0, 0], head: [-0.18, 0, 0],
+        armR: [-1.3, -1.05, -0.3], foreR: -0.3, handR: [0.85, -0.3, 0], armL: [-1.3, 1.05, 0.3], foreL: -0.3, handL: [0.85, 0.3, 0], footL: WIDE_L, footR: WIDE_R }),
+      h2: P({ hips: [0.16, 0, 0], hipsPos: [0, -0.25, 0.2], chest: [0.42, 0, 0], head: [-0.3, 0, 0],
+        armR: [-1.2, 0.25, 0], foreR: -0.22, handR: [-0.5, 0, 0], armL: [-1.2, -0.25, 0], foreL: -0.22, handL: [-0.5, 0, 0], footL: DL_L, footR: DL_R }),
+      fol: P({ hips: [0.18, 0, 0], hipsPos: [0, -0.26, 0.22], chest: [0.48, 0, 0], head: [-0.32, 0, 0],
+        armR: [-1.02, 0.28, 0], foreR: -0.3, handR: [-0.45, 0, 0], armL: [-1.02, -0.28, 0], foreL: -0.3, handL: [-0.45, 0, 0], footL: DL_L, footR: DL_R })
+    };
+
+    // --- Backstab: 1) rise, right blade high, left hand reaches to grab, plunge down (ice pick); 2) both blades together
+    S.bs1 = {
+      ant: P({ hips: [-0.06, -0.2, 0], hipsPos: [0, -0.03, -0.05], chest: [-0.22, -0.3, 0.05], head: [0.1, 0.25, 0],
+        armR: [-2.75, -0.25, -0.3], foreR: -1.55, handR: [-0.2, 0, 0], armL: [-1.35, 0.05, 0.12], foreL: -0.35, handL: [-0.6, 0, 0], footL: ST_L, footR: [-0.08, 0.04, -0.16, 0.4, -0.5] }),
+      hit: P({ hips: [0.22, 0.15, 0], hipsPos: [0, -0.26, 0.16], chest: [0.55, 0.18, 0], head: [-0.3, -0.12, 0],
+        armR: [-1.2, 0.18, -0.08], foreR: -0.5, handR: [-0.45, 0, 0], armL: [-1.05, 0.15, 0.15], foreL: -1.25, handL: [-0.4, 0, 0], footL: LUNGE_L, footR: LUNGE_R }),
+      twist: P({ hips: [0.24, 0.18, 0], hipsPos: [0, -0.28, 0.17], chest: [0.62, 0.24, 0], head: [-0.32, -0.15, 0],
+        armR: [-1.0, 0.25, -0.05], foreR: -0.6, handR: [-0.3, 0.45, 0], armL: [-1.0, 0.2, 0.15], foreL: -1.4, handL: [-0.4, 0, 0], footL: LUNGE_L, footR: LUNGE_R })
+    };
+    S.bs2 = {
+      ant: P({ hips: [-0.08, 0, 0], hipsPos: [0, -0.02, -0.06], chest: [-0.3, 0, 0], head: [0.15, 0, 0],
+        armR: [-2.85, 0.2, -0.2], foreR: -1.3, handR: [-0.1, 0, 0], armL: [-2.85, -0.2, 0.2], foreL: -1.3, handL: [-0.1, 0, 0], footL: WIDE_L, footR: [-0.07, 0.04, -0.1, 0.4, -0.35] }),
+      hit: P({ hips: [0.25, 0, 0], hipsPos: [0, -0.3, 0.14], chest: [0.62, 0, 0], head: [-0.35, 0, 0],
+        armR: [-1.15, 0.3, -0.05], foreR: -0.45, handR: [-0.45, 0, 0], armL: [-1.15, -0.3, 0.05], foreL: -0.45, handL: [-0.45, 0, 0], footL: DL_L, footR: DL_R }),
+      twist: P({ hips: [0.28, 0, 0], hipsPos: [0, -0.33, 0.15], chest: [0.68, 0, 0], head: [-0.38, 0, 0],
+        armR: [-0.95, 0.35, -0.05], foreR: -0.55, handR: [-0.3, 0.3, 0], armL: [-0.95, -0.35, 0.05], foreL: -0.55, handL: [-0.3, -0.3, 0], footL: DL_L, footR: DL_R })
+    };
+
+    // --- Shadow Step: melt into a crouch with the cloak pulled in, appear behind in a low lunge stab
+    var CROUCH = P({ hips: [0.35, 0, 0], hipsPos: [0, -0.36, -0.04], chest: [0.55, 0.1, 0], head: [0.3, -0.1, 0],
+      armR: [-1.0, 0.85, -0.05], foreR: -2.15, handR: [0, 0.3, 0], armL: [-0.95, -0.85, 0.05], foreL: -2.15, handL: [0, -0.3, 0], footL: [0.08, 0, 0.1, 0, 0.25], footR: [-0.08, 0, -0.1, 0.3, -0.35] });
+    S.crouch = CROUCH;
+    S.ss1 = {
+      hit: P({ hips: [0.25, 0.25, 0], hipsPos: [0, -0.3, 0.22], chest: [0.45, 0.4, 0], head: [-0.3, -0.35, 0],
+        armR: [-1.35, 0.2, -0.1], foreR: -0.35, handR: [0.3, 0, 0], armL: [0.45, 0, 0.45], foreL: -0.55, handL: [0.3, 0, 0], footL: [0.05, 0, 0.42, 0, 0.1], footR: [-0.08, 0.06, -0.3, 0.65, -0.4] }),
+      fol: P({ hips: [0.22, 0.4, 0], hipsPos: [0, -0.27, 0.22], chest: [0.4, 0.65, 0], head: [-0.28, -0.55, 0],
+        armR: [-1.2, 0.2, -0.1], foreR: -0.75, handR: [0.6, 0.5, 0], armL: [0.3, 0, 0.5], foreL: -0.8, handL: [0.3, 0, 0], footL: [0.05, 0, 0.42, 0, 0.1], footR: [-0.08, 0.06, -0.3, 0.65, -0.4] })
+    };
+    S.ss2 = { hit: M(S.ss1.hit), fol: M(S.ss1.fol) };
+
+    // --- Garrote: from the crouch, rise behind the target, hands up at its neck, pull back hard and hold
+    S.gar = {
+      hit: P({ hips: [0.05, 0, 0], hipsPos: [0, -0.2, 0.04], chest: [0.15, 0, 0], head: [0.05, 0, 0],
+        armR: [-1.05, 0.45, -0.55], foreR: -1.75, handR: [0.6, 0.3, 0], armL: [-1.05, -0.45, 0.55], foreL: -1.75, handL: [0.6, -0.3, 0], footL: [0.07, 0, 0.16, 0, 0.2], footR: [-0.07, 0, -0.18, 0, -0.3] }),
+      pull: P({ hips: [-0.2, 0, 0], hipsPos: [0, -0.24, -0.14], chest: [-0.2, 0, 0], head: [0.15, 0, 0],
+        armR: [-0.55, 0.3, -0.75], foreR: -2.25, handR: [0.6, 0.3, 0], armL: [-0.55, -0.3, 0.75], foreL: -2.25, handL: [0.6, -0.3, 0], footL: [0.07, 0, 0.12, 0, 0.2], footR: [-0.07, 0, -0.26, 0, -0.3] })
+    };
+
+    // --- Pickpocket: sidle in, the left hand snatches low while the right cuts across, then tuck the purse away (2 = mirror)
+    S.pp1 = {
+      ant: P({ hips: [0, 0.3, 0], hipsPos: [0, -0.13, -0.03], chest: [0.2, 0.45, 0], head: [-0.05, -0.45, 0],
+        armR: [-1.0, -0.8, -0.25], foreR: -1.6, handR: [0, -0.3, 0], armL: [-0.35, -0.2, 0.15], foreL: -0.9, handL: [-0.3, 0, 0], footL: [0.04, 0, 0.12, 0, 0.3], footR: ST_R }),
+      hit: P({ hips: [0.05, -0.25, 0], hipsPos: [0, -0.2, 0.12], chest: [0.32, -0.35, 0], head: [-0.15, 0.35, 0],
+        armR: [-1.4, 0.18, 0], foreR: -0.45, handR: [0.25, 0.5, 0], armL: [-0.85, -0.3, 0.12], foreL: -0.2, handL: [-0.5, 0, 0], footL: LUNGE_L, footR: LUNGE_R }),
+      tuck: P({ hips: [0, -0.1, 0], hipsPos: [0, -0.13, 0.05], chest: [0.15, -0.15, 0], head: [-0.05, 0.25, 0],
+        armR: [-0.7, 0.5, -0.2], foreR: -1.8, handR: [0, 0.3, 0], armL: [0.25, -0.1, 0.12], foreL: -1.5, handL: [0.2, 0, 0], footL: LUNGE_L, footR: LUNGE_R })
+    };
+    S.pp2 = { ant: M(S.pp1.ant), hit: M(S.pp1.hit), tuck: M(S.pp1.tuck) };
+
+    // --- Poison Edge: scrape the blades together, then a wide double slash outward (2: a staggered right-left sweep)
+    S.pe = {
+      ant: P({ hips: [0.05, 0, 0], hipsPos: [0, -0.16, -0.04], chest: [0.15, 0, 0], head: [0.05, 0, 0],
+        armR: [-1.25, 0.75, -0.15], foreR: -1.9, handR: [0, 0.6, 0], armL: [-1.25, -0.75, 0.15], foreL: -1.9, handL: [0, -0.6, 0], footL: WIDE_L, footR: WIDE_R }),
+      scrape: P({ hips: [0.05, 0, 0], hipsPos: [0, -0.18, -0.05], chest: [0.18, 0, 0], head: [0.1, 0, 0],
+        armR: [-1.35, 0.4, -0.15], foreR: -1.75, handR: [0.2, 0.3, 0], armL: [-1.1, -0.95, 0.15], foreL: -2.0, handL: [-0.1, -0.6, 0], footL: WIDE_L, footR: WIDE_R }),
+      hit: P({ hips: [0.1, 0, 0], hipsPos: [0, -0.24, 0.08], chest: [0.28, 0, 0], head: [-0.15, 0, 0],
+        armR: [-1.45, -1.2, -0.12], foreR: -0.15, handR: [0.3, -0.6, 0], armL: [-1.45, 1.2, 0.12], foreL: -0.15, handL: [0.3, 0.6, 0], footL: WIDE_L, footR: WIDE_R }),
+      fol: P({ hips: [0.12, 0, 0], hipsPos: [0, -0.25, 0.09], chest: [0.3, 0, 0], head: [-0.15, 0, 0],
+        armR: [-1.25, -1.45, -0.2], foreR: -0.3, handR: [0.4, -0.6, 0], armL: [-1.25, 1.45, 0.2], foreL: -0.3, handL: [0.4, 0.6, 0], footL: WIDE_L, footR: WIDE_R })
+    };
+    S.pe2 = {
+      ant: P({ hips: [0, -0.5, 0], hipsPos: [0, -0.15, -0.05], chest: [0.12, -0.75, 0.05], head: [0, 0.75, 0],
+        armR: [-1.25, -1.4, -0.1], foreR: -1.0, handR: [0.3, -0.8, 0], armL: [-1.2, 0.7, 0.2], foreL: -1.7, handL: [0, 0.4, 0], footL: ST_L, footR: ST_R }),
+      hit: P({ hips: [0.05, 0.25, 0], hipsPos: [0, -0.2, 0.1], chest: [0.25, 0.55, 0], head: [-0.15, -0.5, 0],
+        armR: [-1.4, 0.15, 0], foreR: -0.3, handR: [0.3, -0.7, 0], armL: [-1.35, 0.9, 0.1], foreL: -0.6, handL: [0.3, 0.6, 0], footL: LUNGE_L, footR: LUNGE_R }),
+      fol: P({ hips: [0.08, 0.45, 0], hipsPos: [0, -0.2, 0.12], chest: [0.28, 0.85, 0], head: [-0.15, -0.75, 0],
+        armR: [-1.15, 0.3, -0.05], foreR: -0.8, handR: [0.4, -0.7, 0], armL: [-1.45, 0.35, 0.05], foreL: -0.2, handL: [0.35, 0.6, 0], footL: LUNGE_L, footR: LUNGE_R })
+    };
+
+    // --- Smoke Bomb: left hand up high, slam it at the feet, drop low, right arm across the face
+    S.sb = {
+      ant: P({ hips: [-0.08, 0.15, 0], hipsPos: [0, -0.04, -0.05], chest: [-0.22, 0.25, 0], head: [0.05, -0.2, 0],
+        armL: [-2.7, 0.15, 0.3], foreL: -1.0, handL: [-0.3, 0, 0], armR: [-0.6, -0.4, -0.3], foreR: -1.5, handR: [0, -0.2, 0], footL: [0.07, 0.03, -0.08, 0.3, 0.35], footR: [-0.07, 0, 0.1, 0, -0.2] }),
+      hit: P({ hips: [0.35, -0.1, 0], hipsPos: [0, -0.36, 0.06], chest: [0.62, -0.15, 0], head: [0.25, 0.55, 0.1],
+        armL: [-0.7, -0.15, 0.12], foreL: -0.1, handL: [0.6, 0, 0], armR: [-1.65, 0.95, -0.1], foreR: -2.25, handR: [0, 0.3, 0], footL: [0.1, 0, 0.2, 0, 0.3], footR: [-0.1, 0.02, -0.16, 0.5, -0.4] }),
+      fol: P({ hips: [0.38, -0.1, 0], hipsPos: [0, -0.4, 0.06], chest: [0.68, -0.15, 0], head: [0.3, 0.6, 0.1],
+        armL: [-0.55, -0.2, 0.25], foreL: -0.2, handL: [0.6, 0, 0], armR: [-1.65, 1.0, -0.1], foreR: -2.3, handR: [0, 0.3, 0], footL: [0.1, 0, 0.2, 0, 0.3], footR: [-0.1, 0.02, -0.16, 0.5, -0.4] })
+    };
+
+    // --- Caltrops: hands gathered low, both fling out wide and low (a scatter), half crouch
+    S.ct = {
+      ant: P({ hips: [0.2, 0, 0], hipsPos: [0, -0.24, -0.05], chest: [0.35, 0, 0], head: [-0.05, 0, 0],
+        armR: [-0.55, 0.7, -0.05], foreR: -1.3, handR: [0, 0.4, 0], armL: [-0.55, -0.7, 0.05], foreL: -1.3, handL: [0, -0.4, 0], footL: WIDE_L, footR: WIDE_R }),
+      hit: P({ hips: [0.12, 0, 0], hipsPos: [0, -0.2, 0.04], chest: [0.22, 0, 0], head: [-0.15, 0, 0],
+        armR: [-0.75, -1.15, -0.55], foreR: -0.15, handR: [-0.4, -0.3, 0], armL: [-0.75, 1.15, 0.55], foreL: -0.15, handL: [-0.4, 0.3, 0], footL: WIDE_L, footR: WIDE_R }),
+      fol: P({ hips: [0.08, 0, 0], hipsPos: [0, -0.16, 0.03], chest: [0.1, 0, 0], head: [-0.2, 0, 0],
+        armR: [-0.65, -1.4, -0.8], foreR: -0.3, handR: [-0.4, -0.3, 0], armL: [-0.65, 1.4, 0.8], foreL: -0.3, handL: [-0.4, 0.3, 0], footL: WIDE_L, footR: WIDE_R })
+    };
+
+    // --- Vanish (no wind-up): duck into the cloak, arm across the face, then rise a little
+    S.va = {
+      hit: P({ hips: [0.35, 0.2, 0], hipsPos: [0, -0.32, -0.05], chest: [0.5, 0.25, 0], head: [0.35, -0.25, 0],
+        armR: [-1.55, 0.95, -0.1], foreR: -2.25, handR: [0, 0.3, 0], armL: [-0.45, 0.3, 0.25], foreL: -1.4, handL: [0, 0, 0], footL: [0.08, 0, 0.08, 0, 0.3], footR: [-0.08, 0.02, -0.12, 0.4, -0.4] }),
+      fol: P({ hips: [0.28, 0.25, 0], hipsPos: [0, -0.26, -0.06], chest: [0.42, 0.3, 0], head: [0.28, -0.3, 0],
+        armR: [-1.45, 1.0, -0.15], foreR: -2.2, handR: [0, 0.3, 0], armL: [-0.3, 0.35, 0.3], foreL: -1.5, handL: [0, 0, 0], footL: [0.08, 0, 0.08, 0, 0.3], footR: [-0.08, 0.02, -0.12, 0.4, -0.4] })
+    };
+
+    // --- Cloak of Dusk: wrap the arms around the body, then fling them out wide and up as the cloak bursts
+    S.cd = {
+      ant: P({ hips: [0.2, 0, 0], hipsPos: [0, -0.22, -0.03], chest: [0.42, 0, 0], head: [0.25, 0, 0],
+        armR: [-1.2, 1.0, -0.05], foreR: -2.2, handR: [0, 0.4, 0], armL: [-1.2, -1.0, 0.05], foreL: -2.2, handL: [0, -0.4, 0], footL: WIDE_L, footR: WIDE_R }),
+      hit: P({ hips: [-0.08, 0, 0], hipsPos: [0, -0.08, 0], chest: [-0.24, 0, 0], head: [-0.28, 0, 0],
+        armR: [-0.95, -0.35, -1.2], foreR: -0.3, handR: [-0.3, 0, 0], armL: [-0.95, 0.35, 1.2], foreL: -0.3, handL: [-0.3, 0, 0], footL: WIDE_L, footR: WIDE_R }),
+      fol: P({ hips: [-0.04, 0, 0], hipsPos: [0, -0.12, 0], chest: [-0.12, 0, 0], head: [-0.15, 0, 0],
+        armR: [-0.7, -0.3, -1.0], foreR: -0.6, handR: [-0.2, 0, 0], armL: [-0.7, 0.3, 1.0], foreL: -0.6, handL: [-0.2, 0, 0], footL: WIDE_L, footR: WIDE_R })
+    };
+
+    // --- Mirror Shade: lean in, then step aside with the left palm thrown at the spot where the double stands
+    S.ms = {
+      ant: P({ hips: [0.05, 0.3, 0], hipsPos: [0.06, -0.14, -0.03], chest: [0.15, 0.4, 0.08], head: [0, -0.3, 0],
+        armL: [-0.9, -0.6, 0.2], foreL: -2.0, handL: [0, 0, 0], armR: [-0.8, 0.6, -0.2], foreR: -1.9, handR: [0, 0.3, 0], footL: ST_L, footR: ST_R }),
+      hit: P({ hips: [0.05, -0.45, 0.06], hipsPos: [-0.2, -0.2, 0.04], chest: [0.15, -0.55, -0.16], head: [-0.05, 0.4, 0],
+        armL: [-1.4, 0.55, 0.35], foreL: -0.05, handL: [-0.9, 0, 0], armR: [-0.6, 0.65, -0.35], foreR: -1.9, handR: [0, 0.3, 0], footL: [0.04, 0, 0.2, 0, 0.2], footR: [-0.26, 0, -0.08, 0, -0.6] }),
+      fol: P({ hips: [0.05, -0.5, 0.06], hipsPos: [-0.22, -0.19, 0.03], chest: [0.12, -0.6, -0.18], head: [-0.05, 0.45, 0],
+        armL: [-1.3, 0.65, 0.4], foreL: -0.15, handL: [-0.8, 0, 0], armR: [-0.55, 0.6, -0.4], foreR: -1.95, handR: [0, 0.3, 0], footL: [0.04, 0, 0.18, 0, 0.2], footR: [-0.16, 0, -0.1, 0, -0.5] })
+    };
+
+    // --- Night's Embrace: rise with both blades crossed overhead, drop to one knee driving them down and out
+    S.ne = {
+      ant: P({ hips: [0.2, 0, 0], hipsPos: [0, -0.26, -0.03], chest: [0.4, 0, 0], head: [0.3, 0, 0],
+        armR: [-0.8, 0.6, -0.1], foreR: -2.1, handR: [0, 0.4, 0], armL: [-0.8, -0.6, 0.1], foreL: -2.1, handL: [0, -0.4, 0], footL: WIDE_L, footR: WIDE_R }),
+      rise: P({ hips: [-0.12, 0, 0], hipsPos: [0, 0.02, -0.04], chest: [-0.32, 0, 0], head: [-0.3, 0, 0],
+        armR: [-2.85, 0.35, -0.1], foreR: -0.55, handR: [0, 0.3, 0], armL: [-2.85, -0.35, 0.1], foreL: -0.55, handL: [0, -0.3, 0], footL: [0.08, 0.05, 0.06, 0.5, 0.25], footR: [-0.08, 0.05, -0.06, 0.5, -0.3] }),
+      hit: P({ hips: [0.3, 0, 0], hipsPos: [0, -0.46, 0.06], chest: [0.55, 0, 0], head: [-0.2, 0, 0],
+        armR: [-0.55, -0.55, -0.55], foreR: -0.12, handR: [0.3, -0.2, 0], armL: [-0.55, 0.55, 0.55], foreL: -0.12, handL: [0.3, 0.2, 0], footL: [0.09, 0, 0.3, 0, 0.2], footR: [-0.1, 0.02, -0.32, 1.0, -0.3] }),
+      fol: P({ hips: [0.34, 0, 0], hipsPos: [0, -0.5, 0.07], chest: [0.62, 0, 0], head: [-0.15, 0, 0],
+        armR: [-0.4, -0.65, -0.65], foreR: -0.15, handR: [0.3, -0.2, 0], armL: [-0.4, 0.65, 0.65], foreL: -0.15, handL: [0.3, 0.2, 0], footL: [0.09, 0, 0.3, 0, 0.2], footR: [-0.1, 0.02, -0.32, 1.0, -0.3] })
+    };
+    ready = true;
+  }
+
+  // ------------------------------------------------------------------ timeline
+  // A clip is a list of keys on the cast timeline, in seconds relative to the fire moment (the sim's first hit):
+  //   windup keys: { u: fraction of the anticipation part of the wind-up, pose }   (u in 0..1, increasing)
+  //   the hit pose at 0 (exactly the fire moment: the strike segment accelerates into it)
+  //   later keys: { s: seconds after the fire moment at attack speed 1 (divided by the cast's speed), pose, snap }
+  // The weight blends in early in the wind-up and out over the end of the recovery.
+  var T_ANT = [], T_POST = [];        // scratch lists reused every frame (never grown after warm up)
+  var EMPTY = [];
+  function smooth(x) { x = x < 0 ? 0 : (x > 1 ? 1 : x); return x * x * (3 - 2 * x); }
+  function easeOut(x) { x = 1 - (x < 0 ? 0 : (x > 1 ? 1 : x)); return 1 - x * x * x; }
+  var STRIKE = 0.11;
+  /** Per character state (created once). */
+  function gst(c) {
+    var st = c.st, g = st.gb;
+    if (!g) g = st.gb = { cast: null, n: -1, lastEnd: -9, wu: 0, speed: 1, skill: '', at: -1, v: 0, seed: st.seed || 0 };
+    return g;
+  }
+  /** Called at the top of every clip: tracks casts (variation counter, wind-up length) and cross-fades between casts of the same clip. */
+  function track(c) {
+    var g = gst(c), e = c.e, cast = e && e.cast, act = e && e.act, an = e && e.anim, now = c.time;
+    var fresh = false;
+    if (cast) { if (cast !== g.cast) fresh = true; }
+    else if (act && (act.skill !== g.skill || (an && an.t < g.at - 1e-6))) fresh = true;
+    if (fresh) {
+      g.n = now - g.lastEnd > 1.4 ? 0 : g.n + 1;
+      g.cast = cast || null; g.skill = (act && act.skill) || '';
+      g.wu = c.state === 'windup' ? c.dur : 0;
+      g.speed = cast && cast.speed > 0 ? cast.speed : 1;
+      // a new cast of the same clip right after the last one: cross-fade from the pose on screen
+      var st = c.st;
+      if (st.mode === 1 && g.at >= 0 && st.fade <= 0) { for (var i = 0; i < st.snap.length; i++) st.snap[i] = st.out[i]; st.fade = 1; st.fadeDur = 0.08; }
+    }
+    if (c.state === 'windup') g.wu = c.dur;
+    g.at = an ? an.t : 0;
+    g.lastEnd = now;
+    return g;
+  }
+  /** Seconds relative to the fire moment. */
+  function tfire(c, g) {
+    if (c.state === 'windup') return (c.p - 1) * c.dur;
+    if (c.state === 'active') return c.p * c.dur;
+    return (c.st.activeDur || 0) + c.p * c.dur;
+  }
+  var TMP = null;
+  /**
+   * play(c, ants, hit, posts, o): ants = [{ u, pose }] (or []), hit = pose at the fire moment, posts = [{ s, pose, snap }].
+   * o: { full } (sets c.full). Writes c.out and c.w.
+   */
+  function play(c, ants, hit, posts, full) {
+    var g = gst(c), out = c.out, base = c.base, tf = tfire(c, g), sp = g.speed > 0 ? g.speed : 1, i;
+    // full-body moves own the legs when standing; while the hero walks during the cast the gait keeps most of them
+    if (full) { var mw = c.st.moveW || 0; c.full = max(0.05, 1 - 0.8 * mw); }
+    if (tf < 0) {
+      var wu = c.dur > 0 ? c.dur : 0.0001, sf = STRIKE / wu; sf = sf < 0.2 ? 0.2 : (sf > 0.55 ? 0.55 : sf);
+      var a = 1 - sf, p = c.p;
+      if (p < a) {
+        var q = p / a;
+        if (!ants.length) { A.mix(out, base, hit, 0.15 * smooth(q), base); c.w = easeOut(q / 0.5); return; }
+        // walk the anticipation keys
+        var k = 0; while (k < ants.length - 1 && q > ants[k].u) k++;
+        if (k === 0) { var u0 = ants[0].u > 0 ? q / ants[0].u : 1; A.mix(out, ants[0].pose, ants[0].pose, 0, base); c.w = easeOut(u0); }
+        else { var ua = ants[k - 1].u, ub = ants[k].u, uu = ub > ua ? (q - ua) / (ub - ua) : 1; A.mix(out, ants[k - 1].pose, ants[k].pose, smooth(uu), base); c.w = 1; }
+        if (q > ants[ants.length - 1].u) {
+          // hold the last anticipation and keep coiling a little (never frozen)
+          var creep = 1 + 0.07 * smooth((q - ants[ants.length - 1].u) / max(0.05, 1 - ants[ants.length - 1].u));
+          for (i = CH.CHEST; i < CH.FOOT_R; i++) out[i] = base[i] + (out[i] - base[i]) * creep;
+        }
+      } else {
+        var s = (p - a) / sf, from = ants.length ? ants[ants.length - 1].pose : base;
+        A.mix(out, from, hit, s * s * (1.6 - 0.6 * s), base); c.w = 1;
+      }
+      return;
+    }
+    // after the fire moment: hit -> posts
+    var t = tf * sp, prev = hit, pt = 0, done = true;
+    for (i = 0; i < posts.length; i++) {
+      var K = posts[i];
+      if (t < K.s) {
+        var u = (t - pt) / max(0.0001, K.s - pt);
+        A.mix(out, prev, K.pose, K.snap ? u * u * (1.6 - 0.6 * u) : easeOut(u), base);
+        done = false; break;
+      }
+      prev = K.pose; pt = K.s;
+    }
+    if (done) A.mix(out, prev, prev, 0, base);
+    // weight: full until the moves are over, then settle back over the rest of the recovery
+    if (c.state === 'recover') {
+      var rc = c.dur > 0 ? c.dur : 0.0001, lastS = (posts.length ? posts[posts.length - 1].s : 0) / sp;
+      var t0 = max(lastS + 0.03, rc * 0.4); if (t0 > rc * 0.8) t0 = rc * 0.8;
+      var tr = c.p * rc;
+      c.w = tr <= t0 ? 1 : 1 - smooth((tr - t0) / (rc - t0));
+    } else c.w = 1;
+  }
+  function key(u, pose) { return { u: u, pose: pose }; }
+  function post(s, pose, snap) { return { s: s, pose: pose, snap: !!snap }; }
+
+  // ------------------------------------------------------------------ hit times (from the ability data, cached per id)
+  var HITS = {};
+  /** Seconds after the fire moment of each hit of the ability at attack speed 1 (melee hits / interval; aoe 0). */
+  GA.hitTimes = function (id, speed) {
+    var h = HITS[id];
+    if (!h) {
+      h = [0];
+      var def = null; try { def = KD.get('abilities', id); } catch (e) { def = null; }
+      var fx = def && def.effects || EMPTY;
+      for (var i = 0; i < fx.length; i++) if (fx[i].type === 'melee' && fx[i].hits > 1) { h = []; for (var k = 0; k < fx[i].hits; k++) h.push(k * (fx[i].interval || 0.14)); break; }
+      HITS[id] = h;
+    }
+    if (!speed || speed === 1) return h;
+    return h.map(function (x) { return x / speed; });
+  };
+  /** The variation the current cast of this visual plays. */
+  GA.variant = function (visual) { var st = visual && visual.state && visual.state.anim, g = st && st.gb; return g ? g.v : 0; };
+
+  // ------------------------------------------------------------------ the skills
+  var SK = GA.SKILLS = {};
+  var L = {};          // key lists built once
+  function lists() {
+    if (L.ok) return;
+    L.tdA = { ants: [key(0.55, S.tdA.ant)] }; L.tdB = { ants: [key(0.55, S.tdB.ant)] }; L.tdC = { ants: [key(0.55, S.tdC.ant)] };
+    L.bs1 = { ants: [key(0.6, S.bs1.ant)], posts: [post(0.07, S.bs1.twist), post(0.16, S.bs1.twist)] };
+    L.bs2 = { ants: [key(0.6, S.bs2.ant)], posts: [post(0.07, S.bs2.twist), post(0.16, S.bs2.twist)] };
+    L.ss1 = { ants: [key(0.5, S.crouch)], posts: [post(0.14, S.ss1.fol)] };
+    L.ss2 = { ants: [key(0.5, S.crouch)], posts: [post(0.14, S.ss2.fol)] };
+    L.gar = { ants: [key(0.5, S.crouch)], posts: [post(0.1, S.gar.pull), post(0.3, S.gar.pull)] };
+    L.pp1 = { ants: [key(0.55, S.pp1.ant)], posts: [post(0.06, S.pp1.hit), post(0.2, S.pp1.tuck)] };
+    L.pp2 = { ants: [key(0.55, S.pp2.ant)], posts: [post(0.06, S.pp2.hit), post(0.2, S.pp2.tuck)] };
+    L.pe = { ants: [key(0.35, S.pe.ant), key(0.85, S.pe.scrape)], posts: [post(0.12, S.pe.fol)] };
+    L.pe2 = { ants: [key(0.55, S.pe2.ant)], posts: [post(0.12, S.pe2.fol)] };
+    L.sb = { ants: [key(0.6, S.sb.ant)], posts: [post(0.12, S.sb.fol)] };
+    L.ct = { ants: [key(0.55, S.ct.ant)], posts: [post(0.12, S.ct.fol)] };
+    L.va = { ants: [], posts: [post(0.1, S.va.fol)] };
+    L.cd = { ants: [key(0.5, S.cd.ant)], posts: [post(0.12, S.cd.fol)] };
+    L.ms = { ants: [key(0.55, S.ms.ant)], posts: [post(0.12, S.ms.fol)] };
+    L.ne = { ants: [key(0.4, S.ne.ant), key(0.88, S.ne.rise)], posts: [post(0.15, S.ne.fol), post(0.3, S.ne.fol)] };
+    // twin dagger post lists per variant and hit count are built on demand (hits can grow with mutations)
+    L.td = {};
+    L.ok = true;
+  }
+  /** Twin Daggers post keys for `n` hits `iv` apart (attack speed 1): one hand per hit, alternating. */
+  function tdPosts(vn, n, iv) {
+    var byV = L.td[vn] || (L.td[vn] = []), r = byV[n];
+    if (r) return r;
+    var set = vn === 'C' ? S.tdC : (vn === 'B' ? S.tdB : S.tdA), alt = vn === 'C' ? S.tdC.h1 : set.h1, ps = [];
+    for (var k = 1; k < n; k++) ps.push(post(k * iv, k % 2 === 1 ? set.h2 : alt, true));
+    ps.push(post((n - 1) * iv + 0.1, (n % 2 === 0 || vn === 'C') ? set.fol : set.h1));
+    return (byV[n] = ps);
+  }
+  SK.twin_daggers = function (c) {
+    var g = gst(c), id = (c.e && c.e.act && c.e.act.skill) || 'twin_daggers';
+    var hits = GA.hitTimes(id), n = hits.length, x = c.e && c.e.cast && c.e.cast.inst && c.e.cast.inst.extraHits > 0 ? c.e.cast.inst.extraHits : 0;
+    n += x;
+    var iv = hits.length > 1 ? hits[1] : 0.12;
+    var v = g.n % 3, vn = v === 2 ? 'C' : (v === 1 ? 'B' : 'A');
+    g.v = v;
+    var set = vn === 'C' ? S.tdC : (vn === 'B' ? S.tdB : S.tdA);
+    play(c, (vn === 'C' ? L.tdC : (vn === 'B' ? L.tdB : L.tdA)).ants, set.h1, tdPosts(vn, n, iv), false);
+  };
+  function two(a, b) { return function (c) { var g = gst(c), v = g.n % 2; g.v = v; var Lx = v ? b : a; play(c, Lx.l.ants, Lx.hit, Lx.l.posts, Lx.full); }; }
+  function one(x) { return function (c) { gst(c).v = 0; play(c, x.l.ants, x.hit, x.l.posts, x.full); }; }
+  function installSkills() {
+    SK.backstab = two({ l: L.bs1, hit: S.bs1.hit }, { l: L.bs2, hit: S.bs2.hit, full: true });
+    SK.shadow_step = two({ l: L.ss1, hit: S.ss1.hit, full: true }, { l: L.ss2, hit: S.ss2.hit, full: true });
+    var gar = one({ l: L.gar, hit: S.gar.hit, full: true });
+    SK.garrote = function (c) {
+      gar(c);
+      // the tug: a short shiver while pulling
+      if (c.state !== 'windup') { var k = c.w * 0.025; c.out[CH.CHEST + 1] += c.w * 0.12 * sin(c.time * 14); c.out[CH.CHEST] += k * sin(c.time * 31); c.out[CH.FORE_R] += k * 2 * sin(c.time * 27); c.out[CH.FORE_L] += k * 2 * sin(c.time * 29 + 1); }
+    };
+    SK.pickpocket = two({ l: L.pp1, hit: S.pp1.hit }, { l: L.pp2, hit: S.pp2.hit });
+    SK.poison_edge = two({ l: L.pe, hit: S.pe.hit }, { l: L.pe2, hit: S.pe2.hit });
+    SK.smoke_bomb = one({ l: L.sb, hit: S.sb.hit, full: true });
+    SK.caltrops = one({ l: L.ct, hit: S.ct.hit, full: true });
+    SK.vanish = one({ l: L.va, hit: S.va.hit, full: true });
+    SK.cloak_of_dusk = one({ l: L.cd, hit: S.cd.hit, full: true });
+    SK.mirror_shade = one({ l: L.ms, hit: S.ms.hit });
+    var ne = one({ l: L.ne, hit: S.ne.hit, full: true });
+    SK.nights_embrace = function (c) {
+      ne(c);
+      // a small hop as the blades go up, then a shiver of power while kneeling
+      if (c.state === 'windup' && c.p > 0.55) c.out[CH.ROOT_P + 1] += 0.09 * sin(PI * smooth((c.p - 0.55) / 0.4));
+      else if (c.state !== 'windup') { var k = c.w * 0.012; c.out[CH.CHEST + 2] += k * sin(c.time * 37); c.out[CH.HEAD] += k * sin(c.time * 33); }
+    };
+  }
+
+  // ------------------------------------------------------------------ the clip table (anim name -> by ability id)
+  var CLIPS = GA.CLIPS = {};
+  function dispatcher(name) {
+    var fn = function (c) {
+      if (!ready) { build(); lists(); installSkills(); }
+      track(c);
+      var id = c.e && c.e.act && c.e.act.skill, f = id && SK[id];
+      if (!f) { var gen = KD.anim.CLIPS[name] || KD.anim.CLIPS.swing_r; return gen(c); }
+      f(c);
+    };
+    fn.full = false; fn.usesLeft = true;
+    return fn;
+  }
+  ['dual_slash', 'stab', 'throw', 'cast_hand', 'swing_r', 'swing_l', 'block', 'summon', 'thrust', 'overhead'].forEach(function (n) { CLIPS[n] = dispatcher(n); });
+  /** Make sure the poses exist (tests, tools). */
+  GA.init = function () { if (!ready && KD.anim && KD.anim.pose) { build(); lists(); installSkills(); } return ready; };
+  GA.poses = S;
+
+  // ------------------------------------------------------------------ the hook: only the Tripo Gloamblade
+  GA.hook = function (built) {
+    if (!built || !built.rig) return;
+    GA.grip(built.rig);
+    if (built.animOpts) built.animOpts.clips = CLIPS;
+    built.gloamAnim = true;
+  };
+  if (KD.art && KD.art.addAnimHook) KD.art.addAnimHook('gloamblade', GA.hook);
+  else { var Q = KD.artAnimHooks = KD.artAnimHooks || {}; (Q.gloamblade = Q.gloamblade || []).push(GA.hook); }
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/gfx/32_anim_humanoid.js
 (function (root) {
   'use strict';
@@ -74517,6 +74958,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       function (id) { ART.set(classId, id); }), 'a test of the new art style');
   };
 
+  // [hero clips] animation hooks run by ART.dress on a Tripo hero (files that load before this one queue in KD.artAnimHooks)
+  ART.ANIM_HOOKS = ART.ANIM_HOOKS || {};
+  ART.addAnimHook = function (classId, fn) { (ART.ANIM_HOOKS[classId] = ART.ANIM_HOOKS[classId] || []).push(fn); };
+  if (KD.artAnimHooks) { for (var hc in KD.artAnimHooks) KD.artAnimHooks[hc].forEach(function (f) { ART.addAnimHook(hc, f); }); }
+
   // ------------------------------------------------------------------ the hero plan with an art look
   var kCache = {};
   /** The rig scale unit k of the class's own (classic) body: held gear keeps its classic size on the art body. */
@@ -74551,6 +74997,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     built.height = (asset.height + 0.05) * s;
     built.radius = Math.max(built.radius || 0.3, 0.4 * s);
     built.art = asset.id;
+    // [hero clips] per-class animation hooks (round 6: own attack clips, dagger grip, stance): KD.art.addAnimHook(classId, fn(built, asset))
+    var hooks = ART.ANIM_HOOKS[classId];
+    if (hooks) for (var hi = 0; hi < hooks.length; hi++) { try { hooks[hi](built, asset); } catch (eh) { if (typeof console !== 'undefined') console.error('KD.art: anim hook for ' + classId + ' failed', eh); } }
     var anim = built.animate;
     built.animate = function (visual, e, dt) {
       var a = visual.actor;
