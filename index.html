@@ -3851,7 +3851,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.63';
+  KD.VERSION = '0.7.64';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -23507,6 +23507,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.64', date: '2026-10-15', title: 'Heroes run like heroes', notes: [
+      'The Gravecaller and the Gloamblade now really run: longer strides, knees that bend, arms that swing and a lean into the sprint',
+      'New stances: the Gravecaller hunches over his scythe, the Gloamblade drops into a low crouch with both daggers up',
+      'Starting, stopping and turning sharply now show weight, and feet stay planted instead of sliding'
+    ] },
     { version: '0.7.63', date: '2026-10-12', title: 'Order Fate: no more self-damage', notes: [
       'The Order Fate no longer hits you back when you strike a boss in its iron stance',
       'The stance still deflects most of your blows for a moment, so wait it out'
@@ -61781,14 +61786,15 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var casting = !dead && (state === 'windup' || state === 'active' || state === 'recover');
     var fn = null, mode = M_LOCO;
     if (dead) { fn = clipDeath; mode = M_DEATH; }
-    else if (casting) { fn = CLIPS[clip] || CLIPS[A.ALIAS[clip]] || CLIPS.swing_r; mode = M_CAST; }
+    else if (casting) { fn = (opts.clips && (opts.clips[clip] || opts.clips[A.ALIAS[clip]])) || CLIPS[clip] || CLIPS[A.ALIAS[clip]] || CLIPS.swing_r; mode = M_CAST; }      // [hero clips] opts.clips: per-character clip table
     else if (clip === 'dodge' || state === 'dodge') { fn = clipDodge; mode = M_DODGE; }
     else if (clip === 'stun' || state === 'stun') { fn = clipStun; mode = M_STUN; }
     else if (clip === 'hit' || state === 'hit') { fn = clipHit; mode = M_HIT; }
-    else if (state === 'dash' && (CLIPS[clip] || CLIPS[A.ALIAS[clip]])) { fn = CLIPS[clip] || CLIPS[A.ALIAS[clip]]; mode = M_DASH; }
+    else if (state === 'dash' && ((opts.clips && (opts.clips[clip] || opts.clips[A.ALIAS[clip]])) || CLIPS[clip] || CLIPS[A.ALIAS[clip]])) { fn = (opts.clips && (opts.clips[clip] || opts.clips[A.ALIAS[clip]])) || CLIPS[clip] || CLIPS[A.ALIAS[clip]]; mode = M_DASH; }      // [hero clips]
 
     if (casting || mode === M_HIT) st.sinceAct = 0; else st.sinceAct += dt;
     locomotion(st, e, dt, opts, clip, state);
+    if (opts.loco) opts.loco(LOCO, st, e, dt, opts, c, clip, mode);      // [hero loco] a per-character locomotion layer on top (48_hero_loco.js)
 
     // ---- clip change: snapshot the last pose and cross-fade from it
     if (mode !== st.mode || ((mode === M_CAST || mode === M_DASH) && clip !== st.clip)) {
@@ -74579,6 +74585,404 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     return true;
   };
   ART.wrapHero();
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/gfx/48_hero_loco.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+
+  /**
+   * [hero loco] Locomotion for the two Tripo heroes (Gravecaller, Gloamblade), round 6 animation polish.
+   *
+   * Replaces the locomotion layer of KD.anim.humanoid (idle, combat stance, walk, run, sprint, start / stop, turns) for
+   * the skinned art heroes only, through the `opts.loco` hook of 32_anim_humanoid.js. Every other character, the
+   * classic looks and all clips (attacks, dodge, hit, death) are unchanged: the clip layer still blends on top of this
+   * pose with the usual upper / lower body split. Visual only: it reads the entity, never writes the simulation.
+   *
+   * Why the old gait looked "constipated" on these bodies: the Tripo heroes have short, chunky legs (thigh + shin is
+   * about 0.5 m on a 1.8 m figure) and the generic gait scales stride and cadence by leg length, so at 4.7 m/s it took
+   * about 5.5 tiny steps a second (0.5 m of foot travel) with bent knees and a sunk pelvis, no knee drive, no heel kick,
+   * a stiff upright torso and almost no arm swing. Here:
+   *   - cadence is chosen per speed (about 3.4 steps/s walking, 4 running, 4.5 sprinting) and the stance length is
+   *     what the legs can actually reach (hip height, heel lift at toe-off); the rest of each step is a flight phase,
+   *     so the stride matches the real ground speed and a planted foot never slides (the heel or the toe is the pivot);
+   *   - swing: heel kick behind, knee drive in front, reach and paw back into the contact; stance: compression;
+   *   - pelvis yaw follows the legs, shoulders counter-rotate, arms swing opposite to the legs with bent elbows, the
+   *     torso leans into the speed, into acceleration (start / stop) and into turns, the head stays level and forward;
+   *   - per class idle and combat stance (Gravecaller: hunched, ominous, staff planted; Gloamblade: low ready crouch,
+   *     both daggers up), blended smoothly by speed and by how recently the hero fought.
+   *
+   *   KD.heroLoco.STYLES[classId]        the per class numbers (tune here)
+   *   KD.heroLoco.attach(built, classId) puts the layer on a built hero (done for every art hero by KD.art.dress)
+   *   KD.config.heroLoco = false         falls back to the generic layer (comparisons)
+   */
+  var A = KD.anim, HL = KD.heroLoco = KD.heroLoco || {};
+  if (!A || !A.CH) return;
+  var CH = A.CH, N = CH.N, P = A.fullPose;
+  var PI = Math.PI, TAU = PI * 2, sin = Math.sin, cos = Math.cos, sqrt = Math.sqrt, abs = Math.abs, min = Math.min, max = Math.max;
+  KD.config = KD.config || {};
+  if (KD.config.heroLoco === undefined) KD.config.heroLoco = true;
+
+  function clamp01(x) { return x < 0 ? 0 : (x > 1 ? 1 : x); }
+  function smooth(x) { x = clamp01(x); return x * x * (3 - 2 * x); }
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  function wrap(a) { while (a > PI) a -= TAU; while (a < -PI) a += TAU; return a; }
+
+  // ------------------------------------------------------------------ styles
+  /*
+   * Poses are in the units of KD.anim.pose (radians; hipsPos / feet in reference metres). idle = out of combat,
+   * stance = in combat (after acting or being hit). Swing keys: [w, along, height, pitch] after the toe-off key:
+   * along is -1 at the toe-off spot and +1 at the next contact, height is in leg lengths, pitch + = toes down.
+   */
+  HL.STYLES = {
+    gravecaller: {
+      idle: P({ hips: [0.06, 0.08, 0], hipsPos: [0.01, -0.03, -0.01], chest: [0.3, -0.06, 0.02], head: [-0.26, 0.1, 0],
+        armR: [-0.3, 0.1, -0.2], foreR: -1.15, armL: [-0.28, 0.25, 0.2], foreL: -0.95,
+        footR: [-0.03, 0, -0.05, 0, -0.3], footL: [0.03, 0, 0.09, 0, 0.32] }),
+      stance: P({ hips: [0.1, -0.2, 0], hipsPos: [0, -0.07, -0.02], chest: [0.36, -0.12, 0.02], head: [-0.36, 0.3, 0],
+        armR: [-0.45, 0.05, -0.3], foreR: -1.2, armL: [-0.95, 0.45, 0.42], foreL: -1.05,
+        footR: [-0.08, 0, -0.12, 0, -0.5], footL: [0.07, 0, 0.13, 0, 0.25] }),
+      grip: 0,                  // the staff is held in the right hand only (the left is the casting claw)
+      handL: [-0.25, 0.1, 0.1], // splayed casting hand in the stance
+      cadence: [0.4, 1.8, 1.0, 2.5, 2.1, 3.3, 3.2, 3.6, 4.7, 3.95, 6.8, 4.4, 8, 4.6],      // speed (m/s), steps per second
+      lowW: -0.025, lowR: -0.05, lowS: -0.06,            // pelvis drop (m) walking / running / sprinting
+      leanW: 0.1, leanR: 0.2, leanS: 0.3,                // forward lean (rad) of the whole torso
+      hunch: 0.14, twist: 1.3,                                       // extra chest curl while moving (the hunched caster)
+      bob: 0.75, kick: 0.8, knee: 0.8,                   // a gliding, robed runner: less bounce, smaller kick
+      armW: 0.3, armR: 0.55, armS: 0.75, staffArm: 0.18, // arm swing (rad); the staff arm swings less
+      armOut: 0.22, elbowW: -0.45, elbowR: -1.3,
+      walkKeys: [0.3, -0.35, 0.17, 0.5, 0.64, 0.55, 0.15, 0.0, 0.86, 1.04, 0.05, -0.12],
+      runKeys: [0.3, -0.62, 0.34, 1.1, 0.6, 0.48, 0.3, 0.45, 0.84, 1.08, 0.09, 0.05]
+    },
+    gloamblade: {
+      idle: P({ hips: [0.04, 0.12, 0.04], hipsPos: [0.025, -0.04, 0], chest: [0.1, -0.1, -0.03], head: [-0.06, 0.12, 0.02],
+        armR: [-0.18, -0.05, -0.2], foreR: -0.75, armL: [-0.12, 0.05, 0.22], foreL: -0.7,
+        footR: [-0.04, 0, -0.06, 0, -0.35], footL: [0.06, 0, 0.08, 0, 0.3] }),
+      stance: P({ hips: [0.26, 0.32, 0], hipsPos: [0, -0.16, -0.03], chest: [0.2, 0.08, 0], head: [-0.4, -0.3, 0],
+        armR: [-0.75, -0.35, -0.3], foreR: -1.9, armL: [-1.05, 0.35, 0.26], foreL: -1.35,
+        footR: [-0.11, 0, -0.17, 0, -0.55], footL: [0.11, 0, 0.17, 0, 0.3] }),
+      grip: null,
+      handsIdle: [-0.1, 0.05, 0, -0.1, -0.05, 0],          // relaxed fists, blades back along the forearms (reverse grip)
+      handsStance: [-0.15, 0.1, 0, -0.15, -0.1, 0],
+      bounce: 0.012,            // light bounce on the balls of the feet in the stance
+      cadence: [0.4, 1.9, 1.0, 2.6, 2.3, 3.4, 3.6, 3.75, 5.2, 4.05, 7.5, 4.6, 8.5, 4.8],
+      lowW: -0.04, lowR: -0.07, lowS: -0.08,
+      leanW: 0.12, leanR: 0.28, leanS: 0.4,
+      hunch: 0.04,
+      bob: 1, kick: 1, knee: 1.05,
+      armW: 0.32, armR: 0.6, armS: 0.8, staffArm: 1,
+      armOut: 0.26, elbowW: -0.6, elbowR: -1.5,
+      walkKeys: [0.3, -0.35, 0.18, 0.5, 0.64, 0.55, 0.16, 0.0, 0.86, 1.04, 0.05, -0.12],
+      runKeys: [0.28, -0.6, 0.42, 1.15, 0.58, 0.5, 0.36, 0.45, 0.84, 1.1, 0.1, 0.05]
+    }
+  };
+
+  // ------------------------------------------------------------------ scratch (nothing allocated per frame)
+  var POSE = new Float64Array(N), GAIT = new Float64Array(N);
+  var KS = new Float64Array(20);         // 5 keys x [w, along, y, pitch] of the swing being evaluated
+  var KT = new Float64Array(4);          // end tangents of the swing per component (d/dw at the contact)
+  var FT = new Float64Array(4);          // foot: along (m), y (m), pitch, planted (0..1)
+  var SP = new Float64Array(12);         // gait numbers: aP, bP, Ls, duty, runK, Lg, ft, fh, ankle, pT, heel, sprintK
+  // channel ranges the layer owns (hands, held items, grip, bow and jaw keep the hold style's values)
+  var OWN = [CH.HIPS, CH.FORE_R + 3, CH.ARM_L, CH.FORE_L + 3, CH.FOOT_R, CH.FOOT_L + 5];
+
+  /** Cubic Hermite through KS (5 keys) at w, component j (1 along, 2 y, 3 pitch). Catmull-Rom tangents. */
+  function hermite(w, j) {
+    var i = 0; while (i < 3 && w > KS[(i + 1) * 4]) i++;
+    var w0 = KS[i * 4], w1 = KS[(i + 1) * 4], p0 = KS[i * 4 + j], p1 = KS[(i + 1) * 4 + j];
+    var m0 = i > 0 ? (p1 - KS[(i - 1) * 4 + j]) / (w1 - KS[(i - 1) * 4]) : (p1 - p0) / (w1 - w0);
+    var m1 = i < 3 ? (KS[(i + 2) * 4 + j] - p0) / (KS[(i + 2) * 4] - w0) : KT[j];      // the contact: given velocity (paw back)
+    var h = w1 - w0, t = h > 1e-6 ? (w - w0) / h : 1; t = clamp01(t);
+    var t2 = t * t, t3 = t2 * t;
+    return (2 * t3 - 3 * t2 + 1) * p0 + (t3 - 2 * t2 + t) * h * m0 + (-2 * t3 + 3 * t2) * p1 + (t3 - t2) * h * m1;
+  }
+
+  /** Stance foot at progress s (0 contact .. 1 toe-off): heel pivot early (walks), toe pivot late. Writes FT. */
+  function stanceFoot(s, fwd) {
+    var aP = SP[0], Ls = SP[2], runK = SP[4], ft = SP[6], fh = SP[7], h = SP[8], pT = SP[9], heel = SP[10];
+    var along = aP - Ls * s, y = 0, pitch = 0, planted = 1;
+    var sToe = 0.6 - 0.16 * runK;
+    if (s < 0.2 && heel > 0.001) {                     // heel strike: toes come down around the heel
+      var q = heel * (1 - s / 0.2) * (1 - s / 0.2) * fwd;
+      along += fh * (cos(q) - 1) - h * sin(q); y = fh * sin(q) + h * (cos(q) - 1); pitch = -q;
+    } else if (s > sToe) {                             // toe-off: the heel rises around the planted toe
+      var r = (s - sToe) / (1 - sToe), p = pT * Math.pow(r, 1.5) * fwd;
+      along += ft * (1 - cos(p)) + h * sin(p); y = ft * sin(p) + h * (cos(p) - 1); pitch = p; planted = 1 - r;
+    } else if (runK > 0 && s < 0.2) pitch = 0.06 * runK * (1 - s / 0.2) * fwd;      // running: lands on the forefoot
+    FT[0] = along; FT[1] = y; FT[2] = pitch; FT[3] = planted;
+  }
+
+  /** Swing foot at progress w (0 toe-off .. 1 contact), from the toe-off state (computed by stanceFoot(1)). */
+  function swingFoot(w, sty, fwd) {
+    var aP = SP[0], bP = SP[1], runK = SP[4], Lg = SP[5], sprintK = SP[11];
+    stanceFoot(1, fwd);
+    var a0 = FT[0], y0 = FT[1], p0 = FT[2];
+    var WK = sty.walkKeys, RK = sty.runKeys, i;
+    KS[0] = 0; KS[1] = a0; KS[2] = y0; KS[3] = p0;
+    var kick = sty.kick * (1 + 0.25 * sprintK), knee = sty.knee * (1 + 0.2 * sprintK);
+    for (i = 0; i < 3; i++) {
+      var o = i * 4, w0 = lerp(WK[o], RK[o], runK), al = lerp(WK[o + 1], RK[o + 1], runK), yy = lerp(WK[o + 2], RK[o + 2], runK), pp = lerp(WK[o + 3], RK[o + 3], runK);
+      if (i === 0) { yy *= lerp(1, kick, runK); pp *= fwd; }
+      if (i === 1) yy *= lerp(1, knee, runK);
+      KS[(i + 1) * 4] = w0; KS[(i + 1) * 4 + 1] = al < 0 ? al * bP : al * aP; KS[(i + 1) * 4 + 2] = yy * Lg; KS[(i + 1) * 4 + 3] = pp * (i === 0 ? 1 : fwd);
+    }
+    // contact: the stance's first frame
+    stanceFoot(0, fwd);
+    KS[16] = 1; KS[17] = FT[0]; KS[18] = FT[1]; KS[19] = FT[2];
+    // the foot meets the ground already moving back at the ground speed and gently down: no skid at the contact
+    var duty = SP[3]; KT[1] = -SP[2] / duty * (1 - duty); KT[2] = -0.5 * Lg; KT[3] = 0;
+    FT[0] = hermite(w, 1); FT[1] = max(hermite(w, 2), 0); FT[2] = hermite(w, 3); FT[3] = 0;
+  }
+
+  /** Foot of one side at gait phase f (0..1, 0 = its contact): FT. */
+  function footAt(f, sty, fwd) {
+    var duty = SP[3];
+    if (f < duty) stanceFoot(f / duty, fwd); else swingFoot((f - duty) / (1 - duty), sty, fwd);
+  }
+
+  function table(T, v) {
+    if (v <= T[0]) return T[1];
+    for (var i = 2; i < T.length; i += 2) if (v <= T[i]) return lerp(T[i - 1], T[i + 1], (v - T[i - 2]) / (T[i] - T[i - 2]));
+    return T[T.length - 1];
+  }
+
+  function state(st) {
+    var s = st.hl;
+    if (!s) s = st.hl = { v: 0, lx: 0, lz: 0, ph: 0, mw: 0, g: 0, aF: 0, aL: 0, lean: 0, bank: 0, rate: 0, lastYaw: 0, hasYaw: false, lastCT: undefined, ago: 99,
+      turnPh: 0, dirX: 0, dirZ: 1, settle: 0, prevMw: 0, T: 0.5, duty: 0.5 };
+    return s;
+  }
+
+  /**
+   * The layer: L is the locomotion pose the generic layer just wrote (KD.anim CH layout); this rewrites the channels it
+   * owns. Called by KD.anim.humanoid when opts.loco is set.
+   */
+  HL.loco = function (L, st, e, dt, opts, c, clip, mode) {
+    if (KD.config.heroLoco === false) return;
+    var sty = opts.locoStyle; if (!sty) return;
+    var s = state(st), m = st.m, u = st.u, i, k;
+    if (!(dt >= 0)) dt = 0;
+    var dtc = dt > 0.1 ? 0.1 : dt;
+    // ---- velocity in the hero's frame, smoothed (the sim changes speed almost at once: the eye needs a few frames)
+    var vx = e.vx || 0, vz = e.vz || 0, yaw = e.yaw || 0, sy = sin(yaw), cy = cos(yaw);
+    var fwd = vx * sy + vz * cy, lat = vx * cy - vz * sy;
+    if (e.dead || mode === 3 || mode === 6) { fwd = 0; lat = 0; }
+    if (e.vx === undefined && (clip === 'walk' || clip === 'run' || clip === 'sprint') && !e.dead) {
+      var b0 = e.speed || 4.68; fwd = e.spd > 0 ? e.spd : (clip === 'walk' ? b0 * 0.45 : (clip === 'run' ? b0 : b0 * 1.45)); lat = 0;
+    }
+    var kv = dt >= 1 ? 1 : 1 - Math.exp(-dtc * 14);
+    var plx = s.lx, plz = s.lz;
+    s.lx += (lat - s.lx) * kv; s.lz += (fwd - s.lz) * kv;
+    var v = sqrt(s.lx * s.lx + s.lz * s.lz);
+    // acceleration (lean into starts, back on stops) and turning (bank into the turn, upper body leads)
+    if (dtc > 0) {
+      var ka = 1 - Math.exp(-dtc * 9);
+      s.aF += (((s.lz - plz) / dtc) - s.aF) * ka; s.aL += (((s.lx - plx) / dtc) - s.aL) * ka;
+      var rate = s.hasYaw ? wrap(yaw - s.lastYaw) / dtc : 0;
+      if (rate > 12) rate = 12; else if (rate < -12) rate = -12;
+      s.rate += (rate - s.rate) * (1 - Math.exp(-dtc * 10));
+    }
+    s.lastYaw = yaw; s.hasYaw = true;
+    if (v > 0.2) { s.dirX += (s.lx / v - s.dirX) * min(1, dtc * 12); s.dirZ += (s.lz / v - s.dirZ) * min(1, dtc * 12); }
+    var dl = sqrt(s.dirX * s.dirX + s.dirZ * s.dirZ) || 1, dx = s.dirX / dl, dz = s.dirZ / dl;
+    var fw = dz > 0 ? dz : 0;                      // forwardness: toe roll, heel kick and lean only when going forward
+    // move weight
+    var target = clamp01(v / 0.6);
+    s.mw += (target - s.mw) * (dt >= 1 ? 1 : min(1, dtc * (target > s.mw ? 14 : 10)));
+    var mw = s.mw;
+    st.moveW = mw;
+    // ---- combat: after acting, being hit or hitting (e.combatT changes), or guarding
+    if (s.lastCT !== e.combatT) { if (s.lastCT !== undefined) s.ago = 0; s.lastCT = e.combatT; } else s.ago += dt;
+    var inCombat = st.sinceAct < 2.5 || s.ago < 3.5 || e.guarding || (e.ai && (e.ai.state === 'combat' || e.ai.target));
+    s.g += ((inCombat ? 1 : 0) - s.g) * (dt >= 1 ? 1 : min(1, dtc * 5));
+    var g = s.g;
+
+    // ---- standing pose: idle <-> combat stance, with idle life
+    var I0 = sty.idle, S0 = sty.stance, t = c.time + st.seed * 40;
+    for (i = 0; i < N; i++) POSE[i] = I0[i] + (S0[i] - I0[i]) * g;
+    var k0 = 1 - mw;
+    POSE[CH.HIPS_P] += sin(t * 0.37) * 0.012 * (1 - g);                       // slow weight shift
+    POSE[CH.HIPS + 2] += sin(t * 0.37) * 0.025 * (1 - g);
+    POSE[CH.CHEST + 2] -= sin(t * 0.37 + 0.4) * 0.02 * (1 - g);
+    POSE[CH.HEAD + 1] += (sin(t * 0.43) * 0.2 + sin(t * 0.17 + 2) * 0.14) * (1 - 0.7 * g);       // looks around, less in a fight
+    POSE[CH.HEAD] += sin(t * 0.31 + 1) * 0.035;
+    if (sty.bounce) { var bo = sin(t * 4.4); POSE[CH.HIPS_P + 1] += sty.bounce * g * (bo * 0.5 - 0.5); POSE[CH.CHEST] += 0.02 * g * bo; }    // light on the feet
+    if (sty.handL && g > 0.01) for (k = 0; k < 3; k++) L[CH.HAND_L + k] += (sty.handL[k] - L[CH.HAND_L + k]) * g * k0;
+    // turning on the spot: the head leads, then the chest; small steps
+    var tr = s.rate * k0;
+    POSE[CH.HEAD + 1] += max(-0.45, min(0.45, tr * 0.12));
+    POSE[CH.CHEST + 1] += max(-0.25, min(0.25, tr * 0.06));
+    var ar = abs(s.rate);
+    if (ar > 0.8 && k0 > 0.3) {
+      s.turnPh += dtc * min(3.4, 1.4 + ar * 0.45); s.turnPh -= Math.floor(s.turnPh);
+      var k1 = clamp01((ar - 0.8) / 1.5) * k0, tp = s.turnPh, l1 = max(0, sin(TAU * tp)), l2 = max(0, -sin(TAU * tp));
+      POSE[CH.FOOT_R + 1] += 0.06 * l1 * k1; POSE[CH.FOOT_R + 3] += 0.25 * l1 * k1; POSE[CH.FOOT_R + 4] += 0.2 * l1 * k1 * (s.rate > 0 ? 1 : -1);
+      POSE[CH.FOOT_L + 1] += 0.06 * l2 * k1; POSE[CH.FOOT_L + 3] += 0.25 * l2 * k1; POSE[CH.FOOT_L + 4] += 0.2 * l2 * k1 * (s.rate > 0 ? 1 : -1);
+      POSE[CH.HIPS_P + 1] -= 0.015 * k1;
+    }
+    // stop: a short settle (knees give, the body rocks back over the feet)
+    if (s.prevMw > 0.55 && mw < 0.55 && s.settle <= 0) s.settle = 1;
+    s.prevMw = mw;
+    if (s.settle > 0) {
+      s.settle -= dtc / 0.45; if (s.settle < 0) s.settle = 0;
+      var sk = sin(PI * (1 - s.settle)) * s.settle;
+      POSE[CH.HIPS_P + 1] -= 0.05 * sk; POSE[CH.CHEST] += 0.12 * sk; POSE[CH.HEAD] -= 0.08 * sk;
+    }
+
+    // ---- gait
+    if (mw > 0.002) {
+      var Lg = m.thigh + m.shin, h = m.ankle, ft = m.footL * 0.58, fh = m.footL * 0.3;
+      var vn = v * 0.66 / u * (m.k > 0 ? 1 : 1);                 // speed normalised to the 0.66 m reference leg unit
+      var runK = smooth((v - 2.4) / 1.6), sprintK = smooth((v - (sty.cadence[10] + sty.cadence[8]) * 0.5) / 1.2);
+      var low = lerp(lerp(sty.lowW, sty.lowR, runK), sty.lowS, sprintK);
+      // reach of the legs: hip joint height above the ankle at the stance (with the pelvis drop and compression)
+      var hipH = m.hipY - m.posture.crouch * m.legLen - m.legDrop - h + low - 0.02 * runK;
+      var reachF = sqrt(max(0, (0.965 * Lg) * (0.965 * Lg) - hipH * hipH));
+      var pT = lerp(0.5, 0.95, runK);
+      var hiB = hipH - (ft * sin(pT) + h * (cos(pT) - 1));
+      var reachB = sqrt(max(0, (0.985 * Lg) * (0.985 * Lg) - hiB * hiB)) + ft * (1 - cos(pT)) + h * sin(pT);
+      var Lmax = (reachF + reachB) * 0.96;
+      // cadence and duty factor: the stance covers exactly what the body travels while the foot is down
+      var steps = table(sty.cadence, vn), T = 2 / steps;
+      var dutyWant = lerp(0.6, 0.3, runK) - 0.05 * sprintK, dutyMin = lerp(0.52, 0.18, runK);
+      var duty = v > 0.05 ? Lmax / (v * T) : dutyWant;
+      if (duty > dutyWant) duty = dutyWant;
+      if (duty < dutyMin) { duty = dutyMin; T = v > 0.05 ? Lmax / (v * duty) : T; }
+      var Ls = v * duty * T;
+      var aP = Ls * reachF / (reachF + reachB), bP = Ls - aP;
+      s.T = T; s.duty = duty;
+      s.ph += dtc / T; s.ph -= Math.floor(s.ph);
+      if (mw < 0.05 && s.prevStart !== true) { s.ph = duty * 0.55; }   // start from the push-off of the right foot
+      s.prevStart = mw >= 0.05;
+      var ph = s.ph;
+      SP[0] = aP; SP[1] = bP; SP[2] = Ls; SP[3] = duty; SP[4] = runK; SP[5] = Lg; SP[6] = ft; SP[7] = fh; SP[8] = h; SP[9] = pT; SP[10] = lerp(0.22, 0, runK); SP[11] = sprintK;
+      // feet (real metres along the direction of travel, centred on the hip line)
+      for (i = 0; i < N; i++) GAIT[i] = POSE[i];
+      var narrow = lerp(0.12, 0.38, runK), spread = 0.05 * abs(dx);
+      footAt(ph, sty, fw);
+      var aR = FT[0], yR = FT[1], pR = FT[2];
+            footAt(ph + 0.5 >= 1 ? ph - 0.5 : ph + 0.5, sty, fw);
+      var aLf = FT[0], yL = FT[1], pL = FT[2];
+      // pelvis drop and bob: walking vaults over the stance leg, running compresses on the stance and floats in flight
+      var bobW = 0.02 * cos(4 * PI * (ph - duty * 0.5));
+      var hp = ph >= 0.5 ? ph - 0.5 : ph, bobR;
+      if (hp < duty) bobR = -0.035 * sin(PI * hp / duty);
+      else { var tf = (0.5 - duty) * T, wq = (hp - duty) / (0.5 - duty); bobR = min(0.06, 9.8 * tf * tf / 8) * sin(PI * wq) * 0.9; }
+      var bob = lerp(bobW, bobR, runK) * sty.bob;
+      var hipY = low + bob;
+      // pelvis: yaw follows the legs, roll drops the swing side, pitch with the lean; leans into starts, stops and turns
+      var span = max(0.05, aP + bP);
+      var hyaw = (0.1 + 0.16 * runK) * (aR - aLf) / span * (0.4 + 0.6 * abs(dz));
+      var hx0 = -lerp(0.025, 0.012, runK) * cos(TAU * (ph - duty * 0.5));
+      var lean = lerp(lerp(sty.leanW, sty.leanR, runK), sty.leanS, sprintK) * (dz > 0 ? 1 : 0.3);
+      var accLean = max(-0.22, min(0.22, s.aF * 0.012)), bank = max(-0.3, min(0.3, -s.rate * v * 0.03));
+      var hroll = -lerp(0.06, 0.035, runK) * cos(TAU * (ph - duty * 0.5)) + bank * 0.5;
+      var hpitch = lean * 0.35 + POSE[CH.HIPS] * 0.3 + accLean * 0.3, hz0 = 0.02 * runK * u;
+      // keep the feet reachable: lower the pelvis rather than let a planted foot slide (exact hip joints: R = Ry Rx Rz)
+      var cxr = cos(hpitch), sxr = sin(hpitch), cyr = cos(hyaw), syr = sin(hyaw), czr = cos(hroll), szr = sin(hroll);
+      var base0 = m.hipY - m.posture.crouch * m.legLen;
+      for (var sd = 0; sd < 2; sd++) {
+        var sx = sd === 0 ? -1 : 1, al = sd === 0 ? aR : aLf, fy = sd === 0 ? yR : yL;
+        var ox = sx * m.hipW, oy = -m.legDrop;
+        var x1 = ox * czr - oy * szr, y1 = ox * szr + oy * czr;           // Rz
+        var y2 = y1 * cxr, z2 = y1 * sxr;                                  // Rx
+        var jx = hx0 + x1 * cyr + z2 * syr, jy = y2, jz = hz0 - x1 * syr + z2 * cyr;   // Ry
+        var tx = sx * m.hipW * (1 - narrow) + sx * spread + dx * al, tz = dz * al;
+        var dxz2 = (tx - jx) * (tx - jx) + (tz - jz) * (tz - jz), reach = 0.97 * Lg;
+        var need = (h + fy) + sqrt(max(0, reach * reach - dxz2));          // highest hip joint that still reaches
+        var have = base0 + hipY + jy;
+        if (have > need) hipY -= have - need;
+      }
+      // channels (feet and hips in reference metres: divide by u)
+      var iu = 1 / u;
+      GAIT[CH.FOOT_R] = (m.hipW * narrow - spread + dx * aR) * iu; GAIT[CH.FOOT_R + 1] = yR * iu; GAIT[CH.FOOT_R + 2] = dz * aR * iu;
+      GAIT[CH.FOOT_R + 3] = pR; GAIT[CH.FOOT_R + 4] = -0.1 * (1 - runK);
+      GAIT[CH.FOOT_L] = (-m.hipW * narrow + spread + dx * aLf) * iu; GAIT[CH.FOOT_L + 1] = yL * iu; GAIT[CH.FOOT_L + 2] = dz * aLf * iu;
+      GAIT[CH.FOOT_L + 3] = pL; GAIT[CH.FOOT_L + 4] = 0.1 * (1 - runK);
+      GAIT[CH.HIPS] = hpitch; GAIT[CH.HIPS + 1] = hyaw; GAIT[CH.HIPS + 2] = hroll;
+      GAIT[CH.HIPS_P] = hx0 * iu; GAIT[CH.HIPS_P + 1] = hipY * iu; GAIT[CH.HIPS_P + 2] = hz0 * iu;
+      // torso: lean, the hunch, shoulders against the pelvis, a breath of pitch with the bob
+      GAIT[CH.CHEST] = lean * 0.65 + sty.hunch + POSE[CH.CHEST] * 0.35 * g - bob * 1.2;
+      GAIT[CH.CHEST + 1] = -hyaw * (sty.twist || 1.65) + POSE[CH.CHEST + 1] * 0.3 * g;
+      GAIT[CH.CHEST + 2] = -hroll * 0.7 - 0.25 * lean * dx;
+      // head: level and forward (undo most of the torso's pitch, yaw and roll)
+      GAIT[CH.HEAD] = -(GAIT[CH.HIPS] + GAIT[CH.CHEST]) * 0.75 + POSE[CH.HEAD] * 0.4;
+      GAIT[CH.HEAD + 1] = -(hyaw + GAIT[CH.CHEST + 1]) * 0.85 + POSE[CH.HEAD + 1] * 0.25;
+      GAIT[CH.HEAD + 2] = -(hroll + GAIT[CH.CHEST + 2]) * 0.8;
+      // arms: opposite to the legs, elbows bent more when running and as the arm comes forward
+      var amp = lerp(lerp(sty.armW, sty.armR, runK), sty.armS, sprintK) * (0.45 + 0.55 * abs(dz));
+      var swR = (aR - aLf) / span, swL = -swR;           // + = that arm back
+      var elb = lerp(sty.elbowW, sty.elbowR, runK) - 0.15 * sprintK;
+      var aRamp = amp * sty.staffArm;
+      GAIT[CH.ARM_R] = -0.08 - lean * 0.4 + aRamp * swR; GAIT[CH.ARM_R + 1] = 0.12 * runK * max(0, -swR); GAIT[CH.ARM_R + 2] = -sty.armOut;
+      GAIT[CH.FORE_R] = elb - 0.35 * max(0, -swR) * (0.5 + runK); GAIT[CH.FORE_R + 1] = 0; GAIT[CH.FORE_R + 2] = 0;
+      GAIT[CH.ARM_L] = -0.08 - lean * 0.4 + amp * swL; GAIT[CH.ARM_L + 1] = -0.12 * runK * max(0, -swL); GAIT[CH.ARM_L + 2] = sty.armOut;
+      GAIT[CH.FORE_L] = elb - 0.35 * max(0, -swL) * (0.5 + runK); GAIT[CH.FORE_L + 1] = 0; GAIT[CH.FORE_L + 2] = 0;
+      if (sty.staffArm < 1) {          // the staff hand: carried a little forward, the staff trailing back over the shoulder line
+        GAIT[CH.ARM_R] += -0.15; GAIT[CH.FORE_R] = lerp(-0.9, -1.15, runK) + 0.08 * swR;
+        // keep the long staff steady: the wrist undoes most of the torso's twist so the blade does not wag
+        L[CH.HAND_R + 1] -= (hyaw + GAIT[CH.CHEST + 1]) * 0.85 * mw;
+        L[CH.HAND_R] -= (aRamp + 0.08) * swR * mw;
+      }
+      // in a fight the arms stay closer to the guard while moving
+      var gk = g * 0.55;
+      if (gk > 0) for (k = CH.ARM_R; k < CH.FOOT_R; k++) if (k < CH.HAND_R || (k >= CH.ARM_L && k < CH.HAND_L)) GAIT[k] += (POSE[k] - GAIT[k]) * gk * (k < CH.ARM_L ? 1 : 1);
+      // acceleration and turns: lean into a start, rock back on a stop, bank into a turn
+      GAIT[CH.CHEST] += accLean * 0.7; GAIT[CH.HEAD] -= accLean * 0.6;
+      GAIT[CH.CHEST + 2] += bank * 0.5; GAIT[CH.HEAD + 2] -= bank * 0.6;
+      GAIT[CH.HEAD + 1] += max(-0.35, min(0.35, s.rate * 0.06));
+      // blend with the standing pose by the move weight
+      for (i = 0; i < N; i++) POSE[i] += (GAIT[i] - POSE[i]) * mw;
+    } else {
+      s.ph = 0; s.prevStart = false;
+      var al2 = max(-0.15, min(0.15, s.aF * 0.01));
+      POSE[CH.CHEST] += al2;
+    }
+    // ---- write the owned channels
+    for (var r = 0; r < OWN.length; r += 2) for (i = OWN[r]; i < OWN[r + 1]; i++) L[i] = POSE[i];
+    if (sty.grip !== null && sty.grip !== undefined) L[CH.GRIP] = sty.grip;
+    // hands (the Gloamblade's reverse grip: fists in front, blades back along the forearms; the grip itself is the
+    // weapon joints' rest rotation set by 32_anim_gloamblade.js)
+    if (sty.handsIdle) for (k = 0; k < 3; k++) {
+      var hi = sty.handsIdle, hs = sty.handsStance || hi;
+      L[CH.HAND_R + k] = hi[k] + (hs[k] - hi[k]) * g; L[CH.HAND_L + k] = hi[3 + k] + (hs[3 + k] - hi[3 + k]) * g;
+    }
+  };
+
+  /** Put the layer on a built hero of this class (only the art heroes: their bodies were measured for it). */
+  HL.attach = function (built, classId) {
+    var sty = HL.STYLES[classId], o = built && built.animOpts;
+    if (!sty || !o) return false;
+    // the Gloamblade's guard arms come from the attacks' reverse grip guard when it is loaded (one shared pose)
+    var GS = KD.gloamAnim && KD.gloamAnim.STANCE;
+    if (classId === 'gloamblade' && GS && !sty.sharedGuard) {
+      var spec = {}, keys = ['armR', 'foreR', 'armL', 'foreL'];
+      for (var i = 0; i < keys.length; i++) if (GS[keys[i]]) spec[keys[i]] = GS[keys[i]];
+      var add = A.pose(spec), st2 = new Float64Array(sty.stance);
+      for (var c2 = 0; c2 < N; c2++) if (add[c2] === add[c2]) st2[c2] = add[c2];
+      sty.stance = st2;
+      if (GS.handR && GS.handL) sty.handsStance = [GS.handR[0], GS.handR[1], GS.handR[2], GS.handL[0], GS.handL[1], GS.handL[2]];
+      sty.sharedGuard = true;
+    }
+    o.loco = HL.loco; o.locoStyle = sty; o.locoClass = classId;
+    return true;
+  };
+
+  // every art hero gets it as it is dressed (KD.art.dress, 48_hero_art.js)
+  var ART = KD.art;
+  if (ART && ART.dress && !ART.dress.kdLoco) {
+    var dress0 = ART.dress;
+    var dress = function (built, asset, classId) {
+      var b = dress0.apply(this, arguments);
+      try { HL.attach(b, classId); } catch (err) { if (typeof console !== 'undefined') console.error('KD.heroLoco: attach failed', err); }
+      return b;
+    };
+    dress.kdLoco = true;
+    ART.dress = dress;
+  }
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -91429,8 +91833,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         var k1 = (k + 1) % sides, A = rings[rk][k], B = rings[rk][k1], C = rings[rk + 1][k1], Dd = rings[rk + 1][k], cc = (k + rk) % 2 ? c0 : c1;
         mb.face4(A[0], A[1], A[2], Dd[0], Dd[1], Dd[2], C[0], C[1], C[2], B[0], B[1], B[2], cc[0], cc[1], cc[2]);
       }
-      var mt = mb.done(), wM = HZ.fogW(env, D, min(env.fogMax, cfg.hazeBase + 0.1));
-      for (k = 0; k < mt.aux.length; k += 4) mt.aux[k + 3] = wM;
+      // its haze runs from the castle's foot (top of the massif) to thicker low down, so the castle never floats
+      var mt = mb.done(), wM = HZ.fogW(env, D, min(env.fogMax, cfg.hazeBase + 0.16)), mp = mt.pos;
+      for (k = 0; k < mt.aux.length; k += 4) { var ty = smooth(lift * 0.15, lift * 0.95, mp[(k >> 2) * 3 + 1]); mt.aux[k + 3] = wM + (wBase - wM) * ty; }
       G().translate(g, 0, lift, 0);
       g = G().merge([g, mt]);
     }
@@ -108654,6 +109059,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     return out;
   }
   PN.focusables = function () { return focusables(scope()); };
+  function inScope(sc, n) { return sc.node.contains(n) || (!(sc.win && sc.win.modal) && !!n.closest('.kd-toasts, .flow-pn-banner')); }
   function rectOf(n) { var r = n.getBoundingClientRect(); return { left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.width, height: r.height }; }
   function centre(r) { return { x: (r.left + r.right) / 2, y: (r.top + r.bottom) / 2 }; }
   function isText(n) { return n && ((n.tagName === 'INPUT' && /^(text|search|email|password|number|)$/.test(n.type || '')) || n.tagName === 'TEXTAREA'); }
@@ -108719,7 +109125,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
   /** Puts the focus back where it belongs after the scope changed or the focused element was rebuilt away. */
   function ensureFocus(sc, list) {
-    if (S.el && S.el.isConnected && sc.node.contains(S.el) && list.indexOf(S.el) >= 0) { S.last = rectOf(S.el); return; }
+    if (S.el && S.el.isConnected && inScope(sc, S.el) && list.indexOf(S.el) >= 0) { S.last = rectOf(S.el); return; }
     var mem = S.mem[sc.key], n = null;
     if (S.el && S.last && S.key === sc.key) {             // rebuilt in place (a click redrew the window): the nearest thing
       var i = PN.nearest(centre(S.last), list.map(rectOf)); n = i >= 0 ? list[i] : null;
@@ -108820,7 +109226,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     return best;
   }
   // ---- tabs: L1 / R1 the first tab row of the window or screen, L2 / R2 the second one (sub tabs)
-  var TABLIST = '[role=tablist], .kd-tabs-bar, .flow-vtabs, .pad-tabs';
+  var TABLIST = '[role=tablist], .kd-tabs-bar, .flow-vtabs, .pad-tabs, .win-seg[class*="tabs"]';
   function tabRows(sc) {
     var rows = Array.prototype.filter.call(sc.node.querySelectorAll(TABLIST), function (r) { return visible(r) && !r.parentElement.closest(TABLIST); });
     return rows.map(function (r) { return Array.prototype.filter.call(r.querySelectorAll('button, [role=tab]'), function (b) { return visible(b) && !b.disabled && (b.parentElement === r || b.getAttribute('role') === 'tab'); }); }).filter(function (b) { return b.length > 1; });
@@ -109064,17 +109470,21 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     }
     return out;
   }
-  function place(sc, fresh) {
+  function place(sc, fresh, moved) {
     var H = S.hints, st = H.style, list = focusables(sc).map(rectOf).concat(fresh || !S.placeText ? (S.placeText = textRects(sc.node)) : S.placeText);
     var ff = sc.node.querySelector('.flow-foot, .kd-choice-foot'), fr = ff && visible(ff) ? ff.getBoundingClientRect() : null;
     var hits = function () { var r = H.getBoundingClientRect(); for (var i = 0; i < list.length; i++) { var q = list[i]; if (q.left < r.right && q.right > r.left && q.top < r.bottom && q.bottom > r.top) return true; } return false; };
     if (!fresh && st.left && !hits()) return S.placeFree;   // a check later on: it stays put while its spot is still free
+    if (!fresh && !S.placeFree && !moved) return false;     // (already faded in its last resort: only a move looks again)
+    var wasFree = S.placeFree;
+    if (!fresh) list = focusables(sc).map(rectOf).concat(S.placeText = textRects(sc.node));       // (the screen changed under it: look again)
     for (var i = 0; i < SPOTS.length; i++) {
       if (SPOTS[i].lift && !(fr && fr.top > innerHeight * 0.5)) continue;          // (just above the screen's own button row)
       st.left = SPOTS[i].left; st.right = SPOTS[i].right; st.transform = 'translateX(' + SPOTS[i].tx + ')'; st.top = SPOTS[i].top ? '6px' : '';
       st.bottom = SPOTS[i].top ? 'auto' : SPOTS[i].lift ? Math.round(innerHeight - fr.top + 6) + 'px' : '';
       if (!hits()) return (S.placeFree = true);
     }
+    if (!fresh && wasFree) S.fadeAt = performance.now() + 1500;
     st.left = '50%'; st.right = 'auto'; st.transform = 'translateX(-50%)'; st.top = ''; st.bottom = '';
     S.placeFree = !hits();
     return S.placeFree;
@@ -109115,7 +109525,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       if (hs) hs.forEach(function (x) { var gb = swapped() && (x[0] === 0 || x[0] === 1) ? 1 - x[0] : x[0]; S.hints.appendChild(KD.ui.el('span.pad-hint', [glyphEl(gb), KD.ui.el('span.pad-hint-t', { text: x[1] })])); });
     }
     if (foot) { if (S.hints.style.left) { S.hints.style.left = S.hints.style.right = S.hints.style.bottom = S.hints.style.top = S.hints.style.transform = ''; } S.placeKey = null; }
-    else if (hs && (S.placeKey !== key + sc.key || ++S.placeN > 90)) { var fresh = S.placeKey !== key + sc.key; S.placeKey = key + sc.key; S.placeN = 0; place(sc, fresh); if (fresh) S.fadeAt = performance.now() + 2600; }
+    else if (hs && (S.placeKey !== key + sc.key || S.placeEl !== S.el || ++S.placeN > 30)) { var fresh = S.placeKey !== key + sc.key, moved = S.placeEl !== S.el; S.placeKey = key + sc.key; S.placeEl = S.el; S.placeN = 0; place(sc, fresh, moved); if (fresh) S.fadeAt = performance.now() + 2600; }
     // no free spot (a full phone screen): the bar shows for a moment when the hints change, then fades so it hides nothing
     S.hints.classList.toggle('pad-dim', !foot && !!hs && !S.placeFree && performance.now() > (S.fadeAt || 0));
   }
@@ -109158,7 +109568,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     }
     if (!S.active) return;
     // (cheap while the focus is still there: the whole list is only gathered when it has to be found again)
-    var keep = S.el && S.el.isConnected && sc.node.contains(S.el) && usable(S.el) && visible(S.el);
+    var keep = S.el && S.el.isConnected && inScope(sc, S.el) && usable(S.el) && visible(S.el);
     if (keep) S.last = rectOf(S.el);
     else if (!(h && h.onNodes && h.onNodes())) ensureFocus(sc, focusables(sc));
     // directions (D-pad, left stick) with repeat
