@@ -3851,7 +3851,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.64';
+  KD.VERSION = '0.7.65';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -23507,6 +23507,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.65', date: '2026-10-15', title: 'Gravecaller stance polish', notes: [
+      'The Gravecaller now holds his scythe clear of the ground in his fighting stance'
+    ] },
     { version: '0.7.64', date: '2026-10-15', title: 'Heroes run like heroes', notes: [
       'The Gravecaller and the Gloamblade now really run: longer strides, knees that bend, arms that swing and a lean into the sprint',
       'New stances: the Gravecaller hunches over his scythe, the Gloamblade drops into a low crouch with both daggers up',
@@ -74643,7 +74646,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         armR: [-0.3, 0.1, -0.2], foreR: -1.15, armL: [-0.28, 0.25, 0.2], foreL: -0.95,
         footR: [-0.03, 0, -0.05, 0, -0.3], footL: [0.03, 0, 0.09, 0, 0.32] }),
       stance: P({ hips: [0.1, -0.2, 0], hipsPos: [0, -0.07, -0.02], chest: [0.36, -0.12, 0.02], head: [-0.36, 0.3, 0],
-        armR: [-0.45, 0.05, -0.3], foreR: -1.2, armL: [-0.95, 0.45, 0.42], foreL: -1.05,
+        armR: [-0.7, 0.05, -0.3], foreR: -1.05, armL: [-0.95, 0.45, 0.42], foreL: -1.05,
         footR: [-0.08, 0, -0.12, 0, -0.5], footL: [0.07, 0, 0.13, 0, 0.25] }),
       grip: 0,                  // the staff is held in the right hand only (the left is the casting claw)
       handL: [-0.25, 0.1, 0.1], // splayed casting hand in the stance
