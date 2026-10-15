@@ -3872,7 +3872,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.71';
+  KD.VERSION = '0.7.72';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -4801,13 +4801,13 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   KD.data.SIGIL_GRADES = ['Dull', 'Bright', 'Radiant'];
   KD.register('sigils', [
-    { id: 'chain', name: 'Chain', start: true, color: '#ffe45c', p: [1, 2, 3], text: 'The first hit of each use jumps to {p} more enemies for 40% damage.' },
+    { id: 'chain', name: 'Chain', start: true, color: '#ffe45c', p: [1, 2, 3], text: 'The first hit of each use jumps to {p} more enemies for 35% damage.' },
     { id: 'echo', name: 'Echo', start: true, color: '#c9b6ff', p: [0.30, 0.40, 0.50], text: 'The skill repeats once after a short delay at {p%} power. Each skill can echo once every 3 s.' },
     { id: 'pierce', name: 'Pierce', start: true, color: '#d8d2c4', p: [2, 3, 5], text: 'Projectiles pierce {p} more enemies. Melee arcs are 25% wider.' },
     { id: 'siphon', name: 'Siphon', start: true, color: '#8ff0c8', p: [0.03, 0.05, 0.08], text: '{p%} of damage dealt is returned as class resource.' },
     { id: 'split', name: 'Split', start: true, color: '#9fd97a', p: [0.55, 0.60, 0.65], text: 'Fires 2 extra projectiles, or adds 1 extra melee strike. Each hit deals {p%} damage.' },
     { id: 'delay', name: 'Delay', start: true, color: '#ffb14a', p: [0.22, 0.30, 0.40], text: 'The effect lands 0.7 s late and deals {p%} more damage.' },
-    { id: 'anchor', name: 'Anchor', start: true, color: '#7fb0a0', p: [0.10, 0.14, 0.18], text: 'Leaves a zone for 4 s that deals {p%} of the hit each second. One zone per skill at a time.' },
+    { id: 'anchor', name: 'Anchor', start: true, color: '#7fb0a0', p: [0.08, 0.12, 0.15], text: 'Leaves a zone for 4 s that deals {p%} of the hit each second. One zone per skill at a time.' },
     { id: 'surge', name: 'Surge', start: true, color: '#ff7a59', p: [0.07, 0.10, 0.13], text: 'Each use within 4 s deals {p%} more damage, up to 5 stacks.' },
     { id: 'bind', name: 'Bind', start: true, color: '#b6a37a', p: [0.30, 0.40, 0.50], text: 'Hits slow by {p%} for 2 s and drag enemies toward the impact.' },
     { id: 'frost', name: 'Frost', start: true, color: '#7fd4ff', p: [0.25, 0.35, 0.50], text: 'Damage becomes Cold with a {p%} chance to Chill.' },
@@ -4819,7 +4819,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     { id: 'gloom', name: 'Gloom', start: false, color: '#8b5cf6', p: [0.10, 0.15, 0.20], text: 'Damage becomes Shadow and Weakens enemies ({p%} less damage dealt) for 4 s.' },
     { id: 'quicken', name: 'Quicken', start: false, color: '#9ad8ff', p: [0.15, 0.22, 0.30], text: 'Cooldown is {p%} shorter.' },
     { id: 'thrift', name: 'Thrift', start: false, color: '#e2b94a', p: [0.20, 0.30, 0.40], text: 'Costs {p%} less resource.' },
-    { id: 'reach', name: 'Reach', start: false, color: '#c7d0a8', p: [0.12, 0.18, 0.25], text: 'Range and area are {p%} larger.' },
+    { id: 'reach', name: 'Reach', start: false, color: '#c7d0a8', p: [0.10, 0.16, 0.22], text: 'Range and area are {p%} larger.' },
     { id: 'brutal', name: 'Brutal', start: false, color: '#c98b6b', p: [0.40, 0.60, 0.90], text: 'Deals {p%} more Poise damage.' },
     { id: 'keen', name: 'Keen', start: false, color: '#f0e6c8', p: [0.08, 0.12, 0.18], text: '+{p%} Critical Chance for this skill.' },
     { id: 'ruin', name: 'Ruin', start: false, color: '#e0523f', p: [0.25, 0.40, 0.60], text: '+{p%} Critical Damage for this skill.' },
@@ -23533,6 +23533,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.72', date: '2026-10-15', title: 'Sigil tuning, part two', notes: [
+      'Sigils fine-tuned: Chain jumps for 35%, Anchor and Reach a little smaller',
+      'Toxic Blast only spreads to enemies that are not poisoned yet'
+    ] },
     { version: '0.7.71', date: '2026-10-15', title: 'Sigil balance pass', notes: [
       'Sigils got a balance pass: none of them doubles your damage any more',
       'Echo repeats a skill at most once every 3 s, and Chain jumps only from the first hit of a use',
@@ -30768,8 +30772,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     overload: { name: 'Overload', elem: 'shock', r: 3.5, mult: 0.9, consume: ['soak'], status: [{ id: 'stun', dur: 0.8 }] },
     inferno: { name: 'Inferno', elem: 'fire', r: 3.2, mult: 1.1, consume: ['oil'], status: [{ id: 'burn' }], zone: { radius: 2.6, duration: 4, tick: 0.5, mult: 0.2, elem: 'fire' } },
     shatter: { name: 'Shatter', elem: 'cold', r: 2.6, mult: 0.8, consume: ['chill', 'freeze'], poise: 2.5 },
-    // [w9 sigils] spreadOnly: the Poison of a Toxic Blast goes to the enemies around (as strong as the Poison that burst), not
-    // back on the one that burst; icd: one Toxic Blast per enemy every 3 s. It looped forever on a fire hero with any Poison (Venom Sigil on the Emberscribe: +190%
+    // [w9 sigils] spreadOnly: the Poison of a Toxic Blast goes to the enemies around that are not Poisoned yet (as strong as the
+    // Poison that burst), not back on the one that burst; icd: one Toxic Blast per enemy every 3 s. It looped forever on a fire hero with any Poison (Venom Sigil on the Emberscribe: +190%
     // damage on packs): every Burn re-blew the Poison the last blast had put back (tools/sigil_bench.js).
     toxic: { name: 'Toxic Blast', elem: 'poison', r: 3.2, mult: 0.6, consume: ['poison'], addRemainingDot: 'poison', status: [{ id: 'poison', stacks: 2 }], spreadOnly: true, icd: 3 },
     freeze: { name: 'Freeze', elem: 'cold', r: 0, mult: 0, consume: ['soak', 'chill'], self: [{ id: 'freeze' }] },
@@ -31398,7 +31402,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
           o.poise -= S.poiseDamage(world, src, o, { poise: R.poise }); o.poiseT = 0;
           if (o.poise <= 0) S.breakChar(world, o, src);
         }
-        if (inf.hit && !o.dead && R.status && !(R.spreadOnly && o === tgt)) for (var k = 0; k < R.status.length; k++) S.applyStatus(world, o, R.status[k].id, { src: src, dur: R.status[k].dur, stacks: R.status[k].stacks, hit: raw, noReact: true, dps: R.spreadOnly && R.status[k].id === R.addRemainingDot ? spreadDps : undefined });
+        if (inf.hit && !o.dead && R.status && !(R.spreadOnly && o === tgt)) for (var k = 0; k < R.status.length; k++) if (!(R.spreadOnly && has(o, R.status[k].id))) S.applyStatus(world, o, R.status[k].id, { src: src, dur: R.status[k].dur, stacks: R.status[k].stacks, hit: raw, noReact: true, dps: R.spreadOnly && R.status[k].id === R.addRemainingDot ? spreadDps : undefined });
       }
     }
     if (R.zone && src && !src.dead) {
@@ -31730,11 +31734,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    *   Pitch / Tide            their grade number is now the seconds between two coats (one Inferno / Overload set-up, not every hit)
    *   SIGIL_TUNE.venomPower   the Poison of Venom deals this share of a normal Poison (Poison stacks to 8 and keeps its strongest hit)
    *   SIGIL_TUNE.venomIcd     Venom poisons the same enemy at most once every N s
-   *   SIGIL_TUNE.chainMult    share of the hit each Chain jump deals (was 0.6); only the first hit of a cast jumps
+   *   SIGIL_TUNE.chainMult    share of the hit each Chain jump deals (was 0.6, now 0.35); only the first hit of a cast jumps
    *   SIGIL_TUNE.wardIcd      Aegis (Ward) and Radiance (heal) work once every N s per skill (they stacked on every swing of the primary)
    *   SIGIL_TUNE.cap          the most a percentage can reach with Sigil Power (Echo power, Twin chance)
    */
-  K.SIGIL_TUNE = { echoIcd: 3, anchorIcd: 4, venomPower: 0.5, venomIcd: 1, chainMult: 0.4, wardIcd: 2, cap: { echo: 0.75, twin: 0.6 } };
+  K.SIGIL_TUNE = { echoIcd: 3, anchorIcd: 4, venomPower: 0.5, venomIcd: 1, chainMult: 0.35, wardIcd: 2, cap: { echo: 0.75, twin: 0.6 } };
   /** [w9 sigils] Internal cooldowns of Sigils, per character: true (and starts the timer) when `key` is ready. */
   K.sigilReady = function (world, e, key, icd) {
     var m = e.sigilIcd || (e.sigilIcd = {});
