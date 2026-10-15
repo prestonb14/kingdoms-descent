@@ -3872,7 +3872,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.70';
+  KD.VERSION = '0.7.71';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -3897,6 +3897,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   if (KD.config.potions === undefined) KD.config.potions = false;
   if (KD.config.bossMarks === undefined) KD.config.bossMarks = true;   // [boss-marks] owner: body-telling bosses (Greymaw) draw a red ground mark for every attack again; false = only their area moves (src/sim/27_boss_strings.js)
   if (KD.config.trees === undefined) KD.config.trees = { gravecaller: true, gloamblade: true }; // [w8 gloamblade tree] owner turned it on
+  if (KD.config.trees && KD.config.trees.lanternbearer === undefined) KD.config.trees.lanternbearer = true; // [w8 lanternbearer tree] The Long Vigil, docs/TREE_LANTERNBEARER.md
+  if (KD.config.trees && KD.config.trees.thornwarden === undefined) KD.config.trees.thornwarden = true; // [w8 thornwarden tree] The Old Wood, docs/TREE_THORNWARDEN.md
   // The online service (accounts, friends, invites, co-op rooms: the kd-online repository on Cloudflare Workers).
   // Fill in its address once it is deployed, e.g. 'https://kd-online.<your-subdomain>.workers.dev'. Empty = the game
   // says "Online play is not set up yet." (?online=<url> in the page address overrides it for testing.) docs/ONLINE.md.
@@ -4793,39 +4795,42 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    * hero.skills.sigils[abilityId] = [ { type:'chain', grade:1, ... } | null, ... ]
    * All percentage parameters are multiplied by the hero's `sigilPower` stat.
    * start: unlocked on a fresh account (12 of 30). The rest are Chronicle / account unlocks.
+   * [w9 sigils] Oct 15 rework of the strongest ones (Echo, Chain, Split, Delay, Anchor, Venom, Radiance, Aegis, Reach, Tide, Pitch,
+   * Twin): numbers from tools/sigil_bench.js, rules in KD.skills.SIGIL_TUNE (src/sim/16_skills.js), table in docs/SKILLS.md section 5.
+   * Tide / Pitch: p is now the seconds between two coats (counts, not scaled by Sigil Power).
    */
   KD.data.SIGIL_GRADES = ['Dull', 'Bright', 'Radiant'];
   KD.register('sigils', [
-    { id: 'chain', name: 'Chain', start: true, color: '#ffe45c', p: [2, 3, 4], text: 'Hits jump to {p} more enemies for 60% damage.' },
-    { id: 'echo', name: 'Echo', start: true, color: '#c9b6ff', p: [0.40, 0.50, 0.60], text: 'The skill repeats once after a short delay at {p%} power.' },
+    { id: 'chain', name: 'Chain', start: true, color: '#ffe45c', p: [1, 2, 3], text: 'The first hit of each use jumps to {p} more enemies for 40% damage.' },
+    { id: 'echo', name: 'Echo', start: true, color: '#c9b6ff', p: [0.30, 0.40, 0.50], text: 'The skill repeats once after a short delay at {p%} power. Each skill can echo once every 3 s.' },
     { id: 'pierce', name: 'Pierce', start: true, color: '#d8d2c4', p: [2, 3, 5], text: 'Projectiles pierce {p} more enemies. Melee arcs are 25% wider.' },
     { id: 'siphon', name: 'Siphon', start: true, color: '#8ff0c8', p: [0.03, 0.05, 0.08], text: '{p%} of damage dealt is returned as class resource.' },
-    { id: 'split', name: 'Split', start: true, color: '#9fd97a', p: [0.55, 0.60, 0.65], text: 'Fires 2 extra projectiles or strikes; each hit deals {p%} damage.' },
-    { id: 'delay', name: 'Delay', start: true, color: '#ffb14a', p: [0.35, 0.50, 0.70], text: 'The effect lands 0.7 s late and deals {p%} more damage.' },
-    { id: 'anchor', name: 'Anchor', start: true, color: '#7fb0a0', p: [0.20, 0.25, 0.30], text: 'Leaves a zone for 4 s that deals {p%} of the hit each second.' },
-    { id: 'surge', name: 'Surge', start: true, color: '#ff7a59', p: [0.08, 0.11, 0.15], text: 'Each use within 4 s deals {p%} more damage, up to 5 stacks.' },
+    { id: 'split', name: 'Split', start: true, color: '#9fd97a', p: [0.55, 0.60, 0.65], text: 'Fires 2 extra projectiles, or adds 1 extra melee strike. Each hit deals {p%} damage.' },
+    { id: 'delay', name: 'Delay', start: true, color: '#ffb14a', p: [0.22, 0.30, 0.40], text: 'The effect lands 0.7 s late and deals {p%} more damage.' },
+    { id: 'anchor', name: 'Anchor', start: true, color: '#7fb0a0', p: [0.10, 0.14, 0.18], text: 'Leaves a zone for 4 s that deals {p%} of the hit each second. One zone per skill at a time.' },
+    { id: 'surge', name: 'Surge', start: true, color: '#ff7a59', p: [0.07, 0.10, 0.13], text: 'Each use within 4 s deals {p%} more damage, up to 5 stacks.' },
     { id: 'bind', name: 'Bind', start: true, color: '#b6a37a', p: [0.30, 0.40, 0.50], text: 'Hits slow by {p%} for 2 s and drag enemies toward the impact.' },
     { id: 'frost', name: 'Frost', start: true, color: '#7fd4ff', p: [0.25, 0.35, 0.50], text: 'Damage becomes Cold with a {p%} chance to Chill.' },
     { id: 'ember', name: 'Ember', start: true, color: '#ff8a3d', p: [0.25, 0.35, 0.50], text: 'Damage becomes Fire with a {p%} chance to Burn.' },
     { id: 'arc', name: 'Arc', start: true, color: '#ffe45c', p: [0.25, 0.35, 0.50], text: 'Damage becomes Shock with a {p%} chance to Shock.' },
     { id: 'hollow', name: 'Hollow', start: false, color: '#b061e8', p: [0.20, 0.30, 0.40], text: 'Costs 8% of your Health instead of resource and deals {p%} more damage.' },
-    { id: 'venom', name: 'Venom', start: false, color: '#8fd14f', p: [0.25, 0.35, 0.50], text: 'Damage becomes Poison with a {p%} chance to Poison.' },
-    { id: 'radiance', name: 'Radiance', start: false, color: '#fff2b0', p: [0.03, 0.045, 0.06], text: 'Damage becomes Holy. Allies near the impact heal {p%} of their Health.' },
+    { id: 'venom', name: 'Venom', start: false, color: '#8fd14f', p: [0.20, 0.30, 0.40], text: 'Damage becomes Poison. Hits have a {p%} chance to apply a half-strength Poison, at most once a second per enemy.' },
+    { id: 'radiance', name: 'Radiance', start: false, color: '#fff2b0', p: [0.03, 0.045, 0.06], text: 'Damage becomes Holy. Allies near the impact heal {p%} of their Health, at most once every 2 s.' },
     { id: 'gloom', name: 'Gloom', start: false, color: '#8b5cf6', p: [0.10, 0.15, 0.20], text: 'Damage becomes Shadow and Weakens enemies ({p%} less damage dealt) for 4 s.' },
     { id: 'quicken', name: 'Quicken', start: false, color: '#9ad8ff', p: [0.15, 0.22, 0.30], text: 'Cooldown is {p%} shorter.' },
     { id: 'thrift', name: 'Thrift', start: false, color: '#e2b94a', p: [0.20, 0.30, 0.40], text: 'Costs {p%} less resource.' },
-    { id: 'reach', name: 'Reach', start: false, color: '#c7d0a8', p: [0.20, 0.30, 0.45], text: 'Range and area are {p%} larger.' },
+    { id: 'reach', name: 'Reach', start: false, color: '#c7d0a8', p: [0.12, 0.18, 0.25], text: 'Range and area are {p%} larger.' },
     { id: 'brutal', name: 'Brutal', start: false, color: '#c98b6b', p: [0.40, 0.60, 0.90], text: 'Deals {p%} more Poise damage.' },
     { id: 'keen', name: 'Keen', start: false, color: '#f0e6c8', p: [0.08, 0.12, 0.18], text: '+{p%} Critical Chance for this skill.' },
     { id: 'ruin', name: 'Ruin', start: false, color: '#e0523f', p: [0.25, 0.40, 0.60], text: '+{p%} Critical Damage for this skill.' },
     { id: 'leech', name: 'Leech', start: false, color: '#d9455f', p: [0.03, 0.05, 0.08], text: '{p%} of damage dealt heals you.' },
-    { id: 'aegis', name: 'Aegis', start: false, color: '#9fb4d0', p: [0.04, 0.06, 0.09], text: 'Using the skill grants Ward equal to {p%} of your Health.' },
+    { id: 'aegis', name: 'Aegis', start: false, color: '#9fb4d0', p: [0.04, 0.06, 0.09], text: 'Using the skill grants Ward equal to {p%} of your Health, at most once every 2 s.' },
     { id: 'drive', name: 'Drive', start: false, color: '#f5c542', p: [0.5, 0.75, 1.0], text: 'Builds {p%} more Momentum.' },
     { id: 'fleet', name: 'Fleet', start: false, color: '#a8e6a1', p: [0.15, 0.20, 0.30], text: 'After use, move {p%} faster for 2 s.' },
     { id: 'brand', name: 'Brand', start: false, color: '#ff5fa2', p: [0.10, 0.15, 0.20], text: 'Hits Mark enemies: they take {p%} more damage for 4 s.' },
-    { id: 'tide', name: 'Tide', start: false, color: '#4aa3df', p: [3, 4, 6], text: 'Hits Soak enemies for {p} s (sets up Overload and Freeze).' },
-    { id: 'pitch', name: 'Pitch', start: false, color: '#5b4a3a', p: [3, 4, 6], text: 'Hits coat enemies in Oil for {p} s (sets up Inferno).' },
-    { id: 'twin', name: 'Twin', start: false, color: '#e8e2d0', p: [0.25, 0.35, 0.50], text: '{p%} chance that using the skill does not start its cooldown.' }
+    { id: 'tide', name: 'Tide', start: false, color: '#4aa3df', p: [6, 5, 4], text: 'Hits Soak an enemy at most once every {p} s (sets up Overload and Freeze).' },
+    { id: 'pitch', name: 'Pitch', start: false, color: '#5b4a3a', p: [8, 7, 6], text: 'Hits coat an enemy in Oil at most once every {p} s (sets up Inferno).' },
+    { id: 'twin', name: 'Twin', start: false, color: '#e8e2d0', p: [0.20, 0.30, 0.40], text: '{p%} chance that using the skill does not start its cooldown. Never twice in a row.' }
   ]);
 
   /**
@@ -23528,6 +23533,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.71', date: '2026-10-15', title: 'Sigil balance pass', notes: [
+      'Sigils got a balance pass: none of them doubles your damage any more',
+      'Echo repeats a skill at most once every 3 s, and Chain jumps only from the first hit of a use',
+      'Anchor, Delay, Split, Venom, Pitch, Tide, Twin, Reach, Surge, Aegis and Radiance were toned down too',
+      'Toxic Blast no longer loops forever on burning, poisoned enemies'
+    ] },
     { version: '0.7.70', date: '2026-10-15', title: 'Attack stamina', notes: [
       'Attacks now use their own stamina bar, right under your Health. It drains as you swing and refills when you pause',
       'Heavy hitters tire faster than the quick assassin, and spells only cost your class resource',
@@ -30757,7 +30768,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     overload: { name: 'Overload', elem: 'shock', r: 3.5, mult: 0.9, consume: ['soak'], status: [{ id: 'stun', dur: 0.8 }] },
     inferno: { name: 'Inferno', elem: 'fire', r: 3.2, mult: 1.1, consume: ['oil'], status: [{ id: 'burn' }], zone: { radius: 2.6, duration: 4, tick: 0.5, mult: 0.2, elem: 'fire' } },
     shatter: { name: 'Shatter', elem: 'cold', r: 2.6, mult: 0.8, consume: ['chill', 'freeze'], poise: 2.5 },
-    toxic: { name: 'Toxic Blast', elem: 'poison', r: 3.2, mult: 0.6, consume: ['poison'], addRemainingDot: 'poison', status: [{ id: 'poison', stacks: 2 }] },
+    // [w9 sigils] spreadOnly: the Poison of a Toxic Blast goes to the enemies around (as strong as the Poison that burst), not
+    // back on the one that burst; icd: one Toxic Blast per enemy every 3 s. It looped forever on a fire hero with any Poison (Venom Sigil on the Emberscribe: +190%
+    // damage on packs): every Burn re-blew the Poison the last blast had put back (tools/sigil_bench.js).
+    toxic: { name: 'Toxic Blast', elem: 'poison', r: 3.2, mult: 0.6, consume: ['poison'], addRemainingDot: 'poison', status: [{ id: 'poison', stacks: 2 }], spreadOnly: true, icd: 3 },
     freeze: { name: 'Freeze', elem: 'cold', r: 0, mult: 0, consume: ['soak', 'chill'], self: [{ id: 'freeze' }] },
     eclipse: { name: 'Eclipse', elem: 'shadow', r: 3.0, mult: 0.8, consume: ['lit', 'shade'], status: [{ id: 'weaken' }, { id: 'vulnerable' }] }
   };
@@ -31192,6 +31206,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       var hit = o.hit !== undefined ? o.hit : S.unitDamage(world, src, def.elem, o.delivery);
       KEYS.length = 0; KEYS.push('dmgDot');
       dps = hit * power * (sStats ? St.dmgMult(sStats, KEYS) : 1);
+      if (o.dps !== undefined) dps = o.dps;                          // [w9 sigils] a set strength (the Poison a Toxic Blast spreads)
     }
     var maxStacks = def.maxStacks || 99, km = src && src.knobs && src.knobs.statusMax;
     if (km && km[id] > maxStacks) maxStacks = km[id];                    // knob statusMax: { poison: 16 } (the applier's)
@@ -31339,9 +31354,15 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   /** Executes a reaction centred on tgt. raw = pre-mitigation size of the triggering hit. */
   S.reaction = function (world, type, src, tgt, raw, elemOverride) {
     var R = S.REACTIONS[type]; if (!R) return;
+    if (R.icd) {                                                     // [w9 sigils] a reaction with its own cooldown per target (Toxic Blast)
+      var rx = tgt.rxT || (tgt.rxT = {});
+      if (rx[type] > world.time) return;
+      rx[type] = world.time + R.icd;
+    }
     var i, extra = 0;
     tgt.reactT = world.time + S.TUNE.reactionIcd;
-    if (R.addRemainingDot) { var ps = has(tgt, R.addRemainingDot); if (ps) extra = ps.dps * ps.stacks * Math.max(0, ps.dur - ps.t); }
+    var spreadDps;                                                   // [w9 sigils] the spread Poison is as strong as the Poison that burst
+    if (R.addRemainingDot) { var ps = has(tgt, R.addRemainingDot); if (ps) { extra = ps.dps * ps.stacks * Math.max(0, ps.dur - ps.t); spreadDps = ps.dps; } }
     for (i = 0; i < R.consume.length; i++) S.removeStatus(world, tgt, R.consume[i], 'reaction');
     var elem = elemOverride || R.elem;
     // who answers for the reaction: the source, or its master when a minion caused it (their Shatter stats and knobs)
@@ -31377,7 +31398,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
           o.poise -= S.poiseDamage(world, src, o, { poise: R.poise }); o.poiseT = 0;
           if (o.poise <= 0) S.breakChar(world, o, src);
         }
-        if (inf.hit && !o.dead && R.status) for (var k = 0; k < R.status.length; k++) S.applyStatus(world, o, R.status[k].id, { src: src, dur: R.status[k].dur, stacks: R.status[k].stacks, hit: raw, noReact: true });
+        if (inf.hit && !o.dead && R.status && !(R.spreadOnly && o === tgt)) for (var k = 0; k < R.status.length; k++) S.applyStatus(world, o, R.status[k].id, { src: src, dur: R.status[k].dur, stacks: R.status[k].stacks, hit: raw, noReact: true, dps: R.spreadOnly && R.status[k].id === R.addRemainingDot ? spreadDps : undefined });
       }
     }
     if (R.zone && src && !src.dead) {
@@ -31701,13 +31722,33 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   // Sigils
   // ---------------------------------------------------------------------------------------------
   var COUNT_SIGILS = { chain: 1, pierce: 1, tide: 1, pitch: 1 };
+  /**
+   * [w9 sigils] Rework of the strongest Sigils (owner, Oct 12: "the one that hits a second time ... some of those are really
+   * overpowered"). Measured with tools/sigil_bench.js; docs/SKILLS.md section 5 has the before/after table.
+   *   SIGIL_TUNE.echoIcd      a skill echoes at most once every N s (the primary no longer echoes every swing)
+   *   SIGIL_TUNE.anchorIcd    one Anchor zone per skill at a time (its duration)
+   *   Pitch / Tide            their grade number is now the seconds between two coats (one Inferno / Overload set-up, not every hit)
+   *   SIGIL_TUNE.venomPower   the Poison of Venom deals this share of a normal Poison (Poison stacks to 8 and keeps its strongest hit)
+   *   SIGIL_TUNE.venomIcd     Venom poisons the same enemy at most once every N s
+   *   SIGIL_TUNE.chainMult    share of the hit each Chain jump deals (was 0.6); only the first hit of a cast jumps
+   *   SIGIL_TUNE.wardIcd      Aegis (Ward) and Radiance (heal) work once every N s per skill (they stacked on every swing of the primary)
+   *   SIGIL_TUNE.cap          the most a percentage can reach with Sigil Power (Echo power, Twin chance)
+   */
+  K.SIGIL_TUNE = { echoIcd: 3, anchorIcd: 4, venomPower: 0.5, venomIcd: 1, chainMult: 0.4, wardIcd: 2, cap: { echo: 0.75, twin: 0.6 } };
+  /** [w9 sigils] Internal cooldowns of Sigils, per character: true (and starts the timer) when `key` is ready. */
+  K.sigilReady = function (world, e, key, icd) {
+    var m = e.sigilIcd || (e.sigilIcd = {});
+    if (m[key] > world.time) return false;
+    m[key] = world.time + icd;
+    return true;
+  };
   function addHitStatus(inst, s) { (inst.hitStatus = inst.hitStatus || []).push(s); }
   U.assign(K.SIGILS, {
     chain: function (i, p) { i.chain += p; },
-    echo: function (i, p) { i.echo = Math.max(i.echo, p); },
+    echo: function (i, p) { i.echo = Math.min(K.SIGIL_TUNE.cap.echo, Math.max(i.echo, p)); },
     pierce: function (i, p) { i.pierce += p; i.arcMul *= 1.25; },
     siphon: function (i, p) { i.siphon += p; },
-    split: function (i, p) { i.extraProj += 2; i.extraHits += 2; i.mult *= p; },
+    split: function (i, p) { i.extraProj += 2; i.extraHits += 1; i.mult *= p; },            // [w9 sigils] melee: 1 extra strike (was 2)
     delay: function (i, p) { i.delay += 0.7; i.mult *= 1 + p; },
     anchor: function (i, p) { i.anchor += p; },
     surge: function (i, p, c) {
@@ -31720,7 +31761,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     frost: function (i, p) { i.elem = 'cold'; addHitStatus(i, { id: 'chill', chance: p }); },
     ember: function (i, p) { i.elem = 'fire'; addHitStatus(i, { id: 'burn', chance: p }); },
     arc: function (i, p) { i.elem = 'shock'; addHitStatus(i, { id: 'shock', chance: p }); },
-    venom: function (i, p) { i.elem = 'poison'; addHitStatus(i, { id: 'poison', chance: p }); },
+    venom: function (i, p) { i.elem = 'poison'; addHitStatus(i, { id: 'poison', chance: p, power: 0.10 * K.SIGIL_TUNE.venomPower, icd: K.SIGIL_TUNE.venomIcd, perTarget: true, noReact: true }); },      // [w9 sigils] a half-strength Poison, once a second per enemy
     hollow: function (i, p) { i.hollow = true; i.mult *= 1 + p; },
     radiance: function (i, p) { i.elem = 'holy'; i.radiance = Math.max(i.radiance, p); },
     gloom: function (i, p) { i.elem = 'shadow'; addHitStatus(i, { id: 'weaken', power: p, dur: 4 }); },
@@ -31735,9 +31776,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     drive: function (i, p) { i.momentum *= 1 + p; },
     fleet: function (i, p) { i.fleet = Math.max(i.fleet, p); },
     brand: function (i, p) { addHitStatus(i, { id: 'mark', power: p, dur: 4 }); },
-    tide: function (i, p) { addHitStatus(i, { id: 'soak', dur: p }); },
-    pitch: function (i, p) { addHitStatus(i, { id: 'oil', dur: p }); },
-    twin: function (i, p) { i.twin = Math.min(1, Math.max(i.twin, p)); }
+    tide: function (i, p) { addHitStatus(i, { id: 'soak', icd: p }); },          // [w9 sigils] p: seconds between two coats (per caster, any enemy)
+    pitch: function (i, p) { addHitStatus(i, { id: 'oil', icd: p }); },
+    twin: function (i, p) { i.twin = Math.min(K.SIGIL_TUNE.cap.twin, Math.max(i.twin, p)); }
   });
 
   /** Builds the per-cast ability instance and applies the hero's sigils for this ability. */
@@ -31899,7 +31940,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       inst.spent = souls; inst.lifePaid = hpFrac + hollow + blood;
     }
     aim = aim || {};
-    if (!(inst.twin > 0 && world.rng.next() < inst.twin) && inst.cooldown > 0) startCooldown(world, e, def, inst.cooldown);
+    // [w9 sigils] Twin: never twice in a row (a skipped cooldown must run once before Twin can skip it again)
+    var twinKey = 'twin:' + def.id, twinOk = inst.twin > 0 && inst.cooldown > 0 && !(e.sigilIcd && e.sigilIcd[twinKey] === -1);
+    if (twinOk && world.rng.next() < inst.twin) (e.sigilIcd || (e.sigilIcd = {}))[twinKey] = -1;
+    else { if (inst.twin > 0 && e.sigilIcd) delete e.sigilIcd[twinKey]; if (inst.cooldown > 0) startCooldown(world, e, def, inst.cooldown); }
     var hero = e.hero;
     var speed = def.fixedTime ? 1 : (e.stats ? e.stats.atkSpeed : 1) * (hero && def.weapon !== false && def.delivery !== 'spell' ? KD.hero.weaponSpeed(hero) : 1);
     if (e.kind === 'player') S.player.onCastStart(world, e, def, inst);
@@ -31949,7 +31993,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (def.gain && e.kind === 'player' && !def.gainOnHit) S.player.gainRes(world, e, def.gain, 'ability');
     K.runEffects(ctx, def.effects, inst.delay);
     if (cast.markTele && S.boss && S.boss.strings) S.boss.strings.markFired(world, e, cast);      // a marked leap: the red area stays until it lands
-    if (inst.echo > 0) {
+    if (inst.echo > 0 && K.sigilReady(world, e, 'echo:' + (cast.chainBase || def.id), K.SIGIL_TUNE.echoIcd)) {      // [w9 sigils] once every echoIcd s per skill
       if (cast.teleRec && e.team !== 0) S.ai.addTelegraph(world, U.assign({}, cast.teleRec, { dur: 0.55 + inst.delay, cast: null, follow: e, yaw: cast.aimYaw, x: cast.aimX, z: cast.aimZ, mode: cast.teleRec.mode }));
       world.schedule(0.55 + inst.delay, function () {
         if (e.dead || e.removed) return;
@@ -31958,7 +32002,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         K.runEffects(c2, def.effects, 0);
       });
     }
-    if (inst.aegis > 0) S.addWard(world, e, S.lifePool(e) * inst.aegis, 6);
+    if (inst.aegis > 0 && K.sigilReady(world, e, 'aegis:' + (cast.chainBase || def.id), K.SIGIL_TUNE.wardIcd)) S.addWard(world, e, S.lifePool(e) * inst.aegis, 6);      // [w9 sigils] once every wardIcd s per skill
     if (inst.fleet > 0) S.addBuff(world, e, { id: 'sigil_fleet', name: 'Fleet', dur: 2, mods: [{ s: 'moveSpeed', t: 'inc', v: inst.fleet }], src: e, quiet: true });
   };
 
@@ -32100,7 +32144,14 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     for (var i = 0; i < list.length; i++) {
       var s = list[i]; if (!s) continue;
       if (typeof s === 'string') s = { id: s };
-      S.applyStatus(ctx.world, tgt, s.id, { src: ctx.src, chance: s.chance, dur: s.dur, power: s.power, stacks: s.stacks, hit: raw, delivery: ctx.delivery || (ctx.def && ctx.def.delivery), mods: s.mods });
+      if (s.icd) {                                                     // [w9 sigils] Pitch / Tide (per caster), Venom (per enemy)
+        var holder = s.perTarget ? tgt : ctx.src, ikey = 'coat:' + s.id + (s.perTarget && ctx.src ? ':' + ctx.src.id : '');
+        if (!holder || (holder.sigilIcd && holder.sigilIcd[ikey] > ctx.world.time)) continue;
+        if (s.chance !== undefined && s.chance < 1 && !(ctx.world.rng.next() < s.chance * (ctx.src && ctx.src.stats ? ctx.src.stats.statusChance : 1))) continue;
+        K.sigilReady(ctx.world, holder, ikey, s.icd);
+        s = U.assign({}, s); s.chance = undefined;
+      }
+      S.applyStatus(ctx.world, tgt, s.id, { src: ctx.src, chance: s.chance, dur: s.dur, power: s.power, stacks: s.stacks, hit: raw, delivery: ctx.delivery || (ctx.def && ctx.def.delivery), mods: s.mods, noReact: s.noReact });
     }
   };
 
@@ -32136,18 +32187,19 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         var near = world.queryCircle(tgt.x, tgt.z, 3);
         for (var b = 0; b < near.length; b++) if (near[b] !== tgt && S.hostile(src, near[b])) S.knockback(world, near[b], tgt.x, tgt.z, -Math.min(1.5, U.dist(near[b].x, near[b].z, tgt.x, tgt.z) - 0.6));
       }
-      if (inst.radiance > 0 && !inst.radiated) {
+      if (inst.radiance > 0 && !inst.radiated && K.sigilReady(world, src, 'radiance:' + (def ? def._base || def.id : ''), K.SIGIL_TUNE.wardIcd)) {      // [w9 sigils] once every wardIcd s per skill
         inst.radiated = true;
         var al = world.queryCircle(tgt.x, tgt.z, 5);
         for (var a = 0; a < al.length; a++) if (al[a].team === src.team) S.heal(world, al[a], S.lifePool(al[a]) * inst.radiance, src);
       }
-      if (inst.anchor > 0 && !inst.anchored) {
+      if (inst.anchor > 0 && !inst.anchored && K.sigilReady(world, src, 'anchor:' + (def ? def._base || def.id : ''), K.SIGIL_TUNE.anchorIcd)) {      // [w9 sigils] one zone per skill at a time
         inst.anchored = true;
         K.spawnZone(K.sub(ctx, { depth: ctx.depth + 1 }), { type: 'zone', name: 'sigil_anchor', radius: 2.5, duration: 4, tick: 1, mult: inst.anchor * fm, elem: spec.elem, fx: 'anchor', noSigil: true }, tgt.x, tgt.z);
       }
-      if (inst.chain > 0 && !ctx.chained && !fx.noChain) {
+      if (inst.chain > 0 && !ctx.chained && !fx.noChain && !inst.chainedOnce) {
+        inst.chainedOnce = true;                                                   // [w9 sigils] only the first hit of a cast jumps (as documented)
         var c2 = K.sub(ctx, { chained: true, target: tgt, x: tgt.x, z: tgt.z, depth: ctx.depth + 1 });
-        K.effects.chain(c2, { type: 'chain', jumps: inst.chain, range: 7, mult: fm * 0.6, falloff: 1, elem: fx.elem, skipFirst: true, noChain: true });
+        K.effects.chain(c2, { type: 'chain', jumps: inst.chain, range: 7, mult: fm * K.SIGIL_TUNE.chainMult, falloff: 1, elem: fx.elem, skipFirst: true, noChain: true });
       }
     }
     if (!tgt.dead) {
