@@ -3851,7 +3851,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.68';
+  KD.VERSION = '0.7.69';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -23507,6 +23507,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.69', date: '2026-10-15', title: 'Gravecaller\'s new moves', notes: [
+      'The Gravecaller has a whole new set of moves: every attack, curse and summon gets its own motion',
+      'Bone Lash now cracks forehand, backhand, then a big overhead strike on the third lash in a row',
+      'Summons claw the dead up out of the ground, curses and casts use the skull hand and the scythe'
+    ] },
     { version: '0.7.68', date: '2026-10-15', title: 'Gloamblade preview moves', notes: [
       'Gloamblade previews in menus now show the new knife moves too'
     ] },
@@ -62509,6 +62514,355 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       }
     }
   }
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/gfx/32_anim_tripo_gravecaller.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+
+  /**
+   * [gc attacks] The Gravecaller's own attack and skill motion on the Tripo hero (round 6 animation pass). Visual only.
+   *
+   * Every Gravecaller ability gets its own clip, picked by ability id (e.act.skill) inside the anim name the data asks
+   * for (swing_r, summon, cast_hand, cast_staff, channel, shout), so the sim and the ability data are untouched. A clip
+   * is anticipation (a wind-up that reads) -> a whip to the strike pose that lands EXACTLY when the windup ends (the
+   * moment the sim applies the hit, as KD.anim.strike) -> follow-through -> settle back into whatever stance the
+   * locomotion layer holds. Frequent abilities have 2 or 3 variations chosen by a per-visual counter (Bone Lash: forehand
+   * crack, backhand crack, then a big overhead crack as the third lash in a row), so repeats never look identical.
+   *
+   *   KD.gcAnim.CLIPS          the clip table installed as animOpts.clips on the Tripo Gravecaller (KD.art.addAnimHook)
+   *   KD.gcAnim.SKILLS         ability id -> { sets: [[ANT, MID|null, HIT, FOL, opts]...], full, live } (tests, tools)
+   *   KD.gcAnim.variant(st, id) the variation index last used by a visual's anim state for an ability
+   * Timing: windup / active / recover come from the sim (e.act); nothing here changes them.
+   */
+  var A = KD.anim, GC = KD.gcAnim = KD.gcAnim || {};
+  if (!A || !A.pose) return;
+  var P = A.pose, CH = A.CH, E = A.ease, mix = A.mix, sin = Math.sin, PI = Math.PI;
+  function clamp01(x) { return x < 0 ? 0 : (x > 1 ? 1 : x); }
+
+  // stance feet (IK offsets from rest: x, y, z, toe pitch, toe-out yaw), reference metres
+  var F_L = [0.06, 0, 0.16, 0, 0.15], F_R = [-0.09, 0, -0.15, 0, -0.55];
+  var F_LW = [0.08, 0, 0.24, 0, 0.12], F_RW = [-0.1, 0.04, -0.2, 0.45, -0.5];        // weight forward, back heel up
+  var F_LB = [0.07, 0, 0.12, 0, 0.2], F_RB = [-0.1, 0, -0.2, 0, -0.6];                // weight back
+  // the scythe stood upright at the side while the off hand casts
+  var SC_A = [-0.12, 0.05, -0.3], SC_E = -1.05, SC_W = [-0.42, 0, 0];
+  var F_WL = [0.13, 0, 0.04, 0, 0.35], F_WR = [-0.13, 0, -0.04, 0, -0.35];            // wide square stance
+
+  // ================================================================== Bone Lash (swing_r): three cracks of the bone whip
+  // 1 forehand: scythe cocked high over the right shoulder, skull hand aims; crack diagonally down at the target
+  var L1_A = P({ hips: [-0.04, -0.38, 0], hipsPos: [-0.03, -0.06, -0.06], chest: [-0.22, -0.62, 0.1], head: [0.08, 0.55, -0.05],
+    armR: [-2.55, -0.75, -0.35], foreR: -1.7, handR: [-0.35, -0.2, 0], armL: [-1.2, 0.25, 0.2], foreL: -0.35, handL: [-0.4, 0, 0], footL: F_L, footR: F_R });
+  var L1_M = P({ hips: [0, -0.1, 0], hipsPos: [0, -0.1, 0.02], chest: [0.02, -0.15, 0.04], head: [0, 0.2, 0],
+    armR: [-2.45, -0.2, -0.2], foreR: -0.75, handR: [0.3, 0, 0], armL: [-0.4, 0.1, 0.35], foreL: -0.8, footL: F_L, footR: F_R });
+  var L1_H = P({ hips: [0.1, 0.22, 0], hipsPos: [0.02, -0.15, 0.12], chest: [0.32, 0.3, -0.04], head: [-0.25, -0.28, 0],
+    armR: [-1.35, 0.1, -0.08], foreR: -0.08, handR: [0.55, -0.15, 0], armL: [0.55, -0.1, 0.45], foreL: -0.55, footL: F_LW, footR: F_RW });
+  var L1_F = P({ hips: [0.14, 0.42, 0], hipsPos: [0.03, -0.16, 0.14], chest: [0.42, 0.62, -0.06], head: [-0.3, -0.55, 0],
+    armR: [-0.8, 0.75, 0], foreR: -0.3, handR: [0.95, 0.25, 0], armL: [0.6, -0.1, 0.5], foreL: -0.7, footL: F_LW, footR: F_RW });
+  // 2 backhand: scythe wrapped across the body to the left hip, skull hand tucked; rip it out to the right
+  var L2_A = P({ hips: [0, 0.45, 0], hipsPos: [0.04, -0.1, -0.04], chest: [0.12, 0.75, -0.06], head: [0, -0.7, 0],
+    armR: [-0.85, 1.15, 0.1], foreR: -1.85, handR: [0.3, 1.0, 0], armL: [0.25, -0.2, 0.25], foreL: -1.7, handL: [0.2, 0, 0], footL: [0.07, 0, -0.08, 0, 0.55], footR: [-0.07, 0, 0.14, 0, -0.1] });
+  var L2_H = P({ hips: [0.06, -0.2, 0], hipsPos: [-0.02, -0.14, 0.1], chest: [0.24, -0.3, 0.04], head: [-0.2, 0.3, 0],
+    armR: [-1.45, -0.18, -0.1], foreR: -0.06, handR: [1.0, 0.35, 0], armL: [-0.2, 0.1, 0.65], foreL: -0.5, footL: [0.07, 0.03, -0.12, 0.35, 0.5], footR: [-0.07, 0, 0.2, 0, -0.1] });
+  var L2_F = P({ hips: [0.08, -0.45, 0], hipsPos: [-0.03, -0.14, 0.12], chest: [0.3, -0.72, 0.08], head: [-0.2, 0.72, 0],
+    armR: [-1.2, -1.15, -0.2], foreR: -0.35, handR: [0.9, 0.5, 0], armL: [-0.1, 0.2, 0.75], foreL: -0.6, footL: [0.07, 0.04, -0.12, 0.45, 0.5], footR: [-0.07, 0, 0.2, 0, -0.1] });
+  // 3 overhead: rise tall, scythe straight up behind, skull raised; crash the lash down the centre line
+  var L3_A = P({ hips: [-0.12, 0, 0], hipsPos: [0, 0.02, -0.08], chest: [-0.4, -0.12, 0], head: [0.25, 0.1, 0],
+    armR: [-2.95, -0.1, -0.15], foreR: -1.35, handR: [-0.55, 0, 0], armL: [-2.2, 0.1, 0.35], foreL: -0.55, handL: [-0.5, 0, 0], footL: F_L, footR: [-0.09, 0.02, -0.15, 0.25, -0.55] });
+  var L3_H = P({ hips: [0.12, 0.05, 0], hipsPos: [0, -0.2, 0.13], chest: [0.3, 0.08, 0], head: [-0.25, -0.05, 0],
+    armR: [-1.3, 0.05, -0.05], foreR: -0.05, handR: [0.55, 0, 0], armL: [0.75, 0, 0.45], foreL: -0.45, footL: F_LW, footR: F_RW });
+  var L3_F = P({ hips: [0.16, 0.08, 0], hipsPos: [0, -0.24, 0.15], chest: [0.42, 0.1, 0], head: [-0.3, -0.05, 0],
+    armR: [-0.85, 0.1, -0.05], foreR: -0.05, handR: [1.0, 0, 0], armL: [0.85, 0, 0.5], foreL: -0.55, footL: F_LW, footR: F_RW });
+
+  // ================================================================== summons: raising the dead from the ground
+  // Raise Thrall 1: the skull hand sweeps low over the earth, then lifts palm up ("Up."); the scythe stands at the side
+  var RT1_A = P({ hips: [0.3, 0.15, 0], hipsPos: [0, -0.3, 0.02], chest: [0.55, 0.25, 0], head: [-0.15, -0.2, 0],
+    armR: [-0.25, 0, -0.3], foreR: -0.9, handR: [-0.2, 0, 0], armL: [-0.75, 0.1, 0.2], foreL: -0.2, handL: [0.9, 0, 0], footL: F_LW, footR: [-0.1, 0, -0.18, 0.2, -0.55] });
+  var RT1_H = P({ hips: [-0.06, 0.05, 0], hipsPos: [0, -0.06, 0.04], chest: [-0.12, 0.12, 0], head: [-0.25, -0.1, 0],
+    armR: [-0.35, 0, -0.3], foreR: -0.85, handR: [-0.25, 0, 0], armL: [-2.1, 0.15, 0.25], foreL: -0.35, handL: [-0.9, 0, 0], footL: F_L, footR: F_R });
+  var RT1_F = P({ hips: [-0.08, 0.05, 0], hipsPos: [0, -0.04, 0.03], chest: [-0.2, 0.1, 0], head: [-0.3, -0.1, 0],
+    armR: [-0.35, 0, -0.3], foreR: -0.85, handR: [-0.25, 0, 0], armL: [-2.4, 0.15, 0.3], foreL: -0.25, handL: [-1.0, 0, 0], footL: F_L, footR: F_R });
+  // Raise Thrall 2: the scythe hooks the ground in front and drags the dead up with it
+  var RT2_A = P({ hips: [0.25, -0.2, 0], hipsPos: [0, -0.26, 0.04], chest: [0.45, -0.3, 0], head: [-0.2, 0.25, 0],
+    armR: [-1.0, -0.15, -0.1], foreR: -0.2, handR: [1.45, 0, 0], armL: [-0.5, -0.1, 0.4], foreL: -0.9, handL: [0.6, 0, 0], footL: F_LW, footR: F_RW });
+  var RT2_H = P({ hips: [-0.08, 0.1, 0], hipsPos: [0, -0.08, -0.05], chest: [-0.2, 0.2, 0], head: [-0.15, -0.2, 0],
+    armR: [-1.9, 0.1, -0.25], foreR: -1.3, handR: [0.2, 0, 0], armL: [-1.8, 0.2, 0.45], foreL: -0.4, handL: [-0.8, 0, 0], footL: F_LB, footR: F_RB });
+  var RT2_F = P({ hips: [-0.1, 0.12, 0], hipsPos: [0, -0.06, -0.07], chest: [-0.28, 0.22, 0], head: [-0.25, -0.2, 0],
+    armR: [-2.1, 0.1, -0.3], foreR: -1.45, handR: [0.05, 0, 0], armL: [-2.1, 0.2, 0.5], foreL: -0.3, handL: [-0.9, 0, 0], footL: F_LB, footR: F_RB });
+  // Ghoul Swarm: both hands claw down into the dirt, then tear it open, up and out
+  var GS_A = P({ hips: [0.38, 0, 0], hipsPos: [0, -0.36, 0.02], chest: [0.7, 0, 0], head: [-0.35, 0, 0],
+    armR: [-0.85, -0.25, -0.2], foreR: -0.6, handR: [0.9, 0, 0], armL: [-0.85, 0.25, 0.2], foreL: -0.6, handL: [0.9, 0, 0], footL: F_WL, footR: F_WR });
+  var GS_M = P({ hips: [0.3, 0, 0], hipsPos: [0, -0.32, 0.04], chest: [0.5, 0, 0], head: [-0.3, 0, 0],
+    armR: [-1.05, 0.3, -0.15], foreR: -0.7, handR: [0.9, 0, 0], armL: [-1.05, -0.3, 0.15], foreL: -0.7, handL: [0.6, 0, 0], footL: F_WL, footR: F_WR });
+  var GS_H = P({ hips: [0.22, 0, 0], hipsPos: [0, -0.26, 0.06], chest: [0.32, 0, 0], head: [-0.15, 0, 0],
+    armR: [-1.0, -0.35, -1.0], foreR: -0.2, handR: [1.1, 0, 0], armL: [-1.0, 0.35, 1.0], foreL: -0.2, handL: [0.3, 0, 0], footL: F_WL, footR: F_WR, jaw: 0.8 });
+  var GS_F = P({ hips: [0.2, 0, 0], hipsPos: [0, -0.25, 0.06], chest: [0.28, 0, 0], head: [-0.25, 0, 0],
+    armR: [-0.85, -0.45, -1.2], foreR: -0.3, handR: [1.2, 0, 0], armL: [-0.85, 0.45, 1.2], foreL: -0.3, handL: [0.4, 0, 0], footL: F_WL, footR: F_WR, jaw: 1 });
+  // Raise Knight: the scythe lifted like a standard, then its butt struck into the earth; the skull hand calls him up
+  var RK_A = P({ hips: [-0.1, -0.1, 0], hipsPos: [0, 0.01, -0.06], chest: [-0.3, -0.1, 0], head: [0.15, 0.1, 0],
+    armR: [-2.7, 0.15, -0.2], foreR: -0.9, handR: [-1.3, 0, 0], armL: [-0.4, 0, 0.5], foreL: -1.3, handL: [0.3, 0, 0], footL: F_L, footR: [-0.09, 0.03, -0.15, 0.3, -0.55] });
+  var RK_H = P({ hips: [0.22, 0.05, 0], hipsPos: [0, -0.3, 0.08], chest: [0.42, 0.05, 0], head: [-0.3, 0, 0],
+    armR: [-1.0, 0.25, -0.1], foreR: -1.0, handR: [-1.25, 0, 0], armL: [-1.7, 0.1, 0.25], foreL: -0.3, handL: [-0.8, 0, 0], footL: [0.08, 0, 0.22, 0, 0.2], footR: [-0.1, 0.03, -0.22, 0.6, -0.5] });
+  var RK_F = P({ hips: [0.2, 0.05, 0], hipsPos: [0, -0.28, 0.07], chest: [0.3, 0.05, 0], head: [-0.4, 0, 0],
+    armR: [-0.95, 0.25, -0.1], foreR: -1.05, handR: [-1.3, 0, 0], armL: [-2.3, 0.1, 0.3], foreL: -0.2, handL: [-1.0, 0, 0], footL: [0.08, 0, 0.22, 0, 0.2], footR: [-0.1, 0.03, -0.22, 0.6, -0.5] });
+  // Legion of the Dead: sink and cross the arms low, head bowed... then fling everything up and open the graves
+  var LG_A = P({ hips: [0.42, 0, 0], hipsPos: [0, -0.4, -0.02], chest: [0.8, 0, 0], head: [0.4, 0, 0],
+    armR: [-0.7, 0.75, -0.1], foreR: -1.3, handR: [0.5, 0, 0], armL: [-0.7, -0.75, 0.1], foreL: -1.3, handL: [0.5, 0, 0], footL: F_WL, footR: F_WR });
+  var LG_M = P({ hips: [0.1, 0, 0], hipsPos: [0, -0.18, 0], chest: [0.1, 0, 0], head: [0, 0, 0],
+    armR: [-1.6, -0.2, -0.6], foreR: -0.8, handR: [0.2, 0, 0], armL: [-1.6, 0.2, 0.6], foreL: -0.8, handL: [0.2, 0, 0], footL: F_WL, footR: F_WR });
+  var LG_H = P({ hips: [-0.06, 0, 0], hipsPos: [0, 0.02, -0.02], chest: [-0.26, 0, 0], head: [-0.38, 0, 0],
+    armR: [-2.55, -0.1, -0.55], foreR: -0.2, handR: [1.2, 0, 0], armL: [-2.55, 0.1, 0.6], foreL: -0.2, handL: [-0.6, 0, 0],
+    footL: [0.13, 0.03, 0.04, 0.35, 0.35], footR: [-0.13, 0.03, -0.04, 0.35, -0.35], jaw: 1 });
+  var LG_F = P({ hips: [-0.08, 0, 0], hipsPos: [0, 0.02, -0.03], chest: [-0.32, 0, 0], head: [-0.45, 0, 0],
+    armR: [-2.7, -0.1, -0.65], foreR: -0.15, handR: [1.25, 0, 0], armL: [-2.7, 0.1, 0.7], foreL: -0.15, handL: [-0.7, 0, 0],
+    footL: [0.13, 0.03, 0.04, 0.35, 0.35], footR: [-0.13, 0.03, -0.04, 0.35, -0.35], jaw: 1 });
+
+  // ================================================================== hand casts (the skull / off hand does the work)
+  // Corpse Burst 1: palm drawn back by the ear, thrust at the corpse, fist clenched: it pops
+  var CB1_A = P({ hips: [0, 0.35, 0], hipsPos: [0.03, -0.08, -0.05], chest: [-0.08, 0.55, 0], head: [0, -0.5, 0],
+    armL: [-1.7, -0.6, 1.0], foreL: -2.0, handL: [-0.4, 0, 0], armR: SC_A, foreR: SC_E, handR: SC_W, footL: [0.07, 0, -0.08, 0, 0.5], footR: [-0.06, 0, 0.13, 0, -0.15] });
+  var CB1_H = P({ hips: [0.06, -0.22, 0], hipsPos: [0, -0.13, 0.1], chest: [0.2, -0.4, 0], head: [-0.12, 0.38, 0],
+    armL: [-1.55, 0.3, 0.05], foreL: -0.05, handL: [-1.1, 0, 0], armR: SC_A, foreR: SC_E, handR: SC_W, footL: [0.07, 0.03, -0.14, 0.35, 0.5], footR: [-0.06, 0, 0.22, 0, -0.12] });
+  var CB1_F = P({ hips: [0.06, -0.28, 0], hipsPos: [0, -0.13, 0.1], chest: [0.22, -0.48, 0], head: [-0.12, 0.45, 0],
+    armL: [-1.35, 0.35, 0.05], foreL: -0.55, handL: [0.5, 0, 0], armR: SC_A, foreR: SC_E, handR: SC_W, footL: [0.07, 0.03, -0.14, 0.35, 0.5], footR: [-0.06, 0, 0.22, 0, -0.12] });
+  // Corpse Burst 2: the scythe hand points the blade at the corpse, the skull hand snaps shut beside the face
+  var CB2_A = P({ hips: [0, -0.3, 0], hipsPos: [-0.02, -0.08, -0.05], chest: [-0.1, -0.5, 0], head: [0.05, 0.5, 0],
+    armR: [-0.9, -0.9, -0.2], foreR: -1.6, handR: [0.6, -0.4, 0], armL: [-1.2, 0.4, 0.3], foreL: -1.6, handL: [-0.5, 0, 0], footL: F_L, footR: F_R });
+  var CB2_H = P({ hips: [0.08, 0.15, 0], hipsPos: [0, -0.12, 0.1], chest: [0.25, 0.25, 0], head: [-0.15, -0.25, 0],
+    armR: [-1.45, -0.05, -0.05], foreR: -0.05, handR: [1.2, 0, 0], armL: [-1.9, 0.6, 0.6], foreL: -2.1, handL: [0.6, 0, 0], footL: F_LW, footR: F_RW });
+  var CB2_F = P({ hips: [0.1, 0.2, 0], hipsPos: [0, -0.13, 0.11], chest: [0.3, 0.3, 0], head: [-0.18, -0.3, 0],
+    armR: [-1.35, 0.05, -0.05], foreR: -0.12, handR: [1.3, 0, 0], armL: [-1.8, 0.6, 0.6], foreL: -2.2, handL: [0.7, 0, 0], footL: F_LW, footR: F_RW });
+  // Wither Touch: a gliding step and a reaching, grasping hand at chest height
+  var WT_A = P({ hips: [-0.04, 0.3, 0], hipsPos: [0, -0.06, -0.1], chest: [-0.15, 0.45, 0], head: [0.05, -0.4, 0],
+    armL: [0.45, 0.1, 0.35], foreL: -1.4, handL: [0.5, 0, 0], armR: [-0.4, -0.4, -0.35], foreR: -1.2, handR: [-0.2, 0, 0], footL: F_LB, footR: F_RB });
+  var WT_H = P({ hips: [0.16, -0.15, 0], hipsPos: [0, -0.26, 0.3], chest: [0.35, -0.3, 0], head: [-0.3, 0.3, 0],
+    armL: [-1.45, -0.05, 0.05], foreL: -0.1, handL: [-0.5, 0, 0], armR: SC_A, foreR: SC_E, handR: SC_W, footL: [0.06, 0, 0.42, 0, 0.1], footR: [-0.09, 0.05, -0.22, 0.6, -0.45] });
+  var WT_F = P({ hips: [0.18, -0.2, 0], hipsPos: [0, -0.27, 0.32], chest: [0.4, -0.35, 0], head: [-0.32, 0.35, 0],
+    armL: [-1.3, 0.05, 0.05], foreL: -0.55, handL: [0.7, 0, 0], armR: SC_A, foreR: SC_E, handR: SC_W, footL: [0.06, 0, 0.42, 0, 0.1], footR: [-0.09, 0.05, -0.22, 0.6, -0.45] });
+  // Marrow Shield: arms crossed tight over the chest, then flung open as the plates lock on
+  var MS_A = P({ hips: [0.15, 0, 0], hipsPos: [0, -0.2, -0.02], chest: [0.4, 0, 0], head: [0.3, 0, 0],
+    armR: [-1.1, 0.95, -0.1], foreR: -1.9, handR: [-0.6, 0.6, 0], armL: [-1.1, -0.95, 0.1], foreL: -1.9, handL: [0.2, 0, 0], footL: F_WL, footR: F_WR });
+  var MS_H = P({ hips: [-0.06, 0, 0], hipsPos: [0, -0.12, 0], chest: [-0.2, 0, 0], head: [-0.15, 0, 0],
+    armR: [-0.55, -0.2, -1.2], foreR: -0.5, handR: [-0.5, 0, 0], armL: [-0.55, 0.2, 1.2], foreL: -0.5, handL: [-0.4, 0, 0], footL: F_WL, footR: F_WR, jaw: 0.4 });
+  var MS_F = P({ hips: [-0.06, 0, 0], hipsPos: [0, -0.13, 0], chest: [-0.24, 0, 0], head: [-0.18, 0, 0],
+    armR: [-0.45, -0.2, -1.3], foreR: -0.6, handR: [-0.5, 0, 0], armL: [-0.45, 0.2, 1.3], foreL: -0.6, handL: [-0.4, 0, 0], footL: F_WL, footR: F_WR });
+  // Bloodletting 1: the blade drawn across the open palm, then the bleeding hand flung out flat (three needles fan out)
+  var BL1_A = P({ hips: [0.05, 0.25, 0], hipsPos: [0, -0.1, -0.03], chest: [0.15, 0.4, 0], head: [0.3, -0.3, 0],
+    armL: [-0.9, -0.55, 0.2], foreL: -1.6, handL: [-0.3, 0, -0.3], armR: [-1.0, 0.8, -0.1], foreR: -1.7, handR: [0.6, 0.9, 0], footL: F_LB, footR: F_RB });
+  var BL1_H = P({ hips: [0.06, -0.3, 0], hipsPos: [0, -0.13, 0.1], chest: [0.18, -0.5, 0], head: [-0.1, 0.45, 0],
+    armL: [-1.5, 0.75, 0.05], foreL: -0.05, handL: [-0.3, 0, -1.4], armR: SC_A, foreR: SC_E, handR: SC_W, footL: [0.07, 0.03, -0.12, 0.3, 0.5], footR: [-0.06, 0, 0.2, 0, -0.12] });
+  var BL1_F = P({ hips: [0.06, -0.42, 0], hipsPos: [0, -0.13, 0.1], chest: [0.2, -0.68, 0], head: [-0.1, 0.62, 0],
+    armL: [-1.4, 1.2, 0.05], foreL: -0.15, handL: [-0.3, 0, -1.4], armR: SC_A, foreR: SC_E, handR: SC_W, footL: [0.07, 0.03, -0.12, 0.3, 0.5], footR: [-0.06, 0, 0.2, 0, -0.12] });
+  // Bloodletting 2: the cut hand clenched at the chest, then a backhand flick from the left to the target
+  var BL2_A = P({ hips: [0, -0.3, 0], hipsPos: [0, -0.1, -0.03], chest: [0.1, -0.5, 0], head: [0.15, 0.45, 0],
+    armL: [-0.4, -1.0, 0.2], foreL: -2.2, handL: [0.3, 0, 0], armR: SC_A, foreR: SC_E, handR: SC_W, footL: F_L, footR: F_R });
+  var BL2_H = P({ hips: [0.06, 0.25, 0], hipsPos: [0, -0.13, 0.1], chest: [0.22, 0.45, 0], head: [-0.12, -0.42, 0],
+    armL: [-1.45, -0.35, 0.3], foreL: -0.05, handL: [-0.6, 0, 1.2], armR: SC_A, foreR: SC_E, handR: SC_W, footL: F_LW, footR: F_RW });
+  var BL2_F = P({ hips: [0.06, 0.3, 0], hipsPos: [0, -0.13, 0.11], chest: [0.26, 0.55, 0], head: [-0.12, -0.5, 0],
+    armL: [-1.35, -0.6, 0.4], foreL: -0.25, handL: [-0.4, 0, 1.2], armR: SC_A, foreR: SC_E, handR: SC_W, footL: F_LW, footR: F_RW });
+  // Contagion: the pox breathed onto a cupped palm, then flicked out across the pack
+  var CT_A = P({ hips: [-0.04, 0.2, 0], hipsPos: [0, -0.06, -0.05], chest: [0.15, 0.3, 0], head: [0.3, -0.15, 0],
+    armL: [-0.55, -0.8, 0.1], foreL: -2.25, handL: [-0.6, 0, 0], armR: SC_A, foreR: SC_E, handR: SC_W, footL: F_L, footR: F_R, jaw: 0.4 });
+  var CT_H = P({ hips: [0.05, -0.25, 0], hipsPos: [0, -0.12, 0.08], chest: [0.2, -0.45, 0], head: [-0.15, 0.4, 0],
+    armL: [-1.35, 0.95, 0.4], foreL: -0.3, handL: [0.4, 0, -0.9], armR: SC_A, foreR: SC_E, handR: SC_W, footL: [0.07, 0.03, -0.12, 0.3, 0.5], footR: [-0.06, 0, 0.2, 0, -0.12] });
+  var CT_F = P({ hips: [0.06, -0.35, 0], hipsPos: [0, -0.12, 0.09], chest: [0.22, -0.6, 0], head: [-0.15, 0.55, 0],
+    armL: [-1.05, 1.35, 0.5], foreL: -0.45, handL: [0.6, 0, -0.9], armR: SC_A, foreR: SC_E, handR: SC_W, footL: [0.07, 0.03, -0.12, 0.3, 0.5], footR: [-0.06, 0, 0.2, 0, -0.12] });
+
+  // ================================================================== scythe casts (the weapon does the work)
+  // Bone Cage: scythe raised high, blade first, driven down into the ground ahead; the skull hand rips upward (ribs rise)
+  var BC_A = P({ hips: [-0.1, -0.15, 0], hipsPos: [0, 0.0, -0.07], chest: [-0.35, -0.2, 0], head: [0.2, 0.15, 0],
+    armR: [-2.8, -0.1, -0.2], foreR: -0.6, handR: [0.7, 0, 0], armL: [-0.3, 0, 0.35], foreL: -0.9, handL: [0.6, 0, 0], footL: F_L, footR: [-0.09, 0.03, -0.15, 0.3, -0.55] });
+  var BC_H = P({ hips: [0.25, 0.05, 0], hipsPos: [0, -0.3, 0.12], chest: [0.55, 0.1, 0], head: [-0.4, -0.05, 0],
+    armR: [-1.15, 0.05, -0.05], foreR: -0.1, handR: [1.55, 0, 0], armL: [-1.9, -0.1, 0.45], foreL: -0.5, handL: [-0.9, 0, 0], footL: F_LW, footR: F_RW });
+  var BC_F = P({ hips: [0.27, 0.05, 0], hipsPos: [0, -0.32, 0.13], chest: [0.58, 0.1, 0], head: [-0.42, -0.05, 0],
+    armR: [-1.05, 0.05, -0.05], foreR: -0.12, handR: [1.6, 0, 0], armL: [-2.25, -0.1, 0.5], foreL: -0.35, handL: [-1.0, 0, 0], footL: F_LW, footR: F_RW });
+  // Grave Chill: scythe drawn low to the right, then swept flat over the ground; the skull hand presses the cold down
+  var GC_A = P({ hips: [0.1, -0.5, 0], hipsPos: [-0.03, -0.2, -0.05], chest: [0.2, -0.75, 0.1], head: [-0.05, 0.75, 0],
+    armR: [-0.55, -1.2, -0.2], foreR: -0.6, handR: [1.0, -0.6, 0], armL: [-1.2, 0.45, 0.2], foreL: -0.9, handL: [0.6, 0, 0], footL: F_L, footR: F_R });
+  var GC_H = P({ hips: [0.22, 0.15, 0], hipsPos: [0.02, -0.3, 0.12], chest: [0.48, 0.25, -0.05], head: [-0.35, -0.25, 0],
+    armR: [-1.1, 0.0, -0.05], foreR: -0.05, handR: [1.1, -0.9, 0], armL: [-0.9, -0.1, 0.4], foreL: -0.4, handL: [0.9, 0, 0], footL: F_LW, footR: F_RW });
+  var GC_F = P({ hips: [0.2, 0.3, 0], hipsPos: [0.03, -0.3, 0.13], chest: [0.42, 0.42, -0.05], head: [-0.32, -0.4, 0],
+    armR: [-0.95, 0.75, 0.05], foreR: -0.15, handR: [1.1, -0.6, 0], armL: [-0.7, -0.2, 0.55], foreL: -0.5, handL: [1.0, 0, 0], footL: F_LW, footR: F_RW });
+  // Soul Lance 1: the scythe cocked back along the arm like a javelin, the skull hand sighting; then hurled in line
+  var SL1_A = P({ hips: [0, -0.5, 0], hipsPos: [0, -0.1, -0.12], chest: [-0.1, -0.7, 0.05], head: [0, 0.85, 0],
+    armR: [-1.6, -1.45, -0.1], foreR: -1.1, handR: [0.4, 0, 0], armL: [-1.45, 0.55, 0.1], foreL: -0.2, handL: [-0.4, 0, 0], footL: F_L, footR: [-0.1, 0, -0.18, 0, -0.65] });
+  var SL1_H = P({ hips: [0.1, 0.3, 0], hipsPos: [0, -0.18, 0.22], chest: [0.3, 0.45, 0], head: [-0.25, -0.6, 0],
+    armR: [-1.5, -0.25, -0.05], foreR: -0.05, handR: [1.4, 0, 0], armL: [0.5, 0.0, 0.4], foreL: -0.6, footL: [0.05, 0, 0.42, 0, 0.1], footR: [-0.09, 0.04, -0.22, 0.55, -0.45] });
+  var SL1_F = P({ hips: [0.12, 0.35, 0], hipsPos: [0, -0.2, 0.25], chest: [0.36, 0.55, 0], head: [-0.3, -0.7, 0],
+    armR: [-1.5, -0.3, -0.05], foreR: -0.02, handR: [1.4, 0, 0], armL: [0.6, 0.0, 0.45], foreL: -0.6, footL: [0.05, 0, 0.42, 0, 0.1], footR: [-0.09, 0.04, -0.22, 0.6, -0.45] });
+  // Soul Lance 2: the skull held out as the bow, the scythe drawn back past the ear like an arrow; then the release
+  var SL2_A = P({ hips: [0, 0.5, 0], hipsPos: [0, -0.1, -0.06], chest: [0, 0.75, 0], head: [0, -0.8, 0],
+    armL: [-1.5, -0.65, 0.05], foreL: -0.05, handL: [-0.3, 0, 0], armR: [-1.55, 0.95, -0.3], foreR: -2.1, handR: [0.9, 0.5, 0], footL: [0.12, 0, 0.1, 0, 0.6], footR: [-0.1, 0, -0.1, 0, -0.2] });
+  var SL2_H = P({ hips: [0.06, 0.15, 0], hipsPos: [0, -0.14, 0.12], chest: [0.2, 0.2, 0], head: [-0.15, -0.25, 0],
+    armL: [-0.2, 0.1, 0.6], foreL: -0.5, handL: [0.2, 0, 0], armR: [-1.5, -0.15, -0.05], foreR: -0.04, handR: [1.4, 0, 0], footL: [0.1, 0, 0.22, 0, 0.3], footR: [-0.1, 0.04, -0.16, 0.45, -0.35] });
+  var SL2_F = P({ hips: [0.08, 0.1, 0], hipsPos: [0, -0.15, 0.14], chest: [0.25, 0.12, 0], head: [-0.18, -0.15, 0],
+    armL: [0.3, 0.1, 0.65], foreL: -0.6, handL: [0.3, 0, 0], armR: [-1.4, -0.1, -0.05], foreR: -0.1, handR: [1.35, 0, 0], footL: [0.1, 0, 0.22, 0, 0.3], footR: [-0.1, 0.04, -0.16, 0.45, -0.35] });
+
+  // ================================================================== shouts and curses
+  // Death's Decree: scythe raised, then levelled at the marked spot like a judge's rod; the skull hand clenched at the heart
+  var DD_A = P({ hips: [-0.05, -0.2, 0], hipsPos: [0, -0.03, -0.06], chest: [-0.25, -0.3, 0], head: [0.1, 0.3, 0],
+    armR: [-2.7, -0.4, -0.3], foreR: -0.5, handR: [0.3, 0, 0], armL: [-0.6, -0.5, 0.15], foreL: -2.0, handL: [0.3, 0, 0], footL: F_L, footR: F_R });
+  var DD_H = P({ hips: [0.08, 0.12, 0], hipsPos: [0, -0.12, 0.12], chest: [0.22, 0.2, 0], head: [-0.2, -0.2, 0],
+    armR: [-1.6, -0.05, -0.05], foreR: -0.02, handR: [1.55, 0, 0], armL: [-0.7, -0.7, 0.1], foreL: -2.2, handL: [0.4, 0, 0], footL: F_LW, footR: F_RW, jaw: 0.6 });
+  var DD_F = P({ hips: [0.1, 0.14, 0], hipsPos: [0, -0.13, 0.13], chest: [0.28, 0.22, 0], head: [-0.25, -0.22, 0],
+    armR: [-1.55, 0.0, -0.05], foreR: -0.05, handR: [1.5, 0, 0], armL: [-0.7, -0.7, 0.1], foreL: -2.2, handL: [0.4, 0, 0], footL: F_LW, footR: F_RW, jaw: 0.3 });
+  // Dread Whisper: hunched in, hood low, hands drawn to the mouth; then lean in and let the whisper spill out, arms spreading low
+  var DW_A = P({ hips: [0.2, 0, 0], hipsPos: [0, -0.18, -0.03], chest: [0.5, 0, 0], head: [0.45, 0, 0],
+    armR: [-0.9, 0.7, -0.1], foreR: -2.0, handR: [0.4, 0, 0], armL: [-0.9, -0.7, 0.1], foreL: -2.1, handL: [0.2, 0, 0], footL: F_WL, footR: F_WR });
+  var DW_H = P({ hips: [0.15, 0, 0], hipsPos: [0, -0.2, 0.08], chest: [0.4, 0, 0], head: [-0.4, 0, 0],
+    armR: [-0.7, -0.3, -0.9], foreR: -0.3, handR: [0.2, 0, 0], armL: [-0.7, 0.3, 0.9], foreL: -0.3, handL: [0.5, 0, 0], footL: F_WL, footR: F_WR, jaw: 1 });
+  var DW_F = P({ hips: [0.16, 0, 0], hipsPos: [0, -0.21, 0.09], chest: [0.45, 0, 0], head: [-0.45, 0, 0],
+    armR: [-0.6, -0.4, -1.05], foreR: -0.25, handR: [0.2, 0, 0], armL: [-0.6, 0.4, 1.05], foreL: -0.25, handL: [0.5, 0, 0], footL: F_WL, footR: F_WR, jaw: 1 });
+
+  // ================================================================== channels
+  // Soul Tether: the skull hand reaches out to the minions, then hauls the invisible chains taut to the chest
+  var TT_A = P({ hips: [0.08, 0.2, 0], hipsPos: [0, -0.1, 0.08], chest: [0.3, 0.3, 0], head: [-0.1, -0.25, 0],
+    armL: [-1.5, 0.2, 0.15], foreL: -0.05, handL: [-0.3, 0, 0], armR: SC_A, foreR: SC_E, handR: SC_W, footL: F_LW, footR: F_RW });
+  var TT_H = P({ hips: [-0.1, -0.1, 0], hipsPos: [0, -0.14, -0.12], chest: [-0.25, -0.2, 0], head: [-0.15, 0.15, 0],
+    armL: [-0.9, -0.5, 0.25], foreL: -2.1, handL: [0.4, 0, 0], armR: [-0.8, 0.25, -0.5], foreR: -1.3, handR: [0, 0, 0], footL: F_LB, footR: F_RB, jaw: 0.3 });
+  var TT_F = P({ hips: [-0.12, -0.12, 0], hipsPos: [0, -0.15, -0.13], chest: [-0.3, -0.22, 0], head: [-0.2, 0.15, 0],
+    armL: [-0.8, -0.55, 0.3], foreL: -2.2, handL: [0.5, 0, 0], armR: [-0.85, 0.25, -0.55], foreR: -1.3, handR: [0, 0, 0], footL: F_LB, footR: F_RB });
+  // Spirit Drain: lean back, the skull hand held out clawed at the target and yanked back with every wisp
+  var SD_A = P({ hips: [-0.05, 0.3, 0], hipsPos: [0, -0.1, -0.06], chest: [-0.1, 0.4, 0], head: [0.05, -0.35, 0],
+    armL: [-0.6, -0.6, 0.2], foreL: -1.8, handL: [0.6, 0, 0], armR: [-0.4, 0.2, -0.35], foreR: -1.2, handR: [-0.3, 0, 0], footL: F_LB, footR: F_RB });
+  var SD_H = P({ hips: [-0.08, -0.15, 0], hipsPos: [0, -0.15, -0.1], chest: [-0.22, -0.25, 0], head: [-0.1, 0.25, 0],
+    armL: [-1.55, 0.25, 0.1], foreL: -0.15, handL: [-0.7, 0, 0], armR: [-0.6, 0.35, -0.55], foreR: -1.25, handR: [-0.3, 0, 0], footL: F_LB, footR: F_RB, jaw: 0.5 });
+  var SD_PULL = P({ hips: [-0.12, -0.12, 0], hipsPos: [0, -0.16, -0.14], chest: [-0.34, -0.2, 0], head: [-0.2, 0.2, 0],
+    armL: [-1.4, 0.1, 0.15], foreL: -0.75, handL: [-0.2, 0, 0], armR: [-0.6, 0.35, -0.55], foreR: -1.3, handR: [-0.3, 0, 0], footL: F_LB, footR: F_RB, jaw: 0.8 });
+  var SD_F = P({ hips: [-0.06, -0.08, 0], hipsPos: [0, -0.12, -0.08], chest: [-0.2, -0.12, 0], head: [-0.1, 0.1, 0],
+    armL: [-1.0, -0.4, 0.2], foreL: -1.9, handL: [0.5, 0, 0], armR: [-0.5, 0.3, -0.5], foreR: -1.2, handR: [-0.3, 0, 0], footL: F_LB, footR: F_RB });
+  // Requiem: the hands gathered low like a choirmaster's, then raised wide as the song begins; head back, mouth open
+  var RQ_A = P({ hips: [0.12, 0, 0], hipsPos: [0, -0.2, 0], chest: [0.35, 0, 0], head: [0.4, 0, 0],
+    armR: [-0.6, 0.4, -0.15], foreR: -1.5, handR: [0.3, 0, 0], armL: [-0.6, -0.4, 0.15], foreL: -1.5, handL: [0.3, 0, 0], footL: F_WL, footR: F_WR });
+  var RQ_H = P({ hips: [-0.06, 0.1, 0], hipsPos: [0, -0.05, 0], chest: [-0.24, 0.12, 0.05], head: [-0.42, -0.1, 0.1],
+    armR: SC_A, foreR: SC_E, handR: SC_W, armL: [-2.65, 0.15, 0.45], foreL: -0.25, handL: [-0.7, 0, 0], footL: F_WL, footR: F_WR, jaw: 1 });
+  var RQ_F = P({ hips: [-0.08, 0.12, 0], hipsPos: [0, -0.04, 0], chest: [-0.3, 0.14, 0.06], head: [-0.5, -0.12, 0.12],
+    armR: SC_A, foreR: SC_E, handR: SC_W, armL: [-2.8, 0.15, 0.55], foreL: -0.2, handL: [-0.8, 0, 0], footL: F_WL, footR: F_WR, jaw: 1 });
+
+  // ================================================================== the table: ability id -> variation sets
+  // a set: [ANT, MID (a pose the whip passes through, or null), HIT, FOL, options]
+  //   options: whip (seconds of the strike motion, default 0.12), full (owns the legs too), hold (fraction of the recover
+  //   the follow-through is held before settling), shake (tremble while holding)
+  var O_LASH = { whip: 0.12 }, O_LASH3 = { whip: 0.14, hold: 0.15 }, O_SUM = { whip: 0.16, full: true, hold: 0.25 }, O_SUMB = { whip: 0.2, full: true, hold: 0.3, shake: 0.02 };
+  var O_CAST = { whip: 0.11 }, O_CASTH = { whip: 0.13, hold: 0.2 }, O_STAFF = { whip: 0.14 }, O_FULL = { whip: 0.14, full: true, hold: 0.2 };
+  var O_SHOUT = { whip: 0.13, full: true, hold: 0.2, shake: 0.018 };
+  var SKILLS = GC.SKILLS = {
+    bone_lash: { sets: [[L1_A, L1_M, L1_H, L1_F, O_LASH], [L2_A, null, L2_H, L2_F, O_LASH], [L3_A, null, L3_H, L3_F, O_LASH3]], combo: 2.2 },
+    raise_thrall: { sets: [[RT1_A, null, RT1_H, RT1_F, O_SUM], [RT2_A, null, RT2_H, RT2_F, O_SUM]] },
+    ghoul_swarm: { sets: [[GS_A, GS_M, GS_H, GS_F, O_SUMB]] },
+    raise_knight: { sets: [[RK_A, null, RK_H, RK_F, O_SUM]] },
+    legion_of_the_dead: { sets: [[LG_A, LG_M, LG_H, LG_F, O_SUMB]] },
+    corpse_burst: { sets: [[CB1_A, null, CB1_H, CB1_F, O_CAST], [CB2_A, null, CB2_H, CB2_F, O_CAST]] },
+    wither_touch: { sets: [[WT_A, null, WT_H, WT_F, O_CAST]] },
+    marrow_shield: { sets: [[MS_A, null, MS_H, MS_F, O_FULL]] },
+    bloodletting: { sets: [[BL1_A, null, BL1_H, BL1_F, O_CAST], [BL2_A, null, BL2_H, BL2_F, O_CAST]] },
+    contagion: { sets: [[CT_A, null, CT_H, CT_F, O_CAST]] },
+    bone_cage: { sets: [[BC_A, null, BC_H, BC_F, O_FULL]] },
+    grave_chill: { sets: [[GC_A, null, GC_H, GC_F, O_STAFF]] },
+    soul_lance: { sets: [[SL1_A, null, SL1_H, SL1_F, O_STAFF], [SL2_A, null, SL2_H, SL2_F, O_STAFF]] },
+    deaths_decree: { sets: [[DD_A, null, DD_H, DD_F, O_CASTH]] },
+    dread_whisper: { sets: [[DW_A, null, DW_H, DW_F, O_SHOUT]] },
+    soul_tether: { sets: [[TT_A, null, TT_H, TT_F, O_CASTH]] },
+    spirit_drain: { sets: [[SD_A, null, SD_H, SD_F, O_CASTH]], pulse: { pose: SD_PULL, every: 0.26 } },
+    requiem: { sets: [[RQ_A, null, RQ_H, RQ_F, O_SHOUT]] }
+  };
+
+  // ================================================================== timeline
+  var STRIKE = 0.115;
+  /**
+   * The Gravecaller strike: like KD.anim.strike (the pose IS the HIT pose at the end of the windup, when the sim hits),
+   * plus an optional pose the whip passes through (an arc instead of a straight blend), a held follow-through, a tremble
+   * while holding, and a long `active` (channels) handled by the caller.
+   */
+  function strike(c, S) {
+    var ANT = S[0], MID = S[1], HIT = S[2], FOL = S[3], o = S[4], out = c.out, base = c.base, p = c.p, i;
+    var whip = (o.whip || STRIKE) * (c.heavy > 1.3 ? 1.4 : 1);
+    if (c.state === 'windup') {
+      var sf = c.dur > 0 ? whip / c.dur : 1; sf = sf < 0.16 ? 0.16 : (sf > 0.55 ? 0.55 : sf);
+      var a = 1 - sf;
+      if (p < a) {
+        var q = p / a;
+        mix(out, ANT, ANT, 0, base);
+        var creep = 1 + 0.08 * E.smooth((q - 0.45) / 0.55);          // keep coiling while holding the wind-up (never frozen)
+        for (i = CH.HIPS; i < CH.ROOT; i++) out[i] = base[i] + (out[i] - base[i]) * creep;
+        c.w = E.out(q / 0.6);
+      } else {
+        var s = (p - a) / sf, u = s * s * (1.7 - 0.7 * s);          // accelerating whip, exactly 1 at the hit
+        if (MID) { if (u < 0.5) mix(out, ANT, MID, u * 2, base); else mix(out, MID, HIT, (u - 0.5) * 2, base); }
+        else mix(out, ANT, HIT, u, base);
+        c.w = 1;
+      }
+    } else if (c.state === 'active') {
+      mix(out, HIT, FOL, E.out(c.dur > 0 ? clamp01(p * c.dur / 0.16) : 1), base); c.w = 1;
+    } else {
+      var f = c.st.hadActive ? 0 : (c.dur > 0 ? 0.14 / c.dur : 0.3); f = f > 0.5 ? 0.5 : f;
+      var hold = o.hold || 0, h1 = f + (1 - f) * hold;
+      if (p < f) { mix(out, HIT, FOL, E.back(p / f), base); c.w = 1; }
+      else {
+        mix(out, FOL, FOL, 0, base);
+        c.w = p < h1 ? 1 : 1 - E.smooth((p - h1) / (1 - h1) * 1.1);
+      }
+    }
+    if (o.shake && c.state !== 'windup') { var sh = sin(c.time * 41) * o.shake * c.w; out[CH.CHEST] += sh; out[CH.HEAD] += sh * 1.2; }
+    c.grip0 = true;
+    if (o.full) c.full = 1;
+  }
+  /** A long `active` (Spirit Drain): hold the hit pose, pull back on every wisp. */
+  function channel(c, S, pulse) {
+    if (c.state !== 'active' || !(c.dur > 0.2)) { strike(c, S); return; }
+    var out = c.out, t = c.p * c.dur, k = (t % pulse.every) / pulse.every;
+    var yank = k < 0.3 ? E.out(k / 0.3) : 1 - E.smooth((k - 0.3) / 0.7);
+    mix(out, S[2], pulse.pose, yank, c.base);
+    var tr = clamp01(t / 0.12);          // the clutching hand trembles, starting from the exact hit pose
+    out[CH.FORE_L] += 0.06 * tr * sin(c.time * 23); out[CH.HAND_L] += 0.08 * tr * sin(c.time * 19);
+    c.w = 1; c.grip0 = true;
+  }
+
+  // ================================================================== variation choice (per visual, deterministic)
+  /** Count casts of each ability on this visual: a new cast starts when the windup restarts. Returns the set index. */
+  function pick(c, id, sk) {
+    var st = c.st, tau = (c.state === 'windup' ? 0 : (c.state === 'active' ? 1 : 2)) + c.p;
+    if (!st.gcVar) { st.gcVar = {}; st.gcN = {}; st.gcEnd = {}; st.gcLast = -9; st.gcTau = 0; st.gcId = ''; }
+    if (st.gcId !== id || tau < st.gcTau - 0.02 || c.time - st.gcLast > 0.25) {
+      // a new cast: a combo ability (Bone Lash) starts over after a pause, the others simply alternate
+      var gap = c.time - (st.gcEnd[id] === undefined ? -99 : st.gcEnd[id]), n0 = st.gcN[id];
+      st.gcN[id] = n0 === undefined || (sk.combo && !(gap < sk.combo)) ? 0 : n0 + 1;
+      st.gcId = id;
+    }
+    st.gcTau = tau; st.gcLast = c.time; st.gcEnd[id] = c.time;
+    var n = sk.sets.length, v = n > 1 ? (st.gcN[id] % n) : 0;
+    st.gcVar[id] = v;
+    return v;
+  }
+  GC.variant = function (st, id) { return st && st.gcVar ? (st.gcVar[id] || 0) : 0; };
+
+  // ================================================================== the clip table
+  var CLIPS = GC.CLIPS = {};
+  function dispatcher(name) {
+    var fn = function (c) {
+      var id = c.e && c.e.act && c.e.act.skill, sk = id && SKILLS[id];
+      if (!sk) { var gen = A.CLIPS[name] || A.CLIPS.swing_r; return gen(c); }
+      var v = pick(c, id, sk), S = sk.sets[v];
+      if (sk.pulse) channel(c, S, sk.pulse); else strike(c, S);
+    };
+    fn.full = false; fn.usesLeft = true;
+    return fn;
+  }
+  ['swing_r', 'summon', 'cast_hand', 'cast_staff', 'channel', 'shout'].forEach(function (n) { CLIPS[n] = dispatcher(n); });
+
+  // ================================================================== install on the Tripo Gravecaller only
+  GC.hook = function (built) {
+    if (!built || !built.animOpts) return;
+    var cur = built.animOpts.clips, t = {}, k;
+    if (cur) for (k in cur) t[k] = cur[k];
+    for (k in CLIPS) t[k] = CLIPS[k];
+    built.animOpts.clips = t;
+    built.gcAnim = true;
+  };
+  if (KD.art && KD.art.addAnimHook) KD.art.addAnimHook('gravecaller', GC.hook);
+  else { var Q = KD.artAnimHooks = KD.artAnimHooks || {}; (Q.gravecaller = Q.gravecaller || []).push(GC.hook); }
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
