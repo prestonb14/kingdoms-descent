@@ -2288,6 +2288,27 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 #kd-ui.kd-bi-on .story-sub { bottom: auto; top: calc(9vh + 1.5vh); }
 #kd-ui.kd-bi-on .story-card { opacity: 0; }
 
+/* [attack stamina] (w9 item 5) the attack bar under the Momentum bar (src/ui/28_attack_stamina.js). Painted gauge look:
+   a dark inset groove with a brass hairline, a pale green liquid that moves with one transform. */
+.as-bar { width: calc(236 * var(--u)); height: calc(7 * var(--u)); position: relative; pointer-events: auto; transition: opacity .35s ease; }
+.as-track { position: absolute; inset: 0; border-radius: calc(4 * var(--u)); overflow: hidden;
+  background: linear-gradient(180deg, #0b0806, #1d1610);
+  box-shadow: 0 0 0 var(--u) #050302, 0 0 0 calc(2 * var(--u)) rgba(200, 160, 80, .45), inset 0 var(--u) calc(2 * var(--u)) rgba(0, 0, 0, .8); }
+.as-fill { position: absolute; inset: 0; transform-origin: 0 50%; will-change: transform;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .55) 0%, rgba(255, 255, 255, .12) 45%, rgba(0, 0, 0, .18) 100%), linear-gradient(90deg, #6f9a3c, #b9d77a);
+  transition: background-color .2s; }
+/* a notch at a quarter: below it the swings slow down */
+.as-tick { position: absolute; left: 25%; top: 0; bottom: 0; width: var(--u); background: rgba(0, 0, 0, .55); box-shadow: var(--u) 0 0 rgba(255, 230, 170, .18); }
+.as-full { opacity: .6; }
+.as-low .as-fill { background: linear-gradient(180deg, rgba(255, 255, 255, .5) 0%, rgba(255, 255, 255, .1) 45%, rgba(0, 0, 0, .2) 100%), linear-gradient(90deg, #a5651c, #f0b04a); }
+.as-out .as-track { box-shadow: 0 0 0 var(--u) #050302, 0 0 0 calc(2 * var(--u)) rgba(225, 70, 50, .85), 0 0 calc(7 * var(--u)) calc(1 * var(--u)) rgba(225, 60, 40, .6), inset 0 var(--u) calc(2 * var(--u)) rgba(0, 0, 0, .8);
+  animation: as-throb .4s ease-in-out infinite alternate; }
+@keyframes as-throb { from { opacity: 1; } to { opacity: .6; } }
+.kd-no-motion .as-out .as-track { animation: none; }
+@media (prefers-reduced-motion: reduce) { .as-out .as-track { animation: none; } }
+.kd-compact .hud-pcol .as-bar { width: 100%; height: calc(8 * var(--u)); }
+.kd-touch .hud-pcol .as-bar { pointer-events: none; }
+
 /* Kingdom's Descent: character windows (src/ui/30_win_*.js). Built on the kit; every size is in --u units. docs/WINDOWS.md */
 
 /* ---------------------------------------------------------------- shared */
@@ -3851,7 +3872,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.69';
+  KD.VERSION = '0.7.70';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -23507,6 +23528,13 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.70', date: '2026-10-15', title: 'Attack stamina', notes: [
+      'Attacks now use their own stamina bar, right under your Health. It drains as you swing and refills when you pause',
+      'Heavy hitters tire faster than the quick assassin, and spells only cost your class resource',
+      'Running low slows your swings, and an empty bar leaves you winded for a breath',
+      'Rolls keep their own stamina, just as before',
+      'Want to test without it? Settings, Gameplay, Attack stamina'
+    ] },
     { version: '0.7.69', date: '2026-10-15', title: 'Gravecaller\'s new moves', notes: [
       'The Gravecaller has a whole new set of moves: every attack, curse and summon gets its own motion',
       'Bone Lash now cracks forehand, backhand, then a big overhead strike on the third lash in a row',
@@ -33995,6 +34023,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (p.staminaT > 0) p.staminaT -= dt;
     else if (p.stamina < p.staminaMax) p.stamina = Math.min(p.staminaMax, p.stamina + dt * B.STAMINA.regen * Math.max(0.2, p.stats.dodgeCdr) / (world.rulesOf(p).dodgeCdMult || 1));
     if (p.potionCd > 0) p.potionCd -= dt;
+    if (S.astam) S.astam.tick(world, p, dt);      // [attack stamina] refill of the attack bar (src/sim/21_attack_stamina.js)
     // ---- class resource ----
     var R = p.cls.resource;
     if (p.bloodTithe) p.res = 0;
@@ -34090,6 +34119,146 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     world.over = false;
     world.events.emit('revive', { player: p, x: p.x, z: p.z });
     return true;
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/sim/21_attack_stamina.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var B = KD.balance;
+  var S = KD.sim = KD.sim || {};
+
+  /**
+   * ATTACK STAMINA (owner, Oct 12 "next round" item 5; docs/briefs/w9_balance.md). Attacks have their own stamina, a bar
+   * that drains as the hero swings and refills smoothly. It is NOT the dodge stamina: rolls keep their own count
+   * (B.STAMINA, p.stamina, the HUD dodge slot).
+   *
+   *   What drains   the primary attack (every step of a primary chain), for every class: melee swings, arrows, pistol
+   *                 shots and the casters' bolts alike. Other skills with a weapon delivery (melee / ranged, not
+   *                 `delivery: 'spell'`, not `weapon: false`) drain `skillMult` of the same price. Spells, ultimates and
+   *                 anything without damage pay only their class resource.
+   *   Price         rate x the attack's own length (wind-up + active + recover, before attack speed) / weapon speed x the
+   *                 class weight (CLASS). A long, heavy swing costs more than a quick stab, so the Ironbound pays about
+   *                 twice what the Gloamblade pays per hit; swinging without a pause drains about the same per second
+   *                 for a given class whatever the weapon, and Attack Speed (more swings) drains it faster.
+   *   Running low   below `low` of the bar the wind-up and the recovery of draining attacks stretch, down to `slowest`
+   *                 at empty (the hit itself keeps its timing). A swing is never refused for a small price: the last one
+   *                 empties the bar. At 0 the hero is winded for `exhaust` seconds: draining attacks wait (the press
+   *                 stays buffered); moving, rolling, spells and potions do not.
+   *   Refill        `regen` per second, paused while a draining attack plays and for `delay` after it ends.
+   *
+   * Switches: B.ATTACK_STAMINA.on (the owner knob; tools/testkit.js runs the suite with it off, KD.harder(true) turns it on)
+   * and world.rules.attackStamina (Settings > Gameplay > "Attack stamina", the host's choice in co-op; a missing key = on).
+   * Pure sim state on the player: p.astam, p.astamMax, p.astamT (pause left), p.astamOut (winded seconds left). Deterministic.
+   */
+  B.ATTACK_STAMINA = {
+    on: true, max: 100, rate: 11, skillMult: 0.4, regen: 42, delay: 0.4, low: 0.25, slowest: 0.7, exhaust: 0.8,
+    // class weight: heavy hitters pay more per swing, the quick ones less; ranged and casters pay a little less (they also
+    // spend their class resource)
+    CLASS: { ironbound: 1.2, bannerlord: 1.15, lanternbearer: 1.05, hexblade: 1, wildmask: 0.9, gloamblade: 0.75,
+      thornwarden: 0.8, clockwright: 0.8, emberscribe: 0.7, gravecaller: 0.7 }
+  };
+  var A = S.astam = S.astam || {};
+
+  /** True when attack stamina runs for this world (owner knob and the world's rule). */
+  A.active = function (world) { return !!(B.ATTACK_STAMINA.on && !(world && world.rules && world.rules.attackStamina === false)); };
+  function init(p) { if (p.astam === undefined) { p.astam = p.astamMax = B.ATTACK_STAMINA.max; p.astamT = 0; p.astamOut = 0; } }
+  A.init = init;
+
+  function isPrimary(e, def) {
+    var sk = e.hero && e.hero.skills; if (!sk) return false;
+    var pid = sk.primary || (sk.known && sk.known[0]);
+    if (!pid) return false;
+    if (def.slot === 'primary' || def.id === pid || def.id === 'ref_' + pid || def._base === pid) return true;
+    var pd = KD.skills.get(pid);
+    return !!(pd && pd.chain && (pd.chain.indexOf(def.id) >= 0 || (def._base && pd.chain.indexOf(def._base) >= 0)));
+  }
+  /** Share of the full price this ability pays (1 primary, skillMult weapon skills, 0 spells / ultimates / no damage). */
+  A.weight = function (e, def) {
+    if (!def || def.astam === 0) return 0;
+    if (def.astam > 0) return def.astam;                                   // an ability may set its own share
+    if (isPrimary(e, def)) return 1;
+    if (def.slot === 'ultimate' || def.delivery === 'spell' || def.weapon === false || !KD.skills.hasDamage(def)) return 0;
+    return def.delivery === 'melee' || def.delivery === 'ranged' ? B.ATTACK_STAMINA.skillMult : 0;
+  };
+  /** Stamina price of one use of `def` by player `e` (0 when it does not drain). */
+  A.cost = function (e, def) {
+    var w = A.weight(e, def); if (!(w > 0)) return 0;
+    var C = B.ATTACK_STAMINA, len = (def.windup || 0) + (def.active || 0) + (def.recover || 0);
+    var ws = e.hero && def.weapon !== false && KD.hero && KD.hero.weaponSpeed ? KD.hero.weaponSpeed(e.hero) : 1;
+    var id = e.defId || (e.cls && e.cls.id);
+    return C.rate * len / Math.max(0.3, ws || 1) * (C.CLASS[id] || 1) * w;
+  };
+  /** Timing factor (<= 1) for the wind-up and recovery of a draining attack: 1 above `low`, `slowest` at empty. */
+  A.pace = function (p) {
+    var C = B.ATTACK_STAMINA, f = p.astamMax > 0 ? p.astam / p.astamMax : 1;
+    if (f >= C.low) return 1;
+    return C.slowest + (1 - C.slowest) * Math.max(0, f) / C.low;
+  };
+  /** K.canUse hook: true while a winded hero must wait before this attack. */
+  A.blocked = function (world, e, def) {
+    if (e.kind !== 'player' || !A.active(world)) return false;
+    init(e);
+    return e.astamOut > 0 && A.weight(e, def) > 0;
+  };
+  /**
+   * K.use hook, called when a cast starts: pays the price and returns the timing factor for its wind-up and recovery
+   * (1 when nothing changes).
+   */
+  A.paid = false;      // true right after an onCast that drained (K.use marks the cast with it)
+  A.onCast = function (world, e, def) {
+    A.paid = false;
+    if (e.kind !== 'player' || !A.active(world)) return 1;
+    init(e);
+    var cost = A.cost(e, def); if (!(cost > 0)) return 1;
+    A.paid = true;
+    var pace = A.pace(e);
+    e.astam = Math.max(0, e.astam - cost); e.astamT = B.ATTACK_STAMINA.delay; e.astamBusy = true;
+    if (e.astam <= 0) { e.astamOut = B.ATTACK_STAMINA.exhaust; world.events.emit('winded', { player: e, x: e.x, z: e.z }); }
+    return pace;
+  };
+  // ---- hooks on the skill system (src/sim/16_skills.js), wrapped here so that file stays untouched ----
+  var K = KD.skills;
+  if (K && K.canUse && !K.canUse._astam) {
+    var canUse0 = K.canUse;
+    K.canUse = function (world, e, def, aim) {
+      var r = canUse0.apply(this, arguments);
+      if (!r && e && e.kind === 'player' && A.blocked(world, e, def)) return 'busy';     // winded: the press waits (stays buffered)
+      return r;
+    };
+    K.canUse._astam = true;
+  }
+  if (K && K.use && !K.use._astam) {
+    var use0 = K.use;
+    K.use = function (world, e, abilityId, aim) {
+      var r = use0.apply(this, arguments);
+      if (!r || !r.ok || !e || e.kind !== 'player' || e.cast !== r.cast) return r;
+      var c = r.cast, pace = A.onCast(world, e, c.inst.def);
+      if (!A.paid) return r;
+      c.astam = true;
+      if (pace < 1) {                                                      // tired: a slower wind-up and recovery (the hit keeps its timing)
+        c.recoverDur /= pace;
+        if (c.state === 'windup') { c.dur /= pace; if (e.act && e.act.state === 'windup') e.act.dur = c.dur; }
+      }
+      return r;
+    };
+    K.use._astam = true;
+  }
+
+  /** Per-step refill (S.player.update). */
+  A.tick = function (world, p, dt) {
+    if (!A.active(world)) { if (p.astam !== undefined && p.astam < p.astamMax) { p.astam = p.astamMax; p.astamOut = 0; p.astamT = 0; } return; }
+    init(p);
+    if (p.astamOut > 0) p.astamOut -= dt;
+    if (p.astamBusy) {                                                     // the pause holds while the draining attack plays
+      if (p.cast && p.cast.astam) { p.astamT = B.ATTACK_STAMINA.delay; return; }
+      p.astamBusy = false;
+    }
+    if (p.astamT > 0) { p.astamT -= dt; return; }
+    if (p.astam < p.astamMax) p.astam = Math.min(p.astamMax, p.astam + B.ATTACK_STAMINA.regen * dt);
   };
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -37818,6 +37987,13 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       var los = S.los(world, p.x, p.z, tgt.x, tgt.z), fleeing = sidestep;
       // low and waiting for the potion: back off instead of trading
       if (hpF < 0.3 && potOk && p.potionCd > 0.2 && !ranged) b.kiteT = 0.5;
+      // [attack stamina] winded or nearly out of attack stamina: a melee bot steps back and breathes until the bar is half
+      // full again, a ranged one holds its fire (src/sim/21_attack_stamina.js)
+      if (S.astam && S.astam.active(world) && p.astam !== undefined) {
+        if (p.astamOut > 0 || p.astam < p.astamMax * 0.1) b.breath = true;
+        else if (p.astam >= p.astamMax * 0.5) b.breath = false;
+      } else b.breath = false;
+      if (b.breath && !ranged) b.kiteT = Math.max(b.kiteT, 2 * dt);
       if (b.kiteT > 0) b.kiteT -= dt;
       var countered = !!tgt.counter;
       if (!dodged && !fleeing) {
@@ -37840,7 +38016,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       }
       if (!dodged && !(b.kiteT > 0 && !ranged)) {
         var used = useSkills(world, p, b, inp, tgt, d, danger);
-        if (!used && !countered && los && d <= pr + 0.15 && !inp.sprint && (danger > 0.45 || p.dodgeCd > 0.3)) inp.primary = true;
+        if (!used && !countered && !b.breath && los && d <= pr + 0.15 && !inp.sprint && (danger > 0.45 || p.dodgeCd > 0.3)) inp.primary = true;
         if (inp.primary || used) inp.sprint = false;
       }
     } else {
@@ -116411,6 +116587,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
           row('Enemy health bars', c.onoff(ST.get('healthBars'), function (on) { ST.set('healthBars', on); })),
           row('Loot name plates', c.onoff(ST.get('lootLabels'), function (on) { ST.set('lootLabels', on); }), 'Rare and better drops')
         ]),
+        KD.attackStamina && KD.attackStamina.settingsRow ? c.sec('Combat', [safe(function () { return KD.attackStamina.settingsRow(row, F); }, 'attack stamina')]) : null,      // [attack stamina] w9 item 5 (src/ui/28_attack_stamina.js)
         KD.bossIntro && KD.bossIntro.settingsRow ? c.sec('Cinematics', [safe(function () { return KD.bossIntro.settingsRow(row, F); }, 'boss entrances')]) : null,      // [boss intro] Boss entrances (src/ui/27_boss_intro.js)
         c.sec('Minimap', [
           row('Minimap', F.segmented([{ id: 'on', label: c.compact ? 'With the view' : 'Turns with the camera' }, { id: 'off', label: 'North up' }], ST.get('minimapRotate') ? 'on' : 'off', function (id) { ST.set('minimapRotate', id === 'on'); })),
@@ -116521,6 +116698,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       ['damageNumbers', 'healthBars', 'lootLabels', 'minimapRotate', 'minimapZoom'].forEach(function (k) { F.settings.set(k, H[k]); });
       if (KD.game && KD.game.setView && KD.game.view !== 'follow') KD.game.setView('follow');
       if (KD.bossIntro && KD.bossIntro.reset) KD.bossIntro.reset();      // [boss intro] Boss entrances back to Full
+      if (KD.attackStamina && KD.attackStamina.reset) KD.attackStamina.reset();      // [attack stamina] back On
     },
     graphics: function () {
       var D = F.settings.DEFAULTS;
@@ -119080,6 +119258,93 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   boot();
   BI._state = function () { return cur ? { id: cur.id, form: cur.form, s: clock(), w: camWeight(), ended: cur.ended, name: cur.name, epi: cur.epi } : null; };      // tools/boss_intro_shots.py
   BI.skip = skip;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/ui/28_attack_stamina.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+
+  /**
+   * [attack stamina] (w9 item 5) The player's side of the attack bar (the rules live in src/sim/21_attack_stamina.js):
+   *   - the setting: Settings > Gameplay > Combat > "Attack stamina" On / Off, saved in localStorage 'kd.attackStamina'
+   *     (default On). It reaches the sim as world.rules.attackStamina through KD.run.rules (the host's choice in co-op);
+   *     playing alone, a change applies at once.
+   *   - the HUD bar: a thin painted bar under the Momentum bar, beside the health orb. It moves every frame (one
+   *     transform), dims while full, turns amber below 25% and glows red while the hero is winded. Hidden when off.
+   */
+  var AS = KD.attackStamina = KD.attackStamina || {};
+  AS.KEY = 'kd.attackStamina';
+  var on = true;
+  try { var sv = root.localStorage && root.localStorage.getItem(AS.KEY); if (sv === 'off') on = false; } catch (e) { /* storage blocked */ }
+  AS.on = function () { return on; };
+  function solo() { return !(KD.coop && KD.coop.session); }
+  AS.set = function (v) {
+    on = !!v;
+    try { root.localStorage.setItem(AS.KEY, on ? 'on' : 'off'); } catch (e) { /* storage blocked */ }
+    // alone: the current area follows at once (in co-op the host's next area carries it, so every machine agrees)
+    var w = KD.game && KD.game.world;
+    if (w && w.rules && solo()) w.rules.attackStamina = on;
+    return on;
+  };
+  AS.reset = function () { AS.set(true); };
+  /** The Settings row (src/ui/20_flow_52_settings.js, Gameplay tab). */
+  AS.settingsRow = function (row, F) {
+    return row('Attack stamina', F.segmented([{ id: 'on', label: 'On', tip: 'Attacks drain a stamina bar that refills when you pause. Running low slows your swings.' },
+      { id: 'off', label: 'Off', tip: 'Attack as much as you like.' }], on ? 'on' : 'off', function (id) { AS.set(id === 'on'); }), solo() ? 'attacks drain a bar, rolls keep their own' : 'the host decides in co-op');
+  };
+
+  // the world rules carry the setting (the host's, in co-op)
+  if (KD.run && KD.run.rules && !KD.run.rules._attackStamina) {
+    var rules0 = KD.run.rules;
+    KD.run.rules = function (run) {
+      var out = rules0.apply(this, arguments);
+      if (out && run) out.attackStamina = on;
+      return out;
+    };
+    for (var k in rules0) if (Object.prototype.hasOwnProperty.call(rules0, k)) KD.run.rules[k] = rules0[k];
+    KD.run.rules._attackStamina = true;
+  }
+
+  if (typeof document === 'undefined') return;       // browser only from here on
+  var H = KD.hud = KD.hud || {};
+  var V = { node: null, fill: null, q: -1, st: '', shown: null };
+
+  (H.parts = H.parts || []).push({
+    name: 'attackStamina',
+    build: function (ctx) {
+      var col = ctx.left && ctx.left.querySelector('.hud-pcol'); if (!col) return;
+      var el = KD.ui.el;
+      V.fill = el('div.as-fill');
+      V.node = el('div.as-bar.kd-interactive.kd-hidden', [el('div.as-track', [V.fill, el('div.as-tick')])]);
+      var mom = col.querySelector('.hud-mom');
+      if (mom && mom.nextSibling) col.insertBefore(V.node, mom.nextSibling); else col.appendChild(V.node);
+      if (KD.ui.tooltip) KD.ui.tooltip.bind(V.node, function () {
+        var p = ctx.player, C = KD.balance.ATTACK_STAMINA;
+        return { title: 'Attack stamina', color: '#b9d77a', lines: [
+          { text: 'Attacks drain this bar. It refills a moment after you stop swinging. Heavy blows cost more than quick ones; spells only cost ' + (ctx.cls ? ctx.cls.resource.name : 'your resource') + '.', kind: 'base' },
+          { text: 'Below a quarter your swings slow down. Empty, you are winded for a breath.', kind: 'dim' },
+          p && p.astam !== undefined ? { text: Math.round(p.astam) + ' / ' + Math.round(p.astamMax || C.max), kind: 'head' } : null,
+          { text: 'Rolls use their own stamina.', kind: 'dim' }
+        ].filter(Boolean) };
+      });
+    },
+    frame: function (ctx) {
+      if (!V.node) return;
+      var p = ctx.player, w = ctx.world, S = KD.sim;
+      var show = !!(p && w && S && S.astam && S.astam.active(w));
+      if (show !== V.shown) { V.shown = show; V.node.classList.toggle('kd-hidden', !show); V.q = -1; }
+      if (!show) return;
+      var C = KD.balance.ATTACK_STAMINA, max = p.astamMax || C.max, f = p.astam === undefined ? 1 : Math.max(0, Math.min(1, p.astam / max));
+      var q = Math.round(f * 400);
+      if (q !== V.q) { V.q = q; V.fill.style.transform = 'scaleX(' + (q / 400).toFixed(4) + ')'; }
+      var st = p.astamOut > 0 ? 'out' : f < C.low ? 'low' : f >= 0.999 ? 'full' : '';
+      if (st !== V.st) { if (V.st) V.node.classList.remove('as-' + V.st); if (st) V.node.classList.add('as-' + st); V.st = st; }
+    },
+    world: function () { V.q = -1; V.shown = null; }
+  });
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
