@@ -3851,7 +3851,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.67';
+  KD.VERSION = '0.7.68';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -23507,6 +23507,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.68', date: '2026-10-15', title: 'Gloamblade preview moves', notes: [
+      'Gloamblade previews in menus now show the new knife moves too'
+    ] },
     { version: '0.7.67', date: '2026-10-15', title: 'Gloamblade knife work', notes: [
       'The Gloamblade now holds both daggers in a proper reverse grip, blades along the forearms',
       'Twin Daggers strikes with both hands, swaps the lead hand each swing and ends a string with a cross-slash finisher',
@@ -61245,7 +61248,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var g = gst(c), e = c.e, cast = e && e.cast, act = e && e.act, an = e && e.anim, now = c.time;
     var fresh = false;
     if (cast) { if (cast !== g.cast) fresh = true; }
-    else if (act && (act.skill !== g.skill || (an && an.t < g.at - 1e-6))) fresh = true;
+    else if (act && ((act.skill || '') !== g.skill || (an && an.t < g.at - 1e-6))) fresh = true;
     if (fresh) {
       g.n = now - g.lastEnd > 1.4 ? 0 : g.n + 1;
       g.cast = cast || null; g.skill = (act && act.skill) || '';
@@ -61410,11 +61413,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
   // ------------------------------------------------------------------ the clip table (anim name -> by ability id)
   var CLIPS = GA.CLIPS = {};
+  var DEFAULT = { dual_slash: 'twin_daggers', stab: 'backstab', throw: 'smoke_bomb', cast_hand: 'nights_embrace', swing_r: 'poison_edge', block: 'cloak_of_dusk', summon: 'mirror_shade' };
   function dispatcher(name) {
     var fn = function (c) {
       if (!ready) { build(); lists(); installSkills(); }
       track(c);
-      var id = c.e && c.e.act && c.e.act.skill, f = id && SK[id];
+      var id = c.e && c.e.act && c.e.act.skill, f = (id && SK[id]) || (!id && SK[DEFAULT[name]]);      // no ability id (menus, previews): the class's own move for that anim
       if (!f) { var gen = KD.anim.CLIPS[name] || KD.anim.CLIPS.swing_r; return gen(c); }
       f(c);
     };
