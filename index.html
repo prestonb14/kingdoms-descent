@@ -3882,7 +3882,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.87';
+  KD.VERSION = '0.7.88';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -34646,6 +34646,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.88', date: '2026-10-16', title: 'Your own co-op loot', notes: [
+      'Co-op loot is now yours alone: every kill, chest and barrel drops a separate share for each hero',
+      'Ranged heroes no longer miss out while the melee friend stands on the bodies',
+      'You only see your own drops, coin and Ash included, at the same drop rate as playing solo'
+    ] },
     { version: '0.7.87', date: '2026-10-16', title: 'The Ironbound\'s Iron Keep', notes: [
       'The Ironbound now has his own skill tree, The Iron Keep: over 1,500 nodes built around the shield',
       'Start with Shield Bash and pick one more move, then grow into a block wall, a counter duelist, a breaker, a charger or a shouting warlord',
@@ -48515,9 +48520,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   };
 
   /**
-   * Co-op loot (docs/COOP.md "Loot"): items and potion drops belong to the hero they were rolled for (the killer, the
-   * one who opened or smashed the container) and only that hero can take them; other clients do not draw them.
-   * Coin and Ash stay shared: whoever picks them up, every living hero is paid (shareWith).
+   * Co-op loot (docs/COOP.md "Loot"), [w9 drops] instanced since v0.8: every kill, chest and container rolls loot
+   * separately for each living hero (dropLoot), and every pickup of such a roll (items, potions, coin and Ash) is
+   * reserved for its hero (pickup.forP): only that hero can take it and only that hero's screen draws it. Coin and Ash
+   * without an owner (forP undefined, e.g. a pickpocket's coin) stay shared: every living hero is paid (shareWith).
    * forOf(world, owner) -> the pickup's forP, or undefined (single player, or nobody's: no player made the drop).
    */
   function forOf(world, owner) { return owner && owner.kind === 'player' && world.players.length > 1 ? owner.playerIndex : undefined; }
@@ -48530,9 +48536,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var hero = p.hero, kind = pk.defId, amt = pk.amount;
     if (kind === 'gold') {
       amt = Math.max(1, Math.round(amt * p.stats.goldFind)); hero.gold = (hero.gold || 0) + amt;
-      shareWith(world, p, function (o) { o.hero.gold = (o.hero.gold || 0) + Math.max(1, Math.round(pk.amount * o.stats.goldFind)); });
+      if (pk.forP === undefined) shareWith(world, p, function (o) { o.hero.gold = (o.hero.gold || 0) + Math.max(1, Math.round(pk.amount * o.stats.goldFind)); });      // [w9 drops] instanced coin is its hero's own
     }
-    else if (kind === 'ash') { amt = Math.round(amt); hero.ash = (hero.ash || 0) + amt; shareWith(world, p, function (o) { o.hero.ash = (o.hero.ash || 0) + amt; }); }
+    else if (kind === 'ash') { amt = Math.round(amt); hero.ash = (hero.ash || 0) + amt; if (pk.forP === undefined) shareWith(world, p, function (o) { o.hero.ash = (o.hero.ash || 0) + amt; }); }
     else if (kind === 'item' && pk.item && pk.item.merc) {      // [mercs] merc gear goes to the hero's mercenary stash, never the bag
       var stash = hero.mercStash || (hero.mercStash = []);
       if (stash.length >= KD.data.mercTune.STASH) return 'stash_full';
@@ -48654,14 +48660,19 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         S.player.addMomentum(world, kp, B.MOMENTUM.perKill * kp.stats.momentumGain);
         if (world.rulesOf(kp).killHeal > 0) S.heal(world, kp, S.lifePool(kp) * world.rulesOf(kp).killHeal, null, { noScale: true });
       }
-      var bloom = inBloomAt(world, e.x, e.z), own = killer && killer.kind === 'player' ? killer : null;      // co-op: the killer's items are the killer's
+      var bloom = inBloomAt(world, e.x, e.z), own = killer && killer.kind === 'player' ? killer : null;      // co-op: every hero gets its own roll (dropLoot)
       Sp.dropLoot(world, e.x, e.z, { source: rank === 2 ? 'boss' : (rank === 1 ? 'miniboss' : 'enemy'), tier: e.tier, level: e.level, player: kp, owner: own, bloom: bloom, enemy: e, mult: def.drops && def.drops.mult });
-      if (Sp.mercDrop) Sp.mercDrop(world, e, kp);      // [mercs] a rare piece of gear for a hired mercenary (src/sim/29_mercs.js)
+      if (Sp.mercDrop) { var mps = lootHeroes(world, kp); for (i = 0; i < mps.length; i++) Sp.mercDrop(world, e, mps[i]); }      // [mercs] a rare piece of gear for a hired mercenary (src/sim/29_mercs.js); [w9 drops] a roll per hero
       var rules = world.rules, pkind = e.spawnId && world.packs[e.spawnId] ? world.packs[e.spawnId].kind : null;
       if (pkind === 'boss' && rules.bossExtraItems > 0) for (i = 0; i < rules.bossExtraItems; i++) Sp.dropLoot(world, e.x, e.z, { source: 'chest', tier: 'large', chestTier: 'large', level: e.level, player: kp, owner: own, itemsOnly: true });
-      if (rules.plagueSigilDrop > 0 && e.affixes && e.affixes.indexOf('plague_touched') >= 0 && KD.items && KD.items.makeSigil && world.lootRng.next() < rules.plagueSigilDrop) {
-        try { var sg = KD.items.makeSigil(null, 0, world.lootRng, e.level, { hero: kp ? kp.hero : null, run: world.runOf(kp), rules: rules }); if (sg) { Sp.pickup(world, 'item', e.x, e.z, { item: sg, forP: forOf(world, own) }); world.events.emit('loot', { x: e.x, z: e.z, source: 'plague', tier: e.tier, gold: 0, ash: 0, items: [sg], player: kp }); } }
-        catch (err) { world.lootErrors = (world.lootErrors || 0) + 1; }
+      if (rules.plagueSigilDrop > 0 && e.affixes && e.affixes.indexOf('plague_touched') >= 0 && KD.items && KD.items.makeSigil) {
+        var sps = lootHeroes(world, kp);      // [w9 drops] a roll per hero, reserved for it
+        for (i = 0; i < sps.length; i++) {
+          if (!(world.lootRng.next() < rules.plagueSigilDrop)) continue;
+          var sp = sps[i], sf = forOf(world, sp);
+          try { var sg = KD.items.makeSigil(null, 0, world.lootRng, e.level, { hero: sp ? sp.hero : null, run: world.runOf(sp), rules: rules }); if (sg) { Sp.pickup(world, 'item', e.x, e.z, { item: sg, forP: sf }); world.events.emit('loot', { x: e.x, z: e.z, source: 'plague', tier: e.tier, gold: 0, ash: 0, items: [sg], player: sp, forP: sf }); } }
+          catch (err) { world.lootErrors = (world.lootErrors || 0) + 1; }
+        }
       }
     }
     if (world.bossEntity === e) world.bossEntity = null;
@@ -48696,17 +48707,44 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
   var CHEST_GOLD = { normal: 8, large: 16, cursed: 20, cache: 10, barrel: 0.8 };
   /**
-   * Rolls and drops loot at a point. o: { source:'enemy'|'boss'|'miniboss'|'chest'|'bloomchest'|'cache'|'barrel', tier, level, player, owner, bloom, chestTier }
-   * player: the hero the roll is made for (its run, rules, Item Find; default player 0). owner: the hero who made the
-   * drop; in co-op its items and potions are reserved for it (forOf), gold and Ash are not.
+   * [w9 drops] The heroes a drop is rolled for, in playerIndex order (a fixed order: co-op stays in lockstep).
+   * Single player: [p]. Co-op: every living hero; nobody living: [p] (an unreserved roll).
+   */
+  function lootHeroes(world, p) {
+    var ps = world.players; if (ps.length < 2) return [p || ps[0] || null];
+    var out = []; for (var i = 0; i < ps.length; i++) if (!ps[i].dead) out.push(ps[i]);
+    return out.length ? out : [p || ps[0] || null];
+  }
+  Sp.lootHeroes = lootHeroes;
+  /**
+   * Rolls and drops loot at a point. o: { source:'enemy'|'boss'|'miniboss'|'chest'|'bloomchest'|'cache'|'barrel', tier, level, player, owner, bloom, chestTier, mine, tierFor }
+   * player: the hero who made the drop (killer, opener; default player 0). In co-op ([w9 drops], docs/COOP.md "Loot")
+   * the drop is instanced: one full solo roll for EACH living hero (its run, rules, Item Find, Gold Find), in
+   * playerIndex order from world.lootRng, every pickup of it (items, potions, coin, Ash) reserved for that hero.
+   * o.mine: roll only for o.player, reserved for it (a pickpocket's steal). o.tierFor(p, tier) -> the tier for hero p
+   * (Lucky Find's first chest is every hero's own). Returns the roll of o.player (or the first hero), with
+   * `.each` = [{ player, forP, gold, ash, items }] for every hero rolled for.
    * Items, gold and ash come from KD.items.rollDrop when that module exists; without it only gold drops,
    * sized by KD.balance.enemyGold.
    */
   Sp.dropLoot = function (world, x, z, o) {
-    var rng = world.lootRng, drops = [], p = o.player || world.players[0] || null, hero = p ? p.hero : null, i;
+    var p0 = o.player || world.players[0] || null, heroes = o.mine ? [p0] : lootHeroes(world, p0), each = [], mineR = null;
+    for (var h = 0; h < heroes.length; h++) {
+      var hp = heroes[h], forP = world.players.length > 1 && hp && !hp.dead ? hp.playerIndex : undefined;
+      if (o.mine) forP = forOf(world, hp);
+      var r = rollOne(world, x, z, o, hp, forP, o.tierFor ? o.tierFor(hp, o.tier) : o.tier);
+      r.player = hp; r.forP = forP; each.push(r);
+      if (hp === p0) mineR = r;
+    }
+    var res = mineR || each[0] || { gold: 0, ash: 0, items: [] };
+    res.each = each;
+    return res;
+  };
+  function rollOne(world, x, z, o, p, forP, tier) {
+    var rng = world.lootRng, drops = [], hero = p ? p.hero : null, i;
     if (KD.items && KD.items.rollDrop && hero) {
       try {
-        drops = KD.items.rollDrop({ source: o.source, tier: o.tier, level: o.level, rng: rng, hero: hero, run: world.runOf(p), rules: world.rulesOf(p), bloom: !!o.bloom, stats: p.stats, itemFind: p.stats.itemFind }) || [];
+        drops = KD.items.rollDrop({ source: o.source, tier: tier, level: o.level, rng: rng, hero: hero, run: world.runOf(p), rules: world.rulesOf(p), bloom: !!o.bloom, stats: p.stats, itemFind: p.stats.itemFind }) || [];
       } catch (err) { drops = []; world.lootErrors = (world.lootErrors || 0) + 1; KD.log('rollDrop failed', err); }
     }
     var gold = 0, ash = 0, items = [], other = [], hasGold = !!(KD.items && KD.items.rollDrop && hero);   // the items module owns gold when it exists
@@ -48718,12 +48756,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       else if (d.uid || d.base || d.name) items.push(d);
     }
     if (!hasGold) {
-      var TI = B.TIER[o.tier] || B.TIER.normal, g = B.enemyGold(o.level || 1);
+      var TI = B.TIER[tier] || B.TIER.normal, g = B.enemyGold(o.level || 1);
       if (o.source === 'enemy' || o.source === 'boss' || o.source === 'miniboss') {
-        var chance = o.tier === 'normal' ? 0.45 : (o.tier === 'minion' ? 0.25 : 1);
+        var chance = tier === 'normal' ? 0.45 : (tier === 'minion' ? 0.25 : 1);
         if (rng.next() < chance) gold = g * TI.gold / chance * rng.range(0.8, 1.2);
       } else {
-        var cg = CHEST_GOLD[o.source === 'chest' || o.source === 'bloomchest' ? (o.chestTier || 'normal') : o.source] || 4;
+        var cg = CHEST_GOLD[o.source === 'chest' || o.source === 'bloomchest' ? (o.tierFor ? tier : (o.chestTier || 'normal')) : o.source] || 4;
         if (o.source !== 'barrel' || rng.next() < 0.5) gold = g * cg * rng.range(0.8, 1.2) * (o.source === 'barrel' ? 2 : 1);
       }
       if (o.bloom && world.rules.bloomLootMult) gold *= world.rules.bloomLootMult;
@@ -48733,14 +48771,13 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var n = (gold > 0 ? 1 : 0) + (ash > 0 ? 1 : 0) + items.length + other.length, k = 0;
     function pos() { var a = (k++ / Math.max(1, n)) * TAU + x * 0.7, r = n > 1 ? 0.9 + 0.25 * (k % 3) : 0.2; var px = x + Math.sin(a) * r, pz = z + Math.cos(a) * r; return S.isFree(world, px, pz, 0.2) ? { x: px, z: pz } : { x: x, z: z }; }
     var q;
-    if (gold > 0) { q = pos(); Sp.pickup(world, 'gold', q.x, q.z, { amount: gold }); }
-    if (ash > 0) { q = pos(); Sp.pickup(world, 'ash', q.x, q.z, { amount: ash }); }
-    var forP = forOf(world, o.owner);
+    if (gold > 0) { q = pos(); Sp.pickup(world, 'gold', q.x, q.z, { amount: gold, forP: forP }); }
+    if (ash > 0) { q = pos(); Sp.pickup(world, 'ash', q.x, q.z, { amount: ash, forP: forP }); }
     for (i = 0; i < items.length; i++) { q = pos(); Sp.pickup(world, 'item', q.x, q.z, { item: items[i], forP: forP }); }
     for (i = 0; i < other.length; i++) { q = pos(); Sp.pickup(world, other[i].kind, q.x, q.z, { amount: other[i].amount, forP: forP }); }
-    if (n > 0) world.events.emit('loot', { x: x, z: z, source: o.source, tier: o.tier, gold: gold, ash: ash, items: items, player: p, forP: forP });
+    if (n > 0) world.events.emit('loot', { x: x, z: z, source: o.source, tier: tier, gold: gold, ash: ash, items: items, player: p, forP: forP });
     return { gold: gold, ash: ash, items: items };
-  };
+  }
 
   // ---------------------------------------------------------------------------------------------
   // Interactables and destructibles
@@ -48772,10 +48809,15 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     it.used = true; it.model.used = true;
     as.cleared.interact[rec.id] = true;
     var tier = data.tier || 'normal', t = rec.t === undefined ? 0.5 : rec.t;
-    var fk = p && p.kind === 'player' && p.playerIndex ? 'firstChest' + p.playerIndex : 'firstChest';      // co-op: Lucky Find is every hero's own
-    if (rec.type === 'chest' && world.rulesOf(p).firstChestTierBonus && !as.events[fk]) { as.events[fk] = true; if (tier === 'normal') tier = 'large'; }
+    // co-op: Lucky Find is every hero's own ([w9 drops] each hero's first chest, whoever opens it: every hero rolls its own share)
+    var lucky = function (h, tr) {
+      if (rec.type !== 'chest' || !h) return tr;
+      var fk = h.kind === 'player' && h.playerIndex ? 'firstChest' + h.playerIndex : 'firstChest';
+      if (world.rulesOf(h).firstChestTierBonus && !as.events[fk]) { as.events[fk] = true; if (tr === 'normal') tr = 'large'; }
+      return tr;
+    };
     var src = rec.type === 'chest' ? (data.bloom ? 'bloomchest' : 'chest') : rec.type;
-    var loot = rec.type === 'crystal' ? null : Sp.dropLoot(world, it.x, it.z, { source: src, tier: tier, chestTier: tier, level: B.slotLevel(world.slot, t), player: p, owner: p, bloom: !!data.bloom || inBloomAt(world, it.x, it.z) });
+    var loot = rec.type === 'crystal' ? null : Sp.dropLoot(world, it.x, it.z, { source: src, tier: tier, chestTier: tier, tierFor: lucky, level: B.slotLevel(world.slot, t), player: p, owner: p, bloom: !!data.bloom || inBloomAt(world, it.x, it.z) });
     if (BREAKABLE[rec.type]) {
       clearPiece(world, rec);
       world.events.emit('fx', { name: rec.type === 'crystal' ? 'crystal_break' : 'barrel_break', x: it.x, y: 0.5, z: it.z, style: data.style || rec.type, piece: data.piece || null });
@@ -49035,7 +49077,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var act = KD.balance && KD.balance.actOf ? KD.balance.actOf(world.slot || 1) : Math.ceil((world.slot || 1) / 4);
     var item = M.makeGear(rng, c.id, null, M.rollGearRarity(rng, t.DROP_RARITY, act), e.level);
     KD.sim.spawn.pickup(world, 'item', e.x + 0.6, e.z - 0.4, { item: item, forP: kp.playerIndex });
-    world.events.emit('loot', { x: e.x, z: e.z, source: 'merc', tier: e.tier, gold: 0, ash: 0, items: [item], player: kp });
+    world.events.emit('loot', { x: e.x, z: e.z, source: 'merc', tier: e.tier, gold: 0, ash: 0, items: [item], player: kp, forP: kp.playerIndex });      // [w9 drops] no fanfare on other screens
     world.events.emit('msg', { text: 'Mercenary gear dropped: ' + item.name + ' (' + c.name + ')', kind: 'loot', player: kp });
     return item;
   };
