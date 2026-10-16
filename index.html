@@ -3882,7 +3882,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.86';
+  KD.VERSION = '0.7.87';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -3911,6 +3911,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   if (KD.config.trees && KD.config.trees.clockwright === undefined) KD.config.trees.clockwright = true; // [w8 clockwright tree] The Great Works, docs/TREE_CLOCKWRIGHT.md
   if (KD.config.trees && KD.config.trees.thornwarden === undefined) KD.config.trees.thornwarden = true; // [w8 thornwarden tree] The Old Wood, docs/TREE_THORNWARDEN.md
   if (KD.config.trees && KD.config.trees.wildmask === undefined) KD.config.trees.wildmask = true; // [w8 wildmask tree] The Moon Grove, docs/TREE_WILDMASK.md
+  if (KD.config.trees && KD.config.trees.ironbound === undefined) KD.config.trees.ironbound = true; // [w8 ironbound tree] The Iron Keep, docs/TREE_IRONBOUND.md
   // The online service (accounts, friends, invites, co-op rooms: the kd-online repository on Cloudflare Workers).
   // Fill in its address once it is deployed, e.g. 'https://kd-online.<your-subdomain>.workers.dev'. Empty = the game
   // says "Online play is not set up yet." (?online=<url> in the page address overrides it for testing.) docs/ONLINE.md.
@@ -11956,7 +11957,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    *
    * Arms, clockwise from the top (neighbours are the arms whose play mixes best; cross-border links join neighbours only):
    *   wall     blocking, Guard, Bulwark Stance, the Ultimate      counter  parries and counter blows (Riposte)
-   *   breaker  Poise, Breaks and Stuns (Ground Slam)               charge   the charge, moving, knocking aside (Lance Charge)
+   *   breaker  Poise, Breaks and Stuns (Shield Slam)               charge   the charge, moving, knocking aside (Shield Charge)
    *   hook     reach: pull them in, throw the shield               warcry   shouts, Taunts, Weaken, healing (Warcry, Rally Cry)
    *   anchor   holding ground, Thorns, standing still (Anchor)     plate    Armor, Ward, Health, resistances (Fortify)
    */
@@ -17937,7 +17938,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
   /**
    * IRONBOUND, arm 2 of 8: THE ANVIL (`breaker`). Poise, Breaks and Stuns: crack the guard, then crack the skull.
-   * Skill: Ground Slam (trunk, 4 points). Design: docs/TREE_IRONBOUND.md. Rules: src/sim/56_tree_ironbound.js.
+   * Skill: Shield Slam (trunk, 4 points). Design: docs/TREE_IRONBOUND.md. Rules: src/sim/56_tree_ironbound.js.
    * Holds the three bridges to the charge arm.
    */
   T.arm('ironbound', {
@@ -17952,12 +17953,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     ]),
 
     clusters: [
-      // ---- Row 1: Ground Slam, shape and essence
-      star('breaker_slam_shape', 'Ground Slam: shape', 1, -1, 'hp 1', ['gs_ring', 'gs_line', 'gs_twice'], ['Wide Swing', 'aoe 1', 'hp 1']),
-      star('breaker_slam_essence', 'Ground Slam: essence', 1, 1, 'breakPower 1', ['gs_long', 'gs_break', 'gs_quake'], ['Cracked Stone', 'breakPower 1', 'armor 1']),
+      // ---- Row 1: Shield Slam, shape and essence
+      star('breaker_slam_shape', 'Shield Slam: shape', 1, -1, 'hp 1', ['gs_ring', 'gs_line', 'gs_twice'], ['Wide Swing', 'aoe 1', 'hp 1']),
+      star('breaker_slam_essence', 'Shield Slam: essence', 1, 1, 'breakPower 1', ['gs_long', 'gs_break', 'gs_quake'], ['Cracked Stone', 'breakPower 1', 'armor 1']),
 
       // ---- Row 2
-      star('breaker_slam_rite', 'Ground Slam: rite', 2, -1, 'statusDur 1', ['gs_charges', 'gs_echo', 'gs_cheap'], abil('Hard Landing', ['breakPower 1', 'hp 1'], 'ground_slam', 'cd', -0.08)),
+      star('breaker_slam_rite', 'Shield Slam: rite', 2, -1, 'statusDur 1', ['gs_charges', 'gs_echo', 'gs_cheap'], abil('Hard Landing', ['breakPower 1', 'hp 1'], 'ground_slam', 'cd', -0.08)),
       ring('breaker_forge', 'The Forge', 2, 1, ['breakPower 1', 'hp 1', abil('Heavier Hammer', ['armor 0.5'], 'ground_slam', 'dmg', 0.08), 'resAll 1', 'dmgPhys 1'],
         web('breach', 'Spoils of the Breach', ['breakPower 1.5'], 'Breaking an enemy gives you 25 Guard.', { off: 1.025, def: 1 }),
         ['breakPower 1', 'hp 1.5']),
@@ -18058,7 +18059,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
   /**
    * IRONBOUND, arm 3 of 8: THE TILT YARD (`charge`). The charge: crash in, knock them aside, keep moving.
-   * Skill: Lance Charge (trunk, 4 points). Design: docs/TREE_IRONBOUND.md. Rules: src/sim/56_tree_ironbound.js.
+   * Skill: Shield Charge (trunk, 4 points). Design: docs/TREE_IRONBOUND.md. Rules: src/sim/56_tree_ironbound.js.
    * Holds the three bridges to the hook arm.
    */
   T.arm('ironbound', {
@@ -18073,14 +18074,14 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     ]),
 
     clusters: [
-      // ---- Row 1: Lance Charge, shape and essence
-      star('charge_lance_shape', 'Lance Charge: shape', 1, -1, 'hp 1', ['lc_far', 'lc_wide'], ['Long Run-Up', 'moveSpeed 1', 'hp 1']),
-      star('charge_lance_essence', 'Lance Charge: essence', 1, 1, 'breakPower 1', ['lc_stun', 'lc_heavy', 'lc_vuln'], ['Couched Lance', 'breakPower 1', 'armor 1']),
+      // ---- Row 1: Shield Charge, shape and essence
+      star('charge_lance_shape', 'Shield Charge: shape', 1, -1, 'hp 1', ['lc_far', 'lc_wide'], ['Long Run-Up', 'moveSpeed 1', 'hp 1']),
+      star('charge_lance_essence', 'Shield Charge: essence', 1, 1, 'breakPower 1', ['lc_stun', 'lc_heavy', 'lc_vuln'], ['Couched Lance', 'breakPower 1', 'armor 1']),
 
       // ---- Row 2
-      star('charge_lance_rite', 'Lance Charge: rite', 2, -1, 'moveSpeed 1', ['lc_charges', 'lc_guard', 'lc_ward'], abil('Second Wind', ['moveSpeed 1', 'hp 1'], 'lance_charge', 'cd', -0.08)),
+      star('charge_lance_rite', 'Shield Charge: rite', 2, -1, 'moveSpeed 1', ['lc_charges', 'lc_guard', 'lc_ward'], abil('Second Wind', ['moveSpeed 1', 'hp 1'], 'lance_charge', 'cd', -0.08)),
       ring('charge_destrier', 'Destrier', 2, 1, ['moveSpeed 1', 'hp 1', abil('Sharpened Lance', ['armor 0.5'], 'lance_charge', 'dmg', 0.08), 'resAll 1', 'dmgMelee 1'],
-        rule('momentum', 'Momentum', ['moveSpeed 1'], 'After a Lance Charge you take 20% less damage for 3 s.', { off: 1, def: 1.04 }),
+        rule('momentum', 'Momentum', ['moveSpeed 1'], 'After a Shield Charge you take 20% less damage for 3 s.', { off: 1, def: 1.04 }),
         ['moveSpeed 1', 'hp 1.5']),
 
       // ---- Row 3
@@ -24280,11 +24281,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   essence('gs_quake', 'ground_slam', 'Quake', 'Enemies hit are also Slowed by 40% for 3 s.',
     { fx: [{ find: AOE, set: { status: [{ id: 'stun', dur: 1.0 }, { id: 'slow', dur: 3, power: 0.4 }] } }] });
 
-  rite('gs_charges', 'ground_slam', 'Two Slams', 'Ground Slam has 2 charges. Each takes 10 s.',
+  rite('gs_charges', 'ground_slam', 'Two Slams', 'Shield Slam has 2 charges. Each takes 10 s.',
     { set: { charges: 2, cooldown: 10 } });
   rite('gs_echo', 'ground_slam', 'Aftershock', 'An aftershock hits the same ground 0.6 s later for 80% weapon damage.',
     { add: [{ copy: AOE, keep: 'shape', type: 'aoe', mult: 0.8, poise: 1.5, t: 0.6 }] });
-  rite('gs_cheap', 'ground_slam', 'Easy Swing', 'Ground Slam costs 15 Guard instead of 30. Cooldown 9 s.',
+  rite('gs_cheap', 'ground_slam', 'Easy Swing', 'Shield Slam costs 15 Guard instead of 30. Cooldown 9 s.',
     { set: { cost: 15, cooldown: 9 } });
 
   // =============================================================================================
@@ -24392,11 +24393,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   essence('lc_vuln', 'lance_charge', 'Opening Swing', 'Enemies hit by the swing at the end are Vulnerable for 4 s.',
     { fx: [{ find: MEL, set: { status: { id: 'vulnerable', dur: 4 } } }] });
 
-  rite('lc_charges', 'lance_charge', 'Second Pass', 'Lance Charge has 2 charges. Each takes 11 s.',
+  rite('lc_charges', 'lance_charge', 'Second Pass', 'Shield Charge has 2 charges. Each takes 11 s.',
     { set: { charges: 2, cooldown: 11 } });
-  rite('lc_guard', 'lance_charge', 'Charging Guard', 'Lance Charge gives you 15 Guard.',
+  rite('lc_guard', 'lance_charge', 'Charging Guard', 'Shield Charge gives you 15 Guard.',
     { add: [guard(15)] });
-  rite('lc_ward', 'lance_charge', 'Shielded Tilt', 'Lance Charge gives Ward worth 10% of your Health for 4 s.',
+  rite('lc_ward', 'lance_charge', 'Shielded Tilt', 'Shield Charge gives Ward worth 10% of your Health for 4 s.',
     { add: [{ type: 'shield', pct: 0.1, dur: 4 }] });
 
   // =============================================================================================
@@ -28609,7 +28610,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       effects: [{ type: 'heal', radius: 8, pct: 0.18, hot: 6 }, { type: 'buff', radius: 8, id: 'rally_cry', name: 'Rally Cry', dur: 8, mods: [{ s: 'dmg', t: 'inc', v: 0.15 }] }],
       aiUse: { use: 'heal', hpBelow: 0.6 } },
 
-    { id: 'ground_slam', name: 'Ground Slam',      // [w8 ironbound tree] owner: the kit revolves around the shield (a shield slam; the name is the class table's)
+    { id: 'ground_slam', name: 'Shield Slam', tableName: 'Ground Slam',      // [w8 ironbound tree] owner: the kit revolves around the shield. Shown as Shield Slam; the id (and the class table's name) stays ground_slam for saves
       cls: 'ironbound', slot: 'skill', icon: 'crack', anim: 'slam', start: true,
       desc: 'Slam the rim of your shield into the ground in front of you: 220% weapon damage, heavy Poise damage and a 1 s Stun. The opener for a Break.',
       flavor: 'The cobbles remember every one of these. So does the shield.',
@@ -28647,7 +28648,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         { type: 'buff', id: 'warcry_of_iron', name: 'Warcry of Iron', dur: 6, mods: [{ s: 'armor', t: 'inc', v: 0.5 }, { s: 'dmgTaken', t: 'more', v: -0.15 }] }],
       aiUse: { use: 'defense', minTargets: 3 } },
 
-    { id: 'lance_charge', name: 'Lance Charge',      // [w8 ironbound tree] owner: the kit revolves around the shield (a shield charge; the name is the class table's)
+    { id: 'lance_charge', name: 'Shield Charge', tableName: 'Lance Charge',      // [w8 ironbound tree] owner: the kit revolves around the shield. Shown as Shield Charge; the id (and the class table's name) stays lance_charge for saves
       cls: 'ironbound', slot: 'skill', icon: 'spear', anim: 'thrust',
       desc: 'Charge 8 m behind your raised shield through enemies for 150% weapon damage, knocking them aside, and finish with a wide shield sweep for 100%.',
       flavor: 'No lance, no horse. Just a wall of iron coming at you fast.',
@@ -34645,6 +34646,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.87', date: '2026-10-16', title: 'The Ironbound\'s Iron Keep', notes: [
+      'The Ironbound now has his own skill tree, The Iron Keep: over 1,500 nodes built around the shield',
+      'Start with Shield Bash and pick one more move, then grow into a block wall, a counter duelist, a breaker, a charger or a shouting warlord',
+      'Ground Slam is now Shield Slam and Lance Charge is now Shield Charge',
+      'Ten recommended builds wait in the tree\'s Builds tab'
+    ] },
     { version: '0.7.86', date: '2026-10-16', title: 'Towns polish', notes: [
       'Towns: the Outer Market is a little less sun-bleached, and the Continue list says which town your hero waits in'
     ] },
@@ -50731,7 +50738,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var out = [], bad = function (m) { out.push(m); }, K = KD.skills;
     if (classRec && a.cls !== classRec.id) bad('cls is "' + a.cls + '", expected "' + classRec.id + '"');
     if (slot && a.slot !== slot) bad('slot is "' + a.slot + '", expected "' + slot + '"');
-    if (name && a.name !== name) bad('name is "' + a.name + '", expected "' + name + '"');
+    if (name && a.name !== name && a.tableName !== name) bad('name is "' + a.name + '", expected "' + name + '"');   // [w8 ironbound tree] tableName: a renamed ability keeps its class-table name (and id)
     if (!a.desc || String(a.desc).length < 12) bad('missing desc');
     if (!a.icon) bad('missing icon'); else if (!C.iconKnown(a.icon)) bad('unknown icon key "' + a.icon + '"');
     if (!a.anim) bad('missing anim'); else if (!C.clipKnown(a.anim)) bad('unknown anim clip "' + a.anim + '"');
@@ -56851,7 +56858,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     measureSpeed: 0.08, measureDur: 4, measureMax: 3,     // Measured: Attack Speed per block, its duration and stacks
     shockMult: 0.6, shockRadius: 3,         // Aftershock: a Break sends out a shockwave
     quakeLonger: 1.5, quakeLess: 0.9,       // Earthshaker: Stun duration; damage to enemies neither Stunned nor Broken
-    momentumLess: 0.2, momentumDur: 3,      // Momentum: less damage taken after a Lance Charge
+    momentumLess: 0.2, momentumDur: 3,      // Momentum: less damage taken after a Shield Charge
     reelStun: 0.6,                          // Reeled In: Stun on a hooked enemy
     reboundGuard: 5,                        // Ringing Rebound: Guard per enemy hit by Shield Throw
     nearAt: 3.5, nearMore: 1.2, farAt: 6, farLess: 0.8,   // Come Here: damage by distance
@@ -56964,7 +56971,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       if (id !== 'lance_charge' && id !== 'ref_lance_charge') return;
       var b = S.addBuff(c.world, c.self, { id: 'iron_momentum', name: 'Momentum', dur: T.momentumDur, src: c.self, icon: 'spear', color: '#c24a3a',
         mods: [{ s: 'dmgTaken', t: 'more', v: -T.momentumLess }] });
-      if (b && !b.def.desc) b.def.desc = 'You take ' + Math.round(T.momentumLess * 100) + '% less damage after a Lance Charge.';
+      if (b && !b.def.desc) b.def.desc = 'You take ' + Math.round(T.momentumLess * 100) + '% less damage after a Shield Charge.';
     }
   });
 
