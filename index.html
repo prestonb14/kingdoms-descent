@@ -1974,6 +1974,16 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 /* the run-over panel scrolls rather than squeezing its rows when the Spoils block is added */
 .flow-over-xp:has(.hub-over) > * { flex-shrink: 0; }
 
+/* [w8 towns] the towns on the road map and the way back (src/ui/23_towns.js) */
+.town-map-node { position: absolute; transform: translate(-50%, -50%); display: flex; align-items: center; gap: calc(3 * var(--u)); padding: calc(2 * var(--u)) calc(6 * var(--u)) calc(2 * var(--u)) calc(4 * var(--u));
+  border-radius: calc(10 * var(--u)); background: rgba(42, 28, 14, .82); border: calc(1 * var(--u)) solid #120a04; box-shadow: 0 0 0 calc(1.5 * var(--u)) rgba(189, 148, 64, .55);
+  pointer-events: auto; white-space: nowrap; z-index: 2; }
+.town-map-label { font-family: var(--kd-font-display); font-variant: small-caps; font-size: calc(10.5 * var(--u)); letter-spacing: .04em; color: #e6d6b0; }
+.town-map-node.town-seen { opacity: .72; }
+.town-map-node.town-here { background: rgba(120, 72, 22, .92); box-shadow: 0 0 0 calc(2 * var(--u)) var(--kd-brass-400, #d8b25a), 0 0 calc(10 * var(--u)) rgba(255, 196, 96, .55); }
+.town-map-node.town-here .town-map-label { color: #ffe9a0; }
+.town-back-btn { margin-left: calc(4 * var(--u)); }
+
 /* Co-op screens (src/ui/25_coop_*.js, docs/COOP.md section 6). Prefix: coop-. Sizes in --u units, colours from the kit. */
 
 /* ---- entry and lobby (flow screen 'coop') ---- */
@@ -3872,7 +3882,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.84';
+  KD.VERSION = '0.7.85';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -28137,6 +28147,68 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/data/49_towns.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  KD.data = KD.data || {};
+
+  /**
+   * [w8 towns] TOWNS: safe hubs with the good shops, before the first area and between the acts (docs/TOWNS.md).
+   * Owner (Oct 15): "Between each act and before the start area ... there should be a town area that has shops and things;
+   * inside enemy areas there are still shops but they're not as good as the ones outside enemy areas."
+   *
+   * A town belongs to the act that starts after it (beforeAct). It is a walkable layout with no enemies (KD.gen.town),
+   * with stalls you walk up to. Switch: KD.config.towns (default true; false = the road goes straight on as before).
+   *   stalls: vendor (good stock), smith (forge: reforge, temper, salvage, fuse, brew), outfitter (mercenary gear),
+   *   hall (hirelings), healer (rest), shrine (skills, Sigils and the tree), gate (on to the road).
+   */
+  var cfg = KD.config = KD.config || {};
+  if (cfg.towns === undefined) cfg.towns = true;
+
+  var TOWNS = [
+    { id: 'town_waystation', name: 'Thornwick Waystation', short: 'Thornwick', beforeAct: 1, theme: 'farmland', faction: 'lantern', kind: 'waystation',
+      blurb: 'Refugees from the outskirts crowd the old coaching yard. The last safe roof before the farms.',
+      keepers: { vendor: 'Marta the Provisioner', smith: 'Old Brannoc', outfitter: 'Wenna the Outfitter', hall: 'Sergeant Hobb', healer: 'Sister Aelis', shrine: 'The Wayside Shrine' } },
+    { id: 'town_highcairn', name: 'Highcairn Hold', short: 'Highcairn', beforeAct: 2, theme: 'stonefort', faction: 'crown', kind: 'fort',
+      blurb: 'A walled fort town at the foot of the passes. Mule trains, soldiers and forges that never go cold.',
+      keepers: { vendor: 'Quartermaster Dain', smith: 'Hilde Ironhand', outfitter: 'Corwin the Armourer', hall: 'Captain Rusk', healer: 'Brother Tamsin', shrine: 'The Cairn Shrine' } },
+    { id: 'town_outer_market', name: 'The Outer Market', short: 'Outer Market', beforeAct: 3, theme: 'market', faction: 'choir', kind: 'market',
+      blurb: 'Stalls under the city wall where the gates still open at dawn. Everything here is for sale.',
+      keepers: { vendor: 'Silas Fairweight', smith: 'Greta of the Anvil', outfitter: 'Mother Pell', hall: 'The Guild Broker', healer: 'Doctor Ambrose', shrine: 'The Market Shrine' } },
+    { id: 'town_last_camp', name: 'The Last Camp', short: 'Last Camp', beforeAct: 4, theme: 'warcamp', faction: 'crown', kind: 'camp',
+      blurb: 'Banners, tents and one chapel bell below the castle hill. Nobody here expects to go home.',
+      keepers: { vendor: 'Ser Odo the Sutler', smith: 'Forgemaster Kell', outfitter: 'Ysolde the Fletcher', hall: 'Marshal Brega', healer: 'Mother Ines', shrine: 'The Last Shrine' } }
+  ];
+  KD.register('towns', TOWNS);
+  KD.data.TOWN_ORDER = TOWNS.map(function (t) { return t.id; });
+  /** The town that opens before `act` (1..4), or null. */
+  KD.data.townBeforeAct = function (act) { return KD.list('towns').filter(function (t) { return t.beforeAct === act; })[0] || null; };
+
+  /**
+   * Shop quality. town: the stalls in a town. field: every shop met inside an enemy area (the camp quartermaster, the
+   * traders and wandering merchants, the camp outfitter). The field numbers are applied by wrappers in
+   * src/meta/46_run_towns.js; CAMP.vendorSlots (src/data/40_run_fate.js) is lowered from 6 to 4 below.
+   *   slots        item stock before the faction tier and vendorStockBonus are added
+   *   find         rarity weight multiplier handed to KD.items.vendorStock (1 = the old vendor; rare weight ~ find^1.25)
+   *   rare         stock entries that are always Rare (town only)
+   *   noRare       field: the faction plans' guaranteed Rare / Storied entries become ordinary gear
+   *   priceMult    on every stock entry's base price (reputation discounts still apply on top)
+   *   supplyQty    bandages and rations on the shelf
+   *   mercExtra    outfitter items above KD.data.mercTuning.SHOP_SIZE; mercActBonus: rarity rolled as if one act later
+   *   hallOffers   hirelings for hire; hallRarity: extra rarity bias (KD.mercs.rollRarity); hallPriceMult on their cost
+   */
+  KD.data.townTuning = {
+    town: { slots: 9, find: 1.8, rare: 2, priceMult: 0.95, supplyQty: 6, mercExtra: 3, mercActBonus: 1, hallOffers: 4, hallRarity: 1, hallPriceMult: 0.9 },
+    field: { slots: 4, find: 0.6, noRare: true, priceMult: 1.3, mercPriceMult: 1.3 },
+    healer: { free: true }
+  };
+  // [w8 towns] shops inside enemy areas carry fewer items (was 6)
+  if (KD.data.runTuning && KD.data.runTuning.CAMP) KD.data.runTuning.CAMP.vendorSlots = KD.data.townTuning.field.slots;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/data/50_abilities_emberscribe.js
 (function (root) {
   'use strict';
@@ -34573,6 +34645,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.85', date: '2026-10-16', title: 'Towns between the acts', notes: [
+      'New: a safe town before the first area and between every act, with the best shops on the road',
+      'Walk up to the vendor, smith, outfitter, hireling hall, healer and shrine',
+      'Shops inside enemy areas still trade, but carry less, roll worse and ask more',
+      'Thornwick Waystation, Highcairn Hold, the Outer Market and the Last Camp appear on the road map'
+    ] },
     { version: '0.7.84', date: '2026-10-16', title: 'Clockwright talent tree', notes: [
       'The Clockwright has its own talent tree: The Great Works, 1,500 nodes in eight arms',
       'Pistol, turrets, coils, steam, the boiler, mines, the Brass Golem and the workshop: every device now comes from the tree',
@@ -40414,6 +40492,202 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var pk = pool[Math.floor(rng.next() * pool.length)];
     return { x: pk % gw + 0.5, z: Math.floor(pk / gw) + 0.5 };
   };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/gen/70_towns.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var G = KD.gen = KD.gen || {};
+
+  /**
+   * [w8 towns] TOWN LAYOUTS (docs/TOWNS.md). KD.gen.town(townId, seed) -> a walkable layout (KD.gen layout schema, kind
+   * 'area', areaId = the town id) with no enemies: a square with six booths around it, the road in from the south and
+   * the gate on to the road in the north. Hand-placed per town (a refugee waystation, a mountain fort town, the city's
+   * outer market, the last camp below the castle), deterministic, the same for every seed apart from small dressing.
+   *
+   *   layout.interact: [{ type: 'town', data: { stall, label, keeper } }]   stall: vendor | smith | outfitter | hall | healer | shrine | gate
+   *   layout.town = { id, npcs: [{ id, stall, x, z, yaw, look }], folk: [{ id, x, z, yaw, look }] }   the people (drawn, not simulated)
+   *
+   * Booths face the square. A keeper stands behind a counter (inside a stall, or in a niche closed by a workbench and two
+   * crates in front of a forge, tent or house), so nobody ever walks through a keeper.
+   */
+  var PI = Math.PI, W = 64, D = 60, PZ = { x: 32, z: 28, r: 10 };
+  G.TOWN_SIZE = [W, D];
+
+  /** frame -> world: (fx, fz) is the booth's front centre, rot the yaw the booth faces (the square). */
+  function tw(f, lx, lz) { var c = Math.cos(f.rot), s = Math.sin(f.rot); return [f.x + lx * c + lz * s, f.z - lx * s + lz * c]; }
+  // the six booth frames (front centre on the square's rim, facing it)
+  var FR = {
+    vendor: { x: 21, z: 32, rot: PI / 2 }, smith: { x: 21, z: 22, rot: PI / 2 },
+    outfitter: { x: 43, z: 32, rot: -PI / 2 }, hall: { x: 43, z: 22, rot: -PI / 2 },
+    healer: { x: 26, z: 40, rot: PI }, shrine: { x: 38, z: 40, rot: PI }
+  };
+
+  /** Per town: the ground, the booths' looks, the boundary and the dressing. */
+  var SPEC = {
+    town_waystation: {
+      surf: 'grass', yard: 'dirt', road: 'road_dirt', plaza: 'dirt', gate: 'palisade', stallStyle: 'lantern', outfitStyle: 'market',
+      smithBack: ['shed', { w: 4, d: 3 }], hallBack: ['tent', { w: 5, d: 4, style: 'merchant' }], healerBack: ['house', { w: 5, d: 5, roof: 'thatch', style: 'cottage' }],
+      centre: [['well', 30, 29, 0, {}], ['campfire', 35.5, 25.5, 0, {}]],
+      border: function (b) {
+        mass(b, 'grove', { species: 'oak' }, { species: 'dead' });
+      },
+      dress: [
+        ['inn', 10, 44, PI / 2, { w: 7, d: 8, floors: 2 }], ['barn', 54, 45, -PI / 2, { w: 7, d: 8, style: 'stable' }],
+        ['tent', 9, 10, 0.3, { w: 3, d: 3, style: 'camp' }], ['tent', 15, 7, -0.2, { w: 3, d: 3, style: 'camp' }], ['campfire', 12, 15, 0, {}], ['bedroll', 16, 13, 0.5, {}],
+        ['cart', 52, 9, 0.5, { w: 2, d: 3.4, style: 'hay' }], ['cart', 57, 14, -0.4, { w: 2, d: 3.4, style: 'merchant' }], ['haybale', 49, 13, 0, { size: 1 }],
+        ['house', 10, 27, PI / 2, { w: 6, d: 6, roof: 'thatch', style: 'cottage' }], ['house', 54, 27, -PI / 2, { w: 6, d: 6, roof: 'thatch', style: 'cottage' }],
+        ['fence', 15, 17, 0, { len: 4, style: 'rail' }], ['fence', 49, 17, 0, { len: 4, style: 'rail' }],
+        ['trough', 49.5, 37, 0, { w: 2, d: 0.8 }], ['tree', 18, 50, 0, { species: 'oak', size: 3 }], ['tree', 46, 52, 0, { species: 'dead', size: 2 }],
+        ['sign', 35.5, 8, 0, { style: 'post' }], ['banner_pole', 28, 51, 0, { style: 'lantern' }], ['banner_pole', 36, 51, 0, { style: 'lantern' }]
+      ],
+      lamps: [[29.2, 12], [34.8, 12], [29.2, 47.5], [34.8, 47.5], [22, 36.5], [42, 36.5]], lampStyle: 'wood',
+      folk: [[13.5, 13.5, 1.0, 'refugee'], [11, 16.5, 2.6, 'refugee'], [37, 27.2, 3.9, 'refugee'], [52.5, 12, -2.2, 'carter']]
+    },
+    town_highcairn: {
+      surf: 'rock', yard: 'cobble', road: 'road_cobble', plaza: 'plaza', gate: 'stone', stallStyle: 'crown', outfitStyle: 'crown',
+      smithBack: ['forge', { w: 3, d: 2 }], hallBack: ['barracks', { w: 6, d: 4, style: 'stone' }], healerBack: ['house', { w: 5, d: 5, roof: 'gable', style: 'town' }],
+      centre: [['statue', 32, 28, PI, { w: 2, d: 2, style: 'knight' }]],
+      border: function (b) {
+        mass(b, 'cliff', { style: 'rock', h: 9 }, { style: 'mossy', h: 7 });
+      },
+      dress: [
+        ['keep', 10, 45, PI / 2, { w: 9, d: 8, h: 13, style: 'stone' }], ['barracks', 54, 45, -PI / 2, { w: 9, d: 6, style: 'stone' }],
+        ['house', 10, 27, PI / 2, { w: 7, d: 6, floors: 2, roof: 'gable', style: 'town' }], ['house', 54, 27, -PI / 2, { w: 7, d: 6, floors: 2, roof: 'gable', style: 'town' }],
+        ['tower', 10, 10, 0, { r: 3, h: 11, style: 'stone' }], ['tower', 54, 10, 0, { r: 3, h: 11, style: 'stone' }],
+        ['rack', 17, 15, 0, { w: 2, d: 1, style: 'weapons' }], ['dummy', 47, 14, 0, { style: 'target' }], ['dummy', 49.5, 14, 0, { style: 'straw' }],
+        ['cart', 20, 9, 0.4, { w: 2, d: 3.4, style: 'grain' }], ['crate', 44, 8, 0, { size: 2 }], ['barrel', 46.5, 8.5, 0, { style: 'wood' }],
+        ['banner_pole', 28, 51, 0, { style: 'crown' }], ['banner_pole', 36, 51, 0, { style: 'crown' }], ['banner_pole', 22, 37, 0, { style: 'crown' }], ['banner_pole', 42, 37, 0, { style: 'crown' }]
+      ],
+      lamps: [[29.2, 12], [34.8, 12], [29.2, 47.5], [34.8, 47.5]], lampStyle: 'iron',
+      folk: [[18, 13, 0.5, 'soldier'], [46.5, 16.5, -0.6, 'soldier'], [22, 9.5, 0.4, 'carter'], [47, 40, -2.8, 'townsfolk']]
+    },
+    town_outer_market: {
+      surf: 'cobble', yard: 'cobble', road: 'road_cobble', plaza: 'plaza', gate: 'city', stallStyle: 'choir', outfitStyle: 'market',
+      smithBack: ['forge', { w: 3, d: 2 }], hallBack: ['house', { w: 5, d: 5, roof: 'gable', style: 'guild' }], healerBack: ['house', { w: 5, d: 5, roof: 'gable', style: 'town' }],
+      centre: [['fountain', 32, 28, 0, { r: 2.4, style: 'tiered' }]],
+      border: function (b) {
+        mass(b, 'masonry', { style: 'rowhouses', h: 8 }, { style: 'citywall', h: 11 });
+      },
+      dress: [
+        ['stall', 9, 44, PI / 2, { w: 3, d: 2, style: 'fish' }], ['stall', 9, 49, PI / 2, { w: 3, d: 2, style: 'market' }], ['stall', 55, 44, -PI / 2, { w: 3, d: 2, style: 'game' }], ['stall', 55, 49, -PI / 2, { w: 3, d: 2, style: 'market' }],
+        ['house', 10, 27, PI / 2, { w: 7, d: 6, floors: 3, roof: 'gable', style: 'town' }], ['house', 54, 27, -PI / 2, { w: 7, d: 6, floors: 3, roof: 'gable', style: 'rich' }],
+        ['stall', 10, 10, 0, { w: 3, d: 2, style: 'market' }], ['stall', 15, 10, 0, { w: 3, d: 2, style: 'cult' }], ['stall', 49, 10, 0, { w: 3, d: 2, style: 'fish' }], ['stall', 54, 10, 0, { w: 3, d: 2, style: 'lantern' }],
+        ['cart', 20, 14, 0.3, { w: 2, d: 3.4, style: 'merchant' }], ['crate', 45, 16, 0, { size: 2 }], ['barrel', 47.5, 16.5, 0, { style: 'water' }],
+        ['tower', 54, 37, 0, { w: 4, d: 4, h: 14, style: 'clock' }],
+        ['banner_pole', 28, 51, 0, { style: 'choir' }], ['banner_pole', 36, 51, 0, { style: 'crown' }]
+      ],
+      lamps: [[29.2, 12], [34.8, 12], [29.2, 47.5], [34.8, 47.5], [22, 36.5], [42, 36.5], [22, 17.5], [42, 17.5]], lampStyle: 'iron',
+      folk: [[12, 13.5, 3.1, 'townsfolk'], [16, 13.5, 3.4, 'townsfolk'], [51.5, 13.3, 2.8, 'townsfolk'], [12.5, 46.5, -1.6, 'townsfolk'], [26.5, 30.5, 1.8, 'townsfolk']]
+    },
+    town_last_camp: {
+      surf: 'dirt', yard: 'mud', road: 'road_dirt', plaza: 'dirt', gate: 'palisade', stallStyle: 'crown', outfitStyle: 'lantern',
+      smithBack: ['forge', { w: 3, d: 2 }], hallBack: ['tent', { w: 5, d: 4, style: 'war' }], healerBack: ['tent', { w: 5, d: 4, style: 'siege' }],
+      centre: [['brazier', 29.5, 28, 0, { style: 'iron' }], ['brazier', 34.5, 28, 0, { style: 'iron' }], ['banner_pole', 32, 30.5, 0, { style: 'crown' }]],
+      border: function (b) {
+        mass(b, 'cliff', { style: 'rock', h: 8 }, { style: 'rock', h: 12 });
+      },
+      dress: [
+        ['tent', 9, 44, 0.1, { w: 5, d: 4, style: 'war' }], ['tent', 16, 49, -0.15, { w: 4, d: 3, style: 'war' }], ['tent', 54, 44, -0.1, { w: 5, d: 4, style: 'war' }], ['tent', 48, 49, 0.15, { w: 4, d: 3, style: 'war' }],
+        ['tent', 10, 27, PI / 2, { w: 5, d: 4, style: 'siege' }], ['tent', 54, 27, -PI / 2, { w: 5, d: 4, style: 'siege' }],
+        ['siege_engine', 11, 11, 0.4, { w: 3, d: 4, type: 'ballista' }], ['siege_engine', 53, 11, -0.4, { w: 3, d: 4, type: 'mantlet' }],
+        ['rack', 17, 16, 0, { w: 2, d: 1, style: 'weapons' }], ['rack', 47, 16, 0, { w: 2, d: 1, style: 'armor' }],
+        ['campfire', 13, 37.5, 0, {}], ['campfire', 51, 37.5, 0, {}], ['bedroll', 16, 39, 0.4, {}], ['bedroll', 48, 39, -0.4, {}],
+        ['bell', 22, 49, 0, { w: 2, d: 2 }],
+        ['banner_pole', 28, 51, 0, { style: 'crown' }], ['banner_pole', 36, 51, 0, { style: 'lantern' }], ['banner_pole', 22, 37, 0, { style: 'war' }], ['banner_pole', 42, 37, 0, { style: 'crown' }]
+      ],
+      lamps: [[29.2, 12], [34.8, 12], [29.2, 47.5], [34.8, 47.5]], lampStyle: 'iron',
+      folk: [[14.5, 36, 0.6, 'soldier'], [11.5, 39.5, 2.2, 'soldier'], [49.5, 36, -0.6, 'soldier'], [18.5, 13, 3.1, 'soldier'], [52.5, 39.2, -2.2, 'refugee']]
+    }
+  };
+  G.TOWN_SPEC = SPEC;
+
+  /** The sealed band round the edge: west / east / north / south masses (a = sides and south, n = the north). */
+  function mass(b, kind, a, n) {
+    var p = function (x, z, w, d, o) { return b.add(kind, x, z, 0, KD.util.assign({ w: w, d: d }, o)); };
+    p(2, D / 2, 4, D, a);                              // west
+    p(W - 2, D / 2, 4, D, a);                        // east
+    p(16, D - 2, 24, 4, n); p(W - 16, D - 2, 24, 4, n);      // north, either side of the gate
+    p(16, 2, 24, 4, a); p(W - 16, 2, 24, 4, a);              // south, either side of the way in
+  }
+
+  /** A booth: the back piece, a keeper in a niche closed by a workbench and two crates, the use spot in front. */
+  function niche(b, f, back, table) {
+    var bd = back[1].d || 2, bw = back[1].w || 3, bp = tw(f, 0, -bd / 2);
+    b.add(back[0], bp[0], bp[1], f.rot, KD.util.assign({ noDoor: true }, back[1]));
+    var t = tw(f, 0, 1.4); b.add('table', t[0], t[1], f.rot, { w: 2, d: 0.8, style: table || 'workbench' });
+    [-1.5, 1.5].forEach(function (lx) { var c = tw(f, lx, 0.5); b.add('crate', c[0], c[1], f.rot, { size: 1 }); });
+    return { keeper: tw(f, 0, 0.45), use: tw(f, 0, 2.7), width: bw };
+  }
+  function stall(b, f, style) {
+    var sp = tw(f, 0, -1); b.add('stall', sp[0], sp[1], f.rot, { w: 4, d: 2, style: style });
+    return { keeper: tw(f, 0, -1.4), use: tw(f, 0, 1.3) };
+  }
+
+  /** town(townId, seed) -> layout. Deterministic for (townId, seed). */
+  G.town = function (townId, seed) {
+    var spec = SPEC[townId] || SPEC.town_waystation, def = KD.has('towns', townId) ? KD.get('towns', townId) : { id: townId, name: townId, theme: 'farmland', keepers: {} };
+    var S = G.SURF, U = KD.util, rng = new KD.RNG((seed >>> 0) || 1).fork('town');
+    var b = new G.Builder({ id: def.id, archetype: 'town', theme: def.theme, size: [W, D] }, seed >>> 0 || 1, {}, 'area');
+    b.fillSurf(S[spec.surf]);
+    // the yards round the booths, the square, the road in and the road on
+    b.rect(14, 6, W - 28, D - 12, S[spec.yard]);
+    b.disc(PZ.x, PZ.z, PZ.r + 1.5, S[spec.yard]);
+    b.disc(PZ.x, PZ.z, PZ.r, S[spec.plaza]);
+    b.strip([[PZ.x, 4.5], [PZ.x, PZ.z]], 4, S[spec.road]);
+    b.strip([[PZ.x, PZ.z], [PZ.x, D - 4.5]], 4, S[spec.road]);
+    spec.border(b);
+    // the gates: south (the way in), north (on to the road)
+    b.add('entry_gate', PZ.x, 2, 0, { w: 8, d: 4, style: spec.gate });
+    b.add('entry_gate', PZ.x, D - 2, PI, { w: 8, d: 4, style: spec.gate });
+    var town = { id: def.id, npcs: [], folk: [] }, K = def.keepers || {};
+    var put = function (stallId, at, keeper, look) {
+      b.addInteract('town', at.use[0], at.use[1], FR[stallId] ? FR[stallId].rot + PI : 0, 2.4, { stall: stallId, keeper: K[stallId] || '', label: label(stallId, K[stallId]) });
+      if (keeper) town.npcs.push({ id: 'keeper_' + stallId, stall: stallId, x: U.round(at.keeper[0], 3), z: U.round(at.keeper[1], 3), yaw: FR[stallId].rot, look: look || stallId, name: K[stallId] || '' });
+    };
+    put('vendor', stall(b, FR.vendor, spec.stallStyle), true);
+    put('outfitter', stall(b, FR.outfitter, spec.outfitStyle), true);
+    put('smith', niche(b, FR.smith, spec.smithBack, 'workbench'), true);
+    put('hall', niche(b, FR.hall, spec.hallBack, 'map'), true);
+    put('healer', niche(b, FR.healer, spec.healerBack, 'alchemy'), true);
+    var sh = tw(FR.shrine, 0, -1); b.add('shrine', sh[0], sh[1], FR.shrine.rot, { w: 2, d: 2, fate: 'order' });
+    var cl = tw(FR.shrine, -2.5, -0.6), cr = tw(FR.shrine, 2.5, -0.6);
+    b.add('brazier', cl[0], cl[1], 0, { style: 'candles' }); b.add('brazier', cr[0], cr[1], 0, { style: 'candles' });
+    put('shrine', { use: tw(FR.shrine, 0, 1.3) }, false);
+    b.addInteract('town', PZ.x, D - 6, PI, 3, { stall: 'gate', label: 'Set out on the road', keeper: '' });
+    // side props round the booths: an armour rack beside the outfitter, a sign at the hall
+    var ar = tw(FR.outfitter, 3, -1); b.add('rack', ar[0], ar[1], FR.outfitter.rot, { w: 2, d: 1, style: 'armor' });
+    var hbw = (spec.hallBack[1].w || 3) / 2, hb = tw(FR.hall, hbw + 1.4, -0.6); b.add('banner_pole', hb[0], hb[1], 0, { style: def.faction || 'crown' });
+    var sg = tw(FR.vendor, 3.2, 0.6); b.add('sign', sg[0], sg[1], FR.vendor.rot, { style: 'post' });
+    (spec.centre || []).forEach(function (e) { b.disc(e[1], e[2], e[0] === 'fountain' ? 3.6 : 2.2, S[spec.yard]); });
+    (spec.centre || []).forEach(function (e) { b.add(e[0], e[1], e[2], e[3], e[4]); });
+    (spec.dress || []).forEach(function (e) { b.add(e[0], e[1], e[2], e[3], U.assign({ seed: rng.int(1, 99999) }, e[4])); });
+    (spec.lamps || []).forEach(function (l) { b.add('lamp_post', l[0], l[1], 0, { style: spec.lampStyle || 'iron' }); });
+    (spec.folk || []).forEach(function (f, i) { town.folk.push({ id: 'folk_' + i, x: f[0], z: f[1], yaw: f[2], look: f[3] }); });
+    b.points.spawn = { x: PZ.x, z: 7, yaw: 0 };
+    b.points.exit = { x: PZ.x, z: D - 6, yaw: 0 };
+    b.points.camp = { x: PZ.x, z: PZ.z - 7 }; b.points.bossGate = b.points.exit;
+    b.path = [[PZ.x, 7], [PZ.x, 18], [26, 23], [26, 33], [PZ.x, 38], [PZ.x, D - 6]];
+    b.addLandmark('square', def.name, PZ.x, PZ.z, 3);
+    var L = b.finish();
+    L.town = town;
+    L.meta.town = true;
+    return L;
+  };
+  function label(stall, who) {
+    switch (stall) {
+      case 'vendor': return 'Trade with ' + (who || 'the provisioner');
+      case 'smith': return 'Visit the smith' + (who ? ', ' + who : '');
+      case 'outfitter': return 'Outfit your company' + (who ? ' (' + who + ')' : '');
+      case 'hall': return 'Hire at the hall' + (who ? ' (' + who + ')' : '');
+      case 'healer': return 'Rest and be healed';
+      case 'shrine': return 'Kneel at ' + (who || 'the shrine') + ': skills and talents';
+    }
+    return 'Use';
+  }
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -59629,7 +59903,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var classId = o.classId || (o.hero && o.hero.classId) || null;
     var rep = run && run.factions && run.factions[o.faction] ? run.factions[o.faction].rep || 0 : 0;
     var tier = o.tier === undefined || o.tier === null ? Math.floor(rep / 20) : o.tier;
-    var find = 1 + 0.15 * U.clamp(tier, 0, 5), out = [], d = I.db();
+    var find = (o.find > 0 ? o.find : 1) * (1 + 0.15 * U.clamp(tier, 0, 5)), out = [], d = I.db();      // [w8 towns] o.find: town stalls stock better, field shops worse
     var ctx = { rng: rng, run: run, rules: rules, hero: o.hero || null, unlockedSigils: o.unlockedSigils, unlockedRelics: o.unlockedRelics };
     function rarity(min) {
       var r = I.rollRarity(rng, { source: 'vendor', itemFind: find, level: level });
@@ -59673,7 +59947,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       return gear(rng.weighted(I.SLOTS, function (s) { return I.SLOT_WEIGHTS[s]; }), 'fine');
     }
     for (var i = 0; i < slots; i++) {
-      var kind = V.plan[i % V.plan.length], item = make(kind);
+      var plan = o.plan || V.plan, kind = plan[i % plan.length], item = make(kind);      // [w8 towns] o.plan: a stall's own plan
       out.push({ item: item, price: I.price(item, run, rules, o.faction), kind: kind });
     }
     return out;
@@ -66083,6 +66357,267 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var act = KD.run && KD.run.act ? KD.run.act(run) : 1;
     return cls + ' ' + run.hero.level + ', Act ' + (['', 'I', 'II', 'III', 'IV'][act] || act);
   };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/meta/46_run_towns.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var U = KD.util, R = KD.run;
+
+  /**
+   * [w8 towns] TOWNS, the run side (pure, deterministic; docs/TOWNS.md). A town opens before the first area and after
+   * every act boss (run.town), while the run waits on the road (phase 'route', the next offer already made). The town
+   * is a safe walkable place with the good shops; choosing the next road closes it. Shops inside enemy areas (camp
+   * quartermaster, traders, wandering merchants, the camp outfitter) become weaker (KD.data.townTuning.field).
+   *
+   *   run.town = { id, act, slot, open, left, healed }
+   *   run.camp = { areaId: 'town:<id>', town: <id>, slot, rested, vendors, hirelings, purchases, mercShop, stocked }   the town's stalls
+   *                                  (a town is the camp of the road: the next area's camp replaces it on arrival)
+   *   run.towns = [townId]                         towns visited this run (the road map shows them)
+   *
+   *   KD.towns.on()                   the switch (KD.config.towns)
+   *   KD.towns.open(run, act)         opens the town before `act` (called by the create / onBossKilled wrappers)
+   *   KD.towns.here(run)              the town the hero stands in (open and not left), else null
+   *   KD.towns.leave(run) / back(run) walk out of the gate to the road screen / go back in from the road screen
+   *   KD.towns.stock(run)             fills the stalls (vendor, outfitter, hall) once; deterministic for the run seed
+   *   KD.towns.heal(run)              the healer: full Health, potions, fallen hirelings back on their feet
+   *   KD.towns.STALLS                 the stall ids and what they offer
+   *
+   * While a town is here, the camp functions of KD.run (buy, sell, craft, hire, the outfitter, skills and respec) work
+   * on the town's camp record: each call sets run.phase 'camp' and a stand-in run.area for its duration only
+   * (synchronously, restored in finally), so the whole camp code is reused and nothing outside the call ever sees it.
+   * Co-op: every player's copy of the run has its own town record, so everyone shops in their own instance of the stalls.
+   */
+  var T = KD.towns = KD.towns || {};
+  function TT() { return KD.data.townTuning; }
+  function fail(reason) { return { ok: false, reason: reason }; }
+  T.STALLS = ['vendor', 'smith', 'outfitter', 'hall', 'healer', 'shrine'];
+  T.on = function () { return !(KD.config && KD.config.towns === false); };
+
+  /** The next slot's level for the town's goods (the stock is for the road ahead). */
+  function townLevel(run, town) { return KD.balance.slotLevel(Math.max(1, Math.min(16, town.slot || run.nextSlot || 1)), 0.4); }
+
+  T.open = function (run, act) {
+    if (!T.on() || !run) return null;
+    var def = KD.data.townBeforeAct(act);
+    if (!def) return null;
+    var slot = run.nextSlot || 1;
+    run.town = { id: def.id, act: act, slot: slot, open: true, left: false, healed: false };
+    run.camp = { areaId: 'town:' + def.id, town: def.id, slot: slot, rested: false, vendors: {}, hirelings: [], purchases: {} };
+    run.towns = run.towns || [];
+    if (run.towns.indexOf(def.id) < 0) run.towns.push(def.id);
+    if (R.log) R.log(run, 'Reached ' + def.name + '.');
+    return run.town;
+  };
+  T.def = function (run) { return run && run.town && KD.has('towns', run.town.id) ? KD.get('towns', run.town.id) : null; };
+  /** The open town (the road screen offers the way back in), or null. */
+  T.current = function (run) { return run && run.town && run.town.open && run.phase === 'route' ? run.town : null; };
+  /** The town the hero stands in right now, or null. */
+  T.here = function (run) { var t = T.current(run); return t && !t.left ? t : null; };
+  T.leave = function (run) { var t = T.current(run); if (!t) return fail('no_town'); t.left = true; return { ok: true }; };
+  T.back = function (run) { var t = T.current(run); if (!t) return fail('no_town'); t.left = false; return { ok: true }; };
+  T.close = function (run) { if (run && run.town) { run.town.open = false; run.town.left = true; } };
+
+  /** The town as a stand-in area record (for the HUD, banners and the windows that read run.area). */
+  T.areaRec = function (town) {
+    var d = KD.get('towns', town.id);
+    return { id: d.id, name: d.name, act: town.act, blurb: d.blurb, theme: d.theme, town: true, boss: null, miniboss: null, features: [], hazards: [] };
+  };
+  function pseudoArea(run, town) {
+    return { areaId: 'town:' + town.id, seed: U.hash(run.seed + ':town:' + town.id) >>> 0, slot: town.slot, act: town.act, inArena: false, town: true,
+      cleared: { spawns: {}, interact: {} }, pos: null, minibossDead: true, bossDead: false, events: { cards: [], shrines: {}, fights: [] }, gen: {} };
+  }
+
+  // ------------------------------------------------------------------ the camp swap
+  /** with(run, fn): runs fn() with the town standing in for the camp (phase 'camp', run.area the town's stand-in). */
+  T.with = function (run, fn) {
+    var town = T.here(run);
+    if (!town || run._inTown) return fn();
+    T.campOf(run, town);
+    var keep = { phase: run.phase, area: run.area };
+    run._inTown = true; run.phase = 'camp'; run.area = pseudoArea(run, town);
+    try { return fn(); }
+    finally { run.phase = keep.phase; run.area = keep.area; delete run._inTown; }
+  };
+  T.inSwap = function (run) { return !!(run && run._inTown); };
+  /** The town's camp record (run.camp), made again if a save lost it. */
+  T.campOf = function (run, town) {
+    if (!run.camp || run.camp.town !== town.id) run.camp = { areaId: 'town:' + town.id, town: town.id, slot: town.slot, rested: false, vendors: {}, hirelings: [], purchases: {} };
+    return run.camp;
+  };
+
+  // ------------------------------------------------------------------ the stalls
+  function planFor(faction, rare) {
+    var V = KD.items && KD.items.VENDORS ? (KD.items.VENDORS[faction] || KD.items.VENDORS.crown) : null;
+    if (!V) return null;
+    var out = [];
+    for (var i = 0; i < rare; i++) out.push('rare');
+    return out.concat(V.plan);
+  }
+  /** The town vendor: more items, rarer, a little cheaper. Stored like a camp vendor (id 'town') in the town's camp. */
+  function vendorStock(run, town) {
+    var q = TT().town, def = KD.get('towns', town.id), faction = def.faction, rules = R.rules(run), tier = R.factionTier(run, faction);
+    var level = townLevel(run, town), eg = KD.balance.enemyGold(level), C = KD.data.runTuning.CAMP, cons = KD.data.consumables || {};
+    var rng = R.rng(run, 'town:' + town.id + ':vendor');
+    var stock = ['bandage', 'ration'].map(function (id) {
+      var c = cons[id];
+      return { kind: 'supply', supply: id, name: c ? c.name : (id === 'bandage' ? 'Bandage' : 'Ration'), text: c ? c.text : '', qty: q.supplyQty,
+        base: Math.max(1, Math.round(eg * (c && c.price ? c.price : C[id]) * q.priceMult)) };
+    });
+    if (KD.items && KD.items.vendorStock) {
+      var neutral = {}, real = run.factions, list = [];
+      Object.keys(real).forEach(function (f) { neutral[f] = { rep: 0 }; });
+      run.factions = neutral;
+      try {
+        list = R._safe('items.vendorStock(town)', function () {
+          return KD.items.vendorStock({ faction: faction, level: level, rng: rng, run: run, rules: U.assign({}, rules, { vendorPriceMult: 1 }), slots: q.slots + tier + (rules.vendorStockBonus || 0),
+            tier: tier, find: q.find, plan: planFor(faction, q.rare), hero: run.hero, classId: run.hero.classId, unlockedSigils: run.unlocked.sigils, unlockedRelics: run.unlocked.relics });
+        }, []) || [];
+      } finally { run.factions = real; }
+      list.forEach(function (e) { if (e && e.item) stock.push({ kind: 'item', item: e.item, base: Math.max(1, Math.round((e.price || e.item.value || 1) * q.priceMult)), sold: false }); });
+    }
+    run.camp.vendors.town = { id: 'town', faction: faction, tier: tier, stock: stock, town: true };
+  }
+  /** The outfitter: gear for the hired classes (or for the hall's), more pieces, rolled as if one act later. */
+  function outfitterStock(run, town) {
+    var M = KD.mercs, MT = KD.data.mercTune, q = TT().town;
+    if (!M || !MT) return;
+    if (R.rules(run).noHirelings) { run.camp.mercShop = { faction: null, stock: [], classes: [] }; return; }
+    var rng = R.rng(run, 'town:' + town.id + ':outfitter'), have = [];
+    (run.hirelings || []).forEach(function (h) { var c = M.classOf(h); if (c && have.indexOf(c.id) < 0) have.push(c.id); });
+    (run.camp.hirelings || []).forEach(function (o) { var c = M.classOf(o.defId); if (c && have.indexOf(c.id) < 0) have.push(c.id); });
+    var slots = ['weapon', 'armor', 'trinket'], stock = [], lvl = townLevel(run, town), n = MT.SHOP_SIZE + q.mercExtra;
+    for (var i = 0; have.length && i < n; i++) {
+      var item = M.makeGear(rng, have[i % have.length], slots[i % 3], M.rollGearRarity(rng, MT.SHOP_RARITY, town.act + q.mercActBonus), lvl);
+      stock.push({ item: item, base: item.value, sold: false });
+    }
+    run.camp.mercShop = { faction: KD.get('towns', town.id).faction, stock: stock, classes: have, town: true };
+  }
+  /** The hireling hall: more offers, each leaning a rarity higher. */
+  function hallOffers(run, town) {
+    var q = TT().town;
+    if (R.rules(run).noHirelings) { run.camp.hirelings = []; return; }
+    var rng = R.rng(run, 'town:' + town.id + ':hall'), mr = R.rng(run, 'town:' + town.id + ':hallRarity'), home = KD.get('towns', town.id).faction;
+    var ok = KD.list('hirelings').filter(function (d) { return (run.factions[d.faction] ? run.factions[d.faction].rep : 0) >= d.repReq; });
+    var pool = rng.shuffle(ok), picked = [];
+    pool.forEach(function (d) { if (picked.length < 1 && d.faction === home) picked.push(d); });
+    pool.forEach(function (d) { if (picked.length < q.hallOffers && picked.indexOf(d) < 0) picked.push(d); });
+    var names = (KD.data.hirelingNames || []).filter(function (n) { return !(run.hirelings || []).some(function (h) { return h.name.indexOf(n + ' ') === 0; }); });
+    run.camp.hirelings = picked.map(function (d) {
+      var nm = names.length ? names.splice(rng.int(0, names.length - 1), 1)[0] : 'Sellsword';
+      var o = { defId: d.id, name: nm + ' the ' + d.name, hired: false, rarity: 'common', perks: [] };
+      if (KD.mercs) { o.rarity = KD.mercs.rollRarity(mr, town.act, (R.factionTier ? R.factionTier(run, d.faction) * 0.5 : 0) + q.hallRarity); o.perks = KD.mercs.rollPerks(mr, d.id, o.rarity); }
+      return o;
+    });
+  }
+  /** stock(run): fills the stalls of the town once (a reload shows the same goods). Returns the town or null. */
+  T.stock = function (run) {
+    var town = T.current(run);
+    if (!town) return null;
+    T.campOf(run, town);
+    if (!run.camp.stocked) {
+      run.camp.stocked = true;
+      hallOffers(run, town);
+      vendorStock(run, town);
+      outfitterStock(run, town);
+    }
+    return town;
+  };
+  /** heal(run): the healer. Full Health and potions, fallen hirelings back on their feet. Free, as often as you like. */
+  T.heal = function (run) {
+    var town = T.here(run);
+    if (!town) return fail('no_town');
+    R.restoreHero(run);
+    if (R.reviveHirelings) R.reviveHirelings(run, 1);
+    (run.hirelings || []).forEach(function (h) { h.hp = 1; });
+    town.healed = true;
+    return { ok: true };
+  };
+
+  // ------------------------------------------------------------------ hooks into KD.run
+  /** A new run starts in the first town (the route offer for the Farm Village is already made). */
+  var create0 = R.create;
+  R.create = function (opts) {
+    var run = create0.apply(this, arguments);
+    if (run && run.phase === 'route' && !(opts && opts.town === false)) T.open(run, 1);
+    return run;
+  };
+  /** An act boss falls: the next act's town opens. */
+  var killed0 = R.onBossKilled;
+  R.onBossKilled = function (run, bossId) {
+    var before = run && run.area ? (run.area.act || 0) : 0, hidden = !!(run && run.area && run.area.detour);
+    var out = killed0.apply(this, arguments);
+    try {
+      if (out && out.ok && !out.won && !out.roaming && run.phase === 'route' && !hidden) {
+        var d = KD.data.route[run.nextSlot];
+        if (d && before && d.act > before) T.open(run, d.act);
+      }
+    } catch (e) { if (R.lastErrors) R.lastErrors.push({ where: 'towns.open', error: String(e) }); }
+    return out;
+  };
+  /** Choosing the next road closes the town. */
+  var choose0 = R.chooseRoute;
+  R.chooseRoute = function (run) {
+    var town = run && run.town && run.town.open ? run.town : null;
+    var out = choose0.apply(this, arguments);
+    if (town && out && out.ok !== false && run.phase !== 'route') T.close(run);
+    return out;
+  };
+  /** Entering any area closes the town (also a co-op guest pulled into the host's area, which skips chooseRoute). */
+  var enter0 = R.enterArea;
+  R.enterArea = function (run) {
+    var out = enter0.apply(this, arguments);
+    if (run && run.town && run.town.open && out && out.ok !== false && run.phase !== 'route') T.close(run);
+    return out;
+  };
+  /**
+   * FIELD SHOPS: a shop met inside an enemy area (camp quartermaster, traders, wandering merchants) is made with a lower
+   * rarity weight, without the guaranteed Rare / Storied entries, and its prices are higher (baked into each entry's
+   * base). The item count is lower through CAMP.vendorSlots (src/data/49_towns.js).
+   */
+  var stock0 = R.vendorStock;
+  R.vendorStock = function (run, vendorId) {
+    if (!run || run._inTown || T.here(run) || !run.area || !run.camp || run.camp.vendors[vendorId] || !KD.items || !KD.items.vendorStock) return stock0.apply(this, arguments);
+    var q = TT().field, I = KD.items, vs0 = I.vendorStock, v;
+    I.vendorStock = function (o) {
+      var V = I.VENDORS && (I.VENDORS[o.faction] || I.VENDORS.crown);
+      var o2 = U.assign({}, o, { find: q.find });
+      if (q.noRare && V) o2.plan = V.plan.map(function (k) { return k === 'rare' || k === 'storied' ? 'gear' : k; });
+      return vs0.call(I, o2);
+    };
+    try { v = stock0.apply(this, arguments); } finally { I.vendorStock = vs0; }
+    if (v && !v.field) { v.field = true; v.stock.forEach(function (e) { e.base = Math.max(1, Math.round(e.base * q.priceMult)); }); }
+    return v;
+  };
+  /** The camp outfitter asks more than the town's. */
+  var merc0 = R.mercShop;
+  if (typeof merc0 === 'function') R.mercShop = function (run) {
+    if (!run || run._inTown || T.here(run) || !run.camp || run.camp.mercShop) return merc0.apply(this, arguments);
+    var shop = merc0.apply(this, arguments);
+    if (shop && !shop.field && shop.stock) { shop.field = true; shop.stock.forEach(function (e) { e.base = Math.max(1, Math.round(e.base * TT().field.mercPriceMult)); }); }
+    return shop;
+  };
+  /** The camp functions, run with the town standing in for the camp while the hero is in a town. */
+  ['vendorStock', 'priceOf', 'buy', 'sell', 'craft', 'hire', 'hirelingBoard', 'canHire', 'replaceHireling', 'dismissHireling',
+    'mercShop', 'mercPrice', 'mercBuy', 'mercSell', 'mercEquip', 'mercUnequip', 'canSwapSkills', 'canRespec', 'campRest'].forEach(function (name) {
+    var f0 = R[name];
+    if (typeof f0 !== 'function') return;
+    R[name] = function (run) {
+      var self = this, args = arguments;
+      if (run && !run._inTown && T.here(run)) { T.stock(run); return T.with(run, function () { return f0.apply(self, args); }); }
+      return f0.apply(self, args);
+    };
+  });
+  /** The town hall's hirelings are a little cheaper. */
+  var cost0 = R.hirelingCost;
+  R.hirelingCost = function (run) {
+    var c = cost0.apply(this, arguments);
+    return run && run._inTown && c > 0 ? Math.max(1, Math.round(c * TT().town.hallPriceMult)) : c;
+  };
+
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -115172,6 +115707,58 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/gfx/69_env_towns.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  if (typeof document === 'undefined') return;       // browser only
+
+  /**
+   * [w8 towns] The look of the towns (docs/TOWNS.md, docs/ENV.md "Mood presets"). Each town borrows the mood of the act it
+   * leads into, made a little warmer and kinder: these are the safe places of the road (lit windows, lamps and fires, less
+   * mist, a softer vignette). Purely visual, like every mood preset.
+   *
+   *   town_waystation   <- grim_farm at lamp-lighting time (Hearthmoor's evening)        town_highcairn  <- a2_gate (the stone pass)
+   *   town_outer_market <- city_market (lanterns under the city wall)             town_last_camp  <- castle_courtyard (below the castle)
+   */
+  var E = KD.env, M = E && E.mood;
+  if (!M || !M.register) return;
+  function copy(p, o) { var q = {}, k; for (k in p || {}) q[k] = p[k]; for (k in o || {}) q[k] = o[k]; return q; }
+  var BASE = { town_waystation: ['grim_farm'], town_highcairn: ['a2_gate', 'grim_farm'], town_outer_market: ['city_market', 'grim_farm'], town_last_camp: ['castle_courtyard', 'hidden_warcamp', 'grim_farm'] };
+  /** What makes a town feel safer than the road around it: env multipliers / overrides on top of the base. */
+  var KIND = {
+    town_waystation: { exposure: 1.0, mist: 0.8, vignette: 0.9, sunIntensity: 1.0, warm: 0, env: {
+      sunDir: [0.35, 0.32, 0.88], sunColor: [1.0, 0.66, 0.42], sunIntensity: 0.92,
+      skyColor: [0.36, 0.36, 0.62], skyIntensity: 0.42, zenith: [0.09, 0.08, 0.17], horizon: [0.62, 0.42, 0.36],
+      fogDensity: 0.0075, fogStart: 18, mist: 0.18, mistStart: 24, mistColor: [0.55, 0.46, 0.46],
+      exposure: 1.04, vignette: 0.52, gradeHigh: [1.06, 0.98, 0.86] } },
+    town_highcairn: { exposure: 1.05, mist: 0.6, vignette: 0.85, sunIntensity: 1.05, warm: 0.05 },
+    town_outer_market: { exposure: 1.06, mist: 0.6, vignette: 0.85, sunIntensity: 1.04, warm: 0.05 },
+    town_last_camp: { exposure: 1.04, mist: 0.7, vignette: 0.9, sunIntensity: 1.0, warm: 0.04 }
+  };
+  function warmer(c, w) { return Array.isArray(c) ? [Math.min(1.4, c[0] * (1 + w)), c[1], Math.max(0, c[2] * (1 - w))] : c; }
+  function derive(id) {
+    if (M.PRESETS[id]) return M.PRESETS[id];
+    var base = null, list = BASE[id] || [];
+    for (var i = 0; i < list.length && !base; i++) base = M.PRESETS[list[i]] || null;
+    if (!base) return null;
+    var k = KIND[id] || {}, be = copy(base.env || {}, k.env || {}), env = copy(be, {});
+    if (be.exposure !== undefined) env.exposure = be.exposure * (k.exposure || 1);
+    if (be.mist !== undefined) env.mist = be.mist * (k.mist || 1);
+    if (be.vignette !== undefined) env.vignette = be.vignette * (k.vignette || 1);
+    if (be.sunIntensity !== undefined) env.sunIntensity = be.sunIntensity * (k.sunIntensity || 1);
+    if (be.sunColor) env.sunColor = warmer(be.sunColor, k.warm || 0);
+    var def = copy(base, { env: env });
+    delete def.id;
+    return M.register(id, def);
+  }
+  /** Registers the town presets once every act's presets are in (this file loads after them). */
+  E.townMoods = function () { Object.keys(BASE).forEach(function (id) { if (derive(id)) M.AREAS[id] = id; }); };
+  E.townMoods();
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/gfx/70_assets.js
 (function (root) {
   'use strict';
@@ -124205,6 +124792,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   H.interactLabel = function (type, data, info) {
     data = data || {}; info = info || {};
+    if (data.label) return data.label;      // [w8 towns] town stalls name themselves
     switch (type) {
       case 'chest': return data.tier === 'cursed' ? 'Open cursed chest' : (data.tier === 'large' ? 'Open large chest' : 'Open chest');
       case 'cache': return 'Open cache';
@@ -130426,6 +131014,227 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/ui/23_towns.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  if (typeof document === 'undefined' || !KD.screens || !KD.screens.register) return;       // browser only
+
+  /**
+   * [w8 towns] TOWNS on screen (docs/TOWNS.md). A town is entered instead of the road screen whenever the run has one open
+   * (before the Farm Village and after every act boss): the layout comes from KD.gen.town, the world is an ordinary sim
+   * world with no enemies (noSpawns), the stalls are 'town' interactables. Walking up to a stall and pressing the interact
+   * key opens its window: the vendor (the town's good stock), the smith (the forge), the hall (hirelings and the outfitter),
+   * the healer, the shrine (skills, Sigils and talents). The north gate leads to the road screen, which offers the way back.
+   *
+   *   game.townGate()         main.js asks it before showing the road screen: true when it entered the town instead
+   *   game.enterTown()        builds the town world (also from the road screen's "Back to <town>")
+   *   game.leaveTown()        the gate: the road screen
+   *   game.inTown             the town id while the hero is in one
+   * Co-op: every player walks their own town (their own instance of the stalls); the host chooses the road from the road
+   * screen as before, and everyone is pulled into the next area when it starts.
+   */
+  var TU = KD.townUI = KD.townUI || {};
+  var KEEPER_LOOK = {
+    vendor: { build: 'normal', head: 'hat', armor: 'cloth', weapon: 'none', extras: ['apron'] },
+    smith: { build: 'heavy', head: 'bare', armor: 'leather', weapon: 'hammer', extras: ['apron'] },
+    outfitter: { build: 'normal', head: 'hood', armor: 'leather', weapon: 'none', extras: ['backpack'] },
+    hall: { build: 'heavy', head: 'helm', armor: 'mail', weapon: 'spear', offhand: 'shield', extras: ['pauldrons'] },
+    healer: { build: 'thin', head: 'hood', armor: 'robe', weapon: 'staff', extras: [] },
+    refugee: { build: 'thin', head: 'hood', armor: 'cloth', weapon: 'none', extras: ['backpack'] },
+    soldier: { build: 'normal', head: 'helm', armor: 'mail', weapon: 'spear', offhand: 'shield', extras: [] },
+    carter: { build: 'normal', head: 'hat', armor: 'cloth', weapon: 'none', extras: ['backpack'] },
+    townsfolk: { build: 'normal', head: 'bare', armor: 'cloth', weapon: 'none', extras: [] }
+  };
+  var COLORS = ['#6a4a3a', '#4a5a6a', '#5e5a3a', '#4a3e5a', '#3e5a4a', '#6a3e3a'];
+  function figure(n, i, faction) {
+    var M = KD.models;
+    if (!(M && M.Visual && M.has && M.has('humanoid'))) return null;
+    var look = KEEPER_LOOK[n.look] || KEEPER_LOOK.townsfolk, fc = (KD.data.factions || []).filter(function (f) { return f.id === faction; })[0];
+    var main = n.stall && fc && (n.stall === 'hall' || n.stall === 'vendor') ? fc.color : COLORS[(KD.util.hash(n.id) >>> 0) % COLORS.length];
+    var spec = { plan: 'humanoid', species: 'human', build: look.build, head: look.head, armor: look.armor, weapon: look.weapon || 'none', offhand: look.offhand || 'none',
+      colors: { main: main, alt: '#4a3c30', skin: ['#d8ad86', '#c8946c', '#a87454', '#e6c0a0'][i % 4], metal: '#8f98a6' }, extras: look.extras || [], seed: KD.util.hash('town:' + n.id) };
+    var e = { id: -6000 - i, kind: 'npc', team: 2, defId: 'npc_town', name: n.name || n.id, model: spec, x: n.x, z: n.z, y: 0, yaw: n.yaw, yaw0: n.yaw, r: 0.45, h: 1.8, vx: 0, vz: 0, speed: 0,
+      scale: n.look === 'refugee' ? 0.94 : 1, level: 1, tier: 'normal', role: 'support', hp: 1, hpMax: 1, dead: false, hidden: false, removed: false, broken: 0, guarding: false,
+      stealthed: false, statuses: [], anim: { clip: 'idle', t: i * 0.77, speed: n.look === 'refugee' ? 0.7 : 1 }, act: { state: 'idle', skill: null, t: 0, dur: 0 }, fx: { flash: 0, alpha: 1, tint: null } };
+    try { return { e: e, v: new M.Visual(e) }; } catch (err) { return null; }
+  }
+
+  KD.screens.register('towns', function (game) {
+    var G = game, F = KD.flow, T = KD.towns, people = [];
+    if (!T) return null;
+    function q() { return G.query || {}; }
+    function W() { return KD.win; }
+    function run() { return G.run; }
+    function townRec() { var t = run() && T.current(run()); return t ? T.areaRec(t) : null; }
+
+    /** main.js asks before it shows the road screen. */
+    G.townGate = function () {
+      var r = run(), Q = q();
+      if (!r || !T.on() || !T.here(r)) return false;
+      if (G.botOn || Q.autoplay || Q.notown || (Q.auto && Q.flow !== '1')) return false;            // bots and the dev harness walk straight on
+      if (F && F.setup && F.setup.needsSkills && F.setup.needsSkills(r) && r.phase !== 'oath') return false;      // the starting skills come first
+      try { G.enterTown(); return true; } catch (e) { console.error('KD.towns: the town could not be built', e); G.inTown = null; return false; }
+    };
+    G.enterTown = function () {
+      var r = run(), town = T.here(r);
+      if (!town) return false;
+      T.stock(r);
+      G.teardownWorld();
+      var seed = KD.util.hash(r.seed + ':town:' + town.id) >>> 0;
+      var layout = KD.gen.town(town.id, seed);
+      var as = { areaId: town.id, seed: seed, slot: town.slot, inArena: false, cleared: { spawns: {}, interact: {} }, pos: null, minibossDead: true, bossDead: true, events: {} };
+      G.inArena = false; G.bossDead = false; G.inTown = town.id; G.backdrop = false;
+      G._buildWorld(layout, { seed: seed, slot: town.slot, heroes: [r.hero], party: 1, run: r, rules: KD.run.rules(r), areaState: as, noSpawns: true });
+      dressPeople(layout, town);
+      G.setState('play');
+      G.saveNow();
+      G.events.emit('area', { area: T.areaRec(town), layout: layout, arena: false, run: r, town: true });
+      G.events.emit('town', { town: town, layout: layout });
+      return true;
+    };
+    G.leaveTown = function () {
+      var r = run();
+      if (!r || !G.inTown) return false;
+      T.leave(r);
+      G.teardownWorld();
+      G.inTown = null;
+      G.saveNow();
+      G.setState('route');
+      G.events.emit('route', { offer: r.offer });
+      return true;
+    };
+    G.backToTown = function () {
+      var r = run();
+      if (!r || !T.current(r)) return false;
+      T.back(r);
+      if (G.state === 'route') { G.setState('route'); return G.state === 'play'; }      // the gate turns the road screen into the town
+      return G.enterTown();
+    };
+    // the HUD and windows ask game.area() for the place they show
+    var area0 = G.area;
+    G.area = function () { return G.inTown ? townRec() : area0.apply(G, arguments); };
+    G.events.on('worldEnd', function () { G.inTown = null; people.forEach(function (p) { try { p.v.dispose(); } catch (e) { /* ignore */ } }); people = []; });
+
+    /** The keepers behind their counters and a few townsfolk: drawn figures, not simulated (nobody walks through them). */
+    function dressPeople(layout, town) {
+      var env = G.env, list = (layout.town.npcs || []).concat(layout.town.folk || []), fac = (KD.get('towns', town.id) || {}).faction;
+      people = list.map(function (n, i) { return figure(n, i, fac); }).filter(Boolean);
+      if (!env || !people.length) return;
+      var up0 = env.update;
+      env.update = function (dt, world, r) {
+        if (up0) up0.call(env, dt, world, r);
+        for (var i = 0; i < people.length; i++) {
+          var p = people[i]; p.e.anim.t += dt;
+          try { p.v.update(p.e, dt); p.v.submit(r); } catch (err) { /* a figure is never worth a frame */ }
+        }
+      };
+    }
+
+    // ------------------------------------------------------------------ the stalls
+    function windowsApi() { return KD.screens.get('windows'); }
+    function heal() {
+      var r = run(), res = T.heal(r);
+      if (!res.ok) return;
+      G.refreshHero();
+      if (G.player && !G.player.dead) { G.player.hp = G.player.hpMax; }
+      if (F && F.sound) F.sound('ui_confirm');
+      KD.ui.toast('You rest a while. Health ' + (F && F.potionsOn && F.potionsOn() ? 'and potions restored' : 'restored') + ((r.hirelings || []).length ? ', and your company is back on its feet.' : '.'), { kind: 'good', icon: 'heart_plus' });
+    }
+    function shrine(ev) {
+      if (!F || !F.window) { if (windowsApi()) windowsApi().open('skills'); return; }
+      var el = KD.ui.el, id = 'flow-townshrine', words = F.talentWords ? F.talentWords(run()) : { screen: 'Talents' };
+      var go = function (what) { KD.ui.windows.close(id); setTimeout(function () { if (F.route && F.route.openWindow) F.route.openWindow(what); }, 30); };
+      F.window(id, { title: (ev.rec && ev.rec.data && ev.rec.data.keeper) || 'Shrine', icon: 'shrine', width: 420, dismiss: true,
+        content: [el('div.flow-note-text.kd-flavor', { text: 'Candles burn low. Here, as at any camp, you may change your skills and Sigils and rework your ' + (words.screen || 'talents').toLowerCase() + '.' })],
+        footer: [KD.ui.button('Leave', { onClick: function () { KD.ui.windows.close(id); } }), KD.ui.button(words.screen || 'Talents', { onClick: function () { go('web'); } }), KD.ui.button('Skills and Sigils', { kind: 'primary', autofocus: true, onClick: function () { go('skills'); } })] });
+    }
+    function stall(ev) {
+      var data = (ev.rec && ev.rec.data) || {}, r = run(), town = r && T.here(r), Wn = W(), api = windowsApi();
+      if (!town || !Wn || !api) return;
+      var def = KD.get('towns', town.id), who = data.keeper || '';
+      if (data.stall === 'gate') { if (F && F.sound) F.sound('door_open'); G.leaveTown(); return; }
+      if (data.stall === 'vendor') { Wn.open('vendor', { vendorId: 'town', faction: def.faction, sel: null, townTitle: who || 'Provisioner' }); return; }
+      if (data.stall === 'smith') { Wn.open('townsmith', { op: null, who: who }); return; }
+      if (data.stall === 'hall' || data.stall === 'outfitter') {
+        Wn.open('townhall', { who: who, focus: data.stall });
+        if (data.stall === 'outfitter') setTimeout(function () {      // the outfitter: straight to its goods
+          var heads = document.querySelectorAll('.merc-board .win-head'), i;
+          for (i = 0; i < heads.length; i++) if (/Outfitter/.test(heads[i].textContent)) { heads[i].scrollIntoView({ block: 'start' }); break; }
+        }, 60);
+        return;
+      }
+      if (data.stall === 'healer') { heal(); return; }
+      if (data.stall === 'shrine') shrine(ev);
+    }
+    G.events.on('interact', function (ev) {
+      if (!ev || ev.type !== 'town' || !G.inTown || G.state !== 'play' || G.botOn) return;
+      try { stall(ev); } catch (e) { console.error('KD.towns: stall', e); }
+    });
+    // the windows of the smith and the hall
+    var Wn = W();
+    if (Wn && Wn.defs) {
+      Wn.defs.townsmith = {
+        title: function (c, st) { return st.who ? 'Forge: ' + st.who : 'Forge'; }, icon: 'hammer', width: 820, surface: 'none', flush: true,
+        canOpen: function (c) { return !!c && c.atCamp && !!c.inTown; },
+        build: function (c, st) { return Wn.forgeTab ? Wn.forgeTab(c, st) : Wn.note('The forge is cold.'); }
+      };
+      Wn.defs.townhall = {
+        title: function (c, st) { var w = st.focus === 'outfitter' ? 'Outfitter' : 'Hireling hall'; return st.who ? w + ': ' + st.who : w; }, icon: 'flag', width: 780,
+        canOpen: function (c) { return !!c && !!c.inTown; },
+        build: function (c) { return KD.ui.compact && Wn.cpage ? Wn.cpage('flag', 'Hireling hall', Wn.hireContent(c), Wn.purse(c, { supplies: false })) : Wn.hireContent(c); }
+      };
+    }
+
+    // ------------------------------------------------------------------ the road screen: towns on the map, the way back
+    if (F && F.route && F.route.build) {
+      var build0 = F.route.build;
+      F.route.build = function (g) {
+        var s = build0.apply(this, arguments);
+        try { decorateRoute(s, g || G); } catch (e) { console.error('KD.towns: road screen', e); }
+        return s;
+      };
+    }
+    function decorateRoute(s, g) {
+      var r = g.run; if (!r || !s) return;
+      var el = KD.ui.el, map = s.querySelector('.flow-map');
+      if (map && F.routeMap) {
+        var m = F.routeMap(r), visited = r.towns || [];
+        KD.list('towns').forEach(function (t) {
+          var before = m.slots.filter(function (n) { return n.act === t.beforeAct; })[0], prev = m.slots.filter(function (n) { return n.act === t.beforeAct - 1; }).pop();
+          if (!before) return;
+          var x = prev ? (prev.x + before.x) / 2 : Math.max(0.018, before.x - 0.03), here = r.town && r.town.id === t.id && r.town.open, seen = visited.indexOf(t.id) >= 0;
+          map.appendChild(el('div.town-map-node' + (here ? '.town-here' : (seen ? '.town-seen' : '')), { style: { left: (x * 100) + '%', top: '86%' }, attrs: { title: t.name + ': ' + t.blurb } },
+            [KD.ui.icon('camp', 13, here ? '#ffe9a0' : '#f0e7d2'), el('span.town-map-label', { text: t.short })]));
+        });
+      }
+      var t = T.current(r);
+      if (t) {
+        var foot = s.querySelector('.flow-foot');
+        var def = KD.get('towns', t.id);
+        var btn = KD.ui.button('Back to ' + def.short, { icon: 'camp', className: 'town-back-btn', tip: def.name + ': the shops, the smith, the hall and the healer.', onClick: function () { try { G.backToTown(); } catch (e) { console.error(e); } } });
+        if (foot) foot.insertBefore(btn, foot.firstChild ? foot.firstChild.nextSibling : null);
+      }
+    }
+    // the Continue list says where the hero waits: "In Thornwick Waystation"
+    if (F && F.savedRunInfo && !F.savedRunInfo._town) {
+      var info0 = F.savedRunInfo;
+      F.savedRunInfo = function (r) {
+        var out = info0.apply(this, arguments);
+        try {
+          var t = r && T.current(r), d = t && KD.has('towns', t.id) ? KD.get('towns', t.id) : null;
+          if (out && d && !t.left) { var w0 = out.where; out.where = 'In ' + d.name; out.line = out.line.replace(w0, out.where); }
+        } catch (e) { /* the plain line stays */ }
+        return out;
+      };
+      F.savedRunInfo._town = true;
+    }
+    return { enter: G.enterTown, leave: G.leaveTown, back: G.backToTown };
+  });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/ui/25_coop_00_core.js
 (function (root) {
   'use strict';
@@ -132793,6 +133602,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       atCamp: run.phase === 'camp',
       canTrade: run.phase === 'camp' || run.phase === 'area'
     };
+    if (KD.towns && KD.towns.here && KD.towns.here(run)) { c.atCamp = true; c.canTrade = true; c.inTown = true; }      // [w8 towns] a town is a camp with better shops
     c.vendorOpen = UI.windows.isOpen('vendor');
     c.canSell = c.canTrade && (c.vendorOpen || c.atCamp);
     c.canCraft = c.atCamp;
@@ -134374,12 +135184,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   }
   W.defs.vendor = {
     title: function (c, st) { return c && st.title ? st.title : 'Vendor'; }, icon: 'vendor', width: 836,
-    canOpen: function (c) { return !!c && c.canTrade && !!c.run.area; },
+    canOpen: function (c) { return !!c && c.canTrade && (!!c.run.area || !!c.inTown); },      // [w8 towns] c.inTown
     build: function (c, st) {
       var id = st.vendorId || 'camp', v = KD.run.vendorStock(c.run, id, st.faction || W.campFaction(c.run));
       if (!v) return W.note('Nobody is selling here.');
       var f = W.factionOf(v.faction), sel = W.findAnywhere(c.hero, st.sel), jn = A.junkItems(c).length;
-      st.title = id === 'camp' ? 'Camp quartermaster' : f.name + ' trader';
+      st.title = st.townTitle || (id === 'camp' ? 'Camp quartermaster' : f.name + ' trader');      // [w8 towns] townTitle: the town keeper's name
       if (st.shown !== id) { st.shown = id; st.stock = null; st.tab = 'buy'; }      // another trader: forget what was picked in the last one
       if (UI.compact) return compactVendor(c, st, v, f);
       var selBtn = sel && sel.where === 'bag'
@@ -134944,6 +135754,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     ]);
   }
 
+  W.forgeTab = forgeTab;      // [w8 towns] the town smith's window (src/ui/23_towns.js)
   W.defs.camp = {
     title: function (c) { var a = c && c.run.area && get('areas', c.run.area.areaId); return a ? 'Camp: ' + a.name : 'Camp'; }, icon: 'camp', width: 820, surface: 'none', flush: true,
     canOpen: function (c) { return !!c && c.atCamp; },
@@ -139999,7 +140810,10 @@ P['gravecaller_tripo'] = 'Z2xURgIAAACoBQYAaBkAAEpTT057ImFzc2V0Ijp7InZlcnNpb24iOi
     return o;
   }
   function now() { return Date.now(); }
-  function setState(s) { var prev = G.state; G.state = s; G.events.emit('state', { state: s, prev: prev }); }
+  function setState(s) {
+    if (s === 'route' && G.townGate && G.townGate()) return;      // [w8 towns] an open town is entered instead of the road screen (src/ui/23_towns.js)
+    var prev = G.state; G.state = s; G.events.emit('state', { state: s, prev: prev });
+  }
   G.setState = setState;
   Object.defineProperty(G, 'hero', { get: function () { return G.run ? G.run.hero : null; }, configurable: true });
   // the hero this screen plays: player 0 alone, the local player's index in a co-op world
@@ -140323,6 +141137,7 @@ P['gravecaller_tripo'] = 'Z2xURgIAAACoBQYAaBkAAEpTT057ImFzc2V0Ijp7InZlcnNpb24iOi
     if (G.renderer) { G.renderer.particles.clear(); G.renderer.decals.clear(); }
   }
   G.teardownWorld = teardownWorld;
+  G._buildWorld = buildWorld;      // [w8 towns] the town world (src/ui/23_towns.js)
 
   function onPlayerDeath(d) {
     var run = G.run;
