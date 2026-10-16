@@ -3872,7 +3872,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.78';
+  KD.VERSION = '0.7.79';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -11514,6 +11514,151 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/data/35_tree_hexblade.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree;
+
+  /**
+   * The Hexblade's own talent tree, THE GALLOWS WOOD: the class-wide record (arm order, hub, tuning) and the small helpers
+   * the eight arm files use. The arms live in src/data/36_tree_hexblade_<armId>.js, the mutations in
+   * src/data/37_mutations_hexblade.js, the recommended builds in src/data/38_tree_builds_hexblade.js and the rules (rule
+   * notables, keystones) in src/sim/56_tree_hexblade.js. Design: docs/TREE_HEXBLADE.md. Format and grid: docs/TREE.md.
+   * Switch: KD.config.trees.hexblade (src/core/00_base.js). Off = the Hexblade uses the Crownweb (its Gallows region) as before.
+   *
+   * Arms, clockwise from the top; each arm's neighbours are the ones its play mixes with best (the cross-border links of the
+   * generator join neighbours only):
+   *   curse     Marks: longer, stronger, passed on (Mark of Frailty)       noose     chains, Slows, Roots and grave-frost (Curse Chain, Binding Sigil)
+   *   coven     Hex: building it, holding it, spending it (Hex Nova)      blades    spectral blades and spell damage (Spectral Blade)
+   *   veil      blinks, dodges and Evasion (Veil Step, Blink Cut)          headsman  crits on Marked enemies, executions (Soul Rend, Sever Fate)
+   *   duel      parries, blocks and counters (Black Parry)                 blood     Life Steal and Health as a price (Siphon Edge)
+   */
+
+  /** Helpers of the arm files (data only). */
+  var HB = T.hex = {
+    mut: function (id) { return { t: 'mutation', mut: id }; },
+    /** A rule notable whose rule is a hook of src/sim/56_tree_hexblade.js (`tree_hexblade_<id>`). */
+    rule: function (id, name, mods, spec, est) { return { t: 'notable', name: name, mods: mods, effect: 'tree_hexblade_' + id, spec: spec, est: est || { off: 1.02, def: 1 } }; },
+    /** A rule notable whose rule is one of the Crownweb's Gallows hooks (src/sim/51_class_hexblade.js, `web_hexblade_<key>`). */
+    web: function (key, name, mods, spec, est) { return { t: 'notable', name: name, mods: mods, effect: 'web_hexblade_' + key, spec: spec, est: est || { off: 1.02, def: 1 } }; },
+    /** A keystone (cost 2). `effect` optional (a hook key), `extra` merged in (abil, flags, pact). */
+    key: function (name, mods, spec, effect, est, extra) {
+      var k = { t: 'keystone', name: name, mods: mods, spec: spec, est: est || { off: 1.05, def: 1 } };
+      if (effect) k.effect = effect;
+      if (extra) for (var f in extra) k[f] = extra[f];
+      return k;
+    },
+    pact: function (name, mods) { return { name: name, mods: mods, pact: true }; },
+    trophy: function (name, mods, boss) { return { t: 'trophy', name: name, mods: mods, req: { boss: boss } }; },
+    corrupted: function (name, mods, at) { return { t: 'corrupted', name: name, mods: mods, req: { corruption: at } }; },
+    faction: function (name, mods, id, rep) { return { t: 'faction', name: name, mods: mods, req: { faction: { id: id, rep: rep } } }; },
+    /** The pact star of an arm: an entrance leaf, three pacts as the other leaves, a named core. */
+    pacts: function (id, name, row, lane, entry, list, core) { return { id: id, name: name, row: row, lane: lane, shape: 'star', kind: 'special', nodes: [entry].concat(list), core: core }; },
+    abil: function (name, mods, a, k, v) { return { name: name, mods: mods || [], abil: [{ a: a, k: k, v: v }] }; },
+    /** A plain stat wheel: a ring of rim nodes around a named core, with a cluster bonus. */
+    ring: function (id, name, row, lane, nodes, core, bonus, extra) {
+      var c = { id: id, name: name, row: row, lane: lane, shape: 'ring', kind: 'stat', nodes: nodes, core: core, bonus: bonus };
+      if (extra) for (var f in extra) c[f] = extra[f];
+      return c;
+    },
+    /** A mutation star: an entrance leaf, the mutations of one ability and slot as the other leaves, a named core. */
+    star: function (id, name, row, lane, entry, muts, core) {
+      return { id: id, name: name, row: row, lane: lane, shape: 'star', kind: 'mutation', nodes: [entry].concat(muts.map(HB.mut)), core: core };
+    },
+    altar: function (id, name, row, lane, nodes) {
+      return { id: id, name: name, row: row, lane: lane, shape: 'ring', kind: 'altar', nodes: nodes, core: { t: 'altar', name: name }, bonus: ['sigilPower 1.5'] };
+    },
+    /** A keystone at the end of a row: two guard nodes and the keystone as the core of an arc. */
+    keyArc: function (id, name, row, lane, guards, keystone) {
+      return { id: id, name: name, row: row, lane: lane, shape: 'arc', kind: 'keystone', spokes: [0, 1], nodes: guards, core: keystone };
+    },
+    /** Every fifth trunk node (T5, T10 .. T25) also gives TRUNK_SLASH more Hexed Slash damage: the primary grows with the
+     *  points like the class's other damage (much of the tree's damage wants a Mark, Hex or a low-Health target). */
+    TRUNK_SLASH: 0.035, HUB_SLASH: 0.05,
+    slashTrunk: function (tr) {
+      [4, 9, 14, 19, 24].forEach(function (i) {
+        var n = tr[i];
+        if (typeof n === 'string') n = { mods: [n] };
+        else if (Array.isArray(n)) n = { name: n[0], mods: n.slice(1) };
+        else { var c = {}; for (var k in n) c[k] = n[k]; n = c; }
+        n.abil = (n.abil || []).concat([{ a: 'hexed_slash', k: 'dmg', v: HB.TRUNK_SLASH }]);
+        tr[i] = n;
+      });
+      return tr;
+    }
+  };
+
+  // ---------------------------------------------------------------------------------------------
+  // What the estimator cannot see in stats (KD.data.tree.EST; never touches gameplay). Damage parts: the share of each
+  // slotted ability in a fight and the stat keys its hits use (Hexed Slash is the primary, w 1). Skill worths start at the
+  // class's measured kit (docs/CLASSES.md) and are refined by tools/tree_real.js --class hexblade.
+  // ---------------------------------------------------------------------------------------------
+  (function () {
+    var E = T.EST, P = E.parts, S = E.skills;
+    var MELEE = ['dmg', 'dmgPhys', 'dmgMelee'], SHADOW_M = ['dmg', 'dmgShadow', 'dmgMelee'], SHADOW_S = ['dmg', 'dmgShadow', 'dmgSpell'];
+    P.hexed_slash = { w: 1, keys: MELEE, speed: 'atkSpeed' };
+    P.mark_of_frailty = { w: 0.15, keys: SHADOW_S };
+    P.siphon_edge = { w: 0.35, keys: SHADOW_M };
+    P.spectral_blade = { w: 0.35, keys: SHADOW_S };
+    P.curse_chain = { w: 0.3, keys: SHADOW_S };
+    P.blink_cut = { w: 0.3, keys: MELEE };
+    P.binding_sigil = { w: 0.2, keys: ['dmg', 'dmgCold', 'dmgSpell', 'dmgDot'] };
+    P.soul_rend = { w: 0.4, keys: SHADOW_M };
+    P.veil_step = { w: 0.15, keys: SHADOW_M };
+    P.hex_nova = { w: 0.45, keys: SHADOW_S };
+    P.black_parry = { w: 0.2, keys: SHADOW_M };
+    P.sever_fate = { w: 0.3, keys: SHADOW_M };
+    S.mark_of_frailty = { off: 0.1, def: 0.04 };
+    S.siphon_edge = { off: 0.07, def: 0.07 };
+    S.spectral_blade = { off: 0.08, def: 0 };
+    S.curse_chain = { off: 0.08, def: 0.02 };
+    S.blink_cut = { off: 0.07, def: 0.01 };
+    S.binding_sigil = { off: 0.05, def: 0.07 };
+    S.soul_rend = { off: 0.09, def: 0.03 };
+    S.veil_step = { off: 0.04, def: 0.06 };
+    S.hex_nova = { off: 0.1, def: 0 };
+    S.black_parry = { off: 0.04, def: 0.08 };
+    S.sever_fate = { off: 0.07, def: 0.03 };
+  })();
+
+  /** A hub node: a named minor with two half-size mods and 6% more Hexed Slash damage (the primary keeps its share). */
+  function slash(name, a, b) { return { name: name, mods: [a, b], abil: [{ a: 'hexed_slash', k: 'dmg', v: HB.HUB_SLASH }] }; }
+  // The switch (docs/TREE.md section 1): on unless something set it before. It lives here, next to the content, instead of in
+  // src/core/00_base.js so that turning one class tree on never touches another tree agent's line. [w8 hexblade tree]
+  if (KD.config && KD.config.trees && KD.config.trees.hexblade === undefined) KD.config.trees.hexblade = true;
+
+  // Version 1: the first tree (docs/TREE_HEXBLADE.md).
+  T.define('hexblade', {
+    version: 1, name: 'The Gallows Wood',
+    arms: ['curse', 'noose', 'coven', 'blades', 'veil', 'headsman', 'duel', 'blood'],
+    hub: [
+      slash('First Brand', 'hexMarkDur 0.75', 'hp 0.75'),          // curse
+      slash('Hemp and Frost', 'statusDur 0.75', 'hp 0.75'),       // noose
+      slash('Witch Whisper', 'hexGain 0.75', 'resAll 0.75'),      // coven
+      slash('Ghost Steel', 'dmgSpell 0.75', 'hp 0.75'),           // blades
+      slash('Thin Veil', 'moveSpeed 0.75', 'dodgeCdr 0.75'),      // veil
+      slash('Headsman\'s Eye', 'hexCrit 0.75', 'hp 0.75'),        // headsman
+      slash('Black Guard', 'armor 0.75', 'block 0.5'),            // duel
+      slash('First Blood', 'hexLeech 0.75', 'hp 0.75')            // blood
+    ],
+    hubBonus: ['hexGain 1.5', 'resAll 1'],
+    // A new tree Hexblade knows Hexed Slash and ONE skill where the Crownweb hero starts with two: until its third skill
+    // node it hits harder and is a little tougher (the Gloamblade's rule, docs/TREE_BALANCE.md; a melee class needs the
+    // Health to live through the first boss).
+    startBonus: { skills: 2, mods: ['dmg*10', 'hp*15'], text: 'While you know two skills or fewer besides Hexed Slash, you deal 10% more damage and have 15% more Health.' },
+    // Balance (docs/TREE_HEXBLADE.md section 5): much of this tree's damage wants a Mark, Hex, a crit on a Marked enemy or a
+    // low-Health target, which the estimator rates above what it gives in an even fight. The tune keeps the estimate inside
+    // the caps; the primary's share (6% per hub node, 4.5% on every fifth trunk node) keeps real fights in band.
+    tune: { off: 0.7, def: 0.48 },
+    road: ['hp 1', 'moveSpeed 1', 'resAll 1'],
+    // the owner's rule for class trees: links across the borders to the neighbouring arms only, no diagonals inside an arm
+    links: { bypass: false, rows: false, road: ['moveSpeed 1'] }
+  });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/data/35_tree_ironbound.js
 (function (root) {
   'use strict';
@@ -14475,6 +14620,877 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/data/36_tree_hexblade_blades.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, H = T.hex;
+  var mut = H.mut, rule = H.rule, key = H.key, pact = H.pact, abil = H.abil, ring = H.ring, star = H.star;
+
+  /**
+   * HEXBLADE, arm 3 of 8: THE SPECTRAL ARMORY (`blades`). Spectral blades, spell damage and critical hits. Skill: Spectral
+   * Blade (trunk, 4 points). Design: docs/TREE_HEXBLADE.md. Rules: src/sim/56_tree_hexblade.js. Holds the bridges to the veil arm.
+   */
+  T.arm('hexblade', {
+    id: 'blades', name: 'The Spectral Armory', focus: 'Ghost blades and spells: fight at arm\'s length with steel that is not there', color: '#7fb8d8', vein: 'war',
+
+    trunk: H.slashTrunk([
+      'dmgSpell 1', 'hp 1', { t: 'skill', grants: 'spectral_blade', abil: [{ a: 'spectral_blade', k: 'cd', v: -0.05 }] }, 'projSpeed 1', 'resAll 1',   // T1..T5
+      'hp 1', 'critChance 1', 'dmgShadow 1', ['Armory Hall', 'moveSpeed 1', 'projSpeed 0.5'], 'hp 1',                                                 // T6..T10
+      'dmgSpell 1', 'ward 1', 'hp 1', 'critMult 1', 'evasion 1',                                                                                      // T11..T15
+      'hp 1', 'atkSpeed 1', 'dmgSpell 1', 'hp 1', 'critChance 1',                                                                                      // T16..T20
+      'resAll 1', 'hp 1', 'dmgShadow 1', 'ward 1', 'hp 1'                                                                                              // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Spectral Blade, shape and essence
+      star('blades_blade_shape', 'Spectral Blade: shape', 1, -1, 'hp 1', ['hx_blade_five', 'hx_blade_pierce', 'hx_blade_one'], ['Fan of Steel', 'projSpeed 1', 'hp 1']),
+      star('blades_blade_essence', 'Spectral Blade: essence', 1, 1, 'dmgSpell 1', ['hx_blade_mark', 'hx_blade_cold', 'hx_blade_leech'], ['Ghost Temper', 'dmgSpell 1', 'resAll 1']),
+
+      // ---- Row 2
+      star('blades_blade_rite', 'Spectral Blade: rite', 2, -1, 'critChance 1', ['hx_blade_cheap', 'hx_blade_charges', 'hx_blade_echo'],
+        abil('Quick Draw', ['atkSpeed 1', 'hp 1'], 'spectral_blade', 'cd', -0.06)),
+      ring('blades_rack', 'The Weapon Rack', 2, 1, ['dmgSpell 1', 'hp 1', abil('Keen Ghosts', ['critChance 0.5'], 'spectral_blade', 'dmg', 0.08), 'resAll 1', 'projSpeed 1'],
+        rule('seeking', 'Seeking Steel', ['projSpeed 1'], 'Spectral Blade deals 25% more damage to Marked enemies.', { off: 1.03, def: 1 }), ['dmgSpell 1.5', 'hp 1']),
+
+      // ---- Row 3
+      ring('blades_ward', 'Blade Ward', 3, -2, ['ward 1', 'hp 1', 'dmgSpell 1', 'resAll 1'],
+        rule('blade_ward', 'Floating Steel', ['ward 1'], 'Each Spectral Blade that hits gives you Ward equal to 1% of your maximum Health for 4 s.', { off: 1, def: 1.04 }), ['ward 1.5', 'hp 1']),
+      ring('blades_ghost', 'Ghost Steel', 3, -1, ['critChance 1', 'hp 1', 'dmgShadow 1', 'evasion 1'],
+        rule('ghost_steel', 'Spectral Edge', ['critChance 1'], 'Your critical hits with spells give 2 Hex.', { off: 1.02, def: 1 }), ['critChance 1', 'hp 1.5']),
+      ring('blades_temper', 'Tempering', 3, 1, ['critMult 1', 'hp 1', 'atkSpeed 1', 'armor 1'], ['Cold Forged', 'critMult 2', 'atkSpeed 1'], ['critMult 1.5', 'hp 1']),
+      ring('blades_flight', 'Flight of Steel', 3, 2, ['projSpeed 1', 'hp 1', 'cdr 1', 'resAll 1'], ['Swift Ghosts', 'projSpeed 2', 'cdr 1'], ['projSpeed 1.5', 'hp 1']),
+
+      // ---- Row 4
+      ring('blades_duel', 'Old Duels', 4, -2, ['dmg 1@duel', 'hp 1', 'critChance 1', 'evasion 1'], ['Unfinished', 'dmg 1.5@duel', 'critMult 1'], ['evasion 1.5', 'hp 1']),
+      H.altar('blades_altar_a', 'Altar of Steel', 4, -1, ['hp 1', 'dmgSpell 1', 'resAll 1']),
+      ring('blades_edge', 'Spellblade', 4, 1, ['dmgMelee 1', 'hp 1', 'dmgSpell 1', 'armor 1'],
+        rule('spellblade', 'Spell and Steel', ['dmgMelee 1'], 'After you cast a spell, your next Hexed Slash within 3 s deals 25% more damage.', { off: 1.03, def: 1 }), ['dmgMelee 1.5', 'hp 1']),
+      ring('blades_sharp', 'Whetted', 4, 2, ['critChance 1', 'hp 1', 'dmgElite 1', 'resAll 1'], ['Mirror Edge', 'critChance 2', 'dmgElite 1'], ['critChance 1', 'hp 1.5']),
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      ring('blades_hall', 'Hall of Arms', 5, -2, ['hp 1', 'armor 1', 'dmgSpell 1', 'resAll 1'], ['Hung Shields', 'armor 2', 'hp 1'], ['armor 1.5', 'hp 1']),
+      ring('blades_storm', 'Steel Storm', 5, -1, ['atkSpeed 1', 'hp 1', 'projSpeed 1', 'evasion 1'], ['Whirl of Ghosts', 'atkSpeed 2', 'projSpeed 1'], ['atkSpeed 1.5', 'hp 1']),
+      ring('blades_shatter', 'Shards', 5, 1, ['dmgShadow 1', 'hp 1', 'critMult 1', 'resShadow 1'], ['Broken Blades', 'dmgShadow 2', 'critMult 1'], ['dmgShadow 1.5', 'hp 1']),
+      ring('blades_guard', 'Spectral Guard', 5, 2, ['ward 1', 'hp 1', 'evasion 1', 'resAll 1'], ['Floating Shield', 'ward 2', 'evasion 1.5'], ['ward 1.5', 'hp 1']),
+
+      // ---- Row 6
+      ring('blades_polish', 'Polish', 6, -2, ['hp 1', 'resAll 1', 'cdr 1', 'evasion 1'], ['Bright Steel', 'cdr 2', 'resAll 1'], ['cdr 1', 'hp 1.5']),
+      ring('blades_seln', 'The Archmagus\'s Study', 6, -1, ['hp 1', H.trophy("Seln's Quill", ['dmgSpell 1.5', 'cdr 1.5'], 'archmagus_seln'), 'dmgSpell 1', 'resAll 1'],
+        ['Arcane Notes', 'dmgSpell 2', 'hp 1'], ['dmgSpell 1', 'hp 1.5']),
+      ring('blades_cult', 'The Cursed Armoury', 6, 1, ['hp 1', H.corrupted('Bloodied Hilt', ['critMult 3', 'dmgSpell 1.5'], 20), 'moveSpeed 1', 'resAll 1'],
+        H.corrupted('Blade That Hungers', ['dmg*2', 'critChance 3', 'projSpeed 2'], 40), ['critChance 1', 'hp 1.5']),
+      ring('blades_crown', 'The Royal Armoury', 6, 2, ['evasion 1', H.faction("Armourer's Mark", ['dmgSpell 1.5', 'armor 1'], 'crown', 20), 'hp 1', 'critChance 1'],
+        H.faction("King's Blades", ['dmgBoss 2', 'critMult 2'], 'crown', 60), ['dmgBoss 1', 'evasion 1.5']),
+
+      // ---- Row 7
+      H.pacts('blades_pacts', 'Armoury Bargains', 7, -2, 'hp 1', [
+        pact('Glass Blades', ['dmgSpell*15', 'ward*-20']),
+        pact('Many Edges', ['projSpeed*30', 'critMult*-10']),
+        pact('Heavy Hilt', ['critMult*15', 'atkSpeed*-6'])], ['Sharp Terms', 'critChance 1', 'hp 1']),
+      ring('blades_valdric', 'The Captain\'s Armoury', 7, -1, ['hp 1', 'critChance 1', 'armor 1', H.trophy("Valdric's Sabre", ['critMult 1.5', 'dmgSpell 1.5'], 'captain_valdric')],
+        ['Captain\'s Edge', 'critMult 2', 'hp 1'], ['critMult 1.5', 'hp 1']),
+      H.altar('blades_altar_b', 'Altar of Ghosts', 7, 1, ['hp 1', 'critMult 1', 'projSpeed 1']),
+      H.keyArc('blades_key_thousand', 'A Thousand Blades', 7, 2, ['projSpeed 1', 'dmgSpell 1'],
+        key('Thousand Blades', ['projSpeed*30'], 'Your projectiles fly 30% faster. Spectral Blade has a 50% shorter cooldown but deals 30% less damage.', null, { off: 1.04, def: 1 },
+          { abil: [{ a: 'spectral_blade', k: 'cd', v: -0.5 }, { a: 'spectral_blade', k: 'dmg', v: -0.3 }] })),
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      ring('blades_hilt', 'Hilts', 8, -3, ['hp 1', 'armor 1', 'resAll 1', 'evasion 1'], ['Basket Hilt', 'armor 2', 'evasion 1.5'], ['armor 1', 'hp 1.5']),
+      H.keyArc('blades_key_distance', 'Duelist\'s Distance', 8, -2, ['dmgSpell 1', 'evasion 1'],
+        key('Arm\'s Length', ['dmgSpell*25', 'dmgMelee*-25'], 'Your spells deal 25% more damage and your melee hits 25% less.', null, { off: 1.04, def: 1 })),
+      ring('blades_names', 'Named Blades', 8, -1, ['hp 1', 'critMult 1', 'dmgSpell 1', 'resShadow 1'], ['Old Names', 'critMult 2.5', 'dmgSpell 1'], ['critMult 1.5', 'hp 1']),
+      ring('blades_echo', 'Echoes of Steel', 8, 1, ['cdr 1', 'hp 1', 'atkSpeed 1', 'resAll 1'], ['Ringing', 'cdr 2', 'atkSpeed 1.5'], ['cdr 1.5', 'hp 1']),
+      H.keyArc('blades_key_cursed', 'Cursed Steel', 8, 2, ['critChance 1', 'hexGain 1'],
+        key('Cursed Steel', ['critMult*-20'], 'Your critical hits Mark the enemy for 4 s. You have 20% less Critical Damage.', 'tree_hexblade_cursed_steel', { off: 1.04, def: 1 })),
+      ring('blades_last', 'Last Edge', 8, 3, ['hp 1', 'ward 1', 'critChance 1', 'resAll 1'], ['Final Edge', 'ward 2', 'critChance 1.5'], ['ward 1', 'hp 1.5'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['dmgSpell 2', 'hp 2'] },
+      { at: 35, mods: ['critChance 3', 'ward 2'] },
+      { at: 60, mods: ['dmgSpell 4', 'critMult 3', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Spectral Armory and the Veil.
+  T.bridge('hexblade', { id: 'blades_veil_inner', between: ['blades', 'veil'], ring: 'inner', name: 'Long Steel', shape: 'star',
+    nodes: ['projSpeed 1', mut('hx_slash_reach'), 'moveSpeed 1', 'hp 1'],
+    core: ['Reaching Ghost', 'dmgSpell 1.5', 'moveSpeed 1'], bonus: ['hp 1', 'resAll 1'] });
+  T.bridge('hexblade', { id: 'blades_veil_mid', between: ['blades', 'veil'], ring: 'mid', name: 'Dancing Steel', shape: 'diamond',
+    nodes: ['evasion 1', 'hp 1', 'dmgSpell 1', 'resAll 1'],
+    core: ['Blade Dance', 'evasion 2', 'dmgSpell 1.5'], bonus: ['evasion 1.5', 'hp 1'] });
+  T.bridge('hexblade', { id: 'blades_veil_outer', between: ['blades', 'veil'], ring: 'outer', name: 'Ghost Road', shape: 'diamond',
+    nodes: ['projSpeed 1', 'hp 1', 'evasion 1', 'resAll 1'],
+    core: ['Phantom March', 'evasion 2', 'projSpeed 1.5'], bonus: ['projSpeed 1.5', 'hp 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_hexblade_blood.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, H = T.hex;
+  var mut = H.mut, rule = H.rule, web = H.web, key = H.key, pact = H.pact, abil = H.abil, ring = H.ring, star = H.star;
+
+  /**
+   * HEXBLADE, arm 7 of 8: THE BLOODLETTER (`blood`). Life Steal, healing from kills, and Health as a price. Skill: Siphon Edge
+   * (trunk, 4 points). Design: docs/TREE_HEXBLADE.md. Rules: src/sim/56_tree_hexblade.js. Holds the three bridges to the curse arm.
+   */
+  T.arm('hexblade', {
+    id: 'blood', name: 'The Bloodletter', focus: 'Life Steal and Health as a price: drink deep, bleed for power', color: '#a8323e', vein: 'plague',
+
+    trunk: H.slashTrunk([
+      'hexLeech 1', 'hp 1', { t: 'skill', grants: 'siphon_edge', abil: [{ a: 'siphon_edge', k: 'cd', v: -0.05 }] }, 'lifesteal 1', 'resAll 1',   // T1..T5
+      'hp 1', 'hexKillHeal 1', 'dmgMelee 1', ['Blood Road', 'moveSpeed 1', 'hp 0.5'], 'hp 1',                                                  // T6..T10
+      'hexFury 1', 'resAll 1', 'hp 1', 'healTaken 1', 'armor 1',                                                                              // T11..T15
+      'hp 1', 'hexLeech 1', 'dmgShadow 1', 'hp 1', 'lifesteal 1',                                                                             // T16..T20
+      'resAll 1', 'hp 1', 'hexFury 1', 'hpRegen 1', 'hp 1'                                                                                    // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Siphon Edge, shape and essence
+      star('blood_siphon_shape', 'Siphon Edge: shape', 1, -1, 'hp 1', ['hx_siphon_wide', 'hx_siphon_reach', 'hx_siphon_twice'], ['Long Thirst', 'hexLeech 1', 'hp 1']),
+      star('blood_siphon_essence', 'Siphon Edge: essence', 1, 1, 'lifesteal 1', ['hx_siphon_deep', 'hx_siphon_cold', 'hx_siphon_mark'], ['Red Draught', 'lifesteal 1', 'resAll 1']),
+
+      // ---- Row 2
+      star('blood_siphon_rite', 'Siphon Edge: rite', 2, -1, 'hexLeech 1', ['hx_siphon_free', 'hx_siphon_quick', 'hx_siphon_ward'],
+        abil('Practised Thirst', ['hp 1', 'healTaken 1'], 'siphon_edge', 'cd', -0.06)),
+      ring('blood_cup', 'The Cup', 2, 1, ['lifesteal 1', 'hp 1', abil('Deep Cut', ['hexLeech 0.5'], 'siphon_edge', 'dmg', 0.08), 'resAll 1', 'healTaken 1'],
+        rule('sanguine', 'Sanguine Ward', ['healTaken 1'], 'Healing you receive at full Health becomes Ward, up to 8% of your maximum Health.', { off: 1, def: 1.04 }), ['lifesteal 1.5', 'hp 1']),
+
+      // ---- Row 3
+      ring('blood_fury', 'Bloodrage', 3, -2, ['hexFury 1', 'hp 1', 'meleeSpeed 1', 'armor 1'], ['Red Mist', 'hexFury 2', 'dmgMelee 1'], ['hexFury 1.5', 'hp 1']),
+      ring('blood_thirst', 'Thirst', 3, -1, ['lifesteal 1', 'hp 1', 'hpRegen 1', 'resAll 1'], ['Parched', 'lifesteal 2@lowLife', 'hp 1.5'], ['lifesteal 1', 'hp 1.5']),
+      ring('blood_vein', 'The Open Vein', 3, 1, ['dmgShadow 1', 'hp 1', 'hexFury 1', 'resAll 1'],
+        web('open_vein', 'Open Vein', ['dmgShadow 1'], 'Your skills that have a cost also take 4% of your current Health and deal 15% more damage. This cannot kill you.', { off: 1.08, def: 0.95 }), ['dmgShadow 1.5', 'hp 1']),
+      ring('blood_mend', 'Mending', 3, 2, ['hp 1', 'hpRegen 1', 'healTaken 1', 'armor 1'], ['Clotted', 'hpRegen 2', 'healTaken 1'], ['hpRegen 1.5', 'hp 1']),
+
+      // ---- Row 4
+      ring('blood_kill', 'Red Harvest', 4, -2, ['hexKillHeal 1', 'hp 1', 'dmgExecute 1', 'resAll 1'],
+        rule('harvest', 'Red Harvest', ['hexKillHeal 1'], 'Killing an enemy while you are below 50% Health heals you for 3% of your maximum Health.', { off: 1, def: 1.04 }), ['hexKillHeal 1.5', 'hp 1']),
+      H.altar('blood_altar_a', 'Altar of Blood', 4, -1, ['hp 1', 'lifesteal 1', 'resAll 1']),
+      ring('blood_leech', 'Leeches', 4, 1, ['hexLeech 1', 'hp 1', 'lifesteal 1', 'resPoison 1'], ['Black Leech', 'hexLeech 2', 'lifesteal 1'], ['hexLeech 1.5', 'hp 1']),
+      ring('blood_pulse', 'Pulse', 4, 2, ['hp 1', 'resAll 1', 'healTaken 1', 'armor 1'], ['Strong Heart', 'hp 2', 'healTaken 1'], ['hp 1.5', 'resAll 1']),
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      ring('blood_road', 'Blood Road', 5, -2, ['hp 1', 'moveSpeed 1', 'lifesteal 1', 'resAll 1'], ['Red Footprints', 'moveSpeed 1.5', 'lifesteal 1'], ['moveSpeed 1.5', 'hp 1']),
+      ring('blood_desperate', 'Desperation', 5, -1, ['hexFury 1', 'hp 1', 'dmgTaken 1@lowLife', 'resAll 1'], ['Cornered', 'hexFury 2', 'dmgTaken 1.5@lowLife'], ['hexFury 1', 'hp 1.5']),
+      ring('blood_tide', 'Red Tide', 5, 1, ['dmgMelee 1', 'hp 1', 'meleeSpeed 1', 'armor 1'],
+        rule('transfuse', 'Transfusion', ['dmgMelee 1'], 'While you are below 50% Health, Siphon Edge heals you for another 15% of the damage it deals.', { off: 1, def: 1.03 }), ['dmgMelee 1.5', 'hp 1']),
+      ring('blood_potion', 'Physic', 5, 2, ['potionPower 1', 'hp 1', 'hpRegen 1', 'resAll 1'], ['Bottled Blood', 'potionPower 2', 'hp 1'], ['potionPower 1.5', 'hp 1']),
+
+      // ---- Row 6
+      ring('blood_vessel', 'Vessels', 6, -2, ['hp 1', 'resAll 1', 'hpRegen 1', 'armor 1'], ['Full Vessel', 'hp 2', 'resAll 1'], ['hp 1.5', 'armor 1']),
+      ring('blood_beggar', 'The Beggar\'s Cup', 6, -1, ['hp 1', H.trophy("Beggar Prince's Cup", ['lifesteal 1.5', 'hp 1.5'], 'beggar_prince'), 'hexLeech 1', 'resAll 1'],
+        ['Tin Chalice', 'lifesteal 2', 'hp 1'], ['lifesteal 1', 'hp 1.5']),
+      ring('blood_cult', 'The Red Cult', 6, 1, ['hp 1', H.corrupted('Red Hunger', ['hexFury 3', 'lifesteal 1.5'], 20), 'moveSpeed 1', 'resAll 1'],
+        H.corrupted('Drink Deep', ['dmg*2', 'hexLeech 3', 'hexKillHeal 2'], 40), ['lifesteal 1', 'hp 1.5']),
+      ring('blood_choir', 'Choir of Mercy', 6, 2, ['resAll 1', H.faction('Mercy Hymn', ['healTaken 1.5', 'hp 1'], 'choir', 20), 'hp 1', 'hpRegen 1'],
+        H.faction('Sacred Blood', ['hp 2', 'healTaken 2'], 'choir', 60), ['resAll 1', 'hp 1.5']),
+
+      // ---- Row 7
+      H.pacts('blood_pacts', 'Blood Bargains', 7, -2, 'hp 1', [
+        pact('Thin Blood', ['lifesteal+1', 'hp*-6']),
+        pact('Bad Blood', ['hexFury*30', 'healTaken*-15']),
+        pact('Rich Blood', ['hp*10', 'lifesteal*-25'])], ['Red Terms', 'lifesteal 1', 'hp 1']),
+      ring('blood_ooze', 'The Ooze Throne', 7, -1, ['hp 1', 'hpRegen 1', 'resPoison 1', H.trophy("Sovereign's Ichor", ['hpRegen 1.5', 'hp 1.5'], 'ooze_sovereign')],
+        ['Ichor', 'hpRegen 2', 'hp 1'], ['hpRegen 1.5', 'hp 1']),
+      H.altar('blood_altar_b', 'Altar of the Vein', 7, 1, ['hp 1', 'hexLeech 1', 'healTaken 1']),
+      H.keyArc('blood_key_tithe', 'The Tithe', 7, 2, ['hp 1', 'hexFury 1'],
+        key('Blood Tithe', ['dmg*6', 'lifesteal+1.5'], 'Skills cost Health instead of Hex: 0.5% of your maximum Health for every point of cost (this cannot kill you; it stops at 1 Health). You no longer gain Hex. You deal 6% more damage and have +1.5% Life Steal.', 'web_blood_tithe', { off: 1, def: 0.9 })),
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      ring('blood_heart', 'Heartwood', 8, -3, ['hp 1', 'armor 1', 'resAll 1', 'hpRegen 1'], ['Old Heart', 'hp 2', 'armor 1.5'], ['hp 1', 'armor 1.5']),
+      H.keyArc('blood_key_borrowed', 'Borrowed Blood', 8, -2, ['lifesteal 1', 'potionPower 1'],
+        key('Borrowed Blood', ['lifesteal*50', 'potionPower*-50'], 'You have 50% more Life Steal, but your potions are 50% weaker.', null, { off: 1, def: 1.05 })),
+      ring('blood_wound', 'Open Wounds', 8, -1, ['hp 1', 'dmgShadow 1', 'hexFury 1', 'resShadow 1'], ['Bleeding Heart', 'dmgShadow 2', 'hexFury 1.5'], ['dmgShadow 1.5', 'hp 1']),
+      ring('blood_feast', 'The Red Feast', 8, 1, ['hexKillHeal 1', 'hp 1', 'lifesteal 1', 'resAll 1'], ['Gorged', 'hexKillHeal 2', 'lifesteal 1.5'], ['hexKillHeal 1.5', 'hp 1']),
+      H.keyArc('blood_key_red', 'Red Fury', 8, 2, ['hexFury 1', 'dmgMelee 1'],
+        key('Red Fury', ['hexFury+2', 'healTaken*-20'], 'Your hits deal 2% more damage for every 10% of Health you are missing. You receive 20% less healing.', null, { off: 1.05, def: 0.97 })),
+      ring('blood_life', 'Lifeblood', 8, 3, ['hp 1', 'healTaken 1', 'hpRegen 1', 'resAll 1'], ['Overflowing', 'hp 2', 'healTaken 1.5'], ['healTaken 1', 'hp 1.5'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['lifesteal 2', 'hp 2'] },
+      { at: 35, mods: ['hexLeech 3', 'resAll 2'] },
+      { at: 60, mods: ['hexFury 3', 'hp 3', 'healTaken 2'] }
+    ]
+  });
+
+  // The three bridges between the Bloodletter and the Malison.
+  T.bridge('hexblade', { id: 'blood_curse_inner', between: ['blood', 'curse'], ring: 'inner', name: 'Blood Brand', shape: 'star',
+    nodes: ['hexLeech 1', mut('hx_slash_drain'), 'hexMarkDur 1', 'hp 1'],
+    core: ['Branded in Red', 'hexLeech 1.5', 'hexMarkDur 1'], bonus: ['hp 1', 'resAll 1'] });
+  T.bridge('hexblade', { id: 'blood_curse_mid', between: ['blood', 'curse'], ring: 'mid', name: 'Marked in Blood', shape: 'diamond',
+    nodes: ['hexLeech 1', 'hp 1', 'hexMarkPower 1', 'resAll 1'],
+    core: ['Blood Debt', 'hexLeech 2', 'hexMarkPower 1.5'], bonus: ['hexLeech 1.5', 'hp 1'] });
+  T.bridge('hexblade', { id: 'blood_curse_outer', between: ['blood', 'curse'], ring: 'outer', name: 'Red Names', shape: 'diamond',
+    nodes: ['hexKillHeal 1', 'hp 1', 'hexMarkDur 1', 'resAll 1'],
+    core: ['Names in Blood', 'hexKillHeal 2', 'hexMarkDur 1.5'], bonus: ['hexKillHeal 1.5', 'hp 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_hexblade_coven.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, H = T.hex;
+  var mut = H.mut, rule = H.rule, web = H.web, key = H.key, pact = H.pact, abil = H.abil, ring = H.ring, star = H.star;
+
+  /**
+   * HEXBLADE, arm 2 of 8: THE COVEN (`coven`). Hex: building it, holding it, spending it. Skill: Hex Nova (trunk, 4 points).
+   * Design: docs/TREE_HEXBLADE.md. Rules: src/sim/56_tree_hexblade.js. Holds the three bridges to the blades arm.
+   */
+  T.arm('hexblade', {
+    id: 'coven', name: 'The Coven', focus: 'Hex: fill the cauldron, keep it brimming, then pour it out at once', color: '#b07bff', vein: 'plague',
+
+    trunk: H.slashTrunk([
+      'hexGain 1', 'hp 1', { t: 'skill', grants: 'hex_nova', abil: [{ a: 'hex_nova', k: 'cd', v: -0.05 }] }, 'aoe 1', 'resAll 1',       // T1..T5
+      'hp 1', 'resMax 1', 'dmgShadow 1', ['Witch Path', 'moveSpeed 1', 'hexGain 0.5'], 'hp 1',                                       // T6..T10
+      'aoe 1', 'ward 1', 'hp 1', 'hexGain 1', 'resShadow 1',                                                                        // T11..T15
+      'hp 1', 'dmgSpell 1', 'resMax 1', 'hp 1', 'aoe 1',                                                                            // T16..T20
+      'resAll 1', 'hp 1', 'hexGain 1', 'ward 1', 'hp 1'                                                                             // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Hex Nova, shape and essence
+      star('coven_nova_shape', 'Hex Nova: shape', 1, -1, 'hp 1', ['hx_nova_wide', 'hx_nova_close', 'hx_nova_aim'], ['Outward Ring', 'aoe 1', 'hp 1']),
+      star('coven_nova_essence', 'Hex Nova: essence', 1, 1, 'dmgShadow 1', ['hx_nova_cold', 'hx_nova_mark', 'hx_nova_drain'], ['Black Fire', 'dmgShadow 1', 'resAll 1']),
+
+      // ---- Row 2
+      star('coven_nova_rite', 'Hex Nova: rite', 2, -1, 'hexGain 1', ['hx_nova_cheap', 'hx_nova_quick', 'hx_nova_twice'],
+        abil('Practised Spite', ['resMax 1', 'hp 1'], 'hex_nova', 'cd', -0.06)),
+      ring('coven_well', 'The Witch\'s Well', 2, 1, ['resMax 1', 'hp 1', abil('Wide Spite', ['aoe 0.5'], 'hex_nova', 'area', 0.08), 'resAll 1', 'hexGain 1'],
+        rule('brimming', 'Brimming Hex', ['resMax 1'], 'While you have 60 Hex or more, you deal 10% more damage.', { off: 1.04, def: 1 }), ['resMax 1.5', 'hp 1']),
+
+      // ---- Row 3
+      ring('coven_kettle', 'The Kettle', 3, -2, ['hexGain 1', 'hp 1', 'dmgDot 1', 'resPoison 1'], ['Bubbling', 'hexGain 2', 'dmgDot 1'], ['hexGain 1.5', 'hp 1']),
+      ring('coven_circle', 'The Circle', 3, -1, ['aoe 1', 'hp 1', 'dmgSpell 1', 'resAll 1'], ['Hand in Hand', 'aoe 2', 'dmgSpell 1'], ['aoe 1.5', 'hp 1']),
+      ring('coven_rattle', 'Death Rattle', 3, 1, ['dmgShadow 1', 'hp 1', 'aoe 1', 'armor 1'],
+        web('death_rattle', 'Rattling Bones', ['aoe 1'], 'A Marked enemy you kill bursts: 60% weapon damage as Shadow to enemies within 3.5 m.', { off: 1.05, def: 1 }), ['dmgShadow 1.5', 'hp 1']),
+      ring('coven_familiar', 'Familiars', 3, 2, ['hp 1', 'moveSpeed 1', 'hexGain 1', 'resShadow 1'], ['Black Cat', 'moveSpeed 1.5', 'hexGain 1.5'], ['moveSpeed 1.5', 'hp 1']),
+
+      // ---- Row 4
+      ring('coven_hearth', 'Witch Hearth', 4, -2, ['hp 1', 'ward 1', 'resAll 1', 'hpRegen 1'],
+        rule('hex_well', 'Witch\'s Mend', ['ward 1'], 'Spending Hex heals you for 1% of your maximum Health for every 10 Hex spent.', { off: 1, def: 1.05 }), ['ward 1.5', 'hp 1']),
+      H.altar('coven_altar_a', 'Altar of the Coven', 4, -1, ['hp 1', 'hexGain 1', 'resAll 1']),
+      ring('coven_spite', 'Spite Unleashed', 4, 1, ['dmgSpell 1', 'hp 1', 'cdr 1', 'resShadow 1'],
+        rule('second_burst', 'Spite Mark', ['dmgSpell 1'], 'Hex Nova Marks every enemy it hits for 4 s.', { off: 1.03, def: 1 }), ['cdr 1.5', 'hp 1']),
+      ring('coven_moon', 'Moonlit', 4, 2, ['hp 1', 'cdr 1', 'resMax 1', 'armor 1'], ['Full Moon', 'cdr 2', 'resMax 1'], ['cdr 1', 'hp 1.5']),
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      ring('coven_sabbath', 'Sabbath', 5, -2, ['hp 1', 'moveSpeed 1', 'hexGain 1', 'resAll 1'], ['Night Gathering', 'hexGain 2', 'moveSpeed 1'], ['hexGain 1', 'hp 1.5']),
+      ring('coven_hag', 'The Hag\'s Hut', 5, -1, ['dmgShadow 1', 'hp 1', 'aoe 1', 'resPoison 1'], ['Hag Fire', 'dmgShadow 2', 'aoe 1'], ['dmgShadow 1.5', 'hp 1']),
+      ring('coven_tithe', 'Tithes', 5, 1, ['resMax 1', 'hp 1', 'ward 1', 'resAll 1'],
+        rule('hex_ward', 'Hex Ward', ['ward 1'], 'While you have 60 Hex or more, you take 8% less damage.', { off: 1, def: 1.04 }), ['ward 1.5', 'hp 1']),
+      ring('coven_broom', 'Broomstick', 5, 2, ['hp 1', 'moveSpeed 1', 'dodgeCdr 1', 'armor 1'], ['Flight', 'moveSpeed 2', 'dodgeCdr 1'], ['moveSpeed 1', 'hp 1.5']),
+
+      // ---- Row 6
+      ring('coven_cauldron', 'Cauldron', 6, -2, ['hp 1', 'hpRegen 1', 'resPoison 1', 'resAll 1'], ['Broth', 'hpRegen 2', 'hp 1'], ['hpRegen 1.5', 'hp 1']),
+      ring('coven_bog', 'The Bog Brew', 6, -1, ['hp 1', H.trophy("Bog Mother's Ladle", ['hexGain 1.5', 'hp 1.5'], 'bog_mother'), 'aoe 1', 'resPoison 1'],
+        ['Peat Smoke', 'aoe 2', 'hexGain 1'], ['hexGain 1', 'hp 1.5']),
+      ring('coven_cult', 'The Black Coven', 6, 1, ['hp 1', H.corrupted('Witch Hunger', ['hexGain 3', 'dmgShadow 1.5'], 20), 'moveSpeed 1', 'resAll 1'],
+        H.corrupted('Thirteenth Sister', ['dmg*2', 'aoe 3', 'resMax 2'], 40), ['hexGain 1', 'hp 1.5']),
+      ring('coven_lantern', 'Hedge Lanterns', 6, 2, ['resAll 1', H.faction('Lantern Charm', ['ward 1.5', 'resShadow 1'], 'lantern', 20), 'hp 1', 'hexGain 1'],
+        H.faction('Kindly Witch', ['resMax 2', 'ward 2'], 'lantern', 60), ['resAll 1', 'hp 1.5']),
+
+      // ---- Row 7
+      H.pacts('coven_pacts', 'Coven Bargains', 7, -2, 'hp 1', [
+        pact('Greedy Hex', ['hexGain*20', 'hp*-6']),
+        pact('Spreading Spite', ['aoe*20', 'dmgShadow*-8']),
+        pact('Deep Well', ['resMax*25', 'hexGain*-10'])], ['Witch Terms', 'hexGain 1', 'hp 1']),
+      ring('coven_still', 'The Plague Still', 7, -1, ['hp 1', 'dmgDot 1', 'resPoison 1', H.trophy("Alchemist's Still", ['dmgDot 1.5', 'hexGain 1.5'], 'plague_alchemist')],
+        ['Witch Brew', 'dmgDot 2', 'hp 1'], ['dmgDot 1.5', 'hp 1']),
+      H.altar('coven_altar_b', 'Altar of the Moon', 7, 1, ['hp 1', 'aoe 1', 'resMax 1']),
+      H.keyArc('coven_key_overflow', 'Overflowing', 7, 2, ['hexGain 1', 'resMax 1'],
+        key('Overflowing Hex', ['resMax*-30'], 'Your Hex never fades. You have 30% less maximum Hex.', 'tree_hexblade_overflow', { off: 1.04, def: 1 })),
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      ring('coven_stars', 'Star Charts', 8, -3, ['hp 1', 'cdr 1', 'resAll 1', 'resMax 1'], ['Reading the Sky', 'cdr 2', 'hp 1.5'], ['cdr 1', 'hp 1.5']),
+      H.keyArc('coven_key_circle', 'The Great Circle', 8, -2, ['aoe 1', 'dmgSpell 1'],
+        key('Coven Circle', ['aoe*40', 'dmg*-10'], 'Your areas of effect are 40% larger, but you deal 10% less damage.', null, { off: 1.03, def: 1 })),
+      ring('coven_burn', 'Witch Burning', 8, -1, ['hp 1', 'dmgShadow 1', 'aoe 1', 'resFire 1'], ['Pyre Smoke', 'dmgShadow 2.5', 'aoe 1'], ['dmgShadow 1.5', 'hp 1']),
+      ring('coven_spell', 'Spellcraft', 8, 1, ['dmgSpell 1', 'hp 1', 'cdr 1', 'resAll 1'], ['Witchcraft', 'dmgSpell 2', 'cdr 1.5'], ['dmgSpell 1.5', 'hp 1']),
+      H.keyArc('coven_key_allin', 'All at Once', 8, 2, ['dmgShadow 1', 'hexGain 1'],
+        key('All at Once', [], 'Hex Nova deals 60% more damage, but its cooldown is 50% longer.', null, { off: 1.04, def: 1 },
+          { abil: [{ a: 'hex_nova', k: 'dmg', v: 0.6 }, { a: 'hex_nova', k: 'cd', v: 0.5 }] })),
+      ring('coven_crone', 'The Crone', 8, 3, ['hp 1', 'ward 1', 'hexGain 1', 'resAll 1'], ['Old Mother', 'ward 2', 'hexGain 1.5'], ['ward 1', 'hp 1.5'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['hexGain 2', 'hp 2'] },
+      { at: 35, mods: ['aoe 3', 'resAll 2'] },
+      { at: 60, mods: ['dmgShadow 4', 'resMax 3', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Coven and the Spectral Armory.
+  T.bridge('hexblade', { id: 'coven_blades_inner', between: ['coven', 'blades'], ring: 'inner', name: 'Witch Steel', shape: 'star',
+    nodes: ['hexGain 1', mut('hx_slash_shadow'), 'dmgShadow 1', 'hp 1'],
+    core: ['Black Edge', 'dmgShadow 1.5', 'hexGain 1'], bonus: ['hp 1', 'resAll 1'] });
+  T.bridge('hexblade', { id: 'coven_blades_mid', between: ['coven', 'blades'], ring: 'mid', name: 'Hexed Blades', shape: 'diamond',
+    nodes: ['dmgSpell 1', 'hp 1', 'hexGain 1', 'resAll 1'],
+    core: ['Spelled Steel', 'dmgSpell 2', 'hexGain 1.5'], bonus: ['dmgSpell 1.5', 'hp 1'] });
+  T.bridge('hexblade', { id: 'coven_blades_outer', between: ['coven', 'blades'], ring: 'outer', name: 'Witch Swords', shape: 'diamond',
+    nodes: ['resMax 1', 'hp 1', 'dmgSpell 1', 'resAll 1'],
+    core: ['Sisters of the Blade', 'dmgSpell 2', 'resMax 1.5'], bonus: ['resMax 1.5', 'hp 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_hexblade_curse.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, H = T.hex;
+  var mut = H.mut, rule = H.rule, web = H.web, key = H.key, pact = H.pact, abil = H.abil, ring = H.ring, star = H.star;
+
+  /**
+   * HEXBLADE, arm 0 of 8: THE MALISON (`curse`). Marks: longer, stronger, passed on. Skill: Mark of Frailty (trunk, 4 points).
+   * Design: docs/TREE_HEXBLADE.md. Rules: src/sim/56_tree_hexblade.js. Holds the three bridges to the noose arm.
+   */
+  T.arm('hexblade', {
+    id: 'curse', name: 'The Malison', focus: 'Marks: name the weakness, make it last, pass it on', color: '#9a6ad8', vein: 'dread',
+
+    trunk: H.slashTrunk([
+      'hexMarkDur 1', 'hp 1', { t: 'skill', grants: 'mark_of_frailty', abil: [{ a: 'mark_of_frailty', k: 'cd', v: -0.05 }] }, 'hexMarkPower 1', 'resAll 1',   // T1..T5
+      'hp 1', 'dmgAfflicted 1', 'hexGain 1', ['Cursed Road', 'hexMarkDur 0.5', 'moveSpeed 1'], 'hp 1',                                                   // T6..T10
+      'hexMarkPower 1', 'resShadow 1', 'hp 1', 'statusDur 1', 'armor 1',                                                                                // T11..T15
+      'hp 1', 'dmgAfflicted 1', 'hexMarkDur 1', 'hp 1', 'hexGain 1',                                                                                     // T16..T20
+      'resAll 1', 'hp 1', 'hexMarkPower 1', 'resAll 1', 'hp 1'                                                                                           // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Mark of Frailty, shape and essence
+      star('curse_frail_shape', 'Mark of Frailty: shape', 1, -1, 'hp 1', ['hx_frail_wide', 'hx_frail_self', 'hx_frail_far'], ['Spreading Word', 'aoe 1', 'hp 1']),
+      star('curse_frail_essence', 'Mark of Frailty: essence', 1, 1, 'hexMarkPower 1', ['hx_frail_vuln', 'hx_frail_cold', 'hx_frail_rot'], ['Bitter Name', 'hexMarkPower 1', 'resAll 1']),
+
+      // ---- Row 2
+      star('curse_frail_rite', 'Mark of Frailty: rite', 2, -1, 'hexMarkDur 1', ['hx_frail_quick', 'hx_frail_hex', 'hx_frail_charges'],
+        abil('Practised Curse', ['hexGain 1', 'hp 1'], 'mark_of_frailty', 'cd', -0.06)),
+      ring('curse_brand', 'The Brand', 2, 1, ['hexMarkDur 1', 'hp 1', abil('Deep Ink', ['hexMarkPower 0.5'], 'mark_of_frailty', 'dur', 0.1), 'resAll 1', 'dmgAfflicted 1'],
+        rule('deep_mark', 'Deep Brand', ['hexMarkDur 1'], 'Your Marks also Weaken the enemy for 3 s.', { off: 1.01, def: 1.04 }), ['hexMarkDur 1.5', 'hp 1']),
+
+      // ---- Row 3
+      ring('curse_tally', 'The Tally', 3, -2, ['hexMarkPower 1', 'hp 1', 'dmgAfflicted 1', 'resShadow 1'],
+        rule('doom', 'Doom Count', ['hexMarkPower 1'], 'Your hits on an enemy you have kept Marked for 4 s or longer deal 15% more damage.', { off: 1.04, def: 1 }), ['hexMarkPower 1.5', 'hp 1']),
+      ring('curse_whisper', 'Whispers', 3, -1, ['hexGain 1', 'hp 1', 'resRegen 1', 'resAll 1'], ['Murmured Names', 'hexGain 2', 'resMax 1'], ['hexGain 1.5', 'hp 1']),
+      ring('curse_misery', 'Misery Shared', 3, 1, ['dmgAfflicted 1', 'hp 1', 'hexMarkDur 1', 'armor 1'],
+        web('shared_misery', 'Pass It On', ['dmgAfflicted 1'], 'Killing a Marked enemy Marks the nearest unmarked enemy within 6 m for 5 s.', { off: 1.025, def: 1.005 }), ['dmgAfflicted 1.5', 'hp 1']),
+      ring('curse_omen', 'Omens', 3, 2, ['statusDur 1', 'hp 1', 'statusChance 1', 'resAll 1'], ['Ill Omen', 'statusDur 2', 'statusChance 1.5'], ['statusDur 1.5', 'hp 1']),
+
+      // ---- Row 4
+      ring('curse_ledger', 'The Ledger', 4, -2, ['hexMarkPower 1', 'hp 1', 'dmgElite 1', 'resShadow 1'], ['Names Written', 'hexMarkPower 2', 'dmgElite 1'], ['hexMarkPower 1', 'hp 1.5']),
+      H.altar('curse_altar_a', 'Altar of Names', 4, -1, ['hp 1', 'hexMarkDur 1', 'resAll 1']),
+      ring('curse_frailty', 'Frailty', 4, 1, ['hp 1', 'dmgTaken 1', 'hexMarkDur 1', 'armor 1'],
+        rule('weak_hands', 'Weak Hands', ['dmgTaken 1'], 'Marked enemies deal 10% less damage to you.', { off: 1, def: 1.04 }), ['dmgTaken 1.5', 'hp 1']),
+      ring('curse_rot', 'Slow Rot', 4, 2, ['dmgDot 1', 'hp 1', 'statusDur 1', 'resPoison 1'], ['Festering Mark', 'dmgDot 2', 'dmgAfflicted 1'], ['dmgDot 1.5', 'hp 1']),
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      ring('curse_crossroads', 'Crossroads', 5, -2, ['hp 1', 'moveSpeed 1', 'hexMarkDur 1', 'resAll 1'], ['Where Roads Meet', 'moveSpeed 1.5', 'hexMarkDur 1.5'], ['moveSpeed 1.5', 'hp 1']),
+      ring('curse_spite', 'Spite', 5, -1, ['dmgShadow 1', 'hp 1', 'hexMarkPower 1', 'resShadow 1'], ['Old Spite', 'dmgShadow 2', 'hexMarkPower 1'], ['dmgShadow 1.5', 'hp 1']),
+      ring('curse_hollow', 'Hollow Names', 5, 1, ['hp 1', 'hpRegen 1', 'hexKillHeal 1', 'resAll 1'],
+        rule('hollow', 'Hollowed', ['hexKillHeal 1'], 'Killing a Marked enemy gives you 6 Hex.', { off: 1.02, def: 1.01 }), ['hexKillHeal 1.5', 'hp 1']),
+      ring('curse_witchmark', 'Witch Marks', 5, 2, ['hexMarkDur 1', 'hp 1', 'dmgSpell 1', 'armor 1'], ['Inked Skin', 'hexMarkDur 2', 'dmgSpell 1'], ['hexMarkDur 1.5', 'hp 1']),
+
+      // ---- Row 6
+      ring('curse_gloom', 'Gloom', 6, -2, ['hp 1', 'resShadow 1', 'statusDur 1', 'resAll 1'], ['Grey Sky', 'resShadow 2', 'hp 1.5'], ['resAll 1.5', 'hp 1']),
+      ring('curse_ombre', 'The Black Censer', 6, -1, ['hp 1', H.trophy("Ombre's Censer", ['hexMarkPower 1.5', 'resShadow 1.5'], 'high_priest_ombre'), 'hexMarkDur 1', 'armor 1'],
+        ['Censer Smoke', 'hexMarkPower 2', 'hp 1'], ['hexMarkPower 1', 'hp 1.5']),
+      ring('curse_cult', 'The Thirteenth Knot', 6, 1, ['hp 1', H.corrupted('Black Want', ['hexMarkPower 3', 'dmgAfflicted 1.5'], 20), 'moveSpeed 1', 'resAll 1'],
+        H.corrupted('Unspoken Name', ['dmg*2', 'hexMarkDur 3', 'hexGain 2'], 40), ['hexMarkDur 1', 'hp 1.5']),
+      ring('curse_choir', 'Choir of Ash', 6, 2, ['resAll 1', H.faction('Choir Hymn', ['hexMarkDur 1.5', 'resShadow 1'], 'choir', 20), 'hp 1', 'statusDur 1'],
+        H.faction('Last Rites Sung', ['hexMarkPower 2', 'dmgAfflicted 2'], 'choir', 60), ['resAll 1', 'hp 1.5']),
+
+      // ---- Row 7
+      H.pacts('curse_pacts', 'Curse Bargains', 7, -2, 'hp 1', [
+        pact('Short Sentence', ['hexMarkPower*20', 'hexMarkDur*-25']),
+        pact('Long Shadow', ['hexMarkDur*30', 'hexMarkPower*-12']),
+        pact('Hungry Words', ['hexGain*15', 'hp*-6'])], ['Cursed Terms', 'hexGain 1', 'hp 1']),
+      ring('curse_saint', 'The Saint\'s Plague', 7, -1, ['hp 1', 'dmgAfflicted 1', 'resPoison 1', H.trophy("Saint's Rosary", ['dmgAfflicted 1.5', 'hp 1.5'], 'plague_saint')],
+        ['Rosary of Rot', 'dmgAfflicted 2', 'resAll 1'], ['dmgAfflicted 1.5', 'hp 1']),
+      H.altar('curse_altar_b', 'Altar of Omens', 7, 1, ['hp 1', 'hexMarkPower 1', 'statusDur 1']),
+      H.keyArc('curse_key_patience', 'The Long Wait', 7, 2, ['hexMarkDur 1', 'hexMarkPower 1'],
+        key("Hangman's Patience", [], 'Marks you apply last twice as long and Marked enemies take 12% more damage from you. You cannot critically strike enemies that are not Marked.', 'web_hangmans_patience', { off: 1.06, def: 1 })),
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      ring('curse_end', 'Last Words', 8, -3, ['hp 1', 'hexMarkDur 1', 'resAll 1', 'armor 1'], ['Final Curse', 'hexMarkDur 2', 'hp 1.5'], ['hexMarkDur 1', 'hp 1.5']),
+      H.keyArc('curse_key_contagion', 'Contagion', 8, -2, ['hexMarkDur 1', 'aoe 1'],
+        key('Contagious Malice', ['hexMarkPower*-30'], 'When you Mark an enemy, every enemy within 3 m of it is Marked as well, for 4 s. Your Marks are 30% weaker.', 'tree_hexblade_contagion', { off: 1.06, def: 1 })),
+      ring('curse_verdict', 'The Verdict', 8, -1, ['hp 1', 'hexMarkPower 1', 'dmgBoss 1', 'resShadow 1'], ['Guilty', 'hexMarkPower 2.5', 'dmgBoss 1'], ['hexMarkPower 1.5', 'hp 1']),
+      ring('curse_stain', 'The Stain', 8, 1, ['dmgAfflicted 1', 'hp 1', 'statusDur 1', 'resAll 1'], ['Indelible', 'dmgAfflicted 2', 'statusDur 1.5'], ['dmgAfflicted 1.5', 'hp 1']),
+      H.keyArc('curse_key_one', 'One Name', 8, 2, ['hexMarkPower 1', 'dmgBoss 1'],
+        key('One Name', ['hexMarkPower*60'], 'Only one enemy can carry your Mark at a time: a new Mark takes it from the last one. Your Marks are 60% stronger.', 'tree_hexblade_one_name', { off: 1.04, def: 1 })),
+      ring('curse_requiem', 'Requiem', 8, 3, ['hp 1', 'hexKillHeal 1', 'hexGain 1', 'resAll 1'], ['Dirge', 'hexKillHeal 2', 'hexGain 1.5'], ['hexGain 1', 'hp 1.5'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['hexMarkDur 2', 'hp 2'] },
+      { at: 35, mods: ['hexMarkPower 3', 'resAll 2'] },
+      { at: 60, mods: ['dmgAfflicted 4', 'hexGain 3', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Malison and the Noose.
+  T.bridge('hexblade', { id: 'curse_noose_inner', between: ['curse', 'noose'], ring: 'inner', name: 'Cold Brand', shape: 'star',
+    nodes: ['hexMarkDur 1', mut('hx_slash_frost'), 'statusDur 1', 'hp 1'],
+    core: ['Frost on the Name', 'dmgCold 1.5', 'hexMarkDur 1'], bonus: ['hp 1', 'resAll 1'] });
+  T.bridge('hexblade', { id: 'curse_noose_mid', between: ['curse', 'noose'], ring: 'mid', name: 'Marked and Bound', shape: 'diamond',
+    nodes: ['hexMarkDur 1', 'hp 1', 'statusDur 1', 'resAll 1'],
+    core: rule('noose_mark', 'Noose Mark', ['statusDur 1'], 'Your Marks also Slow the enemy by 20%.', { off: 1.01, def: 1.03 }),
+    bonus: ['statusDur 1.5', 'hp 1'] });
+  T.bridge('hexblade', { id: 'curse_noose_outer', between: ['curse', 'noose'], ring: 'outer', name: 'Hemp Halo', shape: 'diamond',
+    nodes: ['hexMarkPower 1', 'hp 1', 'statusDur 1', 'resAll 1'],
+    core: ['Tight Knot', 'statusDur 2', 'hexMarkDur 1.5'], bonus: ['hexMarkDur 1.5', 'hp 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_hexblade_duel.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, H = T.hex;
+  var mut = H.mut, rule = H.rule, web = H.web, key = H.key, pact = H.pact, abil = H.abil, ring = H.ring, star = H.star;
+
+  /**
+   * HEXBLADE, arm 6 of 8: THE BLACK DUEL (`duel`). Parries, blocks, Armor and counters. Skill: Black Parry (trunk, 4 points).
+   * Design: docs/TREE_HEXBLADE.md. Rules: src/sim/56_tree_hexblade.js. Holds the three bridges to the blood arm.
+   */
+  T.arm('hexblade', {
+    id: 'duel', name: 'The Black Duel', focus: 'Parries and blocks: let them strike first, and answer in kind', color: '#6e6e86', vein: 'order',
+
+    trunk: H.slashTrunk([
+      'armor 1', 'hp 1', { t: 'skill', grants: 'black_parry', abil: [{ a: 'black_parry', k: 'cd', v: -0.05 }] }, 'block 0.5', 'resAll 1',   // T1..T5
+      'hp 1', 'poise 1', 'dmgShadow 1', ['Duelling Ground', 'moveSpeed 1', 'armor 0.5'], 'hp 1',                                        // T6..T10
+      'block 0.5', 'resAll 1', 'hp 1', 'thorns 1', 'armor 1',                                                                          // T11..T15
+      'hp 1', 'poise 1', 'dmgTaken 1', 'hp 1', 'block 0.5',                                                                            // T16..T20
+      'armor 1', 'hp 1', 'resAll 1', 'dmgTaken 1', 'hp 1'                                                                              // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Black Parry, shape and essence
+      star('duel_parry_shape', 'Black Parry: shape', 1, -1, 'hp 1', ['hx_parry_long', 'hx_parry_wide', 'hx_parry_twice'], ['Wide Guard', 'armor 1', 'hp 1']),
+      star('duel_parry_essence', 'Black Parry: essence', 1, 1, 'armor 1', ['hx_parry_cold', 'hx_parry_drain', 'hx_parry_stun'], ['Black Answer', 'dmgShadow 1', 'resAll 1']),
+
+      // ---- Row 2
+      star('duel_parry_rite', 'Black Parry: rite', 2, -1, 'poise 1', ['hx_parry_quick', 'hx_parry_hex', 'hx_parry_ward'],
+        abil('Ready Stance', ['block 0.5', 'hp 1'], 'black_parry', 'cd', -0.06)),
+      ring('duel_salute', 'The Salute', 2, 1, ['block 0.5', 'hp 1', abil('Swift Guard', ['armor 0.5'], 'black_parry', 'dur', 0.15), 'resAll 1', 'poise 1'],
+        rule('riposte', 'Ink Riposte', ['block 0.5'], 'When you block a hit, the attacker is Marked for 4 s.', { off: 1.03, def: 1.01 }), ['block 0.5', 'hp 1.5']),
+
+      // ---- Row 3
+      ring('duel_answer', 'Answer in Kind', 3, -2, ['dmgShadow 1', 'hp 1', 'block 0.5', 'armor 1'],
+        rule('answer', 'In Kind', ['dmgShadow 1'], 'After you block a hit, your next hit within 3 s deals 40% more damage.', { off: 1.03, def: 1 }), ['dmgShadow 1.5', 'hp 1']),
+      ring('duel_stance', 'Duelist\'s Stance', 3, -1, ['hp 1', 'poise 1', 'hexGain 1', 'resAll 1'],
+        rule('stance', 'En Garde', ['poise 1'], 'Every hit you block gives you 5 Hex.', { off: 1.02, def: 1.01 }), ['poise 1.5', 'hp 1']),
+      ring('duel_iron', 'Iron Skin', 3, 1, ['armor 1', 'hp 1', 'dmgTaken 1', 'resAll 1'], ['Iron Hide', 'armor 2', 'dmgTaken 1'], ['armor 1.5', 'hp 1']),
+      ring('duel_thorns', 'Black Thorns', 3, 2, ['thorns 1', 'hp 1', 'armor 1', 'resShadow 1'], ['Bramble Guard', 'thorns 2', 'armor 1'], ['thorns 1.5', 'hp 1']),
+
+      // ---- Row 4
+      ring('duel_feast', 'Feast on Fear', 4, -2, ['hp 1', 'ward 1', 'hexKillHeal 1', 'resAll 1'],
+        web('feast', 'Feast on Fear', ['ward 1'], 'The blow that kills a Marked enemy also gives you Ward equal to 5% of your maximum Health for 6 s.', { off: 1, def: 1.035 }), ['ward 1.5', 'hp 1']),
+      H.altar('duel_altar_a', 'Altar of the Duel', 4, -1, ['hp 1', 'block 0.5', 'armor 1']),
+      ring('duel_poise', 'Unmoved', 4, 1, ['poise 1', 'hp 1', 'armor 1', 'resAll 1'], ['Rooted Feet', 'poise 2', 'armor 1.5'], ['poise 1.5', 'hp 1']),
+      ring('duel_counter', 'Counterstroke', 4, 2, ['critChance 1', 'hp 1', 'meleeSpeed 1', 'block 0.5'], ['Quick Return', 'meleeSpeed 2', 'dmgShadow 1'], ['critChance 1', 'hp 1.5']),
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      ring('duel_glove', 'The Thrown Glove', 5, -2, ['hp 1', 'dmg 1@duel', 'armor 1', 'resAll 1'], ['Challenge', 'dmg 1.5@duel', 'armor 1.5'], ['armor 1.5', 'hp 1']),
+      ring('duel_wall', 'Shield Wall', 5, -1, ['block 0.5', 'hp 1', 'resAll 1', 'armor 1'], ['Wall of Black', 'block 1', 'resAll 1.5'], ['block 0.5', 'hp 1.5']),
+      ring('duel_scar', 'Scar Tissue', 5, 1, ['hp 1', 'hpRegen 1', 'dmgTaken 1', 'resAll 1'],
+        rule('scars', 'Hardened', ['hpRegen 1'], 'After you take a hit, you take 10% less damage for 3 s. Once every 6 s.', { off: 1, def: 1.04 }), ['hpRegen 1.5', 'hp 1']),
+      ring('duel_leech', 'Blood Duel', 5, 2, ['hexLeech 1', 'hp 1', 'block 0.5', 'resAll 1'], ['Drawn Blood', 'hexLeech 2', 'hp 1'], ['hexLeech 1.5', 'hp 1']),
+
+      // ---- Row 6
+      ring('duel_grit', 'Grit', 6, -2, ['hp 1', 'armor 1', 'poise 1', 'resAll 1'], ['Gritted Teeth', 'hp 2', 'armor 1'], ['hp 1.5', 'armor 1']),
+      ring('duel_gate', 'The Iron Gate', 6, -1, ['hp 1', H.trophy("Warden's Gauntlet", ['armor 1.5', 'block 1'], 'iron_warden'), 'poise 1', 'resAll 1'],
+        ['Gate Guard', 'armor 2', 'hp 1'], ['armor 1', 'hp 1.5']),
+      ring('duel_cult', 'The Black Duellists', 6, 1, ['hp 1', H.corrupted('Bitter Want', ['thorns 3', 'dmgShadow 1.5'], 20), 'moveSpeed 1', 'resAll 1'],
+        H.corrupted('Duel to the Death', ['dmg*2', 'block 1.5', 'armor 3'], 40), ['armor 1', 'hp 1.5']),
+      ring('duel_lantern', 'Lantern Guard', 6, 2, ['resAll 1', H.faction('Lantern Oath', ['block 1', 'resShadow 1.5'], 'lantern', 20), 'hp 1', 'armor 1'],
+        H.faction('Keeper of the Flame', ['hp 2', 'resAll 2'], 'lantern', 60), ['resAll 1', 'hp 1.5']),
+
+      // ---- Row 7
+      H.pacts('duel_pacts', 'Duel Bargains', 7, -2, 'hp 1', [
+        pact('Heavy Guard', ['block+5', 'moveSpeed*-6']),
+        pact('Thick Hide', ['armor*30', 'evasion*-30']),
+        pact('Blood for Blood', ['thorns*40', 'hp*-6'])], ['Fair Terms', 'armor 1', 'hp 1']),
+      ring('duel_knight', 'The Carrion Knight\'s Shield', 7, -1, ['hp 1', 'block 0.5', 'armor 1', H.trophy('Carrion Shield', ['block 1', 'hp 1.5'], 'carrion_knight')],
+        ['Rusted Bulwark', 'block 1', 'armor 1'], ['block 0.5', 'hp 1.5']),
+      H.altar('duel_altar_b', 'Altar of the Guard', 7, 1, ['hp 1', 'poise 1', 'resAll 1']),
+      H.keyArc('duel_key_wall', 'The Black Wall', 7, 2, ['block 0.5', 'armor 1'],
+        key('Black Wall', [], 'Black Parry lasts twice as long, but its cooldown is 50% longer.', null, { off: 1, def: 1.04 },
+          { abil: [{ a: 'black_parry', k: 'dur', v: 1 }, { a: 'black_parry', k: 'cd', v: 0.5 }] })),
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      ring('duel_bulwark', 'Bulwark', 8, -3, ['hp 1', 'armor 1', 'resAll 1', 'block 0.5'], ['Bastion', 'armor 2', 'resAll 1.5'], ['armor 1', 'hp 1.5']),
+      H.keyArc('duel_key_iron', 'Iron Hex', 8, -2, ['armor 1', 'poise 1'],
+        key('Iron Hex', ['armor*50', 'block+10', 'moveSpeed*-10'], 'You have 50% more Armor and +10% chance to block, but move 10% slower.', null, { off: 1, def: 1.06 })),
+      ring('duel_honour', 'Honour', 8, -1, ['hp 1', 'dmgShadow 1', 'block 0.5', 'resShadow 1'], ['Satisfaction', 'dmgShadow 2', 'block 0.5'], ['dmgShadow 1.5', 'hp 1']),
+      ring('duel_endure', 'Endure', 8, 1, ['hp 1', 'hpRegen 1', 'armor 1', 'resAll 1'], ['Long Bout', 'hpRegen 2', 'hp 1.5'], ['hpRegen 1', 'hp 1.5']),
+      H.keyArc('duel_key_gallows', 'The Gallows Shadow', 8, 2, ['dmgShadow 1', 'armor 1'],
+        key('Shadow of the Gallows', ['dmgTaken*15'], 'Enemies within 4 m of you are always Marked and take 10% more damage from you. You take 15% more damage.', 'web_hexblade_gallows_shadow', { off: 1.08, def: 0.98 })),
+      ring('duel_last', 'Last One Standing', 8, 3, ['hp 1', 'poise 1', 'armor 1', 'resAll 1'], ['Standing', 'hp 2', 'poise 1.5'], ['poise 1', 'hp 1.5'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['armor 2', 'hp 2'] },
+      { at: 35, mods: ['block 1.5', 'resAll 2'] },
+      { at: 60, mods: ['armor 4', 'dmgShadow 3', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Black Duel and the Bloodletter.
+  T.bridge('hexblade', { id: 'duel_blood_inner', between: ['duel', 'blood'], ring: 'inner', name: 'Bleeding Guard', shape: 'star',
+    nodes: ['armor 1', mut('hx_slash_wide'), 'hexLeech 1', 'hp 1'],
+    core: ['First to Bleed', 'hexLeech 1.5', 'armor 1'], bonus: ['hp 1', 'resAll 1'] });
+  T.bridge('hexblade', { id: 'duel_blood_mid', between: ['duel', 'blood'], ring: 'mid', name: 'Red Parry', shape: 'diamond',
+    nodes: ['hexLeech 1', 'hp 1', 'block 0.5', 'resAll 1'],
+    core: rule('red_parry', 'Red Parry', ['hexLeech 1'], 'Blocking a hit heals you for 2% of your maximum Health.', { off: 1, def: 1.04 }),
+    bonus: ['hexLeech 1.5', 'hp 1'] });
+  T.bridge('hexblade', { id: 'duel_blood_outer', between: ['duel', 'blood'], ring: 'outer', name: 'Blood Oath', shape: 'diamond',
+    nodes: ['hp 1', 'armor 1', 'hexLeech 1', 'resAll 1'],
+    core: ['Sworn in Red', 'hp 2', 'hexLeech 1.5'], bonus: ['hp 1.5', 'armor 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_hexblade_headsman.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, H = T.hex;
+  var mut = H.mut, rule = H.rule, web = H.web, key = H.key, pact = H.pact, abil = H.abil, ring = H.ring, star = H.star;
+
+  /**
+   * HEXBLADE, arm 5 of 8: THE HEADSMAN (`headsman`). Critical hits on Marked enemies, heavy blows and executions. Skills: Soul
+   * Rend (trunk, 4 points), Sever Fate (the Ultimate, row 3). Design: docs/TREE_HEXBLADE.md. Rules: src/sim/56_tree_hexblade.js.
+   * Holds the three bridges to the duel arm.
+   */
+  T.arm('hexblade', {
+    id: 'headsman', name: 'The Headsman', focus: 'Crits on Marked enemies and heavy blows: one clean stroke for every name', color: '#c94a4a', vein: 'war',
+
+    trunk: H.slashTrunk([
+      'hexCrit 1', 'hp 1', { t: 'skill', grants: 'soul_rend', abil: [{ a: 'soul_rend', k: 'cd', v: -0.05 }] }, 'dmgExecute 1', 'armor 1',   // T1..T5
+      'hp 1', 'hexCritMult 1', 'breakPower 1', ['Scaffold Road', 'moveSpeed 1', 'hexCrit 0.5'], 'hp 1',                                    // T6..T10
+      'critMult 1', 'resAll 1', 'hp 1', 'dmgExecute 1', 'poise 1',                                                                        // T11..T15
+      'hp 1', 'hexCrit 1', 'dmgBoss 1', 'hp 1', 'hexCritMult 1',                                                                          // T16..T20
+      'armor 1', 'hp 1', 'breakPower 1', 'resAll 1', 'hp 1'                                                                               // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Soul Rend, shape and essence
+      star('headsman_rend_shape', 'Soul Rend: shape', 1, -1, 'hp 1', ['hx_rend_wide', 'hx_rend_line', 'hx_rend_twice'], ['Wide Swing', 'aoe 1', 'hp 1']),
+      star('headsman_rend_essence', 'Soul Rend: essence', 1, 1, 'breakPower 1', ['hx_rend_cold', 'hx_rend_mark', 'hx_rend_break'], ['Heavy Hand', 'breakPower 1', 'resAll 1']),
+
+      // ---- Row 2
+      star('headsman_rend_rite', 'Soul Rend: rite', 2, -1, 'hexCrit 1', ['hx_rend_cheap', 'hx_rend_quick', 'hx_rend_hex'],
+        abil('Practised Swing', ['poise 1', 'hp 1'], 'soul_rend', 'cd', -0.06)),
+      ring('headsman_block', 'The Block', 2, 1, ['hexCrit 1', 'hp 1', abil('Heavy Rend', ['breakPower 0.5'], 'soul_rend', 'dmg', 0.08), 'armor 1', 'dmgExecute 1'],
+        web('trapdoor', 'Trapdoor', ['hexCrit 1'], 'Killing a Marked enemy makes your next hit within 4 s a critical strike.', { off: 1.02, def: 1 }), ['hexCrit 1.5', 'hp 1']),
+
+      // ---- Row 3: the Ultimate and its rites and essences
+      star('headsman_fate_rite', 'Sever Fate: rite', 3, -2, 'hp 1', ['hx_fate_early', 'hx_fate_twice', 'hx_fate_pact'], ['Borrowed Hours', 'cdr 1', 'hp 1']),
+      ring('headsman_due', 'Executioner\'s Due', 3, -1, ['dmgExecute 1', 'hp 1', 'hexCritMult 1', 'armor 1'],
+        rule('due', 'Due Payment', ['dmgExecute 1'], 'Your hits on Marked enemies below 35% Health deal 25% more damage.', { off: 1.03, def: 1 }), ['dmgExecute 1.5', 'hp 1']),
+      { id: 'headsman_fate', name: 'The Severing', row: 3, lane: 1, shape: 'ring', kind: 'skill', spokes: [0],
+        nodes: ['dmgShadow 1', 'hp 1', abil('Fate Unspun', ['resAll 1'], 'sever_fate', 'cd', -0.08), 'armor 1'],
+        core: { t: 'skill', grants: 'sever_fate', abil: [{ a: 'sever_fate', k: 'area', v: 0.1 }] },
+        bonus: ['dmgShadow 1.5', 'hp 1'] },
+      star('headsman_fate_essence', 'Sever Fate: essence', 3, 2, 'dmgShadow 1', ['hx_fate_cold', 'hx_fate_drain', 'hx_fate_fury'], ['Spun Red', 'dmgShadow 1', 'armor 1']),
+
+      // ---- Row 4
+      ring('headsman_hood', 'The Hood', 4, -2, ['hexCritMult 1', 'hp 1', 'resAll 1', 'poise 1'],
+        rule('sentence', 'Bloody Sentence', ['hexCritMult 1'], 'Your critical hits on Marked enemies heal you for 1% of your maximum Health, once per cast.', { off: 1, def: 1.04 }), ['hexCritMult 1.5', 'hp 1']),
+      H.altar('headsman_altar_a', 'Altar of the Axe', 4, -1, ['hp 1', 'hexCrit 1', 'armor 1']),
+      star('headsman_fate_shape', 'Sever Fate: shape', 4, 1, 'hp 1', ['hx_fate_long', 'hx_fate_wide', 'hx_fate_buff'], ['Long Cut', 'aoe 1', 'hp 1']),
+      ring('headsman_thread', 'Thread Cutter', 4, 2, ['critChance 1', 'hp 1', 'meleeSpeed 1', 'resAll 1'],
+        rule('fated', 'Cutting Threads', ['critChance 1'], 'While you are Fated, your hits have +20% Critical Chance.', { off: 1.03, def: 1 }), ['critChance 1', 'hp 1.5']),
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      ring('headsman_crowd', 'The Crowd', 5, -2, ['hp 1', 'armor 1', 'dmg 1@crowded', 'resAll 1'], ['Jeering Mob', 'dmg 1.5@crowded', 'armor 1.5'], ['armor 1.5', 'hp 1']),
+      ring('headsman_axe', 'The Axe', 5, -1, ['breakPower 1', 'hp 1', 'hexCrit 1', 'poise 1'], ['Notched Axe', 'breakPower 2', 'hexCrit 1'], ['breakPower 1.5', 'hp 1']),
+      ring('headsman_writ', 'Death Warrant', 5, 1, ['dmgElite 1', 'hp 1', 'hexCritMult 1', 'resAll 1'], ['Signed and Sealed', 'dmgElite 2', 'dmgBoss 1.5'], ['dmgElite 1.5', 'hp 1']),
+      ring('headsman_scaffold', 'Scaffold', 5, 2, ['hp 1', 'armor 1', 'poise 1', 'resAll 1'], ['Stout Timbers', 'armor 2', 'poise 1.5'], ['poise 1.5', 'hp 1']),
+
+      // ---- Row 6
+      ring('headsman_basket', 'The Basket', 6, -2, ['hp 1', 'dmgExecute 1', 'hexKillHeal 1', 'resAll 1'], ['Full Basket', 'hexKillHeal 2', 'dmgExecute 1'], ['hexKillHeal 1.5', 'hp 1']),
+      ring('headsman_varr', 'The General\'s Axe', 6, -1, ['hp 1', H.trophy("Varr's Axe", ['hexCritMult 1.5', 'breakPower 1.5'], 'general_varr'), 'hexCrit 1', 'armor 1'],
+        ['War Axe', 'hexCritMult 2', 'hp 1'], ['hexCritMult 1', 'hp 1.5']),
+      ring('headsman_cult', 'Red Scaffold', 6, 1, ['hp 1', H.corrupted('Red Want', ['hexCritMult 3', 'dmgExecute 1.5'], 20), 'moveSpeed 1', 'resAll 1'],
+        H.corrupted('Headless', ['dmg*2', 'hexCrit 3', 'breakPower 2'], 40), ['hexCrit 1', 'hp 1.5']),
+      ring('headsman_crown', 'The King\'s Justice', 6, 2, ['armor 1', H.faction('Royal Seal', ['dmgElite 1.5', 'hexCrit 1'], 'crown', 20), 'hp 1', 'poise 1'],
+        H.faction('Lord High Executioner', ['dmgBoss 2', 'hexCritMult 2'], 'crown', 60), ['dmgBoss 1', 'armor 1.5']),
+
+      // ---- Row 7
+      H.pacts('headsman_pacts', 'Headsman\'s Bargains', 7, -2, 'hp 1', [
+        pact('Headsman\'s Wager', ['hexCrit+12', 'critChance+-3']),
+        pact('Swift Sentence', ['hexMarkPower%40', 'hexMarkDur%-25']),
+        pact('Quick Axe', ['meleeSpeed*15', 'dmgMelee*-9'])], ['Grim Terms', 'hexCrit 1', 'hp 1']),
+      ring('headsman_drog', 'The Warlord\'s Neck', 7, -1, ['hp 1', 'dmgExecute 1', 'poise 1', H.trophy("Drog's Torc", ['dmgExecute 1.5', 'hp 1.5'], 'warlord_drog')],
+        ['Thick Neck', 'dmgExecute 2', 'poise 1'], ['dmgExecute 1.5', 'hp 1']),
+      H.altar('headsman_altar_b', 'Altar of the Block', 7, 1, ['hp 1', 'hexCritMult 1', 'breakPower 1']),
+      H.keyArc('headsman_key_block', 'The Last Block', 7, 2, ['dmgExecute 1', 'hexCrit 1'],
+        key('Clean Block', [], 'Your hits on enemies below 35% Health always crit. Your hits on enemies above it deal 10% less damage.', 'tree_hexblade_clean_block', { off: 1.05, def: 1 })),
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      ring('headsman_tally', 'Headsman\'s Tally', 8, -3, ['hp 1', 'armor 1', 'resAll 1', 'poise 1'], ['Long Tally', 'armor 2', 'hp 1.5'], ['armor 1', 'hp 1.5']),
+      H.keyArc('headsman_key_ledger', 'The Ledger of Death', 8, -2, ['hexCrit 1', 'hexCritMult 1'],
+        key('Death\'s Ledger', ['critChance*-50', 'hexCrit+25'], 'You have half the Critical Chance, but +25% Critical Chance against Marked enemies.', null, { off: 1.05, def: 1 })),
+      ring('headsman_final', 'Final Cut', 8, -1, ['hp 1', 'hexCritMult 1', 'dmgBoss 1', 'resAll 1'], ['Clean Through', 'hexCritMult 2.5', 'dmgBoss 1'], ['hexCritMult 1.5', 'hp 1']),
+      ring('headsman_mercy', 'No Mercy', 8, 1, ['dmgExecute 1', 'hp 1', 'breakPower 1', 'resAll 1'], ['Merciless', 'dmgExecute 2', 'breakPower 1.5'], ['dmgExecute 1.5', 'hp 1']),
+      H.keyArc('headsman_key_one', 'One Clean Cut', 8, 2, ['dmgShadow 1', 'dmgBoss 1'],
+        key('One Clean Cut', [], 'Sever Fate deals 60% more damage, but its cooldown is 40% longer.', null, { off: 1.03, def: 1 },
+          { abil: [{ a: 'sever_fate', k: 'dmg', v: 0.6 }, { a: 'sever_fate', k: 'cd', v: 0.4 }] })),
+      ring('headsman_widow', 'Widow\'s Veil', 8, 3, ['hp 1', 'hexKillHeal 1', 'armor 1', 'resAll 1'], ['Black Veil', 'hexKillHeal 2', 'hp 1.5'], ['hexKillHeal 1', 'hp 1.5'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['hexCrit 2', 'hp 2'] },
+      { at: 35, mods: ['hexCritMult 3', 'armor 2'] },
+      { at: 60, mods: ['dmgExecute 4', 'breakPower 3', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Headsman and the Black Duel.
+  T.bridge('hexblade', { id: 'headsman_duel_inner', between: ['headsman', 'duel'], ring: 'inner', name: 'Two Strokes', shape: 'star',
+    nodes: ['armor 1', mut('hx_slash_twice'), 'hexCrit 1', 'hp 1'],
+    core: ['Double Stroke', 'hexCritMult 1.5', 'armor 1'], bonus: ['hp 1', 'resAll 1'] });
+  T.bridge('hexblade', { id: 'headsman_duel_mid', between: ['headsman', 'duel'], ring: 'mid', name: 'Steady Arm', shape: 'diamond',
+    nodes: ['poise 1', 'hp 1', 'hexCrit 1', 'armor 1'],
+    core: ['Still Hand', 'poise 2', 'hexCrit 1.5'], bonus: ['poise 1.5', 'hp 1'] });
+  T.bridge('hexblade', { id: 'headsman_duel_outer', between: ['headsman', 'duel'], ring: 'outer', name: 'Guarded Strike', shape: 'diamond',
+    nodes: ['hexCritMult 1', 'hp 1', 'block 1', 'resAll 1'],
+    core: ['Strike from Guard', 'block 1.5', 'hexCritMult 1.5'], bonus: ['block 1', 'hp 1.5'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_hexblade_noose.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, H = T.hex;
+  var mut = H.mut, rule = H.rule, web = H.web, key = H.key, pact = H.pact, abil = H.abil, ring = H.ring, star = H.star;
+
+  /**
+   * HEXBLADE, arm 1 of 8: THE NOOSE (`noose`). Chains, Slows, Roots and grave-frost. Skills: Curse Chain (trunk, 4 points),
+   * Binding Sigil (core of a row-2 wheel, 10 points). Design: docs/TREE_HEXBLADE.md. Rules: src/sim/56_tree_hexblade.js.
+   * Holds the three bridges to the coven arm.
+   */
+  T.arm('hexblade', {
+    id: 'noose', name: 'The Noose', focus: 'Chains, Slows, Roots and grave-frost: hold them still, then make it hurt', color: '#5f8fa8', vein: 'order',
+
+    trunk: H.slashTrunk([
+      'statusDur 1', 'hp 1', { t: 'skill', grants: 'curse_chain', abil: [{ a: 'curse_chain', k: 'cd', v: -0.05 }] }, 'dmgSpell 1', 'resCold 1',     // T1..T5
+      'hp 1', 'aoe 1', 'statusDur 1', ['Hangman\'s Road', 'moveSpeed 1', 'statusDur 0.5'], 'hp 1',                                                  // T6..T10
+      'dmgCold 1', 'resAll 1', 'hp 1', 'hexMarkDur 1', 'armor 1',                                                                                  // T11..T15
+      'hp 1', 'dmgSpell 1', 'statusDur 1', 'hp 1', 'aoe 1',                                                                                         // T16..T20
+      'resCold 1', 'hp 1', 'dmgCold 1', 'resAll 1', 'hp 1'                                                                                          // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Curse Chain, shape and essence
+      star('noose_chain_shape', 'Curse Chain: shape', 1, -1, 'hp 1', ['hx_chain_long', 'hx_chain_tight', 'hx_chain_far'], ['Many Links', 'aoe 1', 'hp 1']),
+      star('noose_chain_essence', 'Curse Chain: essence', 1, 1, 'statusDur 1', ['hx_chain_frost', 'hx_chain_root', 'hx_chain_drain'], ['Cold Iron', 'statusDur 1', 'resAll 1']),
+
+      // ---- Row 2: Curse Chain, rite; Binding Sigil
+      star('noose_chain_rite', 'Curse Chain: rite', 2, -1, 'dmgSpell 1', ['hx_chain_quick', 'hx_chain_hex', 'hx_chain_charges'],
+        abil('Oiled Links', ['hexGain 1', 'hp 1'], 'curse_chain', 'cd', -0.06)),
+      { id: 'noose_sigil', name: 'The Binding Circle', row: 2, lane: 1, shape: 'ring', kind: 'skill', spokes: [0],
+        nodes: ['dmgCold 1', 'hp 1', abil('Etched Deep', ['resCold 0.5'], 'binding_sigil', 'cd', -0.08), 'armor 1'],
+        core: { t: 'skill', grants: 'binding_sigil', abil: [{ a: 'binding_sigil', k: 'dur', v: 0.1 }] },
+        bonus: ['dmgCold 1.5', 'hp 1'] },
+
+      // ---- Row 3
+      star('noose_sigil_shape', 'Binding Sigil: shape', 3, -2, 'hp 1', ['hx_bind_wide', 'hx_bind_long', 'hx_bind_self'], ['Wide Circle', 'aoe 1', 'hp 1']),
+      ring('noose_tighten', 'Tightening', 3, -1, ['statusDur 1', 'hp 1', 'dmgSpell 1', 'resAll 1'],
+        rule('tighten', 'Tightening Noose', ['statusDur 1'], 'Your hits on enemies you have Slowed deal 10% more damage.', { off: 1.03, def: 1 }), ['statusDur 1.5', 'hp 1']),
+      ring('noose_frost', 'Gallows Frost', 3, 1, ['dmgCold 1', 'hp 1', 'resCold 1', 'armor 1'],
+        rule('rime', 'Hanging Frost', ['dmgCold 1'], 'Your hits on Chilled enemies deal 12% more damage.', { off: 1.03, def: 1 }), ['dmgCold 1.5', 'hp 1']),
+      star('noose_sigil_essence', 'Binding Sigil: essence', 3, 2, 'dmgCold 1', ['hx_bind_mark', 'hx_bind_hold', 'hx_bind_frost'], ['Grave Ink', 'dmgCold 1', 'resCold 1']),
+
+      // ---- Row 4
+      ring('noose_drag', 'Dragged', 4, -2, ['hp 1', 'moveSpeed 1', 'statusChance 1', 'resAll 1'], ['Long Rope', 'statusChance 2', 'moveSpeed 1'], ['statusChance 1.5', 'hp 1']),
+      H.altar('noose_altar_a', 'Altar of Rope', 4, -1, ['hp 1', 'statusDur 1', 'resCold 1']),
+      ring('noose_short', 'Short Drop', 4, 1, ['dmgExecute 1', 'hp 1', 'statusDur 1', 'armor 1'],
+        web('short_rope', 'Short Rope', ['dmgExecute 1.5'], 'Your hits Mark enemies below 35% Health for 4 s.', { off: 1.01, def: 1.01 }), ['dmgExecute 1.5', 'hp 1']),
+      star('noose_sigil_rite', 'Binding Sigil: rite', 4, 2, 'hp 1', ['hx_bind_quick', 'hx_bind_hex', 'hx_bind_twice'],
+        abil('Steady Hand', ['statusDur 1', 'hp 1'], 'binding_sigil', 'cd', -0.06)),
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      ring('noose_winter', 'Winter Gallows', 5, -2, ['hp 1', 'resCold 1', 'dmgCold 1', 'resAll 1'], ['Hoarfrost', 'resCold 2', 'dmgCold 1.5'], ['resCold 1.5', 'hp 1']),
+      ring('noose_knots', 'Knots', 5, -1, ['statusDur 1', 'hp 1', 'aoe 1', 'armor 1'], ['Hangman\'s Knot', 'statusDur 2', 'aoe 1'], ['aoe 1.5', 'hp 1']),
+      ring('noose_strangle', 'Strangling Rope', 5, 1, ['hp 1', 'dmgTaken 1', 'statusDur 1', 'resAll 1'],
+        rule('held_down', 'Held Down', ['dmgTaken 1'], 'Enemies you have Rooted or Chilled deal 15% less damage to you.', { off: 1, def: 1.04 }), ['dmgTaken 1.5', 'hp 1']),
+      ring('noose_links', 'Iron Links', 5, 2, ['dmgSpell 1', 'hp 1', 'hexMarkDur 1', 'armor 1'], ['Linked Fates', 'dmgSpell 2', 'hexMarkDur 1'], ['dmgSpell 1.5', 'hp 1']),
+
+      // ---- Row 6
+      ring('noose_still', 'Stillness', 6, -2, ['hp 1', 'armor 1', 'dmgTaken 1@still', 'resAll 1'], ['Stand Fast', 'armor 2', 'dmgTaken 1.5@still'], ['armor 1.5', 'hp 1']),
+      ring('noose_warden', 'The Frozen Keep', 6, -1, ['hp 1', H.trophy("Warden's Shackle", ['statusDur 1.5', 'resCold 1.5'], 'ice_warden'), 'dmgCold 1', 'armor 1'],
+        ['Rimed Shackles', 'dmgCold 2', 'statusDur 1'], ['statusDur 1', 'hp 1.5']),
+      ring('noose_cult', 'The Black Gibbet', 6, 1, ['hp 1', H.corrupted('Tight Want', ['statusDur 3', 'dmgCold 1.5'], 20), 'moveSpeed 1', 'resAll 1'],
+        H.corrupted('Neck Breaker', ['dmg*2', 'dmgExecute 3', 'statusDur 2'], 40), ['statusDur 1', 'hp 1.5']),
+      ring('noose_crown', 'The King\'s Rope', 6, 2, ['resAll 1', H.faction("Crown's Writ", ['statusDur 1.5', 'armor 1'], 'crown', 20), 'hp 1', 'dmgSpell 1'],
+        H.faction('Royal Hangman', ['dmgElite 2', 'statusChance 2'], 'crown', 60), ['resAll 1', 'hp 1.5']),
+
+      // ---- Row 7
+      H.pacts('noose_pacts', 'Rope Bargains', 7, -2, 'hp 1', [
+        pact('Thin Rope', ['statusDur*25', 'hp*-6']),
+        pact('Cold Hands', ['dmgCold*15', 'dmgShadow*-10']),
+        pact('Heavy Chains', ['aoe*20', 'atkSpeed*-6'])], ['Knotted Terms', 'statusDur 1', 'hp 1']),
+      ring('noose_jail', 'The Jailer\'s Keys', 7, -1, ['hp 1', 'statusDur 1', 'armor 1', H.trophy("Marrow's Keys", ['statusDur 1.5', 'hp 1.5'], 'jailer_marrow')],
+        ['Locked In', 'statusDur 2', 'armor 1'], ['armor 1.5', 'hp 1']),
+      H.altar('noose_altar_b', 'Altar of Chains', 7, 1, ['hp 1', 'dmgCold 1', 'statusChance 1']),
+      H.keyArc('noose_key_held', 'Hold Fast', 7, 2, ['statusDur 1', 'dmgCold 1'],
+        key('Held Fast', [], 'Your hits on Slowed, Rooted or Chilled enemies deal 30% more damage. Your hits on other enemies deal 20% less.', 'tree_hexblade_held', { off: 1.06, def: 1 })),
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      ring('noose_lines', 'Hemp Lines', 8, -3, ['hp 1', 'statusDur 1', 'resAll 1', 'moveSpeed 1'], ['Long Lines', 'statusDur 2', 'moveSpeed 1.5'], ['statusDur 1', 'hp 1.5']),
+      H.keyArc('noose_key_ice', 'Bound in Ice', 8, -2, ['dmgCold 1', 'resCold 1'],
+        key('Bound in Ice', ['dmgCold*30', 'dmgShadow*-20'], 'Your Marks also Chill the enemy for 2 s. You deal 30% more Cold damage and 20% less Shadow damage.', 'tree_hexblade_ice', { off: 1.05, def: 1.02 })),
+      ring('noose_hanging', 'The Hanging Tree', 8, -1, ['hp 1', 'dmgExecute 1', 'statusDur 1', 'resCold 1'], ['Swinging', 'dmgExecute 2.5', 'statusDur 1'], ['dmgExecute 1.5', 'hp 1']),
+      ring('noose_bind', 'Bindings', 8, 1, ['statusChance 1', 'hp 1', 'dmgSpell 1', 'resAll 1'], ['Spellbound', 'statusChance 2', 'dmgSpell 1.5'], ['statusChance 1.5', 'hp 1']),
+      H.keyArc('noose_key_web', 'The Spider\'s Web', 8, 2, ['statusDur 1', 'aoe 1'],
+        key('Spider\'s Web', ['statusDur*50', 'atkSpeed*-10'], 'Every status you inflict lasts 50% longer, but you attack and cast 10% slower.', null, { off: 1.03, def: 1.03 })),
+      ring('noose_shackle', 'Shackles', 8, 3, ['hp 1', 'armor 1', 'resCold 1', 'resAll 1'], ['Iron Collar', 'armor 2', 'resAll 1.5'], ['armor 1', 'hp 1.5'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['statusDur 2', 'hp 2'] },
+      { at: 35, mods: ['dmgCold 3', 'resAll 2'] },
+      { at: 60, mods: ['statusDur 4', 'dmgSpell 3', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Noose and the Coven.
+  T.bridge('hexblade', { id: 'noose_coven_inner', between: ['noose', 'coven'], ring: 'inner', name: 'Cursed Rope', shape: 'star',
+    nodes: ['statusDur 1', mut('hx_slash_hex'), 'hexGain 1', 'hp 1'],
+    core: ['Witch Knot', 'hexGain 1.5', 'statusDur 1'], bonus: ['hp 1', 'resAll 1'] });
+  T.bridge('hexblade', { id: 'noose_coven_mid', between: ['noose', 'coven'], ring: 'mid', name: 'Bound Hex', shape: 'diamond',
+    nodes: ['statusDur 1', 'hp 1', 'hexGain 1', 'resAll 1'],
+    core: rule('bound_hex', 'Bound Hex', ['hexGain 1'], 'Your hits on Rooted or Chilled enemies give 2 Hex.', { off: 1.02, def: 1 }),
+    bonus: ['hexGain 1.5', 'hp 1'] });
+  T.bridge('hexblade', { id: 'noose_coven_outer', between: ['noose', 'coven'], ring: 'outer', name: 'Witch Rope', shape: 'diamond',
+    nodes: ['hexGain 1', 'hp 1', 'statusDur 1', 'resAll 1'],
+    core: ['Hempen Spell', 'hexGain 2', 'statusDur 1.5'], bonus: ['statusDur 1.5', 'hp 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_hexblade_veil.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, H = T.hex;
+  var mut = H.mut, rule = H.rule, key = H.key, pact = H.pact, abil = H.abil, ring = H.ring, star = H.star;
+
+  /**
+   * HEXBLADE, arm 4 of 8: THE VEIL (`veil`). Blinks, dodges and Evasion. Skills: Veil Step (trunk, 4 points), Blink Cut (core of
+   * a row-2 wheel, 10 points). Design: docs/TREE_HEXBLADE.md. Rules: src/sim/56_tree_hexblade.js. Holds the bridges to the headsman arm.
+   */
+  T.arm('hexblade', {
+    id: 'veil', name: 'The Veil', focus: 'Blinks and dodges: be a rumour, then be the blade', color: '#3f9a8a', vein: 'dread',
+
+    trunk: H.slashTrunk([
+      'moveSpeed 1', 'hp 1', { t: 'skill', grants: 'veil_step', abil: [{ a: 'veil_step', k: 'cd', v: -0.05 }] }, 'evasion 1', 'resAll 1',   // T1..T5
+      'hp 1', 'dodgeCdr 1', 'dmgShadow 1', ['Misty Path', 'moveSpeed 1', 'evasion 0.5'], 'hp 1',                                           // T6..T10
+      'critChance 1', 'resAll 1', 'hp 1', 'dodgeCdr 1', 'evasion 1',                                                                      // T11..T15
+      'hp 1', 'moveSpeed 1', 'dmgShadow 1', 'hp 1', 'evasion 1',                                                                          // T16..T20
+      'resShadow 1', 'hp 1', 'dodgeCdr 1', 'resAll 1', 'hp 1'                                                                             // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Veil Step, shape and essence
+      star('veil_step_shape', 'Veil Step: shape', 1, -1, 'hp 1', ['hx_veil_long', 'hx_veil_wide', 'hx_veil_short'], ['Long Stride', 'moveSpeed 1', 'hp 1']),
+      star('veil_step_essence', 'Veil Step: essence', 1, 1, 'evasion 1', ['hx_veil_cold', 'hx_veil_drain', 'hx_veil_weaken'], ['Mist Touch', 'evasion 1', 'resAll 1']),
+
+      // ---- Row 2: Veil Step, rite; Blink Cut
+      star('veil_step_rite', 'Veil Step: rite', 2, -1, 'dodgeCdr 1', ['hx_veil_charges', 'hx_veil_quick', 'hx_veil_hex'],
+        abil('Light Foot', ['moveSpeed 1', 'hp 1'], 'veil_step', 'cd', -0.06)),
+      { id: 'veil_blink', name: 'The Cut Between', row: 2, lane: 1, shape: 'ring', kind: 'skill', spokes: [0],
+        nodes: ['critChance 1', 'hp 1', abil('Sudden', ['moveSpeed 0.5'], 'blink_cut', 'cd', -0.08), 'evasion 1'],
+        core: { t: 'skill', grants: 'blink_cut', abil: [{ a: 'blink_cut', k: 'dmg', v: 0.05 }] },
+        bonus: ['critChance 1', 'hp 1.5'] },
+
+      // ---- Row 3
+      star('veil_blink_shape', 'Blink Cut: shape', 3, -2, 'hp 1', ['hx_blink_far', 'hx_blink_wide', 'hx_blink_twice'], ['Far Arrival', 'moveSpeed 1', 'hp 1']),
+      ring('veil_slip', 'Slipping Through', 3, -1, ['dmgShadow 1', 'hp 1', 'moveSpeed 1', 'resAll 1'],
+        rule('slip', 'Through the Veil', ['moveSpeed 1'], 'After Veil Step or Blink Cut, your next hit within 3 s deals 30% more damage.', { off: 1.03, def: 1 }), ['moveSpeed 1.5', 'hp 1']),
+      ring('veil_ghost', 'Half There', 3, 1, ['evasion 1', 'hp 1', 'dodgeCdr 1', 'armor 1'],
+        rule('half_there', 'Half There', ['dodgeCdr 1'], 'For 2 s after a dodge roll you take 20% less damage.', { off: 1, def: 1.05 }), ['dodgeCdr 1.5', 'hp 1']),
+      star('veil_blink_essence', 'Blink Cut: essence', 3, 2, 'critChance 1', ['hx_blink_shadow', 'hx_blink_mark', 'hx_blink_stun'], ['Dark Arrival', 'critChance 1', 'evasion 1']),
+
+      // ---- Row 4
+      ring('veil_path', 'Marked Path', 4, -2, ['hp 1', 'dodgeCdr 1', 'hexMarkDur 1', 'resAll 1'],
+        rule('mark_roll', 'Marked Path', ['hexMarkDur 1'], 'Your dodge roll Marks enemies within 3 m of where you start it for 4 s.', { off: 1.03, def: 1 }), ['hexMarkDur 1.5', 'hp 1']),
+      H.altar('veil_altar_a', 'Altar of Mist', 4, -1, ['hp 1', 'evasion 1', 'moveSpeed 1']),
+      ring('veil_moving', 'Moving Target', 4, 1, ['dmgTaken 1@moving', 'hp 1', 'evasion 1', 'moveSpeed 1'], ['Never Still', 'dmgTaken 1.5@moving', 'evasion 1.5'], ['moveSpeed 1.5', 'hp 1']),
+      star('veil_blink_rite', 'Blink Cut: rite', 4, 2, 'hp 1', ['hx_blink_charges', 'hx_blink_quick', 'hx_blink_haste'],
+        abil('Quick Arrival', ['evasion 1', 'hp 1'], 'blink_cut', 'cd', -0.06)),
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      ring('veil_fog', 'Grave Fog', 5, -2, ['hp 1', 'evasion 1', 'resAll 1', 'resShadow 1'], ['Fogbound', 'evasion 2', 'resShadow 1'], ['evasion 1.5', 'hp 1']),
+      ring('veil_after', 'After the Roll', 5, -1, ['dmg 1@afterDodge', 'hp 1', 'critChance 1', 'evasion 1'], ['Rolling Strike', 'dmg 1.5@afterDodge', 'critChance 1'], ['dodgeCdr 1.5', 'hp 1']),
+      ring('veil_wisp', 'Wisps', 5, 1, ['hp 1', 'moveSpeed 1', 'ward 1', 'resAll 1'], ['Will o\' Wisp', 'ward 2', 'moveSpeed 1'], ['ward 1.5', 'hp 1']),
+      ring('veil_shade', 'Shades', 5, 2, ['dmgShadow 1', 'hp 1', 'evasion 1', 'armor 1'], ['Shade Walker', 'dmgShadow 2', 'evasion 1'], ['dmgShadow 1.5', 'hp 1']),
+
+      // ---- Row 6
+      ring('veil_wind', 'Grave Wind', 6, -2, ['hp 1', 'moveSpeed 1', 'dodgeCdr 1', 'resAll 1'], ['Gust', 'moveSpeed 2', 'dodgeCdr 1'], ['moveSpeed 1', 'hp 1.5']),
+      ring('veil_caul', 'The Windlord\'s Cloak', 6, -1, ['hp 1', H.trophy("Caul's Cloak", ['moveSpeed 1.5', 'evasion 1.5'], 'windlord_caul'), 'evasion 1', 'resAll 1'],
+        ['Storm Cloak', 'evasion 2', 'hp 1'], ['evasion 1', 'hp 1.5']),
+      ring('veil_cult', 'The Thin Place', 6, 1, ['hp 1', H.corrupted('Hollow Want', ['dmgShadow 3', 'evasion 1.5'], 20), 'moveSpeed 1', 'resAll 1'],
+        H.corrupted('Through the Wall', ['dmg*2', 'moveSpeed 3', 'dodgeCdr 2'], 40), ['dodgeCdr 1', 'hp 1.5']),
+      ring('veil_choir', 'Choir of Mist', 6, 2, ['resAll 1', H.faction('Mist Hymn', ['evasion 1.5', 'resShadow 1'], 'choir', 20), 'hp 1', 'dodgeCdr 1'],
+        H.faction('Veiled Chant', ['evasion 2', 'ward 2'], 'choir', 60), ['resAll 1', 'hp 1.5']),
+
+      // ---- Row 7
+      H.pacts('veil_pacts', 'Veil Bargains', 7, -2, 'hp 1', [
+        pact('Gauze', ['evasion*15', 'hp*-6']),
+        pact('Restless', ['dodgeCdr*25', 'armor*-30']),
+        pact('Fleeting', ['moveSpeed*10', 'ward*-20'])], ['Misty Terms', 'evasion 1', 'hp 1']),
+      ring('veil_gale', 'The Gale Nest', 7, -1, ['hp 1', 'moveSpeed 1', 'evasion 1', H.trophy("Matriarch's Feather", ['dodgeCdr 1.5', 'moveSpeed 1.5'], 'gale_matriarch')],
+        ['Feather Fall', 'dodgeCdr 2', 'hp 1'], ['dodgeCdr 1.5', 'hp 1']),
+      H.altar('veil_altar_b', 'Altar of the Veil', 7, 1, ['hp 1', 'dodgeCdr 1', 'evasion 1']),
+      H.keyArc('veil_key_never', 'Never There', 7, 2, ['evasion 1', 'dodgeCdr 1'],
+        key('Never There', ['evasion*40', 'armor*-50'], 'You have 40% more Evasion and 50% less Armor.', null, { off: 1, def: 1.06 })),
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      ring('veil_dusk', 'Dusk Roads', 8, -3, ['hp 1', 'moveSpeed 1', 'resAll 1', 'evasion 1'], ['Twilight', 'moveSpeed 2', 'resAll 1.5'], ['moveSpeed 1', 'hp 1.5']),
+      H.keyArc('veil_key_flicker', 'Flicker', 8, -2, ['moveSpeed 1', 'critChance 1'],
+        key('Flickering Blade', [], 'Killing a Marked enemy readies Veil Step and Blink Cut again. Both cost 50% more Hex.', 'tree_hexblade_flicker', { off: 1.05, def: 1.01 },
+          { abil: [{ a: 'veil_step', k: 'cost', v: 0.5 }, { a: 'blink_cut', k: 'cost', v: 0.5 }] })),
+      ring('veil_between', 'In Between', 8, -1, ['hp 1', 'dmgShadow 1', 'evasion 1', 'resShadow 1'], ['Between Worlds', 'dmgShadow 2.5', 'evasion 1'], ['dmgShadow 1.5', 'hp 1']),
+      ring('veil_dancer', 'Grave Dancer', 8, 1, ['dodgeCdr 1', 'hp 1', 'dmg 1@afterDodge', 'resAll 1'], ['Dance Macabre', 'dodgeCdr 2', 'dmg 1.5@afterDodge'], ['dodgeCdr 1.5', 'hp 1']),
+      H.keyArc('veil_key_walker', 'Veilwalker', 8, 2, ['moveSpeed 1', 'dodgeCdr 1'],
+        key('Veilwalker', ['moveSpeed*20', 'dodgeCdr*30', 'dmg*-15@still'], 'You move 20% faster and your dodge roll is ready 30% sooner, but you deal 15% less damage while standing still.', null, { off: 1.02, def: 1.04 })),
+      ring('veil_moon', 'Moonlight', 8, 3, ['hp 1', 'ward 1', 'moveSpeed 1', 'resAll 1'], ['Moon Shadow', 'ward 2', 'moveSpeed 1.5'], ['ward 1', 'hp 1.5'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['moveSpeed 2', 'hp 2'] },
+      { at: 35, mods: ['evasion 3', 'dodgeCdr 2'] },
+      { at: 60, mods: ['dmgShadow 4', 'evasion 3', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Veil and the Headsman.
+  T.bridge('hexblade', { id: 'veil_headsman_inner', between: ['veil', 'headsman'], ring: 'inner', name: 'Swift Blade', shape: 'star',
+    nodes: ['moveSpeed 1', mut('hx_slash_quick'), 'critChance 1', 'hp 1'],
+    core: ['Sudden Stroke', 'meleeSpeed 1.5', 'moveSpeed 1'], bonus: ['hp 1', 'resAll 1'] });
+  T.bridge('hexblade', { id: 'veil_headsman_mid', between: ['veil', 'headsman'], ring: 'mid', name: 'Falling Blade', shape: 'diamond',
+    nodes: ['critChance 1', 'hp 1', 'hexCrit 1', 'evasion 1'],
+    core: ['Out of the Mist', 'hexCrit 2', 'moveSpeed 1.5'], bonus: ['hexCrit 1.5', 'hp 1'] });
+  T.bridge('hexblade', { id: 'veil_headsman_outer', between: ['veil', 'headsman'], ring: 'outer', name: 'Sudden End', shape: 'diamond',
+    nodes: ['dmgExecute 1', 'hp 1', 'evasion 1', 'resAll 1'],
+    core: ['Unseen Axe', 'dmgExecute 2', 'evasion 1.5'], bonus: ['dmgExecute 1.5', 'hp 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/data/36_tree_ironbound_anchor.js
 (function (root) {
   'use strict';
@@ -16512,6 +17528,324 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/data/37_mutations_hexblade.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+
+  /**
+   * HEXBLADE, every mutation of the Hexblade's own tree (docs/TREE_HEXBLADE.md section 4). One record changes ONE ability in
+   * ONE slot (shape: where and how many; essence: what the hit carries; rite: cost, cooldown, charges, extra effects), so two
+   * mutations of one ability never write the same field: KD.skills.mutationReport() proves it (tests/mutations.test.js,
+   * tests/tree_hexblade.test.js). Format: docs/SKILLS.md section 12. Pure data, no hooks.
+   * The tree nodes that hold these ids: src/data/36_tree_hexblade_<arm>.js (the Hexed Slash ones sit in the inner bridges).
+   * Texts quote the numbers of the records; change both together.
+   */
+  var M = [];
+  function shape(id, ability, name, text, rec) { rec.id = id; rec.ability = ability; rec.slot = 'shape'; rec.name = name; rec.text = text; M.push(rec); }
+  function essence(id, ability, name, text, rec) { rec.id = id; rec.ability = ability; rec.slot = 'essence'; rec.name = name; rec.text = text; M.push(rec); }
+  function rite(id, ability, name, text, rec) { rec.id = id; rec.ability = ability; rec.slot = 'rite'; rec.name = name; rec.text = text; M.push(rec); }
+
+  var MEL = { type: 'melee' }, BLINK = { type: 'blink' }, AOE = { type: 'aoe' }, PROJ = { type: 'projectile' }, CHAIN = { type: 'chain' },
+    DASH = { type: 'dash' }, BUFF = { type: 'buff' }, RES = { type: 'resource' }, ZONE = { _in: 'zone' };
+  function hex(n) { return { type: 'resource', gain: n }; }
+  function ward(pct, dur) { return { type: 'shield', self: true, pct: pct, dur: dur }; }
+
+  // =============================================================================================
+  // HEXED SLASH (primary). Base: a 2.8 m, 130 degree cut for 88%. One mutation in each inner bridge.
+  // =============================================================================================
+  shape('hx_slash_wide', 'hexed_slash', 'Hangman\'s Sweep', 'The cut sweeps 200 degrees, for 85% of the damage.',
+    { power: 0.85, fx: [{ find: MEL, set: { arc: 200 } }] });
+  shape('hx_slash_reach', 'hexed_slash', 'Gallows Reach', 'The cut reaches 3.6 m instead of 2.8.',
+    { set: { range: 3.3, aiUse: { use: 'attack', range: 3.2 } }, fx: [{ find: MEL, set: { range: 3.6 } }] });
+  shape('hx_slash_twice', 'hexed_slash', 'Two Hangings', 'You cut twice, each for 60% of the damage.',
+    { power: 0.6, fx: [{ find: MEL, set: { hits: 2, interval: 0.12 } }] });
+
+  essence('hx_slash_shadow', 'hexed_slash', 'Shadow Steel', 'The cut deals Shadow damage instead of Physical.',
+    { set: { elem: 'shadow' }, fx: [{ find: MEL, set: { elem: 'shadow' } }] });
+  essence('hx_slash_frost', 'hexed_slash', 'Gibbet Frost', 'The cut deals Cold damage and Chills for 2 s, but deals 9% less damage.',
+    { set: { elem: 'cold' }, fx: [{ find: MEL, set: { elem: 'cold', mult: 0.8, status: { id: 'chill', dur: 2 } } }] });
+  essence('hx_slash_drain', 'hexed_slash', 'Drinking Edge', 'The cut heals you for 3% of the damage it deals, but deals 7% less damage.',
+    { fx: [{ find: MEL, set: { mult: 0.82, leech: 0.03 } }] });
+
+  rite('hx_slash_quick', 'hexed_slash', 'Quick Cuts', 'You cut about a fifth faster: shorter windup and recovery.',
+    { set: { windup: 0.24, recover: 0.36 } });
+  rite('hx_slash_hex', 'hexed_slash', 'Hungry Edge', 'Each Hexed Slash that hits gives 2 Hex, Marked or not.',
+    { set: { gain: 2, gainOnHit: true } });
+
+  // =============================================================================================
+  // MARK OF FRAILTY. Base: 10 s; a 4.5 m curse at the aim (12 m) for 50%, Mark 8 s and Weaken 6 s; 15 Hex.
+  // =============================================================================================
+  shape('hx_frail_wide', 'mark_of_frailty', 'Spreading Curse', 'The curse covers 7 m instead of 4.5, for 80% of the damage.',
+    { power: 0.8, fx: [{ find: AOE, set: { radius: 7 } }] });
+  shape('hx_frail_self', 'mark_of_frailty', 'Close Curse', 'The curse falls 5.5 m around you instead of at your aim, and deals 30% more damage.',
+    { power: 1.3, set: { range: 5, aiUse: { use: 'attack', range: 4.5 } }, fx: [{ find: AOE, set: { at: 'self', radius: 5.5 } }] });
+  shape('hx_frail_far', 'mark_of_frailty', 'Far Curse', 'The curse reaches 18 m instead of 12.',
+    { set: { range: 18, aiUse: { use: 'attack', range: 17 } }, fx: [{ find: AOE, set: { range: 18 } }] });
+
+  essence('hx_frail_vuln', 'mark_of_frailty', 'Laid Bare', 'Makes enemies Vulnerable for 4 s instead of Weakened.',
+    { fx: [{ find: AOE, set: { status: [{ id: 'mark', dur: 8 }, { id: 'vulnerable', dur: 4 }] } }] });
+  essence('hx_frail_cold', 'mark_of_frailty', 'Frost Mark', 'The curse deals Cold damage and Chills for 4 s instead of Weakening.',
+    { set: { elem: 'cold' }, fx: [{ find: AOE, set: { elem: 'cold', status: [{ id: 'mark', dur: 8 }, { id: 'chill', dur: 4 }] } }] });
+  essence('hx_frail_rot', 'mark_of_frailty', 'Rotting Mark', 'Also adds 3 stacks of Poison, but the curse itself deals 20% less damage.',
+    { fx: [{ find: AOE, set: { mult: 0.4, status: [{ id: 'mark', dur: 8 }, { id: 'weaken', dur: 6 }, { id: 'poison', stacks: 3 }] } }] });
+
+  rite('hx_frail_quick', 'mark_of_frailty', 'Quick Curse', 'Cooldown 7 s instead of 10.',
+    { set: { cooldown: 7 } });
+  rite('hx_frail_hex', 'mark_of_frailty', 'Hex Harvest', 'Gives 30 Hex instead of 15. Cooldown 12 s.',
+    { set: { gain: 30, cooldown: 12 } });
+  rite('hx_frail_charges', 'mark_of_frailty', 'Two Curses', 'Mark of Frailty has 2 charges. Each takes 12 s.',
+    { set: { charges: 2, cooldown: 12 } });
+
+  // =============================================================================================
+  // SIPHON EDGE. Base: 7 s, 25 Hex; a 3 m, 120 degree cut for 140% as Shadow, 30% of it heals you.
+  // =============================================================================================
+  shape('hx_siphon_wide', 'siphon_edge', 'Wide Draught', 'The cut sweeps 220 degrees, for 80% of the damage.',
+    { power: 0.8, fx: [{ find: MEL, set: { arc: 220 } }] });
+  shape('hx_siphon_reach', 'siphon_edge', 'Long Draught', 'The cut reaches 4 m instead of 3.',
+    { set: { range: 3.8, aiUse: { use: 'attack', range: 3.6 } }, fx: [{ find: MEL, set: { range: 4 } }] });
+  shape('hx_siphon_twice', 'siphon_edge', 'Two Sips', 'You cut twice, each for 60% of the damage.',
+    { power: 0.6, fx: [{ find: MEL, set: { hits: 2, interval: 0.2 } }] });
+
+  essence('hx_siphon_deep', 'siphon_edge', 'Deep Draught', 'Heals for 50% of the damage instead of 30%, but deals 21% less damage.',
+    { fx: [{ find: MEL, set: { mult: 1.1, leech: 0.5 } }] });
+  essence('hx_siphon_cold', 'siphon_edge', 'Cold Draught', 'Deals Cold damage and Chills for 3 s, but heals for only 20% of the damage.',
+    { set: { elem: 'cold' }, fx: [{ find: MEL, set: { elem: 'cold', leech: 0.2, status: { id: 'chill', dur: 3 } } }] });
+  essence('hx_siphon_mark', 'siphon_edge', 'Marking Draught', 'Marks the enemies it hits for 6 s, but deals 14% less damage.',
+    { fx: [{ find: MEL, set: { mult: 1.2, status: { id: 'mark', dur: 6 } } }] });
+
+  rite('hx_siphon_free', 'siphon_edge', 'Cheap Draught', 'Costs 10 Hex instead of 25. Cooldown 9 s.',
+    { set: { cost: 10, cooldown: 9 } });
+  rite('hx_siphon_quick', 'siphon_edge', 'Thirsty', 'Cooldown 5 s instead of 7, but costs 30 Hex.',
+    { set: { cost: 30, cooldown: 5 } });
+  rite('hx_siphon_ward', 'siphon_edge', 'Clotting', 'Siphon Edge also gives you Ward equal to 6% of your maximum Health for 4 s.',
+    { add: [ward(0.06, 4)] });
+
+  // =============================================================================================
+  // SPECTRAL BLADE. Base: 6 s, 30 Hex; three seeking blades for 45% each as Shadow, piercing once.
+  // =============================================================================================
+  shape('hx_blade_five', 'spectral_blade', 'Five Blades', 'Looses five blades in a wider fan, each for 70% of the damage.',
+    { power: 0.7, fx: [{ find: PROJ, set: { count: 5, spread: 60 } }] });
+  shape('hx_blade_pierce', 'spectral_blade', 'Ghosts Pass Through', 'The blades pierce 3 enemies instead of 1, for 85% of the damage.',
+    { power: 0.85, fx: [{ find: PROJ, set: { pierce: 3 } }] });
+  shape('hx_blade_one', 'spectral_blade', 'Great Blade', 'Looses one great blade instead of three, for 240% of the damage.',
+    { power: 2.4, fx: [{ find: PROJ, set: { count: 1, r: 0.5 } }] });
+
+  essence('hx_blade_mark', 'spectral_blade', 'Marking Steel', 'The blades Mark what they hit for 4 s, but deal 11% less damage.',
+    { fx: [{ find: PROJ, set: { mult: 0.4, status: { id: 'mark', dur: 4 } } }] });
+  essence('hx_blade_cold', 'spectral_blade', 'Frost Blades', 'The blades deal Cold damage and Chill for 2 s.',
+    { set: { elem: 'cold' }, fx: [{ find: PROJ, set: { elem: 'cold', status: { id: 'chill', dur: 2 } } }] });
+  essence('hx_blade_leech', 'spectral_blade', 'Vampire Blades', 'The blades heal you for 10% of their damage, but deal 11% less damage.',
+    { fx: [{ find: PROJ, set: { mult: 0.4, leech: 0.1 } }] });
+
+  rite('hx_blade_cheap', 'spectral_blade', 'Thrifty Steel', 'Costs 18 Hex instead of 30. Cooldown 7 s.',
+    { set: { cost: 18, cooldown: 7 } });
+  rite('hx_blade_charges', 'spectral_blade', 'Two Volleys', 'Spectral Blade has 2 charges. Each takes 8 s.',
+    { set: { charges: 2, cooldown: 8 } });
+  rite('hx_blade_echo', 'spectral_blade', 'Echoing Blades', 'A second volley follows half a second later for 55% of the damage. Costs 40 Hex.',
+    { set: { cost: 40 }, add: [{ copy: PROJ, keep: 'shape', type: 'projectile', t: 0.5, mult: 0.25, model: 'blade' }] });
+
+  // =============================================================================================
+  // CURSE CHAIN. Base: 9 s, 20 Hex; 90% as Shadow leaping 4 times (7 m, 85% each leap), Mark 6 s and Slow 30% for 3 s.
+  // =============================================================================================
+  shape('hx_chain_long', 'curse_chain', 'Endless Chain', 'Leaps 7 times instead of 4, for 85% of the damage and losing 20% each leap.',
+    { power: 0.85, fx: [{ find: CHAIN, set: { jumps: 7, falloff: 0.8 } }] });
+  shape('hx_chain_tight', 'curse_chain', 'Short Chain', 'Leaps only twice but loses nothing with each leap, and deals 30% more damage.',
+    { power: 1.3, fx: [{ find: CHAIN, set: { jumps: 2, falloff: 1 } }] });
+  shape('hx_chain_far', 'curse_chain', 'Long Links', 'Each leap reaches 11 m instead of 7.',
+    { fx: [{ find: CHAIN, set: { range: 11 } }] });
+
+  essence('hx_chain_frost', 'curse_chain', 'Frost Chain', 'Deals Cold damage and Chills for 3 s instead of Slowing.',
+    { set: { elem: 'cold' }, fx: [{ find: CHAIN, set: { elem: 'cold', status: [{ id: 'mark', dur: 6 }, { id: 'chill', dur: 3 }] } }] });
+  essence('hx_chain_root', 'curse_chain', 'Iron Chain', 'Roots each enemy for 1 s instead of Slowing it.',
+    { fx: [{ find: CHAIN, set: { status: [{ id: 'mark', dur: 6 }, { id: 'root', dur: 1 }] } }] });
+  essence('hx_chain_drain', 'curse_chain', 'Blood Chain', 'Each link heals you for 8% of its damage, but deals 11% less damage.',
+    { fx: [{ find: CHAIN, set: { mult: 0.8, leech: 0.08 } }] });
+
+  rite('hx_chain_quick', 'curse_chain', 'Quick Links', 'Cooldown 6 s instead of 9.',
+    { set: { cooldown: 6 } });
+  rite('hx_chain_hex', 'curse_chain', 'Hex Links', 'Curse Chain gives 15 Hex instead of costing it.',
+    { set: { cost: 0, gain: 15 } });
+  rite('hx_chain_charges', 'curse_chain', 'Two Chains', 'Curse Chain has 2 charges. Each takes 11 s.',
+    { set: { charges: 2, cooldown: 11 } });
+
+  // =============================================================================================
+  // BLINK CUT. Base: 8 s, 15 Hex; blink to a target 10 m away and cut for 160% (2.9 m, 150 degrees).
+  // =============================================================================================
+  shape('hx_blink_far', 'blink_cut', 'Long Blink', 'Reaches targets up to 15 m away instead of 10.',
+    { set: { range: 15, aiUse: { use: 'gapclose', range: 15, minRange: 3.5 } }, fx: [{ find: BLINK, set: { range: 15 } }] });
+  shape('hx_blink_wide', 'blink_cut', 'Whirling Arrival', 'The cut spins all around you and hits up to 4 enemies, for 75% of the damage.',
+    { power: 0.75, fx: [{ find: MEL, set: { arc: 300, max: 4 } }] });
+  shape('hx_blink_twice', 'blink_cut', 'Two Cuts', 'You cut twice, each for 60% of the damage.',
+    { power: 0.6, fx: [{ find: MEL, set: { hits: 2, interval: 0.15 } }] });
+
+  essence('hx_blink_shadow', 'blink_cut', 'Cut from the Dark', 'The cut deals Shadow damage instead of Physical.',
+    { set: { elem: 'shadow' }, fx: [{ find: MEL, set: { elem: 'shadow' } }] });
+  essence('hx_blink_mark', 'blink_cut', 'Marking Cut', 'The cut Marks for 6 s, but deals 13% less damage.',
+    { fx: [{ find: MEL, set: { mult: 1.4, status: { id: 'mark', dur: 6 } } }] });
+  essence('hx_blink_stun', 'blink_cut', 'Stunning Cut', 'The cut Stuns for 1 s, but deals 19% less damage.',
+    { fx: [{ find: MEL, set: { mult: 1.3, status: { id: 'stun', dur: 1 } } }] });
+
+  rite('hx_blink_charges', 'blink_cut', 'Two Blinks', 'Blink Cut has 2 charges. Each takes 10 s.',
+    { set: { charges: 2, cooldown: 10 } });
+  rite('hx_blink_quick', 'blink_cut', 'Restless', 'Cooldown 5 s instead of 8, but costs 25 Hex.',
+    { set: { cost: 25, cooldown: 5 } });
+  rite('hx_blink_haste', 'blink_cut', 'Still Moving', 'After the cut you move 30% faster for 3 s. Cooldown 9 s.',
+    { set: { cooldown: 9 }, add: [{ type: 'buff', id: 'hex_blink_haste', name: 'Still Moving', dur: 3, mods: [{ s: 'moveSpeed', t: 'inc', v: 0.3 }] }] });
+
+  // =============================================================================================
+  // BINDING SIGIL. Base: 14 s, 25 Hex; a 3.5 m brand at the aim: 60% as Cold and Root 2 s, then 5 s of grave-frost
+  // (15% each half second, Chill 2 s).
+  // =============================================================================================
+  shape('hx_bind_wide', 'binding_sigil', 'Great Sigil', 'The brand and its frost cover 5.5 m instead of 3.5.',
+    { fx: [{ find: AOE, set: { radius: 5.5 } }, { find: ZONE, set: { radius: 5.5 } }] });
+  shape('hx_bind_long', 'binding_sigil', 'Lasting Sigil', 'The frost stays 9 s instead of 5.',
+    { fx: [{ find: ZONE, set: { duration: 9 } }] });
+  shape('hx_bind_self', 'binding_sigil', 'Circle of Binding', 'The brand falls around you instead of at your aim.',
+    { set: { range: 3, aiUse: { use: 'attack', range: 3, minTargets: 2, orBoss: true } }, fx: [{ find: AOE, set: { at: 'self' } }] });
+
+  essence('hx_bind_mark', 'binding_sigil', 'Sigil of Naming', 'The brand also Marks for 6 s.',
+    { fx: [{ find: AOE, set: { status: [{ id: 'root', dur: 2 }, { id: 'mark', dur: 6 }] } }] });
+  essence('hx_bind_hold', 'binding_sigil', 'Iron Sigil', 'The Root lasts 3.5 s, but the brand deals 33% less damage.',
+    { fx: [{ find: AOE, set: { mult: 0.4, status: { id: 'root', dur: 3.5 } } }] });
+  essence('hx_bind_frost', 'binding_sigil', 'Deep Frost', 'The frost deals 25% each half second instead of 15%.',
+    { fx: [{ find: ZONE, set: { mult: 0.25 } }] });
+
+  rite('hx_bind_quick', 'binding_sigil', 'Quick Sigil', 'Cooldown 10 s instead of 14.',
+    { set: { cooldown: 10 } });
+  rite('hx_bind_hex', 'binding_sigil', 'Paid Sigil', 'Binding Sigil gives 20 Hex instead of costing it. Cooldown 16 s.',
+    { set: { cost: 0, gain: 20, cooldown: 16 } });
+  rite('hx_bind_twice', 'binding_sigil', 'Two Sigils', 'Binding Sigil has 2 charges. Each takes 17 s.',
+    { set: { charges: 2, cooldown: 17 } });
+
+  // =============================================================================================
+  // SOUL REND. Base: 10 s, 40 Hex; a heavy blow in front (2.8 m) for 160% as Shadow; a Marked enemy hit heals 4%.
+  // =============================================================================================
+  shape('hx_rend_wide', 'soul_rend', 'Wide Rend', 'The blow covers 4 m instead of 2.8, for 80% of the damage.',
+    { power: 0.8, fx: [{ find: AOE, set: { radius: 4 } }] });
+  shape('hx_rend_line', 'soul_rend', 'Long Rend', 'The blow cuts a line 6 m long instead of a circle in front of you.',
+    { set: { range: 5.5, aiUse: { use: 'attack', range: 5 } }, fx: [{ find: AOE, set: { shape: 'line', length: 6, width: 2.4 } }] });
+  shape('hx_rend_twice', 'soul_rend', 'Rend Twice', 'The blow falls twice, each for 60% of the damage.',
+    { power: 0.6, fx: [{ find: AOE, set: { hits: 2, interval: 0.3 } }] });
+
+  essence('hx_rend_cold', 'soul_rend', 'Frozen Soul', 'Deals Cold damage and Chills for 3 s.',
+    { set: { elem: 'cold' }, fx: [{ find: AOE, set: { elem: 'cold', status: { id: 'chill', dur: 3 } } }] });
+  essence('hx_rend_mark', 'soul_rend', 'Marked Soul', 'Marks for 6 s, but deals 13% less damage.',
+    { fx: [{ find: AOE, set: { mult: 1.4, status: { id: 'mark', dur: 6 } } }] });
+  essence('hx_rend_break', 'soul_rend', 'Breaking Blow', 'Breaks Poise far harder (6 instead of 3.5), but deals 9% less damage.',
+    { fx: [{ find: AOE, set: { mult: 1.45, poise: 6 } }] });
+
+  rite('hx_rend_cheap', 'soul_rend', 'Cheap Rend', 'Costs 25 Hex instead of 40.',
+    { set: { cost: 25 } });
+  rite('hx_rend_quick', 'soul_rend', 'Quick Rend', 'Cooldown 7 s instead of 10.',
+    { set: { cooldown: 7 } });
+  rite('hx_rend_hex', 'soul_rend', 'Rending Harvest', 'Soul Rend gives back 20 Hex. Cooldown 12 s.',
+    { set: { cooldown: 12 }, add: [hex(20)] });
+
+  // =============================================================================================
+  // VEIL STEP. Base: 9 s, 10 Hex; a 6.5 m dash (2.4 m wide), untouchable, 80% as Shadow and Mark 5 s to what you pass.
+  // =============================================================================================
+  shape('hx_veil_long', 'veil_step', 'Long Step', 'The dash carries you 10 m instead of 6.5.',
+    { set: { range: 10, aiUse: { use: 'gapclose', range: 11, minRange: 4 } }, fx: [{ find: DASH, set: { dist: 10 } }] });
+  shape('hx_veil_wide', 'veil_step', 'Wide Veil', 'The dash sweeps 4 m wide instead of 2.4.',
+    { fx: [{ find: DASH, set: { width: 4 } }] });
+  shape('hx_veil_short', 'veil_step', 'Short Step', 'The dash carries you only 4 m but deals 30% more damage.',
+    { power: 1.3, set: { range: 4, aiUse: { use: 'gapclose', range: 5, minRange: 2 } }, fx: [{ find: DASH, set: { dist: 4 } }] });
+
+  essence('hx_veil_cold', 'veil_step', 'Frost Veil', 'Deals Cold damage and Chills for 3 s instead of Marking.',
+    { set: { elem: 'cold' }, fx: [{ find: DASH, set: { elem: 'cold', status: { id: 'chill', dur: 3 } } }] });
+  essence('hx_veil_drain', 'veil_step', 'Draining Veil', 'The dash heals you for 15% of its damage.',
+    { fx: [{ find: DASH, set: { leech: 0.15 } }] });
+  essence('hx_veil_weaken', 'veil_step', 'Wearying Veil', 'Also Weakens what you pass for 4 s, but deals 25% less damage.',
+    { fx: [{ find: DASH, set: { mult: 0.6, status: [{ id: 'mark', dur: 5 }, { id: 'weaken', dur: 4 }] } }] });
+
+  rite('hx_veil_charges', 'veil_step', 'Two Steps', 'Veil Step has 2 charges. Each takes 10 s.',
+    { set: { charges: 2, cooldown: 10 } });
+  rite('hx_veil_quick', 'veil_step', 'Quick Step', 'Cooldown 6 s instead of 9.',
+    { set: { cooldown: 6 } });
+  rite('hx_veil_hex', 'veil_step', 'Hex in Passing', 'Veil Step gives 15 Hex instead of costing it. Cooldown 10 s.',
+    { set: { cost: 0, cooldown: 10 }, add: [hex(15)] });
+
+  // =============================================================================================
+  // HEX NOVA. Base: 12 s, 40 Hex; a 5.5 m ring around you for 160% as Shadow; every Marked enemy bursts for 70% in 2.5 m.
+  // =============================================================================================
+  var NOVA = { type: 'aoe', at: 'self' };
+  shape('hx_nova_wide', 'hex_nova', 'Wide Nova', 'The ring reaches 8 m instead of 5.5, for 80% of the damage.',
+    { power: 0.8, fx: [{ find: NOVA, set: { radius: 8 } }] });
+  shape('hx_nova_close', 'hex_nova', 'Tight Nova', 'The ring reaches only 3.5 m but deals 35% more damage.',
+    { power: 1.35, fx: [{ find: NOVA, set: { radius: 3.5 } }] });
+  shape('hx_nova_aim', 'hex_nova', 'Thrown Nova', 'The ring bursts at your aim, up to 10 m away.',
+    { set: { range: 10, aiUse: { use: 'attack', range: 10, minTargets: 3, orBoss: true } }, fx: [{ find: NOVA, set: { at: 'aim', range: 10 } }] });
+
+  essence('hx_nova_cold', 'hex_nova', 'Frost Nova', 'The ring deals Cold damage and Chills for 3 s.',
+    { set: { elem: 'cold' }, fx: [{ find: NOVA, set: { elem: 'cold', status: { id: 'chill', dur: 3 } } }] });
+  essence('hx_nova_mark', 'hex_nova', 'Marking Nova', 'The ring Marks for 5 s, but deals 13% less damage.',
+    { fx: [{ find: NOVA, set: { mult: 1.4, status: { id: 'mark', dur: 5 } } }] });
+  essence('hx_nova_drain', 'hex_nova', 'Draining Nova', 'The ring heals you for 10% of its damage.',
+    { fx: [{ find: NOVA, set: { leech: 0.1 } }] });
+
+  rite('hx_nova_cheap', 'hex_nova', 'Small Change', 'Costs 25 Hex instead of 40. Cooldown 14 s.',
+    { set: { cost: 25, cooldown: 14 } });
+  rite('hx_nova_quick', 'hex_nova', 'Quick Nova', 'Cooldown 8 s instead of 12, but costs 50 Hex.',
+    { set: { cost: 50, cooldown: 8 } });
+  rite('hx_nova_twice', 'hex_nova', 'Two Novas', 'Hex Nova has 2 charges. Each takes 15 s.',
+    { set: { charges: 2, cooldown: 15 } });
+
+  // =============================================================================================
+  // BLACK PARRY. Base: 8 s; parry from the front for 0.6 s; each parry answers with a 200% cut as Shadow (3 m, 160 degrees),
+  // Marks for 6 s and gives 20 Hex.
+  // =============================================================================================
+  shape('hx_parry_long', 'black_parry', 'Long Guard', 'You parry for 1 s instead of 0.6.',
+    { fx: [{ find: BUFF, set: { dur: 1 } }] });
+  shape('hx_parry_wide', 'black_parry', 'Circle of Steel', 'The answer cuts all around you, 4 m wide, for 75% of the damage.',
+    { power: 0.75, fx: [{ find: MEL, set: { arc: 360, range: 4 } }] });
+  shape('hx_parry_twice', 'black_parry', 'Double Answer', 'You answer with two cuts, each for 60% of the damage.',
+    { power: 0.6, fx: [{ find: MEL, set: { hits: 2, interval: 0.15 } }] });
+
+  essence('hx_parry_cold', 'black_parry', 'Cold Answer', 'The answer deals Cold damage and Chills for 3 s.',
+    { set: { elem: 'cold' }, fx: [{ find: MEL, set: { elem: 'cold', status: [{ id: 'mark', dur: 6 }, { id: 'chill', dur: 3 }] } }] });
+  essence('hx_parry_drain', 'black_parry', 'Drinking Answer', 'The answer heals you for 25% of its damage.',
+    { fx: [{ find: MEL, set: { leech: 0.25 } }] });
+  essence('hx_parry_stun', 'black_parry', 'Staggering Answer', 'The answer Stuns for 1 s, but deals 15% less damage.',
+    { set: { dmgLines: [{ label: 'counter', mult: 1.7 }] }, fx: [{ find: MEL, set: { mult: 1.7, status: [{ id: 'mark', dur: 6 }, { id: 'stun', dur: 1 }] } }] });
+
+  rite('hx_parry_quick', 'black_parry', 'Ready Guard', 'Cooldown 5 s instead of 8.',
+    { set: { cooldown: 5 } });
+  rite('hx_parry_hex', 'black_parry', 'Paid in Hex', 'Each parry gives 35 Hex instead of 20.',
+    { fx: [{ find: RES, set: { gain: 35 } }] });
+  rite('hx_parry_ward', 'black_parry', 'Braced', 'Black Parry also gives you Ward equal to 5% of your maximum Health for 3 s.',
+    { add: [ward(0.05, 3)] });
+
+  // =============================================================================================
+  // SEVER FATE (Ultimate). Base: 80 s; a line 11 m long for 450% as Shadow, Mark 10 s and Vulnerable 6 s; Fated for 8 s
+  // (+20% Attack Speed, +8% Life Steal, every hit builds Hex).
+  // =============================================================================================
+  shape('hx_fate_long', 'sever_fate', 'Long Thread', 'The line is 16 m long instead of 11, for 85% of the damage.',
+    { power: 0.85, set: { range: 12, aiUse: { use: 'attack', range: 11, minTargets: 4, orBoss: true } }, fx: [{ find: AOE, set: { length: 16 } }] });
+  shape('hx_fate_wide', 'sever_fate', 'Wide Thread', 'The line is 6 m wide instead of 3.4, for 85% of the damage.',
+    { power: 0.85, fx: [{ find: AOE, set: { width: 6 } }] });
+  shape('hx_fate_buff', 'sever_fate', 'Long Fate', 'You stay Fated for 14 s instead of 8.',
+    { fx: [{ find: BUFF, set: { dur: 14 } }] });
+
+  essence('hx_fate_cold', 'sever_fate', 'Frozen Thread', 'The line deals Cold damage and Chills for 6 s instead of making enemies Vulnerable.',
+    { set: { elem: 'cold' }, fx: [{ find: AOE, set: { elem: 'cold', status: [{ id: 'mark', dur: 10 }, { id: 'chill', dur: 6 }] } }] });
+  essence('hx_fate_drain', 'sever_fate', 'Blood Thread', 'While Fated you have +15% Life Steal instead of +8%, and 10% more Attack Speed instead of 20%.',
+    { fx: [{ find: BUFF, set: { mods: [{ s: 'atkSpeed', t: 'inc', v: 0.1 }, { s: 'lifesteal', t: 'add', v: 0.15 }] } }] });
+  essence('hx_fate_fury', 'sever_fate', 'Frayed Thread', 'While Fated you have 35% more Attack Speed instead of 20%, and +3% Life Steal instead of +8%.',
+    { fx: [{ find: BUFF, set: { mods: [{ s: 'atkSpeed', t: 'inc', v: 0.35 }, { s: 'lifesteal', t: 'add', v: 0.03 }] } }] });
+
+  rite('hx_fate_early', 'sever_fate', 'Early Thread', 'Cooldown 60 s instead of 80.',
+    { set: { cooldown: 60 } });
+  rite('hx_fate_twice', 'sever_fate', 'Two Threads', 'Sever Fate has 2 charges. Each takes 95 s.',
+    { set: { charges: 2, cooldown: 95 } });
+  rite('hx_fate_pact', 'sever_fate', 'Your Own Thread', 'Costs 15% of your Health. Cooldown 45 s.',
+    { set: { hpCost: 0.15, cooldown: 45 } });
+
+  KD.register('mutations', M);
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/data/37_mutations_ironbound.js
 (function (root) {
   'use strict';
@@ -17088,6 +18422,141 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       { to: 25, goals: ['skill:bloodletting', 'mut:blood_free', 'cluster:carrion_rhythm', 'cluster:blood_frenzy', 'cluster:blood_leech'] },
       { to: 40, goals: ['cluster:carrion_scythe', 'cluster:blood_wound', 'skill:marrow_shield', 'cluster:carrion_scavenger'] },
       { to: 60, goals: ['Last Drop', 'cluster:blood_thicker', 'cluster:carrion_yard', 'cluster:br_mid_2', 'cluster:carrion_crow', 'cluster:blood_scar', 'cluster:blood_basin', 'cluster:carrion_hunger', 'cluster:rot_hand'] }
+    ] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/38_tree_builds_hexblade.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+
+  /**
+   * RECOMMENDED BUILDS of the Hexblade's tree (docs/TREE_HEXBLADE.md section 4). Pure data; the registry and the format are in
+   * src/data/38_tree_builds_gravecaller.js (KD.data.treeBuilds.add), the logic in src/meta/35_tree_builds.js, the screen is the
+   * Builds tab of the tree page. Goals are stable names: 'skill:<abilityId>', 'mut:<mutationId>', 'cluster:<clusterId>'
+   * (complete it) or a node's name. Every build starts from a different skill and fits KD.treeBuilds.BUDGET (152) points
+   * (tests/tree_hexblade.test.js).
+   */
+  var R = KD.data = KD.data || {};
+  var TBD = R.treeBuilds = R.treeBuilds || { byClass: {} };
+  TBD.add = TBD.add || function (classId, rec) {
+    if (!rec || typeof rec.id !== 'string') throw new Error('KD.data.treeBuilds.add(' + classId + '): a record with an id is needed');
+    rec.cls = classId;
+    (TBD.byClass[classId] = TBD.byClass[classId] || []).push(rec);
+    return rec;
+  };
+  function add(rec) { return TBD.add('hexblade', rec); }
+
+  // 4.1 Marks that never come off
+  add({ id: 'malison', name: 'The Malison', design: '4.1', difficulty: 1, start: 'mark_of_frailty', arms: ['curse', 'blood'],
+    pitch: 'Curse the whole room, keep every name Marked, and live off the ones that fall.',
+    tags: ['Marks', 'Curses', 'Sustain'],
+    stages: [
+      { to: 10, goals: ['mut:hx_frail_wide', 'mut:hx_frail_vuln', 'mut:hx_frail_quick', 'cluster:curse_brand'] },
+      { to: 25, goals: ['cluster:curse_tally', 'cluster:curse_misery', 'skill:siphon_edge', 'mut:hx_siphon_mark', 'cluster:curse_frailty'] },
+      { to: 40, goals: ["Hangman's Patience", 'cluster:curse_hollow', 'cluster:blood_curse_mid', 'cluster:curse_spite', 'cluster:curse_witchmark'] },
+      { to: 60, goals: ['One Name', 'cluster:curse_verdict', 'cluster:curse_ledger', 'cluster:curse_stain', 'cluster:curse_requiem', 'cluster:curse_end', 'cluster:blood_curse_outer'] }
+    ] });
+
+  // 4.2 chains and Slows
+  add({ id: 'hangman', name: 'Hangman', design: '4.2', difficulty: 2, start: 'curse_chain', arms: ['noose', 'curse'],
+    pitch: 'Chain the pack together, Slow it, Mark it, and make every held enemy pay double.',
+    tags: ['Control', 'Chains', 'Slows'],
+    stages: [
+      { to: 10, goals: ['mut:hx_chain_long', 'mut:hx_chain_root', 'mut:hx_chain_quick', 'cluster:noose_tighten'] },
+      { to: 25, goals: ['skill:binding_sigil', 'mut:hx_bind_mark', 'cluster:noose_short', 'cluster:noose_strangle', 'cluster:curse_noose_mid'] },
+      { to: 40, goals: ['Held Fast', 'cluster:noose_knots', 'cluster:noose_links', 'cluster:noose_frost', 'cluster:noose_drag'] },
+      { to: 60, goals: ["Spider's Web", 'cluster:noose_hanging', 'cluster:noose_bind', 'cluster:noose_lines', 'cluster:noose_still', 'cluster:noose_shackle', 'cluster:noose_winter'] }
+    ] });
+
+  // 4.3 grave-frost
+  add({ id: 'grave_frost', name: 'Grave Frost', design: '4.3', difficulty: 2, start: 'binding_sigil', arms: ['noose', 'coven'],
+    pitch: 'Brand the ground with frost: Rooted, Chilled and Marked, they stand still while the Hex pours out.',
+    tags: ['Cold', 'Roots', 'Area'],
+    stages: [
+      { to: 10, goals: ['mut:hx_bind_wide', 'mut:hx_bind_frost', 'cluster:noose_sigil'] },
+      { to: 25, goals: ['mut:hx_bind_quick', 'cluster:noose_frost', 'skill:curse_chain', 'mut:hx_chain_frost', 'cluster:noose_strangle'] },
+      { to: 40, goals: ['Bound in Ice', 'cluster:noose_winter', 'cluster:noose_coven_mid', 'cluster:noose_knots', 'cluster:noose_tighten'] },
+      { to: 60, goals: ['Held Fast', 'cluster:noose_shackle', 'cluster:noose_hanging', 'cluster:noose_lines', 'cluster:noose_links', 'cluster:noose_bind', 'cluster:noose_coven_outer', 'cluster:coven_kettle'] }
+    ] });
+
+  // 4.4 the Hex spender
+  add({ id: 'witch', name: 'Coven Witch', design: '4.4', difficulty: 2, start: 'hex_nova', arms: ['coven', 'blades'],
+    pitch: 'Keep the cauldron brimming, then pour it all out in one ring of spite that bursts every Mark.',
+    tags: ['Hex', 'Area', 'Burst'],
+    stages: [
+      { to: 10, goals: ['mut:hx_nova_wide', 'mut:hx_nova_mark', 'mut:hx_nova_cheap', 'cluster:coven_well'] },
+      { to: 25, goals: ['cluster:coven_rattle', 'cluster:coven_spite', 'cluster:coven_circle', 'skill:spectral_blade', 'mut:hx_blade_mark'] },
+      { to: 40, goals: ['Overflowing Hex', 'cluster:coven_hearth', 'cluster:coven_tithe', 'cluster:coven_hag', 'cluster:coven_blades_mid'] },
+      { to: 60, goals: ['Coven Circle', 'cluster:coven_burn', 'cluster:coven_spell', 'cluster:coven_kettle', 'cluster:coven_crone', 'cluster:coven_stars', 'cluster:coven_sabbath'] }
+    ] });
+
+  // 4.5 the spell duelist
+  add({ id: 'ghost_armory', name: 'Ghost Armory', design: '4.5', difficulty: 2, start: 'spectral_blade', arms: ['blades', 'coven'],
+    pitch: 'Fight at arm\'s length: volleys of seeking blades that crit, shield you and feed your Hex.',
+    tags: ['Spells', 'Ranged', 'Critical hits'],
+    stages: [
+      { to: 10, goals: ['mut:hx_blade_five', 'mut:hx_blade_mark', 'mut:hx_blade_charges', 'cluster:blades_rack'] },
+      { to: 25, goals: ['cluster:blades_ward', 'cluster:blades_ghost', 'cluster:blades_temper', 'skill:hex_nova', 'mut:hx_nova_aim'] },
+      { to: 40, goals: ["Arm's Length", 'cluster:blades_flight', 'cluster:blades_storm', 'cluster:blades_shatter', 'cluster:coven_blades_mid'] },
+      { to: 60, goals: ['Cursed Steel', 'cluster:blades_names', 'cluster:blades_echo', 'cluster:blades_guard', 'cluster:blades_sharp', 'cluster:blades_last', 'cluster:blades_hall'] }
+    ] });
+
+  // 4.6 the dodger
+  add({ id: 'veilwalker', name: 'Veilwalker', design: '4.6', difficulty: 3, start: 'veil_step', arms: ['veil', 'blades'],
+    pitch: 'Never where they swing: step through the veil, Mark the path, and strike out of the mist.',
+    tags: ['Evasion', 'Movement', 'Dodge'],
+    stages: [
+      { to: 10, goals: ['mut:hx_veil_wide', 'mut:hx_veil_drain', 'mut:hx_veil_charges'] },
+      { to: 25, goals: ['cluster:veil_slip', 'cluster:veil_ghost', 'cluster:veil_path', 'cluster:veil_moving', 'skill:blink_cut'] },
+      { to: 40, goals: ['Never There', 'cluster:veil_after', 'cluster:veil_fog', 'cluster:blades_veil_mid', 'cluster:veil_wisp'] },
+      { to: 60, goals: ['Veilwalker', 'cluster:veil_dancer', 'cluster:veil_dusk', 'cluster:veil_between', 'cluster:veil_moon', 'cluster:veil_shade', 'cluster:veil_wind', 'cluster:blades_veil_outer'] }
+    ] });
+
+  // 4.7 blink and crit
+  add({ id: 'blinkblade', name: 'Blinkblade', design: '4.7', difficulty: 3, start: 'blink_cut', arms: ['veil', 'headsman'],
+    pitch: 'Blink to the Marked, crit, blink again: every kill readies the next cut.',
+    tags: ['Blinks', 'Critical hits', 'Burst'],
+    stages: [
+      { to: 10, goals: ['mut:hx_blink_far', 'mut:hx_blink_shadow', 'cluster:veil_blink'] },
+      { to: 25, goals: ['mut:hx_blink_charges', 'cluster:veil_slip', 'skill:veil_step', 'mut:hx_veil_weaken', 'cluster:veil_path', 'cluster:veil_headsman_mid'] },
+      { to: 40, goals: ['Flickering Blade', 'cluster:veil_after', 'cluster:veil_shade', 'cluster:veil_headsman_outer', 'cluster:veil_ghost'] },
+      { to: 60, goals: ['Never There', 'cluster:veil_between', 'cluster:veil_dancer', 'cluster:veil_moving', 'cluster:veil_fog', 'cluster:headsman_axe', 'cluster:headsman_due'] }
+    ] });
+
+  // 4.8 executions and bosses
+  add({ id: 'headsman', name: 'The Headsman', design: '4.8', difficulty: 1, start: 'soul_rend', arms: ['headsman', 'duel'],
+    pitch: 'Heavy, Marked, finished: Soul Rend crits the condemned and Sever Fate cuts the boss in half.',
+    tags: ['Executions', 'Critical hits', 'Bosses'],
+    stages: [
+      { to: 10, goals: ['mut:hx_rend_wide', 'mut:hx_rend_mark', 'mut:hx_rend_cheap', 'cluster:headsman_block'] },
+      { to: 25, goals: ['cluster:headsman_due', 'skill:sever_fate', 'mut:hx_fate_fury', 'cluster:headsman_hood', 'mut:hx_fate_early'] },
+      { to: 40, goals: ['Clean Block', 'cluster:headsman_thread', 'cluster:headsman_axe', 'cluster:headsman_writ', 'mut:hx_fate_wide'] },
+      { to: 60, goals: ["Death's Ledger", 'cluster:headsman_final', 'cluster:headsman_mercy', 'cluster:headsman_basket', 'cluster:headsman_scaffold', 'cluster:headsman_crowd', 'cluster:headsman_duel_mid', 'cluster:headsman_widow'] }
+    ] });
+
+  // 4.9 the parry tank
+  add({ id: 'black_duelist', name: 'Black Duelist', design: '4.9', difficulty: 2, start: 'black_parry', arms: ['duel', 'blood'],
+    pitch: 'Let them swing first: every block Marks, heals, and loads a counter that hits twice as hard.',
+    tags: ['Parry', 'Armor', 'Tanky'],
+    stages: [
+      { to: 10, goals: ['mut:hx_parry_long', 'mut:hx_parry_drain', 'mut:hx_parry_quick', 'cluster:duel_salute'] },
+      { to: 25, goals: ['cluster:duel_answer', 'cluster:duel_stance', 'cluster:duel_iron', 'cluster:duel_blood_mid', 'skill:siphon_edge'] },
+      { to: 40, goals: ['Black Wall', 'cluster:duel_scar', 'cluster:duel_wall', 'cluster:duel_poise', 'cluster:duel_feast'] },
+      { to: 60, goals: ['Iron Hex', 'cluster:duel_bulwark', 'cluster:duel_endure', 'cluster:duel_honour', 'cluster:duel_glove', 'cluster:duel_last', 'cluster:duel_grit'] }
+    ] });
+
+  // 4.10 blood for power
+  add({ id: 'bloodletter', name: 'Bloodletter', design: '4.10', difficulty: 3, start: 'siphon_edge', arms: ['blood', 'duel'],
+    pitch: 'Pay in Health, hit harder the more you bleed, and drink it all back with every cut.',
+    tags: ['Life Steal', 'Health as a price', 'Melee'],
+    stages: [
+      { to: 10, goals: ['mut:hx_siphon_wide', 'mut:hx_siphon_deep', 'mut:hx_siphon_quick', 'cluster:blood_cup'] },
+      { to: 25, goals: ['cluster:blood_vein', 'cluster:blood_fury', 'cluster:blood_kill', 'cluster:blood_thirst', 'skill:black_parry'] },
+      { to: 40, goals: ['Blood Tithe', 'cluster:blood_tide', 'cluster:blood_desperate', 'cluster:blood_leech', 'cluster:duel_blood_mid'] },
+      { to: 60, goals: ['Red Fury', 'cluster:blood_wound', 'cluster:blood_feast', 'cluster:blood_road', 'cluster:blood_mend', 'cluster:blood_life', 'cluster:blood_pulse'] }
     ] });
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -25189,6 +26658,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.79', date: '2026-10-15', title: 'The Hexblade\'s own tree', notes: [
+      'The Hexblade has its own talent tree now: The Gallows Wood, with over 1,500 nodes in eight arms',
+      'Curses, chains, Hex, ghost blades, blinks, executions, parries and blood: every skill and over 100 mutations come from the tree',
+      'Ten recommended builds to follow, from the Malison to the Bloodletter',
+      'Melee speed nodes for the Hexblade\'s blade arms'
+    ] },
     { version: '0.7.78', date: '2026-10-15', title: 'Ironbound shield moves', notes: [
       'The Ironbound\'s Ground Slam and Lance Charge now read as shield moves: a slam with the shield\'s rim and a charge behind the raised shield'
     ] },
@@ -42091,7 +43566,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     }
   });
 
-  if (KD.classes && KD.classes.registerLoadout) KD.classes.registerLoadout('hexblade', ['mark_of_frailty', 'siphon_edge', 'hex_nova', 'curse_chain']);
+  if (KD.classes && KD.classes.registerLoadout) KD.classes.registerLoadout('hexblade', ['siphon_edge', 'mark_of_frailty', 'hex_nova', 'curse_chain']);      // [w8 hexblade tree] Siphon Edge first: the tree's start pick spends Hex
   if (KD.classes && KD.classes.registerMechanic) KD.classes.registerMechanic('hexblade', {
     tune: T, web: WT, isMarked: isMarked,
     text: 'Marked enemies take 15% more damage and feed you Hex. Hex pays for spectral blades, drains and novas.',
@@ -46278,6 +47753,308 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     }
   });
   void Q;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/sim/56_tree_hexblade.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var S = KD.sim = KD.sim || {};
+  var K = KD.skills = KD.skills || {};
+  var U = KD.util;
+  if (!K.registerHook) return;
+
+  /**
+   * HEXBLADE, the rules of the class tree (docs/TREE_HEXBLADE.md section 3): the `effect` keys `tree_hexblade_<id>` of the rule
+   * notables and keystones in src/data/36_tree_hexblade_<arm>.js. The tree also reuses the Gallows rules of the Crownweb
+   * (`web_hexblade_*`, src/sim/51_class_hexblade.js) and two web keystones (Hangman's Patience, Blood Tithe); the mutations are
+   * pure data. Every hook acts on the owner's own hits, statuses and casts, uses world.rng / world.time only, and guards the
+   * places where it could start itself again. Every number is in the T table; the node texts quote them
+   * (tests/tree_hexblade.test.js compares).
+   */
+  var T = {
+    deepWeaken: 3,                          // Deep Brand: Weaken from your Marks (s)
+    doomAfter: 4, doomMore: 1.15,           // Doom Count: Marked this long, hits deal this much more
+    weakHands: 0.9,                         // Weak Hands: damage from Marked enemies
+    hollowHex: 6,                           // Hollowed: Hex for a Marked kill
+    contagionRadius: 3, contagionDur: 4,    // Contagious Malice (keystone): Marks spread this far, for this long
+    noseSlow: 0.2,                          // Noose Mark (bridge): Slow from your Marks
+    tightenMore: 1.1,                       // Tightening Noose: hits on enemies you have Slowed
+    rimeMore: 1.12,                         // Hanging Frost: hits on Chilled enemies
+    heldDown: 0.85,                         // Held Down: damage from enemies you have Rooted or Chilled
+    heldMore: 1.3, heldLess: 0.8,           // Held Fast (keystone)
+    iceChill: 2,                            // Bound in Ice (keystone): Chill from your Marks (s)
+    boundHex: 2,                            // Bound Hex (bridge): Hex for a hit on a Rooted or Chilled enemy
+    brimAt: 60, brimMore: 1.1,              // Brimming Hex
+    hexWard: 0.92,                          // Hex Ward: damage taken while brimming
+    wellPer: 10, wellHeal: 0.01,            // Witch's Mend: 1% of maximum Health per 10 Hex spent
+    spiteMark: 4,                           // Spite Mark: Hex Nova Marks (s)
+    seekingMore: 1.25,                      // Seeking Steel: Spectral Blade on Marked enemies
+    bladeWard: 0.01, bladeWardDur: 4,       // Floating Steel: Ward per Spectral Blade hit
+    ghostHex: 2,                            // Spectral Edge: Hex per spell crit
+    spellWindow: 3, spellMore: 1.25,        // Spell and Steel: the next Hexed Slash after a spell
+    cursedMark: 4,                          // Cursed Steel (keystone): crits Mark (s)
+    slipWindow: 3, slipMore: 1.3,           // Through the Veil
+    halfDur: 2, halfLess: 0.8,              // Half There
+    rollRadius: 3, rollMark: 4,             // Marked Path
+    dueAt: 0.35, dueMore: 1.25,             // Due Payment
+    sentenceHeal: 0.01,                     // Bloody Sentence
+    fatedCrit: 0.2,                         // Cutting Threads
+    blockAt: 0.35, blockLess: 0.9,          // Clean Block (keystone)
+    riposteMark: 4,                         // Ink Riposte
+    answerWindow: 3, answerMore: 1.4,       // In Kind
+    stanceHex: 5,                           // En Garde
+    scarLess: 0.1, scarDur: 3, scarIcd: 6,  // Hardened
+    redParry: 0.02,                         // Red Parry (bridge)
+    sanguineCap: 0.08, sanguineDur: 4,      // Sanguine Ward
+    harvestAt: 0.5, harvestHeal: 0.03,      // Red Harvest
+    transfuseAt: 0.5, transfuse: 0.15       // Transfusion
+  };
+  S.treeHexblade = { T: T };
+
+  function enemy(e) { return !!e && e.kind === 'enemy' && !e.dead && !e.removed; }
+  function foe(p, o) { return !!o && o !== p && !o.dead && !o.removed && !o.hidden && S.hostile(p, o); }
+  function isMarked(t) { return !!(t && t.statuses && (S.hasStatus(t, 'mark') || S.hasStatus(t, 'hunters_mark'))); }
+  function mine(t, id, p) { var st = S.hasStatus(t, id); return !!(st && st.src === p.id); }
+  function heldDown(t) { return !!(S.hasStatus(t, 'slow') || S.hasStatus(t, 'root') || S.hasStatus(t, 'chill') || S.hasStatus(t, 'freeze')); }
+  function direct(c) { return !!(c.spec && !c.spec.dot && !c.spec.proc); }
+  function gain(c, n, why) { S.player.gainRes(c.world, c.self, n, why || 'tree'); }
+  function heal(c, frac) { var p = c.self; if (!p.dead) S.heal(c.world, p, p.hpMax * frac, p, { noScale: true, silent: true }); }
+  /** A Mark from the owner just landed (not one of the marks these rules apply themselves). */
+  function ownMark(c, st) { return c.id === 'mark' && !st.busy && enemy(c.target); }
+  function withBusy(st, fn) { st.busy = true; try { fn(); } finally { st.busy = false; } }
+  /** "Your next hit": armed by `arm`, spent by the first direct hit of another cast; every hit of that cast gets it. */
+  function nextHit(c, st, more) {
+    var inst = c.spec && c.spec.inst;
+    if (!direct(c) || !(c.target && c.target.kind === 'enemy')) return;
+    if (inst && st.inst === inst) { c.mult *= more; return; }
+    if (!(st.until > c.world.time) || (inst && inst === st.from)) return;
+    st.until = 0; st.inst = inst || null;
+    c.mult *= more;
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // The Malison (curse)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_hexblade_deep_mark', {
+    onStatusApplied: function (c, eff, st) { if (ownMark(c, st)) withBusy(st, function () { S.applyStatus(c.world, c.target, 'weaken', { src: c.self, dur: T.deepWeaken }); }); }
+  });
+  K.registerHook('tree_hexblade_doom', {
+    onStatusApplied: function (c) { if (c.id === 'mark' && c.status && c.status.hexSince === undefined) c.status.hexSince = c.world.time; },
+    onBeforeHit: function (c) {
+      var st = c.target && c.target.kind === 'enemy' && S.hasStatus(c.target, 'mark');
+      if (st && st.hexSince !== undefined && c.world.time - st.hexSince >= T.doomAfter) c.mult *= T.doomMore;
+    }
+  });
+  K.registerHook('tree_hexblade_weak_hands', {
+    onBeforeDamaged: function (c) { if (c.attacker && c.attacker.kind === 'enemy' && isMarked(c.attacker)) c.amount *= T.weakHands; }
+  });
+  K.registerHook('tree_hexblade_hollow', {
+    onKill: function (c) { if (!c.byMinion && isMarked(c.target) && S.hostile(c.self, c.target)) gain(c, T.hollowHex, 'hollow'); }
+  });
+  K.registerHook('tree_hexblade_contagion', {
+    onStatusApplied: function (c, eff, st) {
+      if (!ownMark(c, st)) return;
+      var p = c.self, t = c.target, w = c.world;
+      withBusy(st, function () {
+        var list = w.queryCircle(t.x, t.z, T.contagionRadius);
+        for (var i = 0; i < list.length; i++) { var o = list[i]; if (o !== t && foe(p, o) && o.kind === 'enemy' && !S.hasStatus(o, 'mark')) S.applyStatus(w, o, 'mark', { src: p, dur: T.contagionDur }); }
+      });
+    }
+  });
+  K.registerHook('tree_hexblade_one_name', {
+    onStatusApplied: function (c, eff, st) {
+      if (c.id !== 'mark' || !enemy(c.target)) return;
+      var old = st.target;
+      st.target = c.target;
+      if (old && old !== c.target && !old.dead && !old.removed && mine(old, 'mark', c.self)) S.removeStatus(c.world, old, 'mark', 'replaced');
+    }
+  });
+  // bridge curse / noose
+  K.registerHook('tree_hexblade_noose_mark', {
+    onStatusApplied: function (c, eff, st) {
+      if (!ownMark(c, st)) return;
+      var left = c.status ? c.status.dur - c.status.t : 4;
+      withBusy(st, function () { S.applyStatus(c.world, c.target, 'slow', { src: c.self, dur: left, power: T.noseSlow }); });
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Noose (noose)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_hexblade_tighten', {
+    onBeforeHit: function (c) { if (c.target && c.target.kind === 'enemy' && mine(c.target, 'slow', c.self)) c.mult *= T.tightenMore; }
+  });
+  K.registerHook('tree_hexblade_rime', {
+    onBeforeHit: function (c) { if (c.target && c.target.kind === 'enemy' && S.hasStatus(c.target, 'chill')) c.mult *= T.rimeMore; }
+  });
+  K.registerHook('tree_hexblade_held_down', {
+    onBeforeDamaged: function (c) { var a = c.attacker; if (a && a.kind === 'enemy' && (mine(a, 'root', c.self) || mine(a, 'chill', c.self))) c.amount *= T.heldDown; }
+  });
+  K.registerHook('tree_hexblade_held', {
+    onBeforeHit: function (c) { if (c.target && c.target.kind === 'enemy' && c.spec && !c.spec.dot) c.mult *= heldDown(c.target) ? T.heldMore : T.heldLess; }
+  });
+  K.registerHook('tree_hexblade_ice', {
+    onStatusApplied: function (c, eff, st) { if (ownMark(c, st)) withBusy(st, function () { S.applyStatus(c.world, c.target, 'chill', { src: c.self, dur: T.iceChill }); }); }
+  });
+  // bridge noose / coven
+  K.registerHook('tree_hexblade_bound_hex', {
+    onHit: function (c) {
+      var inst = c.spec && c.spec.inst;
+      if (!direct(c) || !enemy(c.target) || !(S.hasStatus(c.target, 'root') || S.hasStatus(c.target, 'chill'))) return;
+      if (inst) { if (inst.hexBound) return; inst.hexBound = true; }
+      gain(c, T.boundHex, 'bound');
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Coven (coven)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_hexblade_brimming', {
+    onBeforeHit: function (c) { if (c.target && c.target.kind === 'enemy' && c.self.res >= T.brimAt) c.mult *= T.brimMore; }
+  });
+  K.registerHook('tree_hexblade_hex_ward', {
+    onBeforeDamaged: function (c) { if (c.self.res >= T.brimAt) c.amount *= T.hexWard; }
+  });
+  K.registerHook('tree_hexblade_hex_well', {
+    onResourceSpent: function (c) { if (c.spent > 0) heal(c, T.wellHeal * c.spent / T.wellPer); }
+  });
+  K.registerHook('tree_hexblade_second_burst', {
+    onHit: function (c) { if (direct(c) && c.spec.ability === 'hex_nova' && enemy(c.target)) S.applyStatus(c.world, c.target, 'mark', { src: c.self, dur: T.spiteMark }); }
+  });
+  K.registerHook('tree_hexblade_overflow', {
+    setup: function (p) { p.knobs.resDecayMult = 0; }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Spectral Armory (blades)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_hexblade_seeking', {
+    onBeforeHit: function (c) { if (c.spec && c.spec.ability === 'spectral_blade' && isMarked(c.target)) c.mult *= T.seekingMore; }
+  });
+  K.registerHook('tree_hexblade_blade_ward', {
+    onHit: function (c) { var p = c.self; if (direct(c) && c.spec.ability === 'spectral_blade' && !p.dead) S.addWard(c.world, p, p.hpMax * T.bladeWard, T.bladeWardDur); }
+  });
+  K.registerHook('tree_hexblade_ghost_steel', {
+    onCrit: function (c) { if (direct(c) && c.spec.delivery === 'spell' && enemy(c.target)) gain(c, T.ghostHex, 'ghost'); }
+  });
+  K.registerHook('tree_hexblade_spellblade', {
+    onCast: function (c, eff, st) {
+      var ab = c.ability;
+      if (ab && ab.slot !== 'primary' && ab.tags && ab.tags.indexOf('spell') >= 0) { st.until = c.world.time + T.spellWindow; st.from = c.inst || null; }
+    },
+    onBeforeHit: function (c, eff, st) { if (c.spec && c.spec.ability === 'hexed_slash') nextHit(c, st, T.spellMore); }
+  });
+  K.registerHook('tree_hexblade_cursed_steel', {
+    onCrit: function (c) { if (c.spec && !c.spec.dot && enemy(c.target)) S.applyStatus(c.world, c.target, 'mark', { src: c.self, dur: T.cursedMark }); }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Veil (veil)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_hexblade_slip', {
+    onCast: function (c, eff, st) { var id = c.ability && c.ability.id; if (id === 'veil_step' || id === 'blink_cut') { st.until = c.world.time + T.slipWindow; st.from = c.inst || null; } },
+    onBeforeHit: function (c, eff, st) { nextHit(c, st, T.slipMore); }
+  });
+  K.registerHook('tree_hexblade_half_there', {
+    onDodge: function (c, eff, st) { st.until = c.world.time + T.halfDur; },
+    onBeforeDamaged: function (c, eff, st) { if (st.until > c.world.time) c.amount *= T.halfLess; }
+  });
+  K.registerHook('tree_hexblade_mark_roll', {
+    onDodge: function (c) {
+      var p = c.self, w = c.world;
+      if (p.dead) return;
+      var list = w.queryCircle(p.x, p.z, T.rollRadius);
+      for (var i = 0; i < list.length; i++) { var o = list[i]; if (foe(p, o) && o.kind === 'enemy') S.applyStatus(w, o, 'mark', { src: p, dur: T.rollMark }); }
+    }
+  });
+  K.registerHook('tree_hexblade_flicker', {
+    onKill: function (c) {
+      if (c.byMinion || !isMarked(c.target) || !S.hostile(c.self, c.target)) return;
+      K.reduceCooldown(c.world, c.self, 'veil_step', 999);
+      K.reduceCooldown(c.world, c.self, 'blink_cut', 999);
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Headsman (headsman)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_hexblade_due', {
+    onBeforeHit: function (c) { var t = c.target; if (t && t.kind === 'enemy' && isMarked(t) && t.hp < t.hpMax * T.dueAt) c.mult *= T.dueMore; }
+  });
+  K.registerHook('tree_hexblade_sentence', {
+    onCrit: function (c) {
+      var inst = c.spec && c.spec.inst;
+      if (!c.spec || c.spec.dot || !isMarked(c.target)) return;
+      if (inst) { if (inst.hexSentence) return; inst.hexSentence = true; }
+      heal(c, T.sentenceHeal);
+    }
+  });
+  K.registerHook('tree_hexblade_fated', {
+    onBeforeHit: function (c) { if (c.spec && !c.spec.dot && S.hasStatus(c.self, 'sever_fate')) c.spec.critAdd = (c.spec.critAdd || 0) + T.fatedCrit; }
+  });
+  K.registerHook('tree_hexblade_clean_block', {
+    onBeforeHit: function (c) {
+      var t = c.target;
+      if (!t || t.kind !== 'enemy' || !c.spec || c.spec.dot) return;
+      if (t.hp < t.hpMax * T.blockAt) { if (!c.spec.noCrit) c.spec.critAdd = (c.spec.critAdd || 0) + 1; }
+      else c.mult *= T.blockLess;
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Black Duel (duel). `onBlock` runs on the hero who blocked (a parry counts): c.attacker hit it.
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_hexblade_riposte', {
+    onBlock: function (c) { var a = c.attacker; if (a && foe(c.self, a)) S.applyStatus(c.world, a, 'mark', { src: c.self, dur: T.riposteMark }); }
+  });
+  K.registerHook('tree_hexblade_answer', {
+    onBlock: function (c, eff, st) { st.until = c.world.time + T.answerWindow; st.from = null; },
+    onBeforeHit: function (c, eff, st) { nextHit(c, st, T.answerMore); }
+  });
+  K.registerHook('tree_hexblade_stance', {
+    onBlock: function (c) { if (!c.self.dead) gain(c, T.stanceHex, 'block'); }
+  });
+  K.registerHook('tree_hexblade_scars', {
+    onDamaged: function (c, eff, st) {
+      var p = c.self, w = c.world;
+      if (p.dead || !(c.amount > 0) || (st.ready || 0) > w.time) return;
+      st.ready = w.time + T.scarIcd;
+      var b = S.addBuff(w, p, { id: 'hex_hardened', name: 'Hardened', dur: T.scarDur, src: p, icon: 'shield', color: '#8a8aa0', mods: [{ s: 'dmgTaken', t: 'more', v: -T.scarLess }] });
+      if (b && !b.def.desc) b.def.desc = Math.round(T.scarLess * 100) + '% less damage taken.';
+    }
+  });
+  // bridge duel / blood
+  K.registerHook('tree_hexblade_red_parry', {
+    onBlock: function (c) { heal(c, T.redParry); }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Bloodletter (blood)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_hexblade_sanguine', {
+    onHit: function (c) {
+      var p = c.self, s = p.stats;
+      if (!direct(c) || p.dead || p.hp < p.hpMax || !s) return;
+      var cap = p.hpMax * T.sanguineCap, room = cap - p.ward;
+      var amt = (s.lifesteal + (c.spec.leech || 0)) * (c.info && c.info.total || c.amount || 0);
+      if (room > 0 && amt > 0) S.addWard(c.world, p, Math.min(room, amt), T.sanguineDur);
+    }
+  });
+  K.registerHook('tree_hexblade_harvest', {
+    onKill: function (c) { var p = c.self; if (!c.byMinion && !p.dead && p.hp < p.hpMax * T.harvestAt && S.hostile(p, c.target)) heal(c, T.harvestHeal); }
+  });
+  K.registerHook('tree_hexblade_transfuse', {
+    onHit: function (c) {
+      var p = c.self;
+      if (!direct(c) || c.spec.ability !== 'siphon_edge' || p.dead || !(p.hp < p.hpMax * T.transfuseAt)) return;
+      var amt = (c.info && c.info.total) || c.amount || 0;
+      if (amt > 0) S.heal(c.world, p, amt * T.transfuse, null, { silent: true, noScale: true, leech: true });
+    }
+  });
+  void U;
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
