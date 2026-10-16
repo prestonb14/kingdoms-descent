@@ -3882,7 +3882,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.89';
+  KD.VERSION = '0.7.90';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -30698,7 +30698,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       desc: 'Two quick stabs, one per hand. Hits from behind are backstabs: 15% more damage and 7 Shade each.',
       flavor: 'One for the purse, one for the throat.',
       windup: 0.2, recover: 0.4, moveMult: 0.6, delivery: 'melee', elem: 'phys', tags: ['melee', 'attack'], range: 2.0,      // [atk pace] Oct 15: slower, readable swings (was 0.16 / 0.36, stabs 0.12 s apart, 22.5%, poise 0.3)
-      effects: [{ type: 'melee', range: 2.1, arc: 80, mult: 0.245, poise: 0.35, hits: 2, interval: 0.22, max: 2 }],      // [w9 checker] 0.25 -> 0.225
+      effects: [{ type: 'melee', range: 2.1, arc: 80, mult: 0.26, poise: 0.35, hits: 2, interval: 0.22, max: 2 }],      // [w9 checker] 0.25 -> 0.225; [atk pace] 0.245; [fix-suite] 0.26: the checker's damage per second at the slower pace (0.245 left the Gloamblade 6% under it, the slowest damage build on the bench)
       aiUse: { use: 'attack', range: 2.0 } },
 
     { id: 'shadow_step', name: 'Shadow Step', cls: 'gloamblade', slot: 'skill', start: true, icon: 'dash', anim: 'stab',
@@ -31106,10 +31106,13 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    *   Lanternbearer  Lantern Swing   0.28/0.42 -> 0.36/0.50   0.70 -> 0.86  1.43 -> 1.16  85% -> 106%
    *   Gravecaller    Bone Lash       0.30/0.42 -> 0.34/0.48   0.72 -> 0.82  1.39 -> 1.22  56% -> 65%
    *   Wildmask       Claw Rake       0.20/0.36 -> 0.24/0.42   0.56 -> 0.66  1.79 -> 1.52  x1.18 (Wolf stabs 0.10 -> 0.17 s apart)
-   *   Gloamblade     Twin Daggers    0.16/0.36 -> 0.20/0.40   0.52 -> 0.60  1.92 -> 1.67  2 x 22.5% -> 2 x 24.5%, stabs 0.12 -> 0.22 s apart
+   *   Gloamblade     Twin Daggers    0.16/0.36 -> 0.20/0.40   0.52 -> 0.60  1.92 -> 1.67  2 x 22.5% -> 2 x 26% (was 24.5% until the suite fix), stabs 0.12 -> 0.22 s apart
    * Per hit the heavy swings got a little more than the time factor (Ironbound +11%, Lanternbearer +1%)
    * and the Twin Daggers a little less (-5%): in real fights (tools/build_bench.js) a long wind-up is lost more often to
    * a dodge or a target that steps away, and the Gloamblade's slower stabs land more of their backstabs.
+   * [fix-suite] Oct 16: the Twin Daggers went back to the time factor (2 x 26%): with -5% on top of the checker's own cut the
+   * Gloamblade's damage builds were the slowest boss killers on the bench (Crowned Stag 110 s against the Hexblade's 88 s)
+   * and its sparring damage fell to 0.69-0.80 x refDps (tests/classes_b_balance.test.js).
    * Ranged and spell primaries (Thorn Arrow, Spring Pistol, Ember Bolt) are unchanged. Poise damage per hit grew with the
    * damage. Resource per hit (Souls, Shade, ...) is unchanged, except the Ironbound's Guard per bash (7 -> 9, Guard Builder 11 -> 14): its
    * Guard is its defence, and fewer bashes a second had cut it by a third. Attack stamina prices follow the attack's length, so the
@@ -31131,7 +31134,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   AP.FACTOR = {
     shield_bash: [0.96 / 0.68, 1.36 / 0.85], banner_strike: [0.98 / 0.74, 1.02 / 0.77], hexed_slash: [0.86 / 0.74, 1.02 / 0.88],
     lantern_swing: [0.86 / 0.70, 1.06 / 0.85], bone_lash: [0.82 / 0.72, 0.65 / 0.56], claw_rake: [0.66 / 0.56, 0.47 / 0.4],
-    twin_daggers: [0.60 / 0.52, 0.245 / 0.225]
+    twin_daggers: [0.60 / 0.52, 0.26 / 0.225]      // [fix-suite] 0.245 -> 0.26 per stab (damage per second kept)
   };
   AP.MUT = {
     // Ironbound
@@ -31331,7 +31334,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
           effects: [{ type: 'aoe', at: 'self', radius: 4.4, mult: 1.2, knockback: 2 }] },
         { id: 'millers_shade_boards', name: 'Through the Boards', anim: 'overhead', windup: 0.6, recover: 0.9, range: [4, 14], cooldown: 10, weight: 2, elem: 'shadow', los: false,
           effects: [{ type: 'blink', to: 'behind', range: 14 }, { type: 'aoe', at: 'self', radius: 3.2, delay: 0.9, mult: 1.3, persist: true }] },
-        { id: 'millers_shade_sacks', name: 'Falling Sacks', anim: 'cast_staff', windup: 0.6, recover: 0.6, range: [2, 14], cooldown: 11, weight: 2, cond: { hpBelow: 0.5 }, los: false,
+        { id: 'millers_shade_sacks', name: 'Falling Sacks', anim: 'cast_staff', windup: 0.6, recover: 0.6, range: 14, /* [fix-suite] was [2, 14]: a hero in melee never saw its second phase */ cooldown: 11, weight: 2, cond: { hpBelow: 0.5 }, los: false,
           effects: [{ type: 'repeat', count: 4, interval: 0.4, persist: true, effects: [{ type: 'aoe', at: 'target', scatter: 3, radius: 2.2, delay: 1.1, mult: 0.9, persist: true, zone: zoneRot(5) }] }] }],
       boss: { phaseInvuln: 1.0, enrage: { time: 120 }, phases: [
         { at: 1, name: 'The Miller Returns', gcd: 1.0 },
@@ -36141,6 +36144,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.90', date: '2026-10-16', title: 'Gloamblade and Miller\'s Shade fixes', notes: [
+      'Twin Daggers hit a little harder again: the slower stabs had taken too much off the Gloamblade',
+      'The Miller\'s Shade now drops its Falling Sacks on heroes who stand right under him'
+    ] },
     { version: '0.7.89', date: '2026-10-16', title: 'The Bannerlord\'s Royal Host', notes: [
       'The Bannerlord now has his own skill tree, The Royal Host: over 1,500 nodes for a commander and his banner',
       'Start with Banner Strike and one more pick, then lead with planted colours, the war drum, the pike line, horn calls, a shield wall or your own soldiers',
