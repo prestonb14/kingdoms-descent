@@ -3882,7 +3882,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.85';
+  KD.VERSION = '0.7.86';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -34645,6 +34645,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.86', date: '2026-10-16', title: 'Towns polish', notes: [
+      'Towns: the Outer Market is a little less sun-bleached, and the Continue list says which town your hero waits in'
+    ] },
     { version: '0.7.85', date: '2026-10-16', title: 'Towns between the acts', notes: [
       'New: a safe town before the first area and between every act, with the best shops on the road',
       'Walk up to the vendor, smith, outfitter, hireling hall, healer and shrine',
@@ -115733,7 +115736,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       fogDensity: 0.0075, fogStart: 18, mist: 0.18, mistStart: 24, mistColor: [0.55, 0.46, 0.46],
       exposure: 1.04, vignette: 0.52, gradeHigh: [1.06, 0.98, 0.86] } },
     town_highcairn: { exposure: 1.05, mist: 0.6, vignette: 0.85, sunIntensity: 1.05, warm: 0.05 },
-    town_outer_market: { exposure: 1.06, mist: 0.6, vignette: 0.85, sunIntensity: 1.04, warm: 0.05 },
+    town_outer_market: { exposure: 0.9, mist: 0.6, vignette: 1.0, sunIntensity: 0.88, warm: 0.05 },
     town_last_camp: { exposure: 1.04, mist: 0.7, vignette: 0.9, sunIntensity: 1.0, warm: 0.04 }
   };
   function warmer(c, w) { return Array.isArray(c) ? [Math.min(1.4, c[0] * (1 + w)), c[1], Math.max(0, c[2] * (1 - w))] : c; }
