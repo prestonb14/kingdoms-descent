@@ -3872,7 +3872,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.82';
+  KD.VERSION = '0.7.83';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -11896,6 +11896,141 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/data/35_tree_lanternbearer.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree;
+
+  /**
+   * The Lanternbearer's own talent tree, THE LONG VIGIL: the class-wide record (arm order, hub, tuning) and the small helpers
+   * the eight arm files use. The arms live in src/data/36_tree_lanternbearer_<armId>.js, the mutations in
+   * src/data/37_mutations_lanternbearer.js, the recommended builds in src/data/38_tree_builds_lanternbearer.js and the rules
+   * (rule notables, keystones) in src/sim/56_tree_lanternbearer.js. Design: docs/TREE_LANTERNBEARER.md. Format: docs/TREE.md.
+   * Switch: KD.config.trees.lanternbearer (src/core/00_base.js). Off = the Lanternbearer uses the Crownweb (the Chapel) as before.
+   *
+   * Arms, clockwise from the top; neighbours mix well (the generator's cross-border links join neighbours only):
+   *   glow   the lantern glow itself, planted lights (Beacon)           dawn   Ward and the parry (Ward of Dawn, Candle Shield)
+   *   mace   the battle priest's mace (Dawnbreaker Strike)              sun    Holy blasts (Sunburst, the Ultimate Second Dawn)
+   *   ray    Holy spells from afar, Marks and Burns (Guiding Light, Searing Ray)
+   *   purge  cleansing, Corruption, holy fire (Purge Corruption)       mercy  the healer (Mending Flame)
+   *   flock  the shepherd: allies, hirelings, the sanctuary (Sanctuary Circle)
+   */
+
+  /** Helpers of the arm files (data only). */
+  var LB = T.lantern = {
+    mut: function (id) { return { t: 'mutation', mut: id }; },
+    /** A rule notable whose rule is a hook of src/sim/56_tree_lanternbearer.js (`tree_lanternbearer_<id>`). */
+    rule: function (id, name, mods, spec, est) { return { t: 'notable', name: name, mods: mods, effect: 'tree_lanternbearer_' + id, spec: spec, est: est || { off: 1.02, def: 1.02 } }; },
+    /** A rule notable whose rule is one of the Chapel's hooks (src/sim/55_class_lanternbearer.js, `web_lanternbearer_<key>`). */
+    web: function (key, name, mods, spec, est) { return { t: 'notable', name: name, mods: mods, effect: 'web_lanternbearer_' + key, spec: spec, est: est || { off: 1.02, def: 1.02 } }; },
+    /** A keystone (cost 2). `effect` optional (a hook key), `extra` merged in (abil, flags, pact). */
+    key: function (name, mods, spec, effect, est, extra) {
+      var k = { t: 'keystone', name: name, mods: mods, spec: spec, est: est || { off: 1.04, def: 1.02 } };
+      if (effect) k.effect = effect;
+      if (extra) for (var f in extra) k[f] = extra[f];
+      return k;
+    },
+    pact: function (name, mods) { return { name: name, mods: mods, pact: true }; },
+    abil: function (name, mods, a, k, v) { return { name: name, mods: mods || [], abil: [{ a: a, k: k, v: v }] }; },
+    trophy: function (name, mods, boss) { return { t: 'trophy', name: name, mods: mods, req: { boss: boss } }; },
+    corrupt: function (name, mods, at) { return { t: 'corrupted', name: name, mods: mods, req: { corruption: at } }; },
+    faction: function (name, mods, id, rep) { return { t: 'faction', name: name, mods: mods, req: { faction: { id: id, rep: rep } } }; },
+    /** A stat wheel: four rim nodes and a named core; `bonus` for owning all five. */
+    ring: function (id, name, row, lane, nodes, core, bonus, extra) {
+      var c = { id: id, name: name, row: row, lane: lane, shape: 'ring', kind: 'stat', nodes: nodes, core: core, bonus: bonus };
+      if (extra) for (var f in extra) c[f] = extra[f];
+      return c;
+    },
+    /** Three mutation leaves (and one plain entrance leaf) round a named core. */
+    star: function (id, name, row, lane, entry, muts, core) {
+      return { id: id, name: name, row: row, lane: lane, shape: 'star', kind: 'mutation', nodes: [entry].concat(muts.map(LB.mut)), core: core };
+    },
+    altar: function (id, name, row, lane, nodes) {
+      return { id: id, name: name, row: row, lane: lane, shape: 'ring', kind: 'altar', nodes: nodes, core: { t: 'altar', name: name }, bonus: ['sigilPower 1.5'] };
+    },
+    keyArc: function (id, row, lane, nodes, keystone) {
+      return { id: id, name: keystone.name, row: row, lane: lane, shape: 'arc', kind: 'keystone', spokes: [0, 1], nodes: nodes, core: keystone };
+    },
+    /** Every fifth trunk node (T5, T10 .. T25) also gives TRUNK_SWING more Lantern Swing damage: the primary grows with the
+     *  points like the class's other damage (much of this tree is healing, Ward and light). */
+    TRUNK_SWING: 0.01, HUB_SWING: 0.01,
+    swingTrunk: function (tr) {
+      [4, 9, 14, 19, 24].forEach(function (i) {
+        var n = tr[i];
+        if (typeof n === 'string') n = { mods: [n] };
+        else if (Array.isArray(n)) n = { name: n[0], mods: n.slice(1) };
+        else { var c = {}; for (var k in n) c[k] = n[k]; n = c; }
+        n.abil = (n.abil || []).concat([{ a: 'lantern_swing', k: 'dmg', v: LB.TRUNK_SWING }]);
+        tr[i] = n;
+      });
+      return tr;
+    }
+  };
+
+  // ---------------------------------------------------------------------------------------------
+  // What the estimator cannot see in stats (KD.data.tree.EST; never touches gameplay). Damage parts: the share of each
+  // slotted ability in a fight and the stat keys its hits use (Lantern Swing is the primary, w 1). Skill worths start at the
+  // class's measured kit (docs/CLASSES_B.md) and are refined by tools/tree_real.js --class lanternbearer.
+  // ---------------------------------------------------------------------------------------------
+  (function () {
+    var E = T.EST, P = E.parts, S = E.skills;
+    var MELEE = ['dmg', 'dmgHoly', 'dmgMelee'], SPELL = ['dmg', 'dmgHoly', 'dmgSpell'];
+    P.lantern_swing = { w: 1, keys: MELEE, speed: 'atkSpeed' };
+    P.dawnbreaker_strike = { w: 0.5, keys: MELEE };
+    P.candle_shield = { w: 0.1, keys: MELEE };
+    P.sunburst = { w: 0.45, keys: SPELL };
+    P.guiding_light = { w: 0.4, keys: SPELL };
+    P.searing_ray = { w: 0.5, keys: SPELL.concat(['dmgDot']) };
+    P.purge_corruption = { w: 0.25, keys: SPELL };
+    P.mending_flame = { w: 0.1, keys: SPELL };
+    P.ward_of_dawn = { w: 0.05, keys: SPELL };
+    P.beacon = { w: 0.15, keys: SPELL.concat(['dmgDot']) };
+    P.sanctuary_circle = { w: 0.1, keys: SPELL.concat(['dmgDot']) };
+    P.second_dawn = { w: 0.25, keys: SPELL };
+    S.dawnbreaker_strike = { off: 0.1, def: 0.02 };
+    S.sunburst = { off: 0.09, def: 0.04 };
+    S.guiding_light = { off: 0.08, def: 0.03 };
+    S.searing_ray = { off: 0.09, def: 0 };
+    S.purge_corruption = { off: 0.05, def: 0.05 };
+    S.mending_flame = { off: 0.02, def: 0.12 };
+    S.ward_of_dawn = { off: 0.02, def: 0.12 };
+    S.beacon = { off: 0.04, def: 0.08 };
+    S.sanctuary_circle = { off: 0.03, def: 0.11 };
+    S.candle_shield = { off: 0.03, def: 0.08 };
+    S.second_dawn = { off: 0.07, def: 0.05 };
+  })();
+
+  /** A hub node: a named minor with two half-size mods and 6% more Lantern Swing damage (the primary keeps its share). */
+  function swing(name, a, b) { return { name: name, mods: [a, b], abil: [{ a: 'lantern_swing', k: 'dmg', v: LB.HUB_SWING }] }; }
+  // Version 1: the first tree (docs/TREE_LANTERNBEARER.md).
+  T.define('lanternbearer', {
+    version: 1, name: 'The Long Vigil',
+    arms: ['glow', 'dawn', 'mace', 'sun', 'ray', 'purge', 'mercy', 'flock'],
+    hub: [
+      swing('Trimmed Wick', 'glowRadius 0.75', 'hp 0.75'),          // glow
+      swing('First Light', 'ward 0.75', 'hp 0.75'),                 // dawn
+      swing('Iron Faith', 'dmgMelee 0.75', 'armor 0.75'),           // mace
+      swing('Warm Brow', 'dmgHoly 0.75', 'hp 0.75'),                // sun
+      swing('Clear Eyes', 'dmgSpell 0.75', 'resAll 0.75'),          // ray
+      swing('Clean Hands', 'cleanseHeal 0.75', 'resAll 0.75'),      // purge
+      swing('Gentle Touch', 'healPower 0.75', 'hp 0.75'),           // mercy
+      swing('Open Door', 'glowHeal 0.75', 'moveSpeed 0.75')         // flock
+    ],
+    hubBonus: ['hp 1.5', 'resAll 1'],
+    // A new tree Lanternbearer knows Lantern Swing and ONE skill where the Crownweb hero starts with two: until its third skill
+    // it hits harder and is a little tougher (the rule of the earlier trees, docs/TREE_BALANCE.md).
+    startBonus: { skills: 2, mods: ['hp*15'], text: 'While you know two skills or fewer besides Lantern Swing, you have 15% more Health.' },
+    // Balance (docs/TREE_LANTERNBEARER.md section 5).
+    tune: { off: 0.6, def: 0.46 },
+    road: ['hp 1', 'moveSpeed 1', 'resAll 1'],
+    // the owner's rule for class trees: links across the borders to the neighbouring arms only, no diagonals inside an arm
+    links: { bypass: false, rows: false, road: ['moveSpeed 1'] }
+  });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/data/35_tree_thornwarden.js
 (function (root) {
   'use strict';
@@ -17684,6 +17819,905 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/data/36_tree_lanternbearer_dawn.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, L = T.lantern;
+  var rule = L.rule, web = L.web, key = L.key, pact = L.pact, abil = L.abil, ring = L.ring, star = L.star;
+
+  /**
+   * LANTERNBEARER, arm 1 of 8: THE DAYBREAK WARD (`dawn`). Ward for you and yours, the raised lantern. Skills: Ward of Dawn
+   * (trunk, 4 points), Candle Shield (core of a row-2 wheel, 10 points). Rules: src/sim/56_tree_lanternbearer.js.
+   * Holds the bridges to mace.
+   */
+  T.arm('lanternbearer', {
+    id: 'dawn', name: 'The Daybreak Ward', focus: 'Ward for you and yours, and a lantern held up like a shield', color: '#f2e6c4', vein: 'order',
+
+    trunk: L.swingTrunk([
+      'ward 1', 'hp 1', { t: 'skill', grants: 'ward_of_dawn', abil: [{ a: 'ward_of_dawn', k: 'cd', v: -0.05 }] }, 'wardGiven 1', 'armor 1',  // T1..T5
+      'hp 1', 'resAll 1', 'ward 1', ['Morning Road', 'moveSpeed 1', 'ward 0.5'], 'hp 1',                                                     // T6..T10
+      'wardGiven 1', 'armor 1', 'hp 1', 'resAll 1', 'ward 1',                                                                                // T11..T15
+      'hp 1', 'poise 1', 'wardGiven 1', 'hp 1', 'armor 1',                                                                                   // T16..T20
+      'resAll 1', 'hp 1', 'ward 1', 'block 1', 'hp 1'                                                                                         // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Ward of Dawn, shape and essence
+      star('dawn_wod_shape', 'Ward of Dawn: shape', 1, -1, 'hp 1', ['wod_wide', 'wod_long', 'wod_cleanse'], ['Wide Blessing', 'wardGiven 1', 'hp 1']),
+      star('dawn_wod_essence', 'Ward of Dawn: essence', 1, 1, 'ward 1', ['wod_thick', 'wod_burn', 'wod_dazzle'], ['Morning Gold', 'ward 1', 'wardGiven 1']),
+
+      // ---- Row 2: Ward of Dawn, rite; Candle Shield
+      star('dawn_wod_rite', 'Ward of Dawn: rite', 2, -1, 'armor 1', ['wod_quick', 'wod_twice', 'wod_light'],
+        abil('Early Riser', ['ward 1', 'hp 1'], 'ward_of_dawn', 'cd', -0.06)),
+      ring('dawn_candle', 'The Candle Guard', 2, 1,
+        ['block 1', 'hp 1', abil('Steady Hand', ['armor 0.5'], 'candle_shield', 'cd', -0.08), 'poise 1', 'armor 1'],
+        { t: 'skill', grants: 'candle_shield', abil: [{ a: 'candle_shield', k: 'dmg', v: 0.1 }] },
+        ['armor 1.5', 'hp 1'], { kind: 'skill', spokes: [0] }),
+
+      // ---- Row 3: Candle Shield's shape and essence round two Ward wheels
+      star('dawn_cs_shape', 'Candle Shield: shape', 3, -2, 'hp 1', ['cs_wide', 'cs_long', 'cs_twice'], ['Held High', 'block 1', 'hp 1']),
+      ring('dawn_thick', 'Thick Halo', 3, -1, ['ward 1', 'hp 1', 'resAll 1', 'armor 1'], ['Halo of Brass', 'ward 2', 'resAll 1'], ['ward 1.5', 'hp 1']),
+      ring('dawn_mirror', 'Bright Mirror', 3, 1, ['ward 1', 'hp 1', 'dmgHoly 1', 'armor 1'],
+        web('mirror', 'Mirror of Dawn', ['ward 1'], 'Each hit your Ward absorbs burns the attacker for 40% of weapon damage as Holy damage.', { off: 1.04, def: 1 }),
+        ['ward 1', 'hp 1.5']),
+      star('dawn_cs_essence', 'Candle Shield: essence', 3, 2, 'armor 1', ['cs_dazzle', 'cs_heal', 'cs_burn'], ['Steady Wick', 'armor 1', 'block 1']),
+
+      // ---- Row 4
+      ring('dawn_break', 'Daybreak', 4, -2, ['ward 1', 'hp 1', 'wardGiven 1', 'resAll 1'],
+        rule('daybreak', 'Breaking Dawn', ['ward 1'], 'When your Ward breaks, a flash of light 4 m around you deals 80% of weapon damage as Holy damage, knocks enemies back and Weakens them for 4 s. At most once every 6 s.', { off: 1.02, def: 1.04 }),
+        ['wardGiven 1.5', 'hp 1']),
+      L.altar('dawn_altar_a', 'Altar of Dawn', 4, -1, ['hp 1', 'ward 1', 'armor 1']),
+      ring('dawn_gold', 'Gilded Morning', 4, 1, ['wardGiven 1', 'hp 1', 'healPower 1', 'armor 1'], ['Gilt Edge', 'wardGiven 2', 'healPower 1'], ['wardGiven 1.5', 'hp 1']),
+      star('dawn_cs_rite', 'Candle Shield: rite', 4, 2, 'hp 1', ['cs_quick', 'cs_cheap', 'cs_light'], ['Practised Guard', 'block 1', 'armor 1']),
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      ring('dawn_wall', 'Rampart', 5, -2, ['armor 1', 'hp 1', 'poise 1', 'resAll 1'], ['Bulwark of Morning', 'armor 2', 'poise 1'], ['armor 1.5', 'hp 1']),
+      ring('dawn_full', 'Full Halo', 5, -1, ['dmgTaken 1@wardFull', 'hp 1', 'ward 1', 'resAll 1'], ['Untouched', 'dmgTaken 1.5@wardFull', 'ward 1'], ['ward 1', 'hp 1.5']),
+      ring('dawn_shield', 'Shield Arm', 5, 1, ['block 1', 'hp 1', 'armor 1', 'resAll 1'], ['Turn Aside', 'block 2', 'armor 1'], ['block 1', 'hp 1.5']),
+      ring('dawn_litany', 'Quick Prayers', 5, 2, ['wardGiven 1', 'hp 1', 'cdr 1', 'resRegen 1'], ['Morning Litany', 'cdr 1.5', 'wardGiven 1.5'], ['cdr 1', 'hp 1.5']),
+
+      // ---- Row 6
+      ring('dawn_rest', 'Rest Easy', 6, -2, ['ward 1', 'hp 1', 'hpRegen 1', 'resAll 1'], ['Long Night Over', 'ward 2', 'hpRegen 1'], ['ward 1', 'hp 1.5']),
+      ring('dawn_warden', "Warden's Shell", 6, -1, ['hp 1', L.trophy('Warden Plate', ['armor 1.5', 'ward 1.5'], 'iron_warden'), 'armor 1', 'resAll 1'],
+        ['Iron Dawn', 'armor 2', 'ward 1'], ['armor 1', 'hp 1.5']),
+      ring('dawn_cult', 'Tarnished Halo', 6, 1, ['hp 1', L.corrupt('Grey Ward', ['ward 2', 'dmgHoly 1.5'], 20), 'armor 1', 'resAll 1'],
+        L.corrupt('Halo of Ash', ['dmg*2', 'ward 3', 'wardGiven 2'], 40), ['ward 1', 'hp 1.5']),
+      ring('dawn_crown', 'Crown Shields', 6, 2, ['armor 1', L.faction('Crown Shield', ['block 1.5', 'armor 1'], 'crown', 20), 'hp 1', 'resAll 1'],
+        L.faction('Royal Aegis', ['ward 2', 'armor 2'], 'crown', 60), ['armor 1', 'resAll 1.5']),
+
+      // ---- Row 7
+      { id: 'dawn_pacts', name: 'Ward Bargains', row: 7, lane: -2, shape: 'star', kind: 'special',
+        nodes: ['hp 1',
+          pact('Brittle Halo', ['wardGiven*40', 'hp*-4']),
+          pact('Heavy Shield', ['block+8', 'moveSpeed*-6']),
+          pact('Thin Gold', ['ward*25', 'armor*-15'])],
+        core: ['Signed at Dawn', 'ward 1', 'hp 1'] },
+      ring('dawn_marble', 'Sentinel Stone', 7, -1, ['hp 1', 'ward 1', 'poise 1', L.trophy('Marble Heart', ['ward 1.5', 'hp 1.5'], 'marble_sentinel')],
+        ['Stone Patience', 'ward 2', 'poise 1.5'], ['ward 1.5', 'hp 1']),
+      L.altar('dawn_altar_b', 'Altar of the Halo', 7, 1, ['hp 1', 'wardGiven 1', 'armor 1']),
+      L.keyArc('dawn_key_hollow', 7, 2, ['ward 1', 'wardGiven 1'],
+        key('The Hollow Lantern', [], 'You have 1 Health. Your Ward gains 70% of the Health you would have had, and your Lantern Glow restores your Ward instead of healing you.',
+          'tree_lanternbearer_hollow', { off: 1, def: 1.08 })),
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      ring('dawn_pale', 'Pale Gold', 8, -3, ['hp 1', 'ward 1', 'resAll 1', 'armor 1'], ['Gold on Grey', 'ward 2', 'resAll 1'], ['ward 1', 'hp 1.5']),
+      L.keyArc('dawn_key_endless', 8, -2, ['wardGiven 1', 'hp 1'],
+        key('Dawn Unending', ['wardGiven*40', 'ward*25', 'healPower*-25'], 'Your skills grant 40% more Ward and your Ward is 25% larger, but you heal 25% less.', null, { off: 1, def: 1.06 })),
+      ring('dawn_watch', 'Watchful', 8, -1, ['hp 1', 'block 1', 'armor 1', 'resAll 1'], ['Eyes Front', 'block 2', 'armor 1'], ['block 1', 'hp 1.5']),
+      ring('dawn_bell', 'Brass Bell', 8, 1, ['ward 1', 'hp 1', 'dmgHoly 1', 'resAll 1'], ['Morning Bell', 'ward 1.5', 'dmgHoly 1.5'], ['ward 1', 'hp 1.5']),
+      L.keyArc('dawn_key_vigil', 8, 2, ['armor 1', 'block 1'],
+        key('Iron Vigil', ['block+12', 'armor*30', 'moveSpeed*-10'], 'You have +12% chance to Block and 30% more Armour, but move 10% slower.', null, { off: 1, def: 1.07 })),
+      ring('dawn_relief', 'Last Watch', 8, 3, ['hp 1', 'ward 1', 'armor 1', 'hpRegen 1'], ['Relief', 'ward 1.5', 'hpRegen 1.5'], ['hp 1.5', 'armor 1'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['ward 2', 'hp 2'] },
+      { at: 35, mods: ['wardGiven 3', 'armor 2'] },
+      { at: 60, mods: ['ward 4', 'block 2', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Daybreak Ward and the Censer.
+  T.bridge('lanternbearer', { id: 'dawn_mace_inner', between: ['dawn', 'mace'], ring: 'inner', name: 'Shield and Mace', shape: 'star',
+    nodes: ['ward 1', L.mut('ls_reach'), 'dmgMelee 1', 'hp 1'],
+    core: ['Guard and Strike', 'armor 1.5', 'dmgMelee 1'], bonus: ['hp 1', 'armor 1'] });
+  T.bridge('lanternbearer', { id: 'dawn_mace_mid', between: ['dawn', 'mace'], ring: 'mid', name: 'Counterweight', shape: 'diamond',
+    nodes: ['block 1', 'hp 1', 'dmgMelee 1', 'armor 1'],
+    core: ['Swing and Turn', 'block 1.5', 'dmgMelee 1.5'], bonus: ['block 1', 'hp 1'] });
+  T.bridge('lanternbearer', { id: 'dawn_mace_outer', between: ['dawn', 'mace'], ring: 'outer', name: 'Hammer and Halo', shape: 'diamond',
+    nodes: ['ward 1', 'hp 1', 'breakPower 1', 'resAll 1'],
+    core: ['Haloed Hammer', 'ward 1.5', 'breakPower 1.5'], bonus: ['ward 1', 'hp 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_lanternbearer_flock.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, L = T.lantern;
+  var rule = L.rule, web = L.web, key = L.key, pact = L.pact, abil = L.abil, ring = L.ring, star = L.star;
+
+  /**
+   * LANTERNBEARER, arm 7 of 8: THE FLOCK (`flock`). The shepherd: allies, hirelings, minions and holy ground. Skill: Sanctuary
+   * Circle (trunk, 4 points). Rules: src/sim/56_tree_lanternbearer.js. Holds the bridges to glow.
+   */
+  T.arm('lanternbearer', {
+    id: 'flock', name: 'The Flock', focus: 'The shepherd: everyone in your light fights harder and falls later, on holy ground', color: '#b8d88a', vein: null,
+
+    trunk: L.swingTrunk([
+      'glowHeal 1', 'hp 1', { t: 'skill', grants: 'sanctuary_circle', abil: [{ a: 'sanctuary_circle', k: 'dur', v: 0.05 }] }, 'beaconPower 1', 'armor 1',  // T1..T5
+      'hp 1', 'resAll 1', 'glowRadius 1', ['Shepherd Path', 'moveSpeed 1', 'glowHeal 0.5'], 'hp 1',                                                     // T6..T10
+      'beaconPower 1', 'armor 1', 'hp 1', 'minionHp 1', 'resAll 1',                                                                                     // T11..T15
+      'hp 1', 'glowHeal 1', 'healTaken 1', 'hp 1', 'armor 1',                                                                                           // T16..T20
+      'resMax 1', 'hp 1', 'beaconPower 1', 'resAll 1', 'hp 1'                                                                                           // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Sanctuary Circle, shape and essence
+      star('flock_sanc_shape', 'Sanctuary Circle: shape', 1, -1, 'hp 1', ['sanc_wide', 'sanc_long', 'sanc_aim'], ['Wide Fold', 'beaconPower 1', 'hp 1']),
+      star('flock_sanc_essence', 'Sanctuary Circle: essence', 1, 1, 'glowHeal 1', ['sanc_holy', 'sanc_wrath', 'sanc_bulwark'], ['Chalk and Wax', 'beaconPower 1', 'armor 1']),
+
+      // ---- Row 2
+      star('flock_sanc_rite', 'Sanctuary Circle: rite', 2, -1, 'resRegen 1', ['sanc_quick', 'sanc_twice', 'sanc_light'],
+        abil('Quick Chalk', ['resRegen 1', 'hp 1'], 'sanctuary_circle', 'cd', -0.06)),
+      ring('flock_fold', 'The Sheepfold', 2, 1,
+        ['glowHeal 1', 'hp 1', abil('Wide Chalk', ['beaconPower 0.5'], 'sanctuary_circle', 'area', 0.08), 'armor 1', 'minionHp 1'],
+        web('flock', "Shepherd's Light", ['minionHp 1'], 'Hirelings, minions and other heroes in your Lantern Glow deal 8% more damage.', { off: 1.03, def: 1 }),
+        ['glowHeal 1', 'hp 1.5']),
+
+      // ---- Row 3
+      ring('flock_gathered', 'Gathered In', 3, -2, ['glowHeal 1', 'hp 1', 'minionHp 1', 'resAll 1'],
+        rule('fold', 'Into the Fold', ['glowHeal 1'], 'Hirelings, minions and other heroes in your Lantern Glow take 12% less damage.', { off: 1, def: 1.03 }),
+        ['minionHp 1', 'hp 1.5']),
+      ring('flock_crook', 'Crook', 3, -1, ['dmgMelee 1', 'hp 1', 'poise 1', 'armor 1'], ["Shepherd's Crook", 'dmgMelee 2', 'poise 1'], ['poise 1', 'hp 1.5']),
+      ring('flock_shoulder', 'Shoulder to Shoulder', 3, 1, ['dmg 1@withAllies', 'hp 1', 'healTaken 1', 'resAll 1'], ['Together', 'dmg 1.5@withAllies', 'resAll 1'], ['resAll 1', 'hp 1.5']),
+      ring('flock_posts', 'Lantern Posts', 3, 2, ['beaconPower 1', 'hp 1', 'cdr 1', 'armor 1'], ['Lit Fences', 'beaconPower 2', 'cdr 1'], ['beaconPower 1', 'hp 1.5']),
+
+      // ---- Row 4
+      ring('flock_hired', 'Hired Swords', 4, -2, ['dmgMinion 1', 'hp 1', 'minionHp 1', 'armor 1'], ['Paid in Light', 'dmgMinion 2', 'minionHp 1'], ['dmgMinion 1', 'hp 1.5']),
+      L.altar('flock_altar_a', 'Altar of the Flock', 4, -1, ['hp 1', 'glowHeal 1', 'armor 1']),
+      ring('flock_ground', 'Holy Ground', 4, 1, ['armor 1', 'hp 1', 'dmgTaken 1@still', 'resAll 1'], ['Hallowed', 'armor 2', 'dmgTaken 1@still'], ['armor 1', 'hp 1.5']),
+      ring('flock_lambs', 'Lambs', 4, 2, ['healTaken 1', 'hp 1', 'hpRegen 1', 'resAll 1'], ['Lamb of the Lantern', 'healTaken 2', 'hpRegen 1'], ['healTaken 1', 'hp 1.5']),
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      ring('flock_drover', "Drover's Road", 5, -2, ['hp 1', 'moveSpeed 1', 'glowRadius 1', 'resAll 1'], ['Moving the Herd', 'moveSpeed 1.5', 'glowRadius 1'], ['moveSpeed 1', 'hp 1.5']),
+      ring('flock_dog', 'Sheepdog', 5, -1, ['minionHp 1', 'hp 1', 'dmgMinion 1', 'armor 1'], ['Good Dog', 'minionHp 2', 'dmgMinion 1'], ['minionHp 1', 'hp 1.5']),
+      ring('flock_table', 'Common Table', 5, 1, ['glowHeal 1', 'hp 1', 'resRegen 1', 'resAll 1'], ['Bread for All', 'glowHeal 2', 'resRegen 1'], ['glowHeal 1', 'hp 1.5']),
+      ring('flock_fires', 'Watch Fires', 5, 2, ['beaconPower 1', 'hp 1', 'dmgHoly 1', 'armor 1'], ['Fires on the Hill', 'beaconPower 2', 'dmgHoly 1'], ['beaconPower 1', 'hp 1.5']),
+
+      // ---- Row 6
+      ring('flock_shearing', 'Shearing', 6, -2, ['hp 1', 'armor 1', 'hpRegen 1', 'resAll 1'], ['Thick Fleece', 'armor 2', 'hp 1'], ['armor 1', 'hp 1.5']),
+      ring('flock_orsk', "Houndmaster's Leash", 6, -1, ['hp 1', L.trophy('Orsk Leash', ['dmgMinion 1.5', 'minionHp 1.5'], 'houndmaster_orsk'), 'armor 1', 'resAll 1'],
+        ['Called to Heel', 'minionHp 2', 'hp 1'], ['minionHp 1', 'hp 1.5']),
+      ring('flock_cult', 'Wolf in the Fold', 6, 1, ['hp 1', L.corrupt('Wolf Skin', ['dmg 1.5@withAllies', 'dmgMinion 1.5'], 20), 'armor 1', 'resAll 1'],
+        L.corrupt('Black Shepherd', ['dmg*2', 'dmgMinion 2', 'glowRadius 2'], 40), ['dmgMinion 1', 'hp 1.5']),
+      ring('flock_crown', 'Crown Muster', 6, 2, ['resAll 1', L.faction('Muster Roll', ['minionHp 1.5', 'armor 1'], 'crown', 20), 'hp 1', 'armor 1'],
+        L.faction('Marshal of the Flock', ['dmgMinion 2', 'minionHp 2'], 'crown', 60), ['resAll 1', 'hp 1.5']),
+
+      // ---- Row 7
+      { id: 'flock_pacts', name: "Shepherd's Bargains", row: 7, lane: -2, shape: 'star', kind: 'special',
+        nodes: ['hp 1',
+          pact('Long Crook', ['glowRadius*25', 'armor*-10']),
+          pact('Fat Flock', ['minionHp*20', 'glowHeal*-8']),
+          pact('Open Gate', ['beaconPower*20', 'hp*-4'])],
+        core: ['Sheep Fair', 'glowHeal 1', 'hp 1'] },
+      ring('flock_valdric', "Valdric's Banner", 7, -1, ['hp 1', 'minionHp 1', 'poise 1', L.trophy('Captain Banner', ['dmgMinion 1.5', 'hp 1.5'], 'captain_valdric')],
+        ['Rallying Cry', 'dmgMinion 2', 'hp 1'], ['minionHp 1', 'hp 1.5']),
+      L.altar('flock_altar_b', 'Altar of the Fold', 7, 1, ['hp 1', 'beaconPower 1', 'glowHeal 1']),
+      L.keyArc('flock_key_shepherd', 7, 2, ['minionHp 1', 'hp 1'],
+        key('The Good Shepherd', ['dmg*-15'], 'Hirelings, minions and other heroes in your Lantern Glow deal 25% more damage and take 20% less damage. You deal 15% less damage.',
+          'tree_lanternbearer_shepherd', { off: 1.01, def: 1.03 })),
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      ring('flock_pasture', 'Far Pasture', 8, -3, ['hp 1', 'resAll 1', 'armor 1', 'moveSpeed 1'], ['High Meadow', 'resAll 2', 'hp 1'], ['resAll 1', 'hp 1.5']),
+      L.keyArc('flock_key_hands', 8, -2, ['glowHeal 1', 'hp 1'],
+        key('Many Hands', ['dmg*15@withAllies', 'glowHeal*20@withAllies', 'hp*-5'], 'While allies are near you deal 15% more damage and your Lantern Glow heals 20% more. You have 5% less Health.', null, { off: 1.03, def: 1.01 })),
+      ring('flock_bell', 'Bellwether', 8, -1, ['glowHeal 1', 'hp 1', 'armor 1', 'resAll 1'], ['Lead Sheep', 'glowHeal 2', 'armor 1'], ['glowHeal 1', 'hp 1.5']),
+      ring('flock_night', 'Night Fold', 8, 1, ['beaconPower 1', 'hp 1', 'resAll 1', 'armor 1'], ['Lantern on the Gate', 'beaconPower 2', 'hp 1'], ['beaconPower 1', 'hp 1.5']),
+      L.keyArc('flock_key_shelter', 8, 2, ['beaconPower 1', 'armor 1'],
+        key('Shelter', ['beaconPower*50', 'glowRadius*-20'], 'Your Beacon and Sanctuary Circle heal and burn 50% more, but your Lantern Glow reaches 20% less far.', null, { off: 1.02, def: 1.04 })),
+      ring('flock_home', 'Homecoming', 8, 3, ['hp 1', 'hpRegen 1', 'resAll 1', 'armor 1'], ['Home by Dark', 'hpRegen 2', 'hp 1'], ['hp 1.5', 'armor 1'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['glowHeal 2', 'hp 2'] },
+      { at: 35, mods: ['beaconPower 3', 'minionHp 2'] },
+      { at: 60, mods: ['glowHeal 3', 'dmgMinion 3', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Flock and the Honest Light (the last arm closes the circle).
+  T.bridge('lanternbearer', { id: 'flock_glow_inner', between: ['flock', 'glow'], ring: 'inner', name: 'Gather Round', shape: 'star',
+    nodes: ['glowHeal 1', L.mut('ls_heavy'), 'glowRadius 1', 'hp 1'],
+    core: ['Round the Lantern', 'glowHeal 1.5', 'glowRadius 1'], bonus: ['hp 1', 'resAll 1'] });
+  T.bridge('lanternbearer', { id: 'flock_glow_mid', between: ['flock', 'glow'], ring: 'mid', name: 'Lamp for the Lost', shape: 'diamond',
+    nodes: ['glowRadius 1', 'hp 1', 'beaconPower 1', 'armor 1'],
+    core: ['Lost and Found', 'glowRadius 1.5', 'beaconPower 1'], bonus: ['hp 1', 'armor 1'] });
+  T.bridge('lanternbearer', { id: 'flock_glow_outer', between: ['flock', 'glow'], ring: 'outer', name: 'Long Night Watch', shape: 'diamond',
+    nodes: ['glowHeal 1', 'hp 1', 'minionHp 1', 'resAll 1'],
+    core: ['Keep the Watch', 'glowHeal 1.5', 'minionHp 1.5'], bonus: ['hp 1.5', 'resAll 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_lanternbearer_glow.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, L = T.lantern;
+  var rule = L.rule, web = L.web, key = L.key, pact = L.pact, abil = L.abil, ring = L.ring, star = L.star;
+
+  /**
+   * LANTERNBEARER, arm 0 of 8: THE HONEST LIGHT (`glow`). The lantern glow itself and the planted lights. Skill: Beacon
+   * (trunk, 4 points). Design: docs/TREE_LANTERNBEARER.md. Rules: src/sim/56_tree_lanternbearer.js. Holds the bridges to dawn.
+   */
+  T.arm('lanternbearer', {
+    id: 'glow', name: 'The Honest Light', focus: 'The lantern glow: wider, warmer, brighter, and in the end a light that burns', color: '#ffd86b', vein: 'order',
+
+    trunk: L.swingTrunk([
+      'glowRadius 1', 'hp 1', { t: 'skill', grants: 'beacon', abil: [{ a: 'beacon', k: 'area', v: 0.05 }] }, 'glowHeal 1', 'armor 1',      // T1..T5
+      'hp 1', 'glowWeaken 1', 'healPower 1', ["Lamplighter's Road", 'moveSpeed 1', 'glowRadius 0.5'], 'hp 1',                               // T6..T10
+      'glowRadius 1', 'resAll 1', 'hp 1', 'beaconPower 1', 'armor 1',                                                                       // T11..T15
+      'hp 1', 'glowHeal 1', 'dmgGlow 1', 'hp 1', 'glowWeaken 1',                                                                            // T16..T20
+      'resMax 1', 'hp 1', 'glowRadius 1', 'resAll 1', 'hp 1'                                                                                // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Beacon, shape and essence
+      star('glow_beacon_shape', 'Beacon: shape', 1, -1, 'hp 1', ['beacon_wide', 'beacon_long', 'beacon_far'], ['Tall Post', 'beaconPower 1', 'hp 1']),
+      star('glow_beacon_essence', 'Beacon: essence', 1, 1, 'glowHeal 1', ['beacon_bright', 'beacon_scorch', 'beacon_dim'], ['Clear Flame', 'beaconPower 1', 'glowHeal 1']),
+
+      // ---- Row 2
+      star('glow_beacon_rite', 'Beacon: rite', 2, -1, 'resRegen 1', ['beacon_quick', 'beacon_twice', 'beacon_cheap'],
+        abil('Oiled Hinges', ['resRegen 1', 'hp 1'], 'beacon', 'cd', -0.06)),
+      ring('glow_wick', 'The Wick Room', 2, 1,
+        ['glowRadius 1', 'hp 1', abil('Long Wick', ['glowHeal 0.5'], 'beacon', 'dur', 0.1), 'armor 1', 'glowHeal 1'],
+        web('twin', 'Twin Lanterns', ['beaconPower 1'], 'Your Beacon shines with your Lantern Glow: the same radius, healing and weakening.', { off: 1.01, def: 1.03 }),
+        ['glowRadius 1', 'hp 1.5']),
+
+      // ---- Row 3
+      ring('glow_flare', 'Flare', 3, -2, ['dmgGlow 1', 'hp 1', 'glowRadius 1', 'resAll 1'],
+        rule('flare', 'Sudden Flare', ['dmgHoly 1'], 'Every 5 s your Lantern Glow flares: enemies inside take 35% of weapon damage as Holy damage.', { off: 1.04, def: 1 }),
+        ['dmgGlow 1.5', 'hp 1']),
+      ring('glow_hearth', 'Hearthside', 3, -1, ['glowHeal 1', 'hp 1', 'hpRegen 1', 'armor 1'], ['Hearthlight', 'glowHeal 2', 'hp 1'], ['glowHeal 1.5', 'hp 1']),
+      ring('glow_moth', 'Moths', 3, 1, ['glowWeaken 1', 'hp 1', 'dmgGlow 1', 'resAll 1'],
+        rule('moth', 'Moth to the Flame', ['glowWeaken 1'], 'Enemies in your Lantern Glow are Slowed by 15%.', { off: 1.01, def: 1.04 }),
+        ['glowWeaken 1.5', 'hp 1']),
+      ring('glow_shine', 'Polished Glass', 3, 2, ['glowRadius 1', 'hp 1', 'dmgHoly 1', 'moveSpeed 1'], ['Mirror Back', 'glowRadius 2', 'dmgHoly 1'], ['glowRadius 1.5', 'hp 1']),
+
+      // ---- Row 4
+      ring('glow_kindle', 'Kindling', 4, -2, ['glowHeal 1', 'hp 1', 'healTaken 1', 'resAll 1'],
+        web('kindle', 'Kindle the Faint', ['glowHeal 1'], 'Your Lantern Glow heals anyone below 35% Health three times as fast.', { off: 1, def: 1.04 }),
+        ['healTaken 1.5', 'hp 1']),
+      L.altar('glow_altar_a', 'Altar of the Wick', 4, -1, ['hp 1', 'glowRadius 1', 'dmgHoly 1']),
+      ring('glow_dazzle', 'Dazzle', 4, 1, ['glowWeaken 1', 'hp 1', 'dmgAfflicted 1', 'armor 1'], ['Glare', 'glowWeaken 2', 'dmgAfflicted 1'], ['glowWeaken 1.5', 'hp 1']),
+      ring('glow_oil', 'Lamp Oil', 4, 2, ['resRegen 1', 'hp 1', 'resMax 1', 'resAll 1'], ['Full Reservoir', 'resRegen 2', 'resMax 1'], ['resRegen 1.5', 'hp 1']),
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      ring('glow_road', 'Lamplit Road', 5, -2, ['hp 1', 'moveSpeed 1', 'glowRadius 1', 'resAll 1'], ['Night Watch', 'moveSpeed 1.5', 'glowRadius 1.5'], ['moveSpeed 1.5', 'hp 1']),
+      ring('glow_still', 'The Still Flame', 5, -1, ['glowHeal 1@still', 'hp 1', 'armor 1', 'glowWeaken 1'], ['Unwavering', 'glowHeal 2@still', 'armor 1.5'], ['armor 1.5', 'hp 1']),
+      ring('glow_scorch', 'Scorched Edge', 5, 1, ['dmgGlow 1', 'hp 1', 'critChance 1', 'resAll 1'], ['Searing Halo', 'dmgGlow 2', 'critChance 1'], ['dmgGlow 1.5', 'hp 1']),
+      ring('glow_post', 'Lamp Posts', 5, 2, ['beaconPower 1', 'hp 1', 'cdr 1', 'armor 1'], ['Lit Street', 'beaconPower 2', 'cdr 1'], ['beaconPower 1.5', 'hp 1']),
+
+      // ---- Row 6
+      ring('glow_warm', 'Warm Hands', 6, -2, ['glowHeal 1', 'hp 1', 'hpRegen 1', 'resAll 1'], ['Fireside', 'glowHeal 2', 'hpRegen 1.5'], ['glowHeal 1', 'hp 1.5']),
+      ring('glow_mill', "The Miller's Lamp", 6, -1, ['hp 1', L.trophy("Miller's Lantern", ['glowRadius 1.5', 'glowHeal 1.5'], 'millers_shade'), 'glowWeaken 1', 'armor 1'],
+        ['Ground Light', 'glowRadius 2', 'hp 1'], ['glowRadius 1', 'hp 1.5']),
+      ring('glow_cult', 'Guttering Flame', 6, 1, ['hp 1', L.corrupt('Smoky Wick', ['dmgGlow 2', 'glowWeaken 1.5'], 20), 'moveSpeed 1', 'resAll 1'],
+        L.corrupt('Black Flame Hunger', ['dmg*2', 'dmgGlow 2', 'glowRadius 2'], 40), ['dmgGlow 1', 'hp 1.5']),
+      ring('glow_order', 'The Lantern Order', 6, 2, ['glowHeal 1', L.faction('Order Wick', ['glowHeal 1.5', 'glowRadius 1'], 'lantern', 20), 'hp 1', 'armor 1'],
+        L.faction('Keeper of the Flame', ['glowHeal 2', 'glowWeaken 2'], 'lantern', 60), ['glowHeal 1', 'armor 1.5']),
+
+      // ---- Row 7
+      { id: 'glow_pacts', name: 'Lamp Bargains', row: 7, lane: -2, shape: 'star', kind: 'special',
+        nodes: ['hp 1',
+          pact('Shuttered Lantern', ['glowHeal*30', 'glowRadius*-15']),
+          pact('Wide Vigil', ['glowRadius*40', 'glowHeal*-12']),
+          pact('Hot Glass', ['dmgGlow*12', 'glowHeal*-15'])],
+        core: ['Fair Terms', 'glowRadius 1', 'hp 1'] },
+      ring('glow_treant', "The Treant's Ring", 7, -1, ['hp 1', 'glowHeal 1', 'poise 1', L.trophy('Heartwood Lamp', ['glowHeal 1.5', 'hp 1.5'], 'hollow_treant')],
+        ['Living Light', 'glowHeal 2', 'hpRegen 1.5'], ['glowHeal 1.5', 'hp 1']),
+      L.altar('glow_altar_b', 'Altar of the Lamp', 7, 1, ['hp 1', 'glowWeaken 1', 'glowHeal 1']),
+      L.keyArc('glow_key_wrath', 7, 2, ['dmgGlow 1', 'glowRadius 1'],
+        key('Lantern of Wrath', [], 'Your Lantern Glow no longer heals. Instead it burns every enemy inside it for 8% of weapon damage per second as Holy damage, multiplied by your Healing Done and your Lantern Glow Healing.',
+          'web_lanternbearer_wrath', { off: 1.08, def: 0.95 })),
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      ring('glow_far', 'Far Shine', 8, -3, ['hp 1', 'glowRadius 1', 'resAll 1', 'armor 1'], ['Seen for Miles', 'glowRadius 2', 'resAll 1.5'], ['glowRadius 1', 'hp 1.5']),
+      L.keyArc('glow_key_lighthouse', 8, -2, ['glowRadius 1', 'hp 1'],
+        key('Lighthouse', ['glowRadius*50', 'glowHeal*-20'], 'Your Lantern Glow reaches 50% farther but heals 20% less.', null, { off: 1.02, def: 1.04 })),
+      ring('glow_vigil', 'Night Vigil', 8, -1, ['hp 1', 'glowWeaken 1', 'armor 1', 'resAll 1'], ['Sleepless', 'glowWeaken 2', 'hp 1.5'], ['glowWeaken 1', 'hp 1.5']),
+      ring('glow_embers', 'Last Embers', 8, 1, ['dmgGlow 1', 'hp 1', 'dmgHoly 1', 'resAll 1'], ['Ember Crown', 'dmgGlow 2', 'dmgHoly 1'], ['dmgGlow 1.5', 'hp 1']),
+      L.keyArc('glow_key_steady', 8, 2, ['glowHeal 1', 'armor 1'],
+        key('Steady Flame', ['glowHeal*80@still', 'glowWeaken*50@still', 'moveSpeed*-6'], 'While you stand still your Lantern Glow heals 80% more and weakens 50% more. You move 6% slower.', null, { off: 1.01, def: 1.06 })),
+      ring('glow_grey', 'Grey Hour', 8, 3, ['hp 1', 'ward 1', 'glowHeal 1', 'resAll 1'], ['Before Sunrise', 'ward 2', 'glowHeal 1.5'], ['ward 1', 'hp 1.5'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['glowHeal 2', 'hp 2'] },
+      { at: 35, mods: ['glowRadius 3', 'glowWeaken 2'] },
+      { at: 60, mods: ['glowHeal 4', 'dmgGlow 3', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Honest Light and the Daybreak Ward.
+  T.bridge('lanternbearer', { id: 'glow_dawn_inner', between: ['glow', 'dawn'], ring: 'inner', name: 'Morning Wick', shape: 'star',
+    nodes: ['glowRadius 1', L.mut('ls_wide'), 'ward 1', 'hp 1'],
+    core: ['First Glimmer', 'glowHeal 1.5', 'ward 1'], bonus: ['hp 1', 'resAll 1'] });
+  T.bridge('lanternbearer', { id: 'glow_dawn_mid', between: ['glow', 'dawn'], ring: 'mid', name: 'Dawn Glow', shape: 'diamond',
+    nodes: ['glowHeal 1', 'hp 1', 'wardGiven 1', 'armor 1'],
+    core: ['Daybreak Ward', 'ward 2', 'glowWeaken 1.5@shielded'], bonus: ['ward 1.5', 'hp 1'] });
+  T.bridge('lanternbearer', { id: 'glow_dawn_outer', between: ['glow', 'dawn'], ring: 'outer', name: 'Shelter of Light', shape: 'diamond',
+    nodes: ['glowRadius 1', 'hp 1', 'ward 1', 'resAll 1'],
+    core: ['Lit Shelter', 'glowHeal 1.5', 'ward 1.5'], bonus: ['glowRadius 1.5', 'hp 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_lanternbearer_mace.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, L = T.lantern;
+  var rule = L.rule, web = L.web, key = L.key, pact = L.pact, abil = L.abil, ring = L.ring, star = L.star;
+
+  /**
+   * LANTERNBEARER, arm 2 of 8: THE CENSER (`mace`). The battle priest's mace: heavy blows, broken Poise, hits that heal.
+   * Skill: Dawnbreaker Strike (trunk, 4 points). Rules: src/sim/56_tree_lanternbearer.js. Holds the bridges to sun.
+   */
+  T.arm('lanternbearer', {
+    id: 'mace', name: 'The Censer', focus: 'The battle priest: heavy blows of mace and lantern, and every blow a small prayer', color: '#c7883e', vein: 'war',
+
+    trunk: L.swingTrunk([
+      'dmgMelee 1', 'hp 1', { t: 'skill', grants: 'dawnbreaker_strike', abil: [{ a: 'dawnbreaker_strike', k: 'dmg', v: 0.05 }] }, 'breakPower 1', 'armor 1',  // T1..T5
+      'hp 1', 'meleeSpeed 1', 'dmgHoly 1', ['Pilgrim Road', 'moveSpeed 1', 'poise 1'], 'hp 1',                                                                 // T6..T10
+      'dmgMelee 1', 'resAll 1', 'hp 1', 'breakPower 1', 'armor 1',                                                                                          // T11..T15
+      'hp 1', 'critChance 1', 'poise 1', 'hp 1', 'dmgBroken 1',                                                                                             // T16..T20
+      'meleeSpeed 1', 'hp 1', 'dmgMelee 1', 'resAll 1', 'hp 1'                                                                                                // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Dawnbreaker Strike, shape and essence
+      star('mace_db_shape', 'Dawnbreaker Strike: shape', 1, -1, 'hp 1', ['db_wide', 'db_line', 'db_double'], ['Long Haft', 'breakPower 1', 'hp 1']),
+      star('mace_db_essence', 'Dawnbreaker Strike: essence', 1, 1, 'dmgMelee 1', ['db_stun', 'db_burn', 'db_crush'], ['Dawn Iron', 'dmgHoly 1', 'armor 1']),
+
+      // ---- Row 2
+      star('mace_db_rite', 'Dawnbreaker Strike: rite', 2, -1, 'poise 1', ['db_quick', 'db_twice', 'db_light'],
+        abil('Ready Arm', ['atkSpeed 1', 'hp 1'], 'dawnbreaker_strike', 'cd', -0.06)),
+      ring('mace_censer', 'The Swinging Censer', 2, 1,
+        ['dmgMelee 1', 'hp 1', abil('Heavy Head', ['breakPower 0.5'], 'dawnbreaker_strike', 'dmg', 0.08), 'armor 1', 'dmgHoly 1'],
+        web('blows', 'Kindled Blows', ['dmgHoly 1'], 'Your Holy hits heal the most hurt ally in your Lantern Glow (you included) for 1% of its Health, at most once every 2 s.', { off: 1, def: 1.04 }),
+        ['dmgMelee 1', 'hp 1.5']),
+
+      // ---- Row 3
+      ring('mace_judgement', 'Judgement', 3, -2, ['dmgAfflicted 1', 'hp 1', 'dmgMelee 1', 'armor 1'],
+        rule('judgement', 'Weighed and Found Wanting', ['dmgAfflicted 1'], 'Your hits on Weakened enemies deal 15% more damage.', { off: 1.04, def: 1 }),
+        ['dmgAfflicted 1.5', 'hp 1']),
+      ring('mace_pilgrim', 'Pilgrim Mace', 3, -1, ['meleeSpeed 1', 'hp 1', abil('Swing Through', ['poise 0.5'], 'lantern_swing', 'dmg', 0.05), 'resAll 1'],
+        ['Rhythm of Prayer', 'meleeSpeed 2', 'dmgMelee 1'], ['meleeSpeed 1.5', 'hp 1']),
+      ring('mace_toll', 'Toll', 3, 1, ['resRegen 1', 'hp 1', 'dmgHoly 1', 'armor 1'],
+        rule('toll', 'Tolling Bell', ['resRegen 1'], 'Each Lantern Swing that hits restores 3 Light.', { off: 1.02, def: 1.01 }),
+        ['resRegen 1.5', 'hp 1']),
+      ring('mace_crush', 'Crushing Faith', 3, 2, ['breakPower 1', 'hp 1', 'dmgBroken 1', 'resAll 1'], ['Bonebreaker', 'breakPower 2', 'dmgBroken 1'], ['breakPower 1.5', 'hp 1']),
+
+      // ---- Row 4
+      ring('mace_hymn', 'Battle Hymn', 4, -2, ['dmgMelee 1', 'hp 1', 'lifesteal 1', 'armor 1'], ['Hymn of Iron', 'lifesteal 1.5', 'dmgMelee 1'], ['lifesteal 1', 'hp 1.5']),
+      L.altar('mace_altar_a', 'Altar of the Mace', 4, -1, ['hp 1', 'dmgMelee 1', 'armor 1']),
+      ring('mace_heavy', 'Heavy Hand', 4, 1, ['poise 1', 'hp 1', 'breakPower 1', 'armor 1'], ['Unmoved', 'poise 2', 'armor 1'], ['poise 1.5', 'hp 1']),
+      ring('mace_chain', 'Chain and Censer', 4, 2, ['aoe 1', 'hp 1', 'dmgHoly 1', 'resAll 1'], ['Wide Arc', 'aoe 2', 'dmgHoly 1'], ['aoe 1.5', 'hp 1']),
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      ring('mace_warrior', 'Holy Warrior', 5, -2, ['critChance 1', 'hp 1', 'armor 1', 'resAll 1'], ['Righteous Aim', 'critChance 2', 'critMult 1'], ['critChance 1', 'hp 1.5']),
+      ring('mace_duel', 'Duel at Dawn', 5, -1, ['dmg 1@duel', 'hp 1', 'poise 1', 'armor 1'], ['Single Combat', 'dmg 1.5@duel', 'armor 1.5'], ['armor 1.5', 'hp 1']),
+      ring('mace_crusade', 'Crusade', 5, 1, ['dmgElite 1', 'hp 1', 'dmgMelee 1', 'resAll 1'], ['Against the Strong', 'dmgElite 2', 'dmgBoss 1'], ['dmgElite 1.5', 'hp 1']),
+      ring('mace_iron', 'Iron Pilgrim', 5, 2, ['armor 1', 'hp 1', 'moveSpeed 1', 'resAll 1'], ['Long March', 'armor 2', 'moveSpeed 1'], ['armor 1.5', 'hp 1']),
+
+      // ---- Row 6
+      ring('mace_habit', 'Bloodied Habit', 6, -2, ['hp 1', 'lifesteal 1', 'resOnHit 1', 'armor 1'], ['Red Cassock', 'lifesteal 1.5', 'resOnHit 1.5'], ['resOnHit 1', 'hp 1.5']),
+      ring('mace_drog', "Drog's Fall", 6, -1, ['hp 1', L.trophy("Drog's Knuckle", ['dmgMelee 1.5', 'breakPower 1.5'], 'warlord_drog'), 'armor 1', 'poise 1'],
+        ['Felled Warlord', 'dmgMelee 2', 'hp 1'], ['dmgMelee 1', 'hp 1.5']),
+      ring('mace_cult', 'Iron Fever', 6, 1, ['hp 1', L.corrupt('Rusted Faith', ['dmgMelee 2', 'atkSpeed 1.5'], 20), 'armor 1', 'resAll 1'],
+        L.corrupt('Mace of Ruin', ['dmg*2', 'breakPower 3', 'dmgMelee 2'], 40), ['dmgMelee 1', 'hp 1.5']),
+      ring('mace_crown', "The King's Mace", 6, 2, ['armor 1', L.faction('Crown Mace', ['dmgMelee 1.5', 'armor 1'], 'crown', 20), 'hp 1', 'resAll 1'],
+        L.faction("King's Champion", ['dmgElite 2', 'armor 2'], 'crown', 60), ['armor 1', 'resAll 1.5']),
+
+      // ---- Row 7
+      { id: 'mace_pacts', name: 'Mace Bargains', row: 7, lane: -2, shape: 'star', kind: 'special',
+        nodes: ['hp 1',
+          pact('Heavy Swing', ['dmgMelee*12', 'atkSpeed*-8']),
+          pact('Light Grip', ['meleeSpeed*15', 'dmgMelee*-9']),
+          pact('Holy Fury', ['dmgHoly*10', 'armor*-12'])],
+        core: ['Hard Bargain', 'dmgMelee 1', 'hp 1'] },
+      ring('mace_headsman', "Executioner's Block", 7, -1, ['hp 1', 'dmgMelee 1', 'poise 1', L.trophy("Headsman's Hood", ['dmgMelee 1.5', 'hp 1.5'], 'executioner')],
+        ['Final Blow', 'dmgExecute 2', 'hp 1'], ['dmgMelee 1.5', 'hp 1']),
+      L.altar('mace_altar_b', 'Altar of Iron', 7, 1, ['hp 1', 'breakPower 1', 'armor 1']),
+      L.keyArc('mace_key_vow', 7, 2, ['dmgMelee 1', 'armor 1'],
+        key("Crusader's Vow", ['healTaken*-30'], 'Your heavy hits heal you for 4% of your Health. Healing from everything else is 30% weaker on you.',
+          'tree_lanternbearer_crusade', { off: 1.02, def: 1.04 })),
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      ring('mace_rest', "Pilgrim's Rest", 8, -3, ['hp 1', 'armor 1', 'resAll 1', 'hpRegen 1'], ['Wayside Shrine', 'hp 2', 'hpRegen 1'], ['hp 1.5', 'armor 1']),
+      L.keyArc('mace_key_hammer', 8, -2, ['dmgMelee 1', 'hp 1'],
+        key('Hammer of the Faith', ['dmgMelee*20', 'dmgSpell*-20'], 'Your melee hits deal 20% more damage, but your spells deal 20% less.', null, { off: 1.05, def: 1 })),
+      ring('mace_tower', 'Bell Tower', 8, -1, ['hp 1', 'dmgHoly 1', 'armor 1', 'resAll 1'], ['Great Bell', 'dmgHoly 2', 'poise 1'], ['dmgHoly 1', 'hp 1.5']),
+      ring('mace_rites', 'Last Rites', 8, 1, ['dmgExecute 1', 'hp 1', 'dmgMelee 1', 'armor 1'], ['Mercy Stroke', 'dmgExecute 2', 'hp 1'], ['dmgExecute 1', 'hp 1.5']),
+      L.keyArc('mace_key_zeal', 8, 2, ['atkSpeed 1', 'armor 1'],
+        key("Zealot's Pace", ['atkSpeed*10', 'resRegen*-20'], 'You attack and cast 10% faster, but Light returns 20% slower.', null, { off: 1.05, def: 1 })),
+      ring('mace_abbot', 'Grim Abbot', 8, 3, ['hp 1', 'armor 1', 'dmgMelee 1', 'resAll 1'], ["Abbot's Iron", 'armor 2', 'dmgMelee 1'], ['armor 1', 'hp 1.5'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['dmgMelee 2', 'hp 2'] },
+      { at: 35, mods: ['breakPower 3', 'armor 2'] },
+      { at: 60, mods: ['dmgMelee 3', 'meleeSpeed 2', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Censer and the High Sun.
+  T.bridge('lanternbearer', { id: 'mace_sun_inner', between: ['mace', 'sun'], ring: 'inner', name: 'Sun-Forged', shape: 'star',
+    nodes: ['dmgMelee 1', L.mut('ls_ember'), 'dmgHoly 1', 'hp 1'],
+    core: ['Forged at Noon', 'dmgHoly 1.5', 'armor 1'], bonus: ['hp 1', 'resAll 1'] });
+  T.bridge('lanternbearer', { id: 'mace_sun_mid', between: ['mace', 'sun'], ring: 'mid', name: 'Shining Blow', shape: 'diamond',
+    nodes: ['dmgHoly 1', 'hp 1', 'aoe 1', 'armor 1'],
+    core: ['Blow of Light', 'dmgHoly 1.5', 'aoe 1.5'], bonus: ['hp 1', 'armor 1'] });
+  T.bridge('lanternbearer', { id: 'mace_sun_outer', between: ['mace', 'sun'], ring: 'outer', name: 'Noonday Hammer', shape: 'diamond',
+    nodes: ['breakPower 1', 'hp 1', 'dmgHoly 1', 'resAll 1'],
+    core: ['Hammer at Noon', 'breakPower 1.5', 'dmgHoly 1.5'], bonus: ['hp 1.5', 'armor 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_lanternbearer_mercy.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, L = T.lantern;
+  var rule = L.rule, web = L.web, key = L.key, pact = L.pact, abil = L.abil, ring = L.ring, star = L.star;
+
+  /**
+   * LANTERNBEARER, arm 6 of 8: THE MERCY SEAT (`mercy`). The healer: big heals, heals that spill into Ward, heals that burn.
+   * Skill: Mending Flame (trunk, 4 points). Rules: src/sim/56_tree_lanternbearer.js. Holds the bridges to flock.
+   */
+  T.arm('lanternbearer', {
+    id: 'mercy', name: 'The Mercy Seat', focus: 'The healer: heals that land when they matter, spill into Ward, and burn whoever caused the wound', color: '#e89a9a', vein: null,
+
+    trunk: L.swingTrunk([
+      'healPower 1', 'hp 1', { t: 'skill', grants: 'mending_flame', abil: [{ a: 'mending_flame', k: 'cd', v: -0.05 }] }, 'healTaken 1', 'armor 1',  // T1..T5
+      'hp 1', 'resAll 1', 'healPower 1', ['Mercy Lane', 'moveSpeed 1', 'healTaken 0.5'], 'hp 1',                                                    // T6..T10
+      'hpRegen 1', 'armor 1', 'hp 1', 'healPower 1', 'resAll 1',                                                                                   // T11..T15
+      'hp 1', 'resRegen 1', 'healTaken 1', 'hp 1', 'cdr 1',                                                                                        // T16..T20
+      'resMax 1', 'hp 1', 'healPower 1', 'resAll 1', 'hp 1'                                                                                        // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Mending Flame, shape and essence
+      star('mercy_mend_shape', 'Mending Flame: shape', 1, -1, 'hp 1', ['mend_two', 'mend_far', 'mend_wide'], ['Reaching Hand', 'healPower 1', 'hp 1']),
+      star('mercy_mend_essence', 'Mending Flame: essence', 1, 1, 'healPower 1', ['mend_strong', 'mend_slow', 'mend_burn'], ['Warm Salve', 'healPower 1', 'armor 1']),
+
+      // ---- Row 2
+      star('mercy_mend_rite', 'Mending Flame: rite', 2, -1, 'resRegen 1', ['mend_quick', 'mend_cheap', 'mend_twice'],
+        abil('Practised Mender', ['resRegen 1', 'hp 1'], 'mending_flame', 'cd', -0.06)),
+      ring('mercy_infirmary', 'The Infirmary', 2, 1,
+        ['healPower 1', 'hp 1', abil('Gentle Flame', ['healTaken 0.5'], 'mending_flame', 'cost', -0.1), 'armor 1', 'healTaken 1'],
+        web('overflow', 'Overflowing Light', ['healPower 1'], 'When one of your instant heals goes beyond full Health, 50% of the excess becomes Ward on the healed ally for 6 s.', { off: 1, def: 1.04 }),
+        ['healPower 1', 'hp 1.5']),
+
+      // ---- Row 3
+      ring('mercy_searing', 'Searing Mercy', 3, -2, ['healPower 1', 'hp 1', 'dmgHoly 1', 'resAll 1'],
+        web('mercy', 'Mercy That Burns', ['dmgHoly 1'], 'Your instant heals also burn the enemy nearest the healed ally (within 6 m) for 35% of the heal as Holy damage, even at full Health. A heal counts for at most 30% of your Health.', { off: 1.04, def: 1 }),
+        ['dmgHoly 1', 'hp 1.5']),
+      ring('mercy_bedside', 'Bedside', 3, -1, ['hpRegen 1', 'hp 1', 'healTaken 1', 'armor 1'], ['Night Nurse', 'hpRegen 2', 'healTaken 1'], ['hpRegen 1', 'hp 1.5']),
+      ring('mercy_vigil', 'The Vigil', 3, 1, ['healPower 1', 'hp 1', 'resAll 1', 'armor 1'],
+        rule('vigil', 'Watchful Vigil', ['healPower 1'], 'When you or an ally in your Lantern Glow falls below 35% Health, they heal 8% of their Health at once. Once every 12 s for each of them.', { off: 1, def: 1.05 }),
+        ['healPower 1', 'hp 1.5']),
+      ring('mercy_afterglow', 'Afterglow', 3, 2, ['healPower 1', 'hp 1', 'atkSpeed 1', 'resAll 1'],
+        rule('afterglow', 'Warm Afterglow', ['healPower 1'], 'Your instant heals give the healed ally 10% more damage for 4 s.', { off: 1.03, def: 1 }),
+        ['atkSpeed 1', 'hp 1.5']),
+
+      // ---- Row 4
+      ring('mercy_dressing', 'Field Dressing', 4, -2, ['healTaken 1', 'hp 1', 'armor 1', 'resAll 1'], ['Clean Linen', 'healTaken 2', 'armor 1'], ['healTaken 1', 'hp 1.5']),
+      L.altar('mercy_altar_a', 'Altar of Mercy', 4, -1, ['hp 1', 'healPower 1', 'resAll 1']),
+      ring('mercy_blood', 'Lifeblood', 4, 1, ['lifesteal 1', 'hp 1', 'healPower 1', 'armor 1'], ['Shared Blood', 'lifesteal 1.5', 'healPower 1'], ['lifesteal 1', 'hp 1.5']),
+      ring('mercy_wind', 'Second Wind', 4, 2, ['dmgTaken 1@lowLife', 'hp 1', 'hpRegen 1', 'resAll 1'], ['Not Yet', 'dmgTaken 1.5@lowLife', 'hpRegen 1'], ['hpRegen 1', 'hp 1.5']),
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      ring('mercy_road', 'House Calls', 5, -2, ['hp 1', 'moveSpeed 1', 'healPower 1', 'resAll 1'], ['On the Way', 'moveSpeed 1.5', 'healPower 1'], ['moveSpeed 1', 'hp 1.5']),
+      ring('mercy_hands', 'Steady Hands', 5, -1, ['cdr 1', 'hp 1', 'healPower 1', 'armor 1'], ['Calm Surgeon', 'cdr 2', 'healPower 1'], ['cdr 1', 'hp 1.5']),
+      ring('mercy_kind', 'Kind Fire', 5, 1, ['dmgHoly 1', 'hp 1', 'healPower 1', 'resAll 1'], ['Burning Kindness', 'dmgHoly 2', 'healPower 1'], ['dmgHoly 1', 'hp 1.5']),
+      ring('mercy_oil', 'Spare Oil', 5, 2, ['resRegen 1', 'hp 1', 'resMax 1', 'armor 1'], ['Never Runs Dry', 'resRegen 2', 'resMax 1'], ['resRegen 1', 'hp 1.5']),
+
+      // ---- Row 6
+      ring('mercy_herbs', 'Herb Garden', 6, -2, ['hp 1', 'hpRegen 1', 'potionPower 1', 'resAll 1'], ['Feverfew', 'potionPower 2', 'hpRegen 1'], ['potionPower 1', 'hp 1.5']),
+      ring('mercy_bog', "Bog Mother's Herbs", 6, -1, ['hp 1', L.trophy('Bog Balm', ['healPower 1.5', 'hpRegen 1.5'], 'bog_mother'), 'armor 1', 'resAll 1'],
+        ['Swamp Remedy', 'healPower 2', 'hp 1'], ['healPower 1', 'hp 1.5']),
+      ring('mercy_cult', 'Bitter Medicine', 6, 1, ['hp 1', L.corrupt('Dark Tonic', ['healPower 2', 'dmgHoly 1.5'], 20), 'armor 1', 'resAll 1'],
+        L.corrupt('Grave Physic', ['dmg*2', 'healPower 3', 'lifesteal 1.5'], 40), ['healPower 1', 'hp 1.5']),
+      ring('mercy_order', 'Healers of the Order', 6, 2, ['resAll 1', L.faction('Order Healer', ['healPower 1.5', 'healTaken 1'], 'lantern', 20), 'hp 1', 'armor 1'],
+        L.faction('Mother of the Order', ['healPower 2', 'glowHeal 2'], 'lantern', 60), ['resAll 1', 'hp 1.5']),
+
+      // ---- Row 7
+      { id: 'mercy_pacts', name: "Healer's Bargains", row: 7, lane: -2, shape: 'star', kind: 'special',
+        nodes: ['hp 1',
+          pact('Thin Blood', ['healPower*15', 'hp*-5']),
+          pact('Hard Patient', ['healTaken*20', 'healPower*-8']),
+          pact('Hot Hands', ['dmgHoly*8', 'healPower*-8'])],
+        core: ['Fee Paid', 'healPower 1', 'hp 1'] },
+      ring('mercy_leech', "Leech Queen's Jar", 7, -1, ['hp 1', 'healTaken 1', 'poise 1', L.trophy('Leech Jar', ['lifesteal 1.5', 'hp 1.5'], 'leech_queen')],
+        ['Old Remedy', 'lifesteal 1.5', 'hp 1'], ['healTaken 1', 'hp 1.5']),
+      L.altar('mercy_altar_b', 'Altar of the Seat', 7, 1, ['hp 1', 'healTaken 1', 'healPower 1']),
+      L.keyArc('mercy_key_last', 7, 2, ['hp 1', 'healTaken 1'],
+        key('Last Lantern', ['hp*-10'], 'Once per area, a hit that would kill you leaves you at 1 Health instead, makes you immune to damage for 3 s and heals 40% of your Health over those 3 s. You have 10% less Health.',
+          'web_last_lantern', { off: 1, def: 1.08 })),
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      ring('mercy_hospice', 'Hospice', 8, -3, ['hp 1', 'resAll 1', 'armor 1', 'hpRegen 1'], ['Last Comfort', 'hp 2', 'resAll 1'], ['hp 1.5', 'resAll 1']),
+      L.keyArc('mercy_key_martyr', 8, -2, ['healPower 1', 'hp 1'],
+        key("The Martyr's Lamp", ['healPower*40', 'dmgTaken*12'], 'Your healing is 40% stronger, but you take 12% more damage.', null, { off: 1, def: 1.04 })),
+      ring('mercy_hands_on', 'Laying On of Hands', 8, -1, ['healPower 1', 'hp 1', 'armor 1', 'resAll 1'], ['Healing Touch', 'healPower 2', 'hp 1'], ['healPower 1', 'hp 1.5']),
+      ring('mercy_charity', 'Burning Charity', 8, 1, ['dmgHoly 1', 'hp 1', 'healTaken 1', 'armor 1'], ['Alms of Fire', 'dmgHoly 2', 'healTaken 1'], ['dmgHoly 1', 'hp 1.5']),
+      L.keyArc('mercy_key_heart', 8, 2, ['healTaken 1', 'armor 1'],
+        key('Bleeding Heart', ['healPower*50@lowLife', 'healTaken*30@lowLife', 'hp*-8'], 'While you are below 35% Health your healing is 50% stronger and heals on you are 30% stronger. You have 8% less Health.', null, { off: 1, def: 1.05 })),
+      ring('mercy_rounds', 'Dawn Rounds', 8, 3, ['hp 1', 'hpRegen 1', 'resAll 1', 'armor 1'], ['Morning Rounds', 'hpRegen 2', 'hp 1'], ['hp 1.5', 'armor 1'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['healPower 2', 'hp 2'] },
+      { at: 35, mods: ['healTaken 3', 'hpRegen 2'] },
+      { at: 60, mods: ['healPower 4', 'resAll 2', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Mercy Seat and the Flock.
+  T.bridge('lanternbearer', { id: 'mercy_flock_inner', between: ['mercy', 'flock'], ring: 'inner', name: 'Heal the Flock', shape: 'star',
+    nodes: ['healPower 1', L.mut('ls_double'), 'glowHeal 1', 'hp 1'],
+    core: ['Many Patients', 'glowHeal 1.5', 'healPower 1'], bonus: ['hp 1', 'resAll 1'] });
+  T.bridge('lanternbearer', { id: 'mercy_flock_mid', between: ['mercy', 'flock'], ring: 'mid', name: 'Shared Comfort', shape: 'diamond',
+    nodes: ['healPower 1', 'hp 1', 'glowHeal 1', 'armor 1'],
+    core: ['Comfort for All', 'healTaken 1.5', 'glowHeal 1'], bonus: ['hp 1', 'armor 1'] });
+  T.bridge('lanternbearer', { id: 'mercy_flock_outer', between: ['mercy', 'flock'], ring: 'outer', name: 'Field Hospital', shape: 'diamond',
+    nodes: ['healTaken 1', 'hp 1', 'beaconPower 1', 'resAll 1'],
+    core: ['Tents of Light', 'beaconPower 1.5', 'healTaken 1.5'], bonus: ['hp 1.5', 'resAll 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_lanternbearer_purge.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, L = T.lantern;
+  var rule = L.rule, web = L.web, key = L.key, pact = L.pact, abil = L.abil, ring = L.ring, star = L.star;
+
+  /**
+   * LANTERNBEARER, arm 5 of 8: THE PURIFIER (`purge`). Cleansing, Corruption kept at bay (or embraced), holy fire.
+   * Skill: Purge Corruption (trunk, 4 points). Rules: src/sim/56_tree_lanternbearer.js. Holds the bridges to mercy.
+   */
+  T.arm('lanternbearer', {
+    id: 'purge', name: 'The Purifier', focus: 'Burn out what does not belong: harmful effects, Corruption, and the things that carry it', color: '#8fd0c8', vein: 'plague',
+
+    trunk: L.swingTrunk([
+      'cleanseHeal 1', 'hp 1', { t: 'skill', grants: 'purge_corruption', abil: [{ a: 'purge_corruption', k: 'cd', v: -0.05 }] }, 'resAll 1', 'armor 1',  // T1..T5
+      'hp 1', 'corruptionGain 1', 'dmgHoly 1', ['Penitent Road', 'moveSpeed 1', 'resAll 0.5'], 'hp 1',                                                   // T6..T10
+      'cleanseHeal 1', 'armor 1', 'hp 1', 'dmgAfflicted 1', 'resAll 1',                                                                                 // T11..T15
+      'hp 1', 'aoe 1', 'corruptionGain 1', 'hp 1', 'resRegen 1',                                                                                        // T16..T20
+      'resMax 1', 'hp 1', 'cleanseHeal 1', 'resAll 1', 'hp 1'                                                                                           // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Purge Corruption, shape and essence
+      star('purge_pc_shape', 'Purge Corruption: shape', 1, -1, 'hp 1', ['purge_wide', 'purge_close', 'purge_aim'], ['Wide Rite', 'aoe 1', 'hp 1']),
+      star('purge_pc_essence', 'Purge Corruption: essence', 1, 1, 'resAll 1', ['purge_fire', 'purge_stun', 'purge_weaken'], ['Holy Fire', 'dmgHoly 1', 'resAll 1']),
+
+      // ---- Row 2
+      star('purge_pc_rite', 'Purge Corruption: rite', 2, -1, 'resRegen 1', ['purge_quick', 'purge_cheap', 'purge_mend'],
+        abil('Short Litany', ['resRegen 1', 'hp 1'], 'purge_corruption', 'cd', -0.06)),
+      ring('purge_font', 'The Font', 2, 1,
+        ['cleanseHeal 1', 'hp 1', abil('Deep Rite', ['resAll 0.5'], 'purge_corruption', 'dmg', 0.08), 'armor 1', 'resAll 1'],
+        web('purge', 'Purging Fire', ['dmgHoly 1'], 'Each harmful effect you cleanse scorches enemies within 4 m of the cleansed ally for 80% of weapon damage as Holy damage.', { off: 1.03, def: 1.01 }),
+        ['cleanseHeal 1', 'hp 1.5']),
+
+      // ---- Row 3
+      ring('purge_absolve', 'Absolution', 3, -2, ['cleanseHeal 1', 'hp 1', 'resRegen 1', 'resAll 1'],
+        rule('absolve', 'Absolved', ['cleanseHeal 1'], 'Each harmful effect you cleanse restores 6 Light.', { off: 1.01, def: 1.02 }),
+        ['resRegen 1.5', 'hp 1']),
+      ring('purge_clean', 'Clean Soul', 3, -1, ['corruptionGain 1', 'hp 1', 'armor 1', 'resAll 1'], ['Pure of Heart', 'corruptionGain 2', 'hp 1.5'], ['corruptionGain 1', 'hp 1.5']),
+      ring('purge_water', 'Holy Water', 3, 1, ['resAll 1', 'hp 1', 'potionPower 1', 'armor 1'], ['Blessed Flask', 'potionPower 2', 'resAll 1'], ['resAll 1.5', 'hp 1']),
+      ring('purge_penance', 'Penance', 3, 2, ['dmgAfflicted 1', 'hp 1', 'statusDur 1', 'armor 1'], ['Hair Shirt', 'dmgAfflicted 2', 'armor 1'], ['dmgAfflicted 1', 'hp 1.5']),
+
+      // ---- Row 4
+      ring('purge_spotless', 'Spotless', 4, -2, ['dmg 1@corrupt0', 'hp 1', 'glowWeaken 1', 'resAll 1'], ['Without Stain', 'dmg 1.5@corrupt0', 'glowWeaken 2@corrupt0'], ['glowWeaken 1', 'hp 1.5']),
+      L.altar('purge_altar_a', 'Altar of Ash', 4, -1, ['hp 1', 'cleanseHeal 1', 'resAll 1']),
+      ring('purge_salt', 'Salt and Ash', 4, 1, ['resShadow 1', 'hp 1', 'resPoison 1', 'armor 1'], ['Salted Threshold', 'resShadow 2', 'resPoison 2'], ['resAll 1', 'hp 1.5']),
+      ring('purge_rites', 'Burning Rites', 4, 2, ['dmgHoly 1', 'hp 1', 'aoe 1', 'resAll 1'], ['Rite of Flame', 'dmgHoly 2', 'aoe 1'], ['dmgHoly 1', 'hp 1.5']),
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      ring('purge_way', "Pilgrim's Way", 5, -2, ['hp 1', 'moveSpeed 1', 'corruptionGain 1', 'resAll 1'], ['Clean Road', 'moveSpeed 1.5', 'corruptionGain 1'], ['moveSpeed 1', 'hp 1.5']),
+      ring('purge_mercy', 'Mercy of Fire', 5, -1, ['healPower 1@corrupt0', 'hp 1', 'cleanseHeal 1', 'armor 1'], ['Clean Hands Heal', 'healPower 2@corrupt0', 'cleanseHeal 1'], ['cleanseHeal 1', 'hp 1.5']),
+      ring('purge_bane', 'Hunter of the Hollow', 5, 1, ['dmgBoss 1', 'hp 1', 'dmgAfflicted 1', 'resAll 1'], ['Bane of the Hollow', 'dmgBoss 2', 'dmgElite 1'], ['dmgBoss 1', 'hp 1.5']),
+      ring('purge_incense', 'Smoke of Incense', 5, 2, ['statusDur 1', 'hp 1', 'resRegen 1', 'armor 1'], ['Censer Smoke', 'statusDur 2', 'resRegen 1'], ['statusDur 1', 'hp 1.5']),
+
+      // ---- Row 6
+      ring('purge_fast', 'Fasting', 6, -2, ['hp 1', 'resMax 1', 'hpRegen 1', 'resAll 1'], ['Empty Bowl', 'resMax 2', 'hpRegen 1'], ['resMax 1', 'hp 1.5']),
+      ring('purge_relic', "Plague Saint's Relic", 6, -1, ['hp 1', L.trophy('Saint Relic', ['cleanseHeal 1.5', 'resAll 1.5'], 'plague_saint'), 'armor 1', 'resAll 1'],
+        ['Relic Kept', 'cleanseHeal 2', 'hp 1'], ['cleanseHeal 1', 'hp 1.5']),
+      ring('purge_cult', 'Tempted', 6, 1, ['hp 1', L.corrupt('Taste of Rot', ['dmgHoly 2', 'dmgAfflicted 1.5'], 20), 'armor 1', 'resAll 1'],
+        L.corrupt('Fallen Purifier', ['dmg*2', 'dmgHoly 2', 'resRegen 2'], 40), ['dmgHoly 1', 'hp 1.5']),
+      ring('purge_order', 'Censers of the Order', 6, 2, ['resAll 1', L.faction('Order Censer', ['cleanseHeal 1.5', 'resAll 1'], 'lantern', 20), 'hp 1', 'armor 1'],
+        L.faction('Grand Purifier', ['cleanseHeal 2', 'dmgHoly 2'], 'lantern', 60), ['resAll 1', 'hp 1.5']),
+
+      // ---- Row 7
+      { id: 'purge_pacts', name: 'Penitent Bargains', row: 7, lane: -2, shape: 'star', kind: 'special',
+        nodes: ['hp 1',
+          pact('Hot Coals', ['dmgHoly*10', 'corruptionGain*20']),
+          pact('Long Penance', ['statusDur*25', 'resRegen*-10']),
+          pact('Ashen Mouth', ['cleanseHeal+2', 'hp*-5'])],
+        core: ['Confession', 'resAll 1', 'hp 1'] },
+      ring('purge_ombre', "Ombre's Censer", 7, -1, ['hp 1', 'cleanseHeal 1', 'poise 1', L.trophy('Black Censer', ['dmgHoly 1.5', 'hp 1.5'], 'high_priest_ombre')],
+        ['Stolen Incense', 'dmgHoly 2', 'hp 1'], ['dmgHoly 1', 'hp 1.5']),
+      L.altar('purge_altar_b', 'Altar of Salt', 7, 1, ['hp 1', 'resAll 1', 'dmgHoly 1']),
+      L.keyArc('purge_key_unstained', 7, 2, ['corruptionGain 1', 'hp 1'],
+        key('Unstained', ['dmg*20@corrupt0', 'healPower*20@corrupt0', 'corruptionGain*50'], 'While your Corruption is 0 you deal 20% more damage and heal 20% more. You gain Corruption 50% faster.', null, { off: 1.04, def: 1.03 })),
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      ring('purge_ashes', 'Ashes', 8, -3, ['hp 1', 'resAll 1', 'armor 1', 'resRegen 1'], ['Ash Cross', 'resAll 2', 'hp 1'], ['resAll 1', 'hp 1.5']),
+      L.keyArc('purge_key_penitent', 8, -2, ['dmgHoly 1', 'hp 1'],
+        key('Penitent Flame', ['dmg*25@corrupt50', 'healPower*-20'], 'While your Corruption is 50 or more you deal 25% more damage, but you heal 20% less.', null, { off: 1.04, def: 0.99 })),
+      ring('purge_test', 'Purity Test', 8, -1, ['cleanseHeal 1', 'hp 1', 'armor 1', 'resAll 1'], ['Weighed Soul', 'cleanseHeal 2', 'armor 1'], ['cleanseHeal 1', 'hp 1.5']),
+      ring('purge_pyre', 'Pyre Watch', 8, 1, ['dmgHoly 1', 'hp 1', 'dmgAfflicted 1', 'armor 1'], ['Tend the Pyre', 'dmgHoly 2', 'hp 1'], ['dmgHoly 1', 'hp 1.5']),
+      L.keyArc('purge_key_inquisitor', 8, 2, ['dmgAfflicted 1', 'armor 1'],
+        key('Inquisitor', [], 'Your hits on Weakened, Marked or Burning enemies deal 25% more damage. Your hits on any other enemy deal 15% less.',
+          'tree_lanternbearer_inquisitor', { off: 1.04, def: 1 })),
+      ring('purge_chapel', 'Quiet Chapel', 8, 3, ['hp 1', 'hpRegen 1', 'resAll 1', 'armor 1'], ['Sanctum', 'hpRegen 2', 'hp 1'], ['hp 1.5', 'armor 1'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['cleanseHeal 2', 'hp 2'] },
+      { at: 35, mods: ['resAll 3', 'corruptionGain 2'] },
+      { at: 60, mods: ['dmgHoly 3', 'cleanseHeal 2', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Purifier and the Mercy Seat.
+  T.bridge('lanternbearer', { id: 'purge_mercy_inner', between: ['purge', 'mercy'], ring: 'inner', name: 'Clean Wound', shape: 'star',
+    nodes: ['cleanseHeal 1', L.mut('ls_light'), 'healPower 1', 'hp 1'],
+    core: ['Washed Wound', 'healPower 1.5', 'resAll 1'], bonus: ['hp 1', 'resAll 1'] });
+  T.bridge('lanternbearer', { id: 'purge_mercy_mid', between: ['purge', 'mercy'], ring: 'mid', name: 'Washed and Healed', shape: 'diamond',
+    nodes: ['cleanseHeal 1', 'hp 1', 'healPower 1', 'armor 1'],
+    core: ['Rinse and Bind', 'healPower 1.5', 'cleanseHeal 1'], bonus: ['hp 1', 'armor 1'] });
+  T.bridge('lanternbearer', { id: 'purge_mercy_outer', between: ['purge', 'mercy'], ring: 'outer', name: 'Bandages and Salt', shape: 'diamond',
+    nodes: ['resAll 1', 'hp 1', 'healTaken 1', 'armor 1'],
+    core: ['Salted Linen', 'healTaken 1.5', 'resAll 1.5'], bonus: ['hp 1.5', 'resAll 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_lanternbearer_ray.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, L = T.lantern;
+  var rule = L.rule, key = L.key, pact = L.pact, abil = L.abil, ring = L.ring, star = L.star;
+
+  /**
+   * LANTERNBEARER, arm 4 of 8: THE GUIDING RAY (`ray`). Holy spells from a distance: Marks, Burns, beams. Skills: Guiding
+   * Light (trunk, 4 points), Searing Ray (core of a row-2 wheel, 10 points). Rules: src/sim/56_tree_lanternbearer.js.
+   * Holds the bridges to purge.
+   */
+  T.arm('lanternbearer', {
+    id: 'ray', name: 'The Guiding Ray', focus: 'Light thrown far: seeking motes, Marks, Burns and the open shutter', color: '#f7f0a0', vein: 'dread',
+
+    trunk: L.swingTrunk([
+      'dmgSpell 1', 'hp 1', { t: 'skill', grants: 'guiding_light', abil: [{ a: 'guiding_light', k: 'dmg', v: 0.05 }] }, 'projSpeed 1', 'resAll 1',  // T1..T5
+      'hp 1', 'critChance 1', 'dmgHoly 1', ['Star Road', 'moveSpeed 1', 'projSpeed 0.5'], 'hp 1',                                                    // T6..T10
+      'dmgSpell 1', 'armor 1', 'hp 1', 'statusChance 1', 'resAll 1',                                                                                // T11..T15
+      'hp 1', 'critMult 1', 'dmgDot 1', 'hp 1', 'cdr 1',                                                                                            // T16..T20
+      'resMax 1', 'hp 1', 'dmgSpell 1', 'resAll 1', 'hp 1'                                                                                          // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Guiding Light, shape and essence
+      star('ray_gl_shape', 'Guiding Light: shape', 1, -1, 'hp 1', ['gl_spread', 'gl_pierce', 'gl_fast'], ['Many Paths', 'projSpeed 1', 'hp 1']),
+      star('ray_gl_essence', 'Guiding Light: essence', 1, 1, 'dmgSpell 1', ['gl_burn', 'gl_strong', 'gl_longmark'], ['True Aim', 'critChance 1', 'resAll 1']),
+
+      // ---- Row 2: Guiding Light, rite; Searing Ray
+      star('ray_gl_rite', 'Guiding Light: rite', 2, -1, 'resRegen 1', ['gl_quick', 'gl_twice', 'gl_light'],
+        abil('Ready Light', ['resRegen 1', 'hp 1'], 'guiding_light', 'cd', -0.06)),
+      ring('ray_shutter', 'The Open Shutter', 2, 1,
+        ['dmgSpell 1', 'hp 1', abil('Wide Shutter', ['dmgDot 0.5'], 'searing_ray', 'area', 0.08), 'resAll 1', 'statusChance 1'],
+        { t: 'skill', grants: 'searing_ray', abil: [{ a: 'searing_ray', k: 'dmg', v: 0.1 }] },
+        ['dmgSpell 1', 'hp 1.5'], { kind: 'skill', spokes: [0] }),
+
+      // ---- Row 3: Searing Ray's shape and essence round two wheels
+      star('ray_sr_shape', 'Searing Ray: shape', 3, -2, 'hp 1', ['ray_long', 'ray_wide', 'ray_more'], ['Steady Beam', 'aoe 1', 'hp 1']),
+      ring('ray_marked', 'Marked Path', 3, -1, ['dmgAfflicted 1', 'hp 1', 'statusDur 1', 'armor 1'],
+        rule('longmark', 'Long Mark', ['statusDur 1'], 'The Marks you leave last 50% longer.', { off: 1.03, def: 1 }),
+        ['statusDur 1.5', 'hp 1']),
+      ring('ray_kindled', 'Kindled', 3, 1, ['dmgDot 1', 'hp 1', 'statusChance 1', 'resAll 1'],
+        rule('burning', 'Feed the Fire', ['dmgDot 1'], 'Your Holy hits on Burning enemies deal 15% more damage.', { off: 1.04, def: 1 }),
+        ['dmgDot 1.5', 'hp 1']),
+      star('ray_sr_essence', 'Searing Ray: essence', 3, 2, 'dmgSpell 1', ['ray_burn', 'ray_weaken', 'ray_hot'], ['Lens of Brass', 'dmgSpell 1', 'armor 1']),
+
+      // ---- Row 4
+      ring('ray_eye', "Pilgrim's Eye", 4, -2, ['critChance 1', 'hp 1', 'dmgSpell 1', 'resAll 1'], ['Keen Sight', 'critChance 2', 'critMult 1'], ['critChance 1', 'hp 1.5']),
+      L.altar('ray_altar_a', 'Altar of the Star', 4, -1, ['hp 1', 'dmgSpell 1', 'projSpeed 1']),
+      ring('ray_motes', 'Mote Keeper', 4, 1, ['resRegen 1', 'hp 1', 'resMax 1', 'armor 1'], ['Full Lamp', 'resMax 2', 'resRegen 1'], ['resRegen 1', 'hp 1.5']),
+      star('ray_sr_rite', 'Searing Ray: rite', 4, 2, 'hp 1', ['ray_quick', 'ray_cheap', 'ray_move'], ['Practised Hand', 'cdr 1', 'hp 1']),
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      ring('ray_watch', 'Far Watch', 5, -2, ['hp 1', 'moveSpeed 1', 'projSpeed 1', 'resAll 1'], ['Watchtower', 'moveSpeed 1.5', 'projSpeed 1'], ['moveSpeed 1', 'hp 1.5']),
+      ring('ray_mercy', 'Distant Mercy', 5, -1, ['healPower 1', 'hp 1', 'dmgSpell 1', 'armor 1'], ['Light at a Distance', 'healPower 2', 'dmgSpell 1'], ['healPower 1', 'hp 1.5']),
+      ring('ray_cinders', 'Cinders', 5, 1, ['dmgDot 1', 'hp 1', 'statusDur 1', 'resAll 1'], ['Slow Cinders', 'dmgDot 2', 'statusDur 1'], ['dmgDot 1', 'hp 1.5']),
+      ring('ray_hunter', "Hunter's Lamp", 5, 2, ['dmgElite 1', 'hp 1', 'critChance 1', 'armor 1'], ['Lamp in the Woods', 'dmgElite 2', 'dmgBoss 1'], ['dmgElite 1', 'hp 1.5']),
+
+      // ---- Row 6
+      ring('ray_reader', 'Night Reader', 6, -2, ['hp 1', 'resMax 1', 'cdr 1', 'resAll 1'], ['Candle at Both Ends', 'cdr 2', 'resMax 1'], ['cdr 1', 'hp 1.5']),
+      ring('ray_archive', "Archivist's Lens", 6, -1, ['hp 1', L.trophy('Archive Lens', ['dmgSpell 1.5', 'critChance 1.5'], 'ink_archivist'), 'armor 1', 'resAll 1'],
+        ['Read by Lamplight', 'dmgSpell 2', 'hp 1'], ['dmgSpell 1', 'hp 1.5']),
+      ring('ray_cult', 'Fevered Eye', 6, 1, ['hp 1', L.corrupt('Burning Pupil', ['dmgSpell 2', 'dmgDot 1.5'], 20), 'armor 1', 'resAll 1'],
+        L.corrupt('Eye of Cinders', ['dmg*2', 'dmgSpell 2', 'statusChance 2'], 40), ['dmgSpell 1', 'hp 1.5']),
+      ring('ray_order', 'Order of the Star', 6, 2, ['resAll 1', L.faction('Order Star', ['dmgSpell 1.5', 'projSpeed 1'], 'lantern', 20), 'hp 1', 'armor 1'],
+        L.faction('Lamp of the Order', ['dmgSpell 2', 'critChance 2'], 'lantern', 60), ['resAll 1', 'hp 1.5']),
+
+      // ---- Row 7
+      { id: 'ray_pacts', name: 'Light Bargains', row: 7, lane: -2, shape: 'star', kind: 'special',
+        nodes: ['hp 1',
+          pact('Hot Lens', ['dmgSpell*12', 'resMax*-12']),
+          pact('Long Fuse', ['statusDur*25', 'dmgSpell*-5']),
+          pact('Glass Eye', ['critChance+4', 'hp*-5'])],
+        core: ['Fine Print', 'dmgSpell 1', 'hp 1'] },
+      ring('ray_study', "Seln's Study", 7, -1, ['hp 1', 'dmgSpell 1', 'poise 1', L.trophy('Archmagus Quill', ['dmgSpell 1.5', 'hp 1.5'], 'archmagus_seln')],
+        ['Quill of Light', 'dmgSpell 2', 'hp 1'], ['dmgSpell 1', 'hp 1.5']),
+      L.altar('ray_altar_b', 'Altar of the Lens', 7, 1, ['hp 1', 'critChance 1', 'dmgSpell 1']),
+      L.keyArc('ray_key_far', 7, 2, ['projSpeed 1', 'dmgSpell 1'],
+        key('Far Light', [], 'Your spell hits deal up to 30% more damage the farther the enemy is: nothing within 3 m, the full 30% from 12 m. Your melee hits deal 10% less.',
+          'tree_lanternbearer_far', { off: 1.04, def: 1.02 })),
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      ring('ray_pale', 'Pale Stars', 8, -3, ['hp 1', 'resAll 1', 'dmgSpell 1', 'armor 1'], ['Starlit', 'resAll 2', 'hp 1'], ['resAll 1', 'hp 1.5']),
+      L.keyArc('ray_key_narrow', 8, -2, ['dmgSpell 1', 'hp 1'],
+        key('Narrow Beam', ['dmgSpell*20', 'aoe*-25'], 'Your spells deal 20% more damage, but your areas are 25% smaller.', null, { off: 1.05, def: 1 })),
+      ring('ray_star', 'Guiding Star', 8, -1, ['hp 1', 'moveSpeed 1', 'dmgSpell 1', 'resAll 1'], ['North Star', 'moveSpeed 1.5', 'dmgSpell 1'], ['moveSpeed 1', 'hp 1.5']),
+      ring('ray_kept', 'Embers Kept', 8, 1, ['dmgDot 1', 'hp 1', 'armor 1', 'resAll 1'], ['Banked Fire', 'dmgDot 2', 'armor 1'], ['dmgDot 1', 'hp 1.5']),
+      L.keyArc('ray_key_gaze', 8, 2, ['statusChance 1', 'armor 1'],
+        key('Burning Gaze', ['statusChance*40', 'dmgDot*25', 'hp*-8'], 'Your statuses are 40% more likely and your damage over time is 25% more, but you have 8% less Health.', null, { off: 1.05, def: 0.98 })),
+      ring('ray_window', 'Lamp in the Window', 8, 3, ['hp 1', 'hpRegen 1', 'resAll 1', 'armor 1'], ['Someone Waits', 'hpRegen 2', 'hp 1'], ['hp 1.5', 'armor 1'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['dmgSpell 2', 'hp 2'] },
+      { at: 35, mods: ['critChance 2', 'statusChance 2'] },
+      { at: 60, mods: ['dmgSpell 3', 'dmgDot 2', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Guiding Ray and the Purifier.
+  T.bridge('lanternbearer', { id: 'ray_purge_inner', between: ['ray', 'purge'], ring: 'inner', name: 'Clean Light', shape: 'star',
+    nodes: ['dmgSpell 1', L.mut('ls_quick'), 'cleanseHeal 1', 'hp 1'],
+    core: ['Washed in Light', 'resAll 1.5', 'dmgSpell 1'], bonus: ['hp 1', 'resAll 1'] });
+  T.bridge('lanternbearer', { id: 'ray_purge_mid', between: ['ray', 'purge'], ring: 'mid', name: 'Cleansing Fire', shape: 'diamond',
+    nodes: ['dmgDot 1', 'hp 1', 'cleanseHeal 1', 'armor 1'],
+    core: ['Fire That Cleans', 'dmgDot 1.5', 'cleanseHeal 1'], bonus: ['hp 1', 'armor 1'] });
+  T.bridge('lanternbearer', { id: 'ray_purge_outer', between: ['ray', 'purge'], ring: 'outer', name: 'Pyre Light', shape: 'diamond',
+    nodes: ['statusChance 1', 'hp 1', 'resAll 1', 'dmgHoly 1'],
+    core: ['Light of the Pyre', 'dmgHoly 1.5', 'resAll 1.5'], bonus: ['hp 1.5', 'resAll 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_lanternbearer_sun.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, L = T.lantern;
+  var rule = L.rule, key = L.key, pact = L.pact, abil = L.abil, ring = L.ring, star = L.star;
+
+  /**
+   * LANTERNBEARER, arm 3 of 8: THE HIGH SUN (`sun`). Holy blasts around you. Skills: Sunburst (trunk, 4 points) and the
+   * Ultimate Second Dawn (core of a row-3 wheel, 13 points). Rules: src/sim/56_tree_lanternbearer.js. Holds the bridges to ray.
+   */
+  T.arm('lanternbearer', {
+    id: 'sun', name: 'The High Sun', focus: 'Holy light that bursts out of you: wide blasts, blinded crowds, a second sunrise', color: '#ffb347', vein: 'war',
+
+    trunk: L.swingTrunk([
+      'dmgHoly 1', 'hp 1', { t: 'skill', grants: 'sunburst', abil: [{ a: 'sunburst', k: 'area', v: 0.05 }] }, 'aoe 1', 'armor 1',      // T1..T5
+      'hp 1', 'dmgSpell 1', 'resAll 1', ['Sunward Road', 'moveSpeed 1', 'dmgHoly 0.5'], 'hp 1',                                         // T6..T10
+      'aoe 1', 'armor 1', 'hp 1', 'dmgHoly 1', 'resAll 1',                                                                              // T11..T15
+      'hp 1', 'cdr 1', 'critChance 1', 'hp 1', 'glowWeaken 1',                                                                          // T16..T20
+      'resMax 1', 'hp 1', 'dmgHoly 1', 'resAll 1', 'hp 1'                                                                               // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Sunburst, shape and essence
+      star('sun_burst_shape', 'Sunburst: shape', 1, -1, 'hp 1', ['sun_wide', 'sun_close', 'sun_aim'], ['Wide Sky', 'aoe 1', 'hp 1']),
+      star('sun_burst_essence', 'Sunburst: essence', 1, 1, 'dmgHoly 1', ['sun_stun', 'sun_fire', 'sun_heavy'], ['White Heat', 'dmgHoly 1', 'armor 1']),
+
+      // ---- Row 2
+      star('sun_burst_rite', 'Sunburst: rite', 2, -1, 'resRegen 1', ['sun_quick', 'sun_twice', 'sun_heal'],
+        abil('Quick Kindling', ['cdr 1', 'hp 1'], 'sunburst', 'cd', -0.06)),
+      ring('sun_corona', 'The Corona', 2, 1,
+        ['dmgHoly 1', 'hp 1', abil('Bright Ring', ['aoe 0.5'], 'sunburst', 'area', 0.08), 'armor 1', 'aoe 1'],
+        rule('corona', 'Corona', ['dmgHoly 1'], 'After you use a skill, your next Lantern Swing within 4 s also bursts with light 3 m around the enemy it hits, for 60% of weapon damage as Holy damage.', { off: 1.04, def: 1 }),
+        ['aoe 1', 'hp 1.5']),
+
+      // ---- Row 3: the Ultimate, its rite and essence
+      star('sun_sd_rite', 'Second Dawn: rite', 3, -2, 'hp 1', ['sd_early', 'sd_twice', 'sd_pact'], ['Short Night', 'cdr 1', 'hp 1']),
+      ring('sun_spots', 'Sunspots', 3, -1, ['dmgHoly 1', 'hp 1', 'glowWeaken 1', 'resAll 1'],
+        rule('sunspot', 'Sunspots', ['dmgHoly 1'], 'Weakened enemies you kill burst with light: 50% of weapon damage as Holy damage to enemies within 3 m.', { off: 1.03, def: 1 }),
+        ['dmgHoly 1', 'hp 1.5']),
+      ring('sun_rise', 'Second Sunrise', 3, 1, ['healPower 1', 'hp 1', abil('Swift Dawn', ['resAll 1'], 'second_dawn', 'cd', -0.08), 'armor 1'],
+        { t: 'skill', grants: 'second_dawn', abil: [{ a: 'second_dawn', k: 'area', v: 0.1 }] },
+        ['healPower 1.5', 'hp 1'], { kind: 'skill', spokes: [0] }),
+      star('sun_sd_essence', 'Second Dawn: essence', 3, 2, 'dmgHoly 1', ['sd_sun', 'sd_shield', 'sd_burn'], ['Red Dawn', 'dmgHoly 1', 'hp 1']),
+
+      // ---- Row 4
+      ring('sun_noon', 'Noon', 4, -2, ['dmgHoly 1@highRes', 'hp 1', 'resMax 1', 'armor 1'], ['Noon Light', 'dmgHoly 2@highRes', 'resMax 1'], ['resMax 1.5', 'hp 1']),
+      L.altar('sun_altar_a', 'Altar of the Sun', 4, -1, ['hp 1', 'dmgHoly 1', 'aoe 1']),
+      star('sun_sd_shape', 'Second Dawn: shape', 4, 1, 'hp 1', ['sd_wide', 'sd_close', 'sd_far'], ['Daybreak Edge', 'aoe 1', 'hp 1']),
+      ring('sun_glare', 'Glare', 4, 2, ['glowWeaken 1', 'hp 1', 'statusDur 1', 'resAll 1'], ['Blinding Glare', 'glowWeaken 2', 'statusDur 1'], ['glowWeaken 1', 'hp 1.5']),
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      ring('sun_road', 'Summer Road', 5, -2, ['hp 1', 'moveSpeed 1', 'aoe 1', 'resAll 1'], ['Long Light', 'moveSpeed 1.5', 'aoe 1'], ['moveSpeed 1', 'hp 1.5']),
+      ring('sun_scorch', 'Scorching', 5, -1, ['dmgHoly 1', 'hp 1', 'critChance 1', 'armor 1'], ['Sunstroke', 'critChance 2', 'dmgHoly 1'], ['critChance 1', 'hp 1.5']),
+      ring('sun_crowd', 'Crowd of Light', 5, 1, ['dmg 1@crowded', 'hp 1', 'aoe 1', 'armor 1'], ['In the Thick', 'dmg 1.5@crowded', 'armor 1.5'], ['armor 1', 'hp 1.5']),
+      ring('sun_solstice', 'Solstice', 5, 2, ['cdr 1', 'hp 1', 'resRegen 1', 'resAll 1'], ['Longest Day', 'cdr 2', 'resRegen 1'], ['cdr 1', 'hp 1.5']),
+
+      // ---- Row 6
+      ring('sun_wind', 'Hot Wind', 6, -2, ['aoe 1', 'hp 1', 'poise 1', 'resAll 1'], ['Sirocco', 'aoe 2', 'poise 1'], ['aoe 1', 'hp 1.5']),
+      ring('sun_gale', "Matriarch's Gale", 6, -1, ['hp 1', L.trophy('Gale Feather', ['aoe 1.5', 'moveSpeed 1.5'], 'gale_matriarch'), 'armor 1', 'resAll 1'],
+        ['Wind and Sun', 'aoe 2', 'hp 1'], ['aoe 1', 'hp 1.5']),
+      ring('sun_cult', 'Black Sun', 6, 1, ['hp 1', L.corrupt('Eclipsed Eye', ['dmgHoly 2', 'critMult 1.5'], 20), 'armor 1', 'resAll 1'],
+        L.corrupt('Sun Gone Dark', ['dmg*2', 'dmgHoly 2', 'aoe 2'], 40), ['dmgHoly 1', 'hp 1.5']),
+      ring('sun_order', 'Psalms of Morning', 6, 2, ['resAll 1', L.faction('Sun Psalm', ['dmgHoly 1.5', 'aoe 1'], 'lantern', 20), 'hp 1', 'armor 1'],
+        L.faction('Herald of Morning', ['dmgHoly 2', 'cdr 2'], 'lantern', 60), ['resAll 1', 'hp 1.5']),
+
+      // ---- Row 7
+      { id: 'sun_pacts', name: 'Sun Bargains', row: 7, lane: -2, shape: 'star', kind: 'special',
+        nodes: ['hp 1',
+          pact('Burnt Hands', ['dmgHoly*12', 'hp*-5']),
+          pact('Wide Noon', ['aoe*20', 'dmgHoly*-6']),
+          pact('Short Days', ['cdr*10', 'resMax*-15'])],
+        core: ['Sunlit Terms', 'dmgHoly 1', 'hp 1'] },
+      ring('sun_stag', "The Stag's Crown", 7, -1, ['hp 1', 'dmgHoly 1', 'poise 1', L.trophy('Antler Crown', ['dmgHoly 1.5', 'hp 1.5'], 'crowned_stag')],
+        ['Crowned in Light', 'dmgHoly 2', 'hp 1'], ['dmgHoly 1', 'hp 1.5']),
+      L.altar('sun_altar_b', 'Altar of Noon', 7, 1, ['hp 1', 'aoe 1', 'dmgHoly 1']),
+      L.keyArc('sun_key_blind', 7, 2, ['critChance 1', 'dmgHoly 1'],
+        key('Blinding Sun', ['critChance+5'], '+5% Critical Chance, and your critical Holy hits Stun the enemy for 0.6 s (once every 4 s per enemy).',
+          'tree_lanternbearer_blinding', { off: 1.04, def: 1.02 })),
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      ring('sun_evening', 'Evening Sun', 8, -3, ['hp 1', 'resAll 1', 'dmgHoly 1', 'armor 1'], ['Long Shadows', 'resAll 2', 'hp 1'], ['resAll 1', 'hp 1.5']),
+      L.keyArc('sun_key_noon', 8, -2, ['dmgHoly 1', 'hp 1'],
+        key('High Noon', ['dmgHoly*20', 'glowHeal*-40'], 'You deal 20% more Holy damage, but your Lantern Glow heals 40% less.', null, { off: 1.05, def: 0.98 })),
+      ring('sun_zenith', 'Zenith', 8, -1, ['aoe 1', 'hp 1', 'dmgSpell 1', 'resAll 1'], ['Highest Point', 'dmgSpell 2', 'aoe 1'], ['aoe 1', 'hp 1.5']),
+      ring('sun_halo', 'Sun Halo', 8, 1, ['hp 1', 'ward 1', 'dmgHoly 1', 'armor 1'], ['Ring of Fire', 'ward 2', 'dmgHoly 1'], ['ward 1', 'hp 1.5']),
+      L.keyArc('sun_key_summer', 8, 2, ['cdr 1', 'armor 1'],
+        key('Long Summer', ['cdr*15', 'aoe*-15'], 'Your skills come back 15% faster, but your areas are 15% smaller.', null, { off: 1.04, def: 1.02 })),
+      ring('sun_midsummer', 'Midsummer', 8, 3, ['hp 1', 'hpRegen 1', 'resAll 1', 'armor 1'], ['Warm Nights', 'hpRegen 2', 'hp 1'], ['hp 1.5', 'armor 1'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['dmgHoly 2', 'hp 2'] },
+      { at: 35, mods: ['aoe 3', 'resAll 2'] },
+      { at: 60, mods: ['dmgHoly 3', 'cdr 2', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the High Sun and the Guiding Ray.
+  T.bridge('lanternbearer', { id: 'sun_ray_inner', between: ['sun', 'ray'], ring: 'inner', name: 'Sunbeam', shape: 'star',
+    nodes: ['dmgHoly 1', L.mut('ls_dazzle'), 'dmgSpell 1', 'hp 1'],
+    core: ['A Beam of Noon', 'dmgSpell 1.5', 'resAll 1'], bonus: ['hp 1', 'resAll 1'] });
+  T.bridge('lanternbearer', { id: 'sun_ray_mid', between: ['sun', 'ray'], ring: 'mid', name: 'Burning Sky', shape: 'diamond',
+    nodes: ['dmgSpell 1', 'hp 1', 'statusChance 1', 'armor 1'],
+    core: ['Sky on Fire', 'statusChance 1.5', 'dmgHoly 1'], bonus: ['hp 1', 'armor 1'] });
+  T.bridge('lanternbearer', { id: 'sun_ray_outer', between: ['sun', 'ray'], ring: 'outer', name: 'Falling Star', shape: 'diamond',
+    nodes: ['dmgHoly 1', 'hp 1', 'projSpeed 1', 'resAll 1'],
+    core: ['Star at Dusk', 'dmgSpell 1.5', 'projSpeed 1.5'], bonus: ['hp 1.5', 'resAll 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/data/36_tree_thornwarden_bow.js
 (function (root) {
   'use strict';
@@ -22161,6 +23195,327 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/data/37_mutations_lanternbearer.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+
+  /**
+   * LANTERNBEARER, every mutation of the Lanternbearer's own tree (docs/TREE_LANTERNBEARER.md). One record changes ONE ability
+   * in ONE slot (shape: where and how many; essence: what the hit or the light carries; rite: cost, cooldown, charges, extra
+   * effects), so two mutations of one ability never write the same field: KD.skills.mutationReport() proves it
+   * (tests/mutations.test.js, tests/tree_lanternbearer.test.js). Format: docs/SKILLS.md section 12. Pure data, no hooks.
+   * The tree nodes that hold these ids: src/data/36_tree_lanternbearer_<arm>.js (the Lantern Swing ones sit in the inner bridges).
+   * Texts quote the numbers of the records; change both together.
+   */
+  var M = [];
+  function shape(id, ability, name, text, rec) { rec.id = id; rec.ability = ability; rec.slot = 'shape'; rec.name = name; rec.text = text; M.push(rec); }
+  function essence(id, ability, name, text, rec) { rec.id = id; rec.ability = ability; rec.slot = 'essence'; rec.name = name; rec.text = text; M.push(rec); }
+  function rite(id, ability, name, text, rec) { rec.id = id; rec.ability = ability; rec.slot = 'rite'; rec.name = name; rec.text = text; M.push(rec); }
+
+  var MEL = { type: 'melee' }, AOE = { type: 'aoe' }, ZONE = { type: 'zone' }, BANNER = { type: 'banner' }, BUFF = { type: 'buff' },
+    HEAL = { type: 'heal' }, SHIELD = { type: 'shield' }, CLEANSE = { type: 'cleanse' }, PROJ = { type: 'projectile' };
+  function light(n) { return { type: 'resource', gain: n }; }
+
+  // =============================================================================================
+  // LANTERN SWING (primary). Base: 85% Holy (2.4 m, 120 degrees). One mutation in each inner bridge.
+  // =============================================================================================
+  shape('ls_wide', 'lantern_swing', 'Wide Arc', 'The swing sweeps 200 degrees, for 85% of the damage.',
+    { power: 0.85, fx: [{ find: MEL, set: { arc: 200 } }] });
+  shape('ls_reach', 'lantern_swing', 'Long Chain', 'The swing reaches 3.2 m instead of 2.4.',
+    { set: { range: 3.1, aiUse: { use: 'attack', range: 3.0 } }, fx: [{ find: MEL, set: { range: 3.2 } }] });
+  shape('ls_double', 'lantern_swing', 'Mace and Lamp', 'Two blows, mace then lantern, each for 60% of the damage.',
+    { power: 0.6, fx: [{ find: MEL, set: { hits: 2, interval: 0.12 } }] });
+
+  essence('ls_ember', 'lantern_swing', 'Ember Swing', 'The swing has a 25% chance to set enemies Burning.',
+    { fx: [{ find: MEL, set: { status: { id: 'burn', chance: 0.25 } } }] });
+  essence('ls_dazzle', 'lantern_swing', 'Dazzling Swing', 'The swing Weakens enemies for 2 s, but deals 12% less damage.',
+    { fx: [{ find: MEL, set: { mult: 0.75, status: { id: 'weaken', dur: 2 } } }] });
+  essence('ls_heavy', 'lantern_swing', 'Heavy Censer', 'The swing breaks Poise twice as hard, but deals 6% less damage.',
+    { fx: [{ find: MEL, set: { mult: 0.8, poise: 1.8 } }] });
+
+  rite('ls_quick', 'lantern_swing', 'Quick Swing', 'You swing about a quarter faster: shorter windup and recovery.',
+    { set: { windup: 0.2, recover: 0.32 } });
+  rite('ls_light', 'lantern_swing', 'Kindling Swing', 'Each Lantern Swing that hits gives 3 Light.',
+    { set: { gain: 3, gainOnHit: true } });
+
+  // =============================================================================================
+  // BEACON. Base: 18 s, 30 Light; a lantern at the aim (8 m) for 12 s, 6 m around it: allies heal 1.5% a second, enemies
+  // burn (12% a tick) and deal 10% less damage.
+  // =============================================================================================
+  shape('beacon_wide', 'beacon', 'Tall Beacon', 'The Beacon shines 8.5 m around it instead of 6.',
+    { fx: [{ find: BANNER, set: { radius: 8.5 } }] });
+  shape('beacon_long', 'beacon', 'Slow Burn', 'The Beacon burns for 18 s instead of 12.',
+    { fx: [{ find: BANNER, set: { duration: 18 } }] });
+  shape('beacon_far', 'beacon', 'Thrown Lantern', 'The Beacon can be planted up to 14 m away instead of 8.',
+    { set: { range: 14 }, fx: [{ find: BANNER, set: { range: 14 } }] });
+
+  essence('beacon_bright', 'beacon', 'Bright Beacon', 'Allies near the Beacon heal 2.5% a second instead of 1.5%, but it burns enemies for half as much.',
+    { fx: [{ find: BANNER, set: { healPct: 0.025, mult: 0.06 } }] });
+  essence('beacon_scorch', 'beacon', 'Scorching Beacon', 'The Beacon burns enemies twice as hard, but heals allies only 0.8% a second.',
+    { fx: [{ find: BANNER, set: { healPct: 0.008, mult: 0.24 } }] });
+  essence('beacon_dim', 'beacon', 'Dimming Beacon', 'Enemies near the Beacon deal 20% less damage instead of 10%.',
+    { fx: [{ find: BANNER, set: { enemyBuff: { id: 'beacon_glow', name: 'Beacon Glow', mods: [{ s: 'dmg', t: 'more', v: -0.2 }] } } }] });
+
+  rite('beacon_quick', 'beacon', 'Fast Wick', 'Cooldown 12 s instead of 18.',
+    { set: { cooldown: 12 } });
+  rite('beacon_twice', 'beacon', 'Spare Lantern', 'Beacon has 2 charges. Each takes 20 s.',
+    { set: { charges: 2, cooldown: 20 } });
+  rite('beacon_cheap', 'beacon', 'Cheap Oil', 'Beacon costs 15 Light instead of 30.',
+    { set: { cost: 15 } });
+
+  // =============================================================================================
+  // MENDING FLAME. Base: 8 s, 30 Light; the most hurt ally within 10 m heals 20% at once and 10% over 5 s; a 70% scorch 3.5 m
+  // around you.
+  // =============================================================================================
+  var INSTANT = { type: 'heal', pct: 0.2 }, HOT = { type: 'heal', hot: 5 };
+  shape('mend_two', 'mending_flame', 'Two Flames', 'Heals the two most hurt allies instead of one.',
+    { fx: [{ find: HEAL, set: { max: 2 } }] });
+  shape('mend_far', 'mending_flame', 'Far Mercy', 'Finds the most hurt ally within 18 m instead of 10.',
+    { set: { range: 18 }, fx: [{ find: HEAL, set: { radius: 18 } }] });
+  shape('mend_wide', 'mending_flame', 'Wide Scorch', 'The scorch reaches 6 m around you instead of 3.5.',
+    { fx: [{ find: AOE, set: { radius: 6 } }] });
+
+  essence('mend_strong', 'mending_flame', 'Strong Flame', 'Heals 30% at once and only 4% over 5 s.',
+    { fx: [{ find: INSTANT, set: { pct: 0.3 } }, { find: HOT, set: { pct: 0.04 } }] });
+  essence('mend_slow', 'mending_flame', 'Slow Flame', 'Heals 10% at once and 30% over 5 s.',
+    { fx: [{ find: INSTANT, set: { pct: 0.1 } }, { find: HOT, set: { pct: 0.3 } }] });
+  essence('mend_burn', 'mending_flame', 'Cauterise', 'The scorch deals 130% instead of 70% and sets enemies Burning.',
+    { fx: [{ find: AOE, set: { mult: 1.3, status: { id: 'burn', chance: 1 } } }] });
+
+  rite('mend_quick', 'mending_flame', 'Swift Mending', 'Cooldown 5.5 s instead of 8.',
+    { set: { cooldown: 5.5 } });
+  rite('mend_cheap', 'mending_flame', 'Thrifty Flame', 'Mending Flame costs 18 Light instead of 30.',
+    { set: { cost: 18 } });
+  rite('mend_twice', 'mending_flame', 'Two Wicks', 'Mending Flame has 2 charges. Each takes 10 s.',
+    { set: { charges: 2, cooldown: 10 } });
+
+  // =============================================================================================
+  // WARD OF DAWN. Base: 16 s, 35 Light; allies within 8 m gain Ward of 20% of their Health for 8 s and lose 2 harmful
+  // effects; a 60% pulse 4 m around you Weakens.
+  // =============================================================================================
+  shape('wod_wide', 'ward_of_dawn', 'Far Blessing', 'Reaches allies within 14 m instead of 8.',
+    { fx: [{ find: SHIELD, set: { radius: 14 } }, { find: CLEANSE, set: { radius: 14 } }] });
+  shape('wod_long', 'ward_of_dawn', 'Long Morning', 'The Ward lasts 14 s instead of 8.',
+    { fx: [{ find: SHIELD, set: { dur: 14 } }] });
+  shape('wod_cleanse', 'ward_of_dawn', 'Full Cleansing', 'Removes up to 4 harmful effects instead of 2.',
+    { fx: [{ find: CLEANSE, set: { count: 4 } }] });
+
+  essence('wod_thick', 'ward_of_dawn', 'Thick Ward', 'The Ward is worth 28% of Health instead of 20%, but the pulse deals 30% instead of 60%.',
+    { fx: [{ find: SHIELD, set: { pct: 0.28 } }, { find: AOE, set: { mult: 0.3 } }] });
+  essence('wod_burn', 'ward_of_dawn', 'Burning Dawn', 'The pulse also sets enemies Burning.',
+    { fx: [{ find: AOE, set: { status: [{ id: 'weaken', dur: 4 }, { id: 'burn', chance: 1 }] } }] });
+  essence('wod_dazzle', 'ward_of_dawn', 'Blinding Dawn', 'The pulse deals 110% instead of 60% and Stuns for 1 s instead of Weakening.',
+    { fx: [{ find: AOE, set: { mult: 1.1, status: { id: 'stun', dur: 1 } } }] });
+
+  rite('wod_quick', 'ward_of_dawn', 'Early Light', 'Cooldown 11 s instead of 16.',
+    { set: { cooldown: 11 } });
+  rite('wod_twice', 'ward_of_dawn', 'Two Dawns', 'Ward of Dawn has 2 charges. Each takes 18 s.',
+    { set: { charges: 2, cooldown: 18 } });
+  rite('wod_light', 'ward_of_dawn', 'Morning Oil', 'Ward of Dawn gives back 20 Light.',
+    { add: [light(20)] });
+
+  // =============================================================================================
+  // PURGE CORRUPTION. Base: 40 s, 60 Light; burns away 4 Corruption, cleanses allies within 8 m, a 220% Holy blast 6 m around you.
+  // =============================================================================================
+  shape('purge_wide', 'purge_corruption', 'Great Purge', 'The blast reaches 9 m, for 80% of the damage.',
+    { power: 0.8, fx: [{ find: AOE, set: { radius: 9 } }] });
+  shape('purge_close', 'purge_corruption', 'Close Rite', 'The blast reaches only 3.5 m but deals 35% more damage.',
+    { power: 1.35, fx: [{ find: AOE, set: { radius: 3.5 } }] });
+  shape('purge_aim', 'purge_corruption', 'Cast Out', 'The blast lands at your aim, up to 9 m away.',
+    { set: { range: 9, aiUse: { use: 'attack', range: 9, minTargets: 2, orBoss: true } }, fx: [{ find: AOE, set: { at: 'aim', range: 9 } }] });
+
+  essence('purge_fire', 'purge_corruption', 'Purging Flames', 'The blast sets enemies Burning, for 200% instead of 220%.',
+    { fx: [{ find: AOE, set: { mult: 2.0, status: { id: 'burn', chance: 1 } } }] });
+  essence('purge_stun', 'purge_corruption', 'Stunning Rite', 'The blast Stuns for 1.2 s, for 190% instead of 220%.',
+    { fx: [{ find: AOE, set: { mult: 1.9, status: { id: 'stun', dur: 1.2 } } }] });
+  essence('purge_weaken', 'purge_corruption', 'Humbling Rite', 'The blast Weakens enemies for 6 s.',
+    { fx: [{ find: AOE, set: { status: { id: 'weaken', dur: 6 } } }] });
+
+  rite('purge_quick', 'purge_corruption', 'Daily Rite', 'Cooldown 28 s instead of 40.',
+    { set: { cooldown: 28 } });
+  rite('purge_cheap', 'purge_corruption', 'Simple Rite', 'Purge Corruption costs 40 Light instead of 60.',
+    { set: { cost: 40 } });
+  rite('purge_mend', 'purge_corruption', 'Purge and Mend', 'Purge Corruption also heals allies within 8 m for 12% of their Health.',
+    { add: [{ type: 'heal', radius: 8, pct: 0.12 }] });
+
+  // =============================================================================================
+  // SUNBURST. Base: 8 s, 25 Light; a 165% Holy flash 5.5 m around you that knocks back and Weakens for 3 s.
+  // =============================================================================================
+  shape('sun_wide', 'sunburst', 'Broad Daylight', 'The flash reaches 8 m, for 80% of the damage.',
+    { power: 0.8, fx: [{ find: AOE, set: { radius: 8 } }] });
+  shape('sun_close', 'sunburst', 'Close Sun', 'The flash reaches only 3.5 m but deals 35% more damage.',
+    { power: 1.35, fx: [{ find: AOE, set: { radius: 3.5 } }] });
+  shape('sun_aim', 'sunburst', 'Falling Sun', 'The flash lands at your aim, up to 9 m away.',
+    { set: { range: 9, aiUse: { use: 'attack', range: 9, minTargets: 2, orBoss: true } }, fx: [{ find: AOE, set: { at: 'aim', range: 9 } }] });
+
+  essence('sun_stun', 'sunburst', 'Blinding Flash', 'The flash Stuns for 0.8 s instead of Weakening, for 140% instead of 165%.',
+    { fx: [{ find: AOE, set: { mult: 1.4, status: { id: 'stun', dur: 0.8 } } }] });
+  essence('sun_fire', 'sunburst', 'Solar Fire', 'The flash also sets enemies Burning.',
+    { fx: [{ find: AOE, set: { status: [{ id: 'weaken', dur: 3 }, { id: 'burn', chance: 1 }] } }] });
+  essence('sun_heavy', 'sunburst', 'Solar Wind', 'The flash knocks back twice as far and breaks Poise twice as hard, for 150% instead of 165%.',
+    { fx: [{ find: AOE, set: { mult: 1.5, knockback: 4, poise: 3 } }] });
+
+  rite('sun_quick', 'sunburst', 'Quick Flash', 'Cooldown 6 s instead of 8.',
+    { set: { cooldown: 6 } });
+  rite('sun_twice', 'sunburst', 'Twin Suns', 'Sunburst has 2 charges. Each takes 9 s.',
+    { set: { charges: 2, cooldown: 9 } });
+  rite('sun_heal', 'sunburst', 'Warm Flash', 'The flash also heals allies within 5.5 m for 6% of their Health.',
+    { add: [{ type: 'heal', radius: 5.5, pct: 0.06 }] });
+
+  // =============================================================================================
+  // GUIDING LIGHT. Base: 7 s, 20 Light; a homing mote (100%) that passes through 2 more enemies and Marks them for 3 s; the
+  // most hurt ally near you heals 5% per enemy hit.
+  // =============================================================================================
+  shape('gl_spread', 'guiding_light', 'Three Motes', 'Three motes fly out in a fan, each for 65% of the damage.',
+    { power: 0.65, fx: [{ find: PROJ, set: { count: 3, spread: 25 } }] });
+  shape('gl_pierce', 'guiding_light', 'Piercing Mote', 'The mote passes through up to 5 more enemies instead of 2.',
+    { fx: [{ find: PROJ, set: { pierce: 5 } }] });
+  shape('gl_fast', 'guiding_light', 'Swift Mote', 'The mote flies 60% faster and turns harder.',
+    { fx: [{ find: PROJ, set: { speed: 27, homing: 8 } }] });
+
+  essence('gl_burn', 'guiding_light', 'Burning Mote', 'The mote sets enemies Burning instead of Marking them.',
+    { fx: [{ find: PROJ, set: { status: { id: 'burn', chance: 1 } } }] });
+  essence('gl_strong', 'guiding_light', 'Heavy Mote', 'The mote deals 135% instead of 100%, but its Mark lasts only 1.5 s.',
+    { fx: [{ find: PROJ, set: { mult: 1.35, status: { id: 'mark', dur: 1.5 } } }] });
+  essence('gl_longmark', 'guiding_light', 'Lasting Mark', 'The Mark lasts 6 s instead of 3, but the mote deals 85%.',
+    { fx: [{ find: PROJ, set: { mult: 0.85, status: { id: 'mark', dur: 6 } } }] });
+
+  rite('gl_quick', 'guiding_light', 'Quick Mote', 'Cooldown 4.5 s instead of 7.',
+    { set: { cooldown: 4.5 } });
+  rite('gl_twice', 'guiding_light', 'Two Motes Ready', 'Guiding Light has 2 charges. Each takes 8 s.',
+    { set: { charges: 2, cooldown: 8 } });
+  rite('gl_light', 'guiding_light', 'Returning Light', 'Each enemy the mote hits gives 4 Light.',
+    { fx: [{ find: PROJ, add: { onHit: [light(4)] } }] });
+
+  // =============================================================================================
+  // SEARING RAY. Base: 10 s, 35 Light; a beam 12 m long and 1.6 m wide, 5 hits of 48% over 1 s, 30% chance to Burn.
+  // =============================================================================================
+  shape('ray_long', 'searing_ray', 'Long Beam', 'The beam reaches 18 m instead of 12.',
+    { fx: [{ find: AOE, set: { length: 18 } }] });
+  shape('ray_wide', 'searing_ray', 'Wide Beam', 'The beam is 3 m wide instead of 1.6, for 80% of the damage.',
+    { power: 0.8, fx: [{ find: AOE, set: { width: 3 } }] });
+  shape('ray_more', 'searing_ray', 'Pulsing Beam', 'The beam sears 7 times instead of 5, each for 75% of the damage.',
+    { power: 0.75, fx: [{ find: AOE, set: { hits: 7, interval: 0.14 } }] });
+
+  essence('ray_burn', 'searing_ray', 'White Heat', 'Each sear has an 80% chance to set enemies Burning instead of 30%.',
+    { fx: [{ find: AOE, set: { status: { id: 'burn', chance: 0.8 } } }] });
+  essence('ray_weaken', 'searing_ray', 'Humbling Beam', 'The beam Weakens enemies for 3 s instead of Burning them.',
+    { fx: [{ find: AOE, set: { status: { id: 'weaken', dur: 3 } } }] });
+  essence('ray_hot', 'searing_ray', 'Hot Beam', 'Each sear deals 60% instead of 48%, but burns only 10% of the time.',
+    { fx: [{ find: AOE, set: { mult: 0.6, status: { id: 'burn', chance: 0.1 } } }] });
+
+  rite('ray_quick', 'searing_ray', 'Cool Lens', 'Cooldown 7 s instead of 10.',
+    { set: { cooldown: 7 } });
+  rite('ray_cheap', 'searing_ray', 'Narrow Shutter', 'Searing Ray costs 25 Light instead of 35.',
+    { set: { cost: 25 } });
+  rite('ray_move', 'searing_ray', 'Walking Light', 'You move at half speed while the beam burns instead of crawling.',
+    { set: { moveMult: 0.5 } });
+
+  // =============================================================================================
+  // SANCTUARY CIRCLE. Base: 24 s, 45 Light; a circle 5 m around you for 8 s: allies take 30% less damage, heal 1.5% a second
+  // and shed harmful effects; enemies are Slowed 30% and burn (12% a tick).
+  // =============================================================================================
+  shape('sanc_wide', 'sanctuary_circle', 'Wide Circle', 'The circle is 7 m wide instead of 5.',
+    { fx: [{ find: ZONE, set: { radius: 7 } }] });
+  shape('sanc_long', 'sanctuary_circle', 'Long Vigil', 'The circle lasts 12 s instead of 8.',
+    { fx: [{ find: ZONE, set: { duration: 12 } }] });
+  shape('sanc_aim', 'sanctuary_circle', 'Distant Circle', 'The circle is drawn at your aim, up to 8 m away.',
+    { set: { range: 8 }, fx: [{ find: ZONE, set: { at: 'aim', range: 8 } }] });
+
+  essence('sanc_holy', 'sanctuary_circle', 'Hallowed Circle', 'Allies inside heal 2.5% a second instead of 1.5%.',
+    { fx: [{ find: ZONE, set: { healPct: 0.025 } }] });
+  essence('sanc_wrath', 'sanctuary_circle', 'Circle of Wrath', 'Enemies inside burn twice as hard and are Slowed by 50% instead of 30%.',
+    { fx: [{ find: ZONE, set: { mult: 0.25, slow: 0.5 } }] });
+  essence('sanc_bulwark', 'sanctuary_circle', 'Bulwark Circle', 'Allies inside take 40% less damage instead of 30%.',
+    { fx: [{ find: ZONE, set: { buff: { id: 'sanctuary', name: 'Sanctuary', mods: [{ s: 'dmgTaken', t: 'more', v: -0.4 }] } } }] });
+
+  rite('sanc_quick', 'sanctuary_circle', 'Fresh Chalk', 'Cooldown 18 s instead of 24.',
+    { set: { cooldown: 18 } });
+  rite('sanc_twice', 'sanctuary_circle', 'Two Circles', 'Sanctuary Circle has 2 charges. Each takes 28 s.',
+    { set: { charges: 2, cooldown: 28 } });
+  rite('sanc_light', 'sanctuary_circle', 'Circle of Oil', 'Sanctuary Circle gives back 25 Light.',
+    { add: [light(25)] });
+
+  // =============================================================================================
+  // DAWNBREAKER STRIKE. Base: 8 s, 30 Light; a heavy 230% Holy blow 3 m wide in front of you, heavy Poise damage.
+  // =============================================================================================
+  shape('db_wide', 'dawnbreaker_strike', 'Broad Blow', 'The blow lands 4.2 m wide instead of 3, for 80% of the damage.',
+    { power: 0.8, fx: [{ find: AOE, set: { radius: 4.2 } }] });
+  shape('db_line', 'dawnbreaker_strike', 'Fissure of Dawn', 'The blow splits the ground in a line 6 m long and 2.2 m wide.',
+    { set: { range: 5.5, aiUse: { use: 'attack', range: 5.5 } }, fx: [{ find: AOE, set: { at: 'self', shape: 'line', length: 6, width: 2.2 } }] });
+  shape('db_double', 'dawnbreaker_strike', 'Hammer Twice', 'Two blows, each for 60% of the damage.',
+    { power: 0.6, fx: [{ find: AOE, set: { hits: 2, interval: 0.3 } }] });
+
+  essence('db_stun', 'dawnbreaker_strike', 'Concussion', 'The blow Stuns for 1 s, for 200% instead of 230%.',
+    { fx: [{ find: AOE, set: { mult: 2.0, status: { id: 'stun', dur: 1 } } }] });
+  essence('db_burn', 'dawnbreaker_strike', 'Red Morning', 'The blow sets enemies Burning.',
+    { fx: [{ find: AOE, set: { status: { id: 'burn', chance: 1 } } }] });
+  essence('db_crush', 'dawnbreaker_strike', 'Crushing Dawn', 'The blow breaks Poise far harder, for 210% instead of 230%.',
+    { fx: [{ find: AOE, set: { mult: 2.1, poise: 6 } }] });
+
+  rite('db_quick', 'dawnbreaker_strike', 'Ready Hammer', 'Cooldown 6 s instead of 8.',
+    { set: { cooldown: 6 } });
+  rite('db_twice', 'dawnbreaker_strike', 'Twice at Dawn', 'Dawnbreaker Strike has 2 charges. Each takes 9 s.',
+    { set: { charges: 2, cooldown: 9 } });
+  rite('db_light', 'dawnbreaker_strike', 'Struck Spark', 'Each enemy the blow hits gives 5 Light.',
+    { fx: [{ find: AOE, add: { onHit: [light(5)] } }] });
+
+  // =============================================================================================
+  // CANDLE SHIELD. Base: 8 s, 15 Light; for 0.8 s every hit from the front is turned aside and answered with a 180% Holy
+  // flash (2.8 m, 150 degrees) that Weakens, and a heal of 6% of your Health.
+  // =============================================================================================
+  shape('cs_wide', 'candle_shield', 'All Around', 'The answering flash sweeps all the way round you.',
+    { fx: [{ find: MEL, set: { arc: 360 } }] });
+  shape('cs_long', 'candle_shield', 'Held Flame', 'The lantern stays raised for 1.4 s instead of 0.8.',
+    { fx: [{ find: BUFF, set: { dur: 1.4 } }] });
+  shape('cs_twice', 'candle_shield', 'Double Flash', 'The answer flashes twice, each for 65% of the damage.',
+    { power: 0.65, fx: [{ find: MEL, set: { hits: 2, interval: 0.15 } }] });
+
+  essence('cs_dazzle', 'candle_shield', 'Dazzling Answer', 'The answering flash Stuns the attacker for 0.8 s instead of Weakening it.',
+    { fx: [{ find: MEL, set: { status: { id: 'stun', dur: 0.8 } } }] });
+  essence('cs_heal', 'candle_shield', 'Warm Guard', 'Each turned hit heals you for 12% of your Health instead of 6%.',
+    { fx: [{ find: HEAL, set: { pct: 0.12 } }] });
+  essence('cs_burn', 'candle_shield', 'Burning Answer', 'The answering flash deals 220% instead of 180% and sets the attacker Burning as well as Weakening it.',
+    { fx: [{ find: MEL, set: { mult: 2.2, status: [{ id: 'weaken', dur: 4 }, { id: 'burn', chance: 1 }] } }] });
+
+  rite('cs_quick', 'candle_shield', 'Quick Guard', 'Cooldown 5 s instead of 8.',
+    { set: { cooldown: 5 } });
+  rite('cs_cheap', 'candle_shield', 'Stub of Candle', 'Candle Shield costs 5 Light instead of 15.',
+    { set: { cost: 5 } });
+  rite('cs_light', 'candle_shield', 'Caught Spark', 'Each hit you turn aside gives 8 Light.',
+    { fx: [{ find: BUFF, add: { onBlock: [light(8)] } }] });
+
+  // =============================================================================================
+  // SECOND DAWN (Ultimate). Base: 90 s; fallen allies stand up, allies within 30 m heal to full and are cleansed, you cannot be
+  // hurt for 1.5 s, 320% Holy 9 m around you.
+  // =============================================================================================
+  shape('sd_wide', 'second_dawn', 'Wide Dawn', 'The blast reaches 13 m, for 80% of the damage.',
+    { power: 0.8, fx: [{ find: AOE, set: { radius: 13 } }] });
+  shape('sd_close', 'second_dawn', 'Close Dawn', 'The blast reaches only 6 m but deals 35% more damage.',
+    { power: 1.35, fx: [{ find: AOE, set: { radius: 6 } }] });
+  shape('sd_far', 'second_dawn', 'Dawn Over the Land', 'Heals and cleanses allies within 45 m instead of 30.',
+    { fx: [{ find: HEAL, set: { radius: 45 } }, { find: CLEANSE, set: { radius: 45 } }] });
+
+  essence('sd_sun', 'second_dawn', 'Blazing Dawn', 'The blast deals 400% instead of 320%.',
+    { fx: [{ find: AOE, set: { mult: 4 } }] });
+  essence('sd_shield', 'second_dawn', 'Untouched Dawn', 'You cannot be hurt for 3 s instead of 1.5.',
+    { fx: [{ find: BUFF, set: { status: { id: 'invulnerable', dur: 3 } } }] });
+  essence('sd_burn', 'second_dawn', 'Scarlet Dawn', 'The blast also sets enemies Burning and Weakens them for 6 s.',
+    { fx: [{ find: AOE, set: { status: [{ id: 'burn', chance: 1 }, { id: 'weaken', dur: 6 }] } }] });
+
+  rite('sd_early', 'second_dawn', 'Early Dawn', 'Cooldown 70 s instead of 90.',
+    { set: { cooldown: 70 } });
+  rite('sd_twice', 'second_dawn', 'Twice Risen', 'Second Dawn has 2 charges. Each takes 100 s.',
+    { set: { charges: 2, cooldown: 100 } });
+  rite('sd_pact', 'second_dawn', 'Dawn Bought Dear', 'Costs 15% of your Health. Cooldown 55 s.',
+    { set: { hpCost: 0.15, cooldown: 55 } });
+
+  KD.register('mutations', M);
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/data/37_mutations_thornwarden.js
 (function (root) {
   'use strict';
@@ -23488,6 +24843,141 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       { to: 25, goals: ['mut:fo_long', 'cluster:plate_mail', 'cluster:plate_mend', 'cluster:plate_padding', 'skill:bulwark_stance'] },
       { to: 40, goals: ['Living Fortress', 'cluster:plate_ward', 'cluster:plate_harness', 'cluster:plate_heart', 'cluster:plate_wall_mid'] },
       { to: 60, goals: ['Iron Skin', 'cluster:plate_gorget', 'cluster:plate_enamel', 'cluster:plate_salve', 'cluster:plate_mantle'] }
+    ] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/38_tree_builds_lanternbearer.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+
+  /**
+   * RECOMMENDED BUILDS of the Lanternbearer's tree (docs/TREE_LANTERNBEARER.md section 4). Pure data; the registry and the
+   * format are in src/data/38_tree_builds_gravecaller.js (KD.data.treeBuilds.add), the logic in src/meta/35_tree_builds.js, the
+   * screen is the Builds tab of the tree page. Goals: 'skill:<abilityId>', 'mut:<mutationId>', 'cluster:<clusterId>' or a
+   * node's name. Every build starts from a different skill and fits KD.treeBuilds.BUDGET (152) points
+   * (tests/tree_lanternbearer.test.js). Each has a clear purpose: damage, survival, support or a mix.
+   */
+  var R = KD.data = KD.data || {};
+  var TBD = R.treeBuilds = R.treeBuilds || { byClass: {} };
+  TBD.add = TBD.add || function (classId, rec) {
+    if (!rec || typeof rec.id !== 'string') throw new Error('KD.data.treeBuilds.add(' + classId + '): a record with an id is needed');
+    rec.cls = classId;
+    (TBD.byClass[classId] = TBD.byClass[classId] || []).push(rec);
+    return rec;
+  };
+  function add(rec) { return TBD.add('lanternbearer', rec); }
+
+  // damage: the glow as a weapon
+  add({ id: 'lantern_of_wrath', name: 'Lantern of Wrath', design: '4.1', difficulty: 2, start: 'beacon', arms: ['glow', 'sun'],
+    pitch: 'Turn the lantern into a furnace: a wide glow and a scorching Beacon that burn everything that comes close.',
+    tags: ['Damage', 'Aura', 'Burning'],
+    stages: [
+      { to: 10, goals: ['mut:beacon_scorch', 'mut:beacon_wide', 'cluster:glow_wick'] },
+      { to: 25, goals: ['cluster:glow_flare', 'cluster:glow_moth', 'skill:sunburst', 'mut:sun_fire', 'cluster:glow_shine'] },
+      { to: 40, goals: ['Lantern of Wrath', 'cluster:glow_scorch', 'cluster:glow_dazzle', 'cluster:glow_post', 'Lighthouse'] },
+      { to: 60, goals: ['cluster:glow_embers', 'cluster:glow_far', 'cluster:glow_vigil', 'cluster:sun_corona'] }
+    ] });
+
+  // survival: Ward for the whole party
+  add({ id: 'dawn_warden', name: 'Dawn Warden', design: '4.2', difficulty: 1, start: 'ward_of_dawn', arms: ['dawn', 'glow'],
+    pitch: 'Ward on everyone, all the time: a wall of morning light that bursts into a blinding flash when it finally breaks.',
+    tags: ['Survival', 'Ward', 'Support'],
+    stages: [
+      { to: 10, goals: ['mut:wod_thick', 'mut:wod_quick', 'cluster:dawn_thick'] },
+      { to: 25, goals: ['cluster:dawn_break', 'cluster:dawn_gold', 'cluster:dawn_mirror', 'skill:beacon', 'mut:beacon_bright'] },
+      { to: 40, goals: ['Dawn Unending', 'cluster:dawn_full', 'cluster:dawn_wall', 'cluster:glow_dawn_mid', 'cluster:dawn_litany'] },
+      { to: 60, goals: ['Iron Vigil', 'cluster:dawn_rest', 'cluster:dawn_pale', 'cluster:dawn_watch', 'cluster:dawn_bell'] }
+    ] });
+
+  // unique: one Health behind a Ward, the parry answers
+  add({ id: 'hollow_lantern', name: 'The Hollow Lantern', design: '4.3', difficulty: 3, start: 'candle_shield', arms: ['dawn', 'mace'],
+    pitch: 'One Health and a great Ward the glow keeps topping up. Turn hits aside with the lantern and answer in fire.',
+    tags: ['One Health', 'Ward', 'Parry'],
+    stages: [
+      { to: 10, goals: ['mut:cs_heal', 'mut:cs_quick', 'skill:ward_of_dawn'] },
+      { to: 25, goals: ['cluster:dawn_thick', 'mut:wod_thick', 'cluster:dawn_mirror', 'mut:cs_wide', 'cluster:dawn_break'] },
+      { to: 40, goals: ['The Hollow Lantern', 'cluster:dawn_full', 'cluster:dawn_gold', 'cluster:dawn_mace_mid'] },
+      { to: 60, goals: ['cluster:dawn_watch', 'cluster:dawn_pale', 'Dawn Unending', 'cluster:dawn_bell', 'cluster:dawn_rest'] }
+    ] });
+
+  // damage: the battle priest
+  add({ id: 'hammer_of_dawn', name: 'Hammer of Dawn', design: '4.4', difficulty: 1, start: 'dawnbreaker_strike', arms: ['mace', 'sun'],
+    pitch: 'Up close with mace and lantern: crush Poise, hit the Weakened harder, and let every heavy blow patch you up.',
+    tags: ['Damage', 'Melee', 'Poise'],
+    stages: [
+      { to: 10, goals: ['mut:db_crush', 'mut:db_quick', 'cluster:mace_censer'] },
+      { to: 25, goals: ['cluster:mace_judgement', 'cluster:mace_crush', 'cluster:mace_pilgrim', 'skill:sunburst', 'mut:sun_stun'] },
+      { to: 40, goals: ['Hammer of the Faith', 'cluster:mace_heavy', 'cluster:mace_hymn', 'cluster:mace_sun_mid', 'cluster:mace_warrior'] },
+      { to: 60, goals: ["Crusader's Vow", 'cluster:mace_crusade', 'cluster:mace_rites', 'cluster:mace_tower', 'cluster:mace_iron'] }
+    ] });
+
+  // damage: crowds
+  add({ id: 'sun_zealot', name: 'Sun Zealot', design: '4.5', difficulty: 2, start: 'sunburst', arms: ['sun', 'mace'],
+    pitch: 'Wade into the crowd and go off like the noon sun: bursts, blinding crits and a second sunrise when it goes wrong.',
+    tags: ['Damage', 'Area', 'Holy'],
+    stages: [
+      { to: 10, goals: ['mut:sun_close', 'mut:sun_twice', 'cluster:sun_corona'] },
+      { to: 25, goals: ['skill:second_dawn', 'mut:sd_sun', 'cluster:sun_spots', 'cluster:sun_glare', 'skill:dawnbreaker_strike'] },
+      { to: 40, goals: ['High Noon', 'cluster:sun_noon', 'cluster:sun_scorch', 'cluster:sun_crowd', 'mut:sun_fire'] },
+      { to: 60, goals: ['Blinding Sun', 'cluster:sun_zenith', 'cluster:sun_wind', 'cluster:sun_solstice', 'cluster:sun_evening'] }
+    ] });
+
+  // damage: from afar
+  add({ id: 'lightbringer', name: 'Lightbringer', design: '4.6', difficulty: 2, start: 'guiding_light', arms: ['ray', 'purge'],
+    pitch: 'Stay back and throw light: seeking motes Mark the pack, and every spell hits harder the farther away they are.',
+    tags: ['Damage', 'Ranged', 'Marks'],
+    stages: [
+      { to: 10, goals: ['mut:gl_spread', 'mut:gl_quick', 'mut:gl_longmark'] },
+      { to: 25, goals: ['cluster:ray_marked', 'cluster:ray_eye', 'skill:searing_ray', 'cluster:ray_motes'] },
+      { to: 40, goals: ['Far Light', 'cluster:ray_watch', 'cluster:ray_hunter', 'cluster:ray_mercy', 'Narrow Beam'] },
+      { to: 60, goals: ['cluster:ray_star', 'cluster:ray_pale', 'cluster:ray_reader', 'cluster:ray_kept', 'cluster:ray_purge_mid'] }
+    ] });
+
+  // damage: burning over time
+  add({ id: 'pyre_priest', name: 'Pyre Priest', design: '4.7', difficulty: 2, start: 'searing_ray', arms: ['ray', 'sun'],
+    pitch: 'Open the shutter and keep it open: a long white-hot beam that sets the whole line Burning.',
+    tags: ['Damage', 'Burning', 'Channel'],
+    stages: [
+      { to: 10, goals: ['mut:ray_burn', 'mut:ray_cheap', 'cluster:ray_kindled'] },
+      { to: 25, goals: ['mut:ray_long', 'cluster:ray_cinders', 'skill:sunburst', 'mut:sun_fire', 'cluster:sun_ray_mid'] },
+      { to: 40, goals: ['Burning Gaze', 'cluster:ray_kept', 'cluster:ray_marked', 'cluster:sun_ray_outer', 'cluster:ray_eye'] },
+      { to: 60, goals: ['cluster:ray_star', 'cluster:ray_window', 'cluster:ray_pale', 'cluster:ray_hunter', 'cluster:ray_reader'] }
+    ] });
+
+  // mixed: clean hands, holy fire
+  add({ id: 'purifier', name: 'The Purifier', design: '4.8', difficulty: 3, start: 'purge_corruption', arms: ['purge', 'mercy'],
+    pitch: 'Keep your Corruption at zero and burn out every curse: each cleanse scorches the enemy and refills your lamp.',
+    tags: ['Mixed', 'Cleansing', 'Corruption'],
+    stages: [
+      { to: 10, goals: ['mut:purge_quick', 'mut:purge_fire', 'cluster:purge_font'] },
+      { to: 25, goals: ['cluster:purge_absolve', 'cluster:purge_clean', 'cluster:purge_spotless', 'skill:mending_flame', 'mut:mend_burn'] },
+      { to: 40, goals: ['Unstained', 'cluster:purge_mercy', 'cluster:purge_water', 'cluster:purge_penance', 'cluster:purge_mercy_mid'] },
+      { to: 60, goals: ['Inquisitor', 'cluster:purge_pyre', 'cluster:purge_test', 'cluster:purge_bane', 'cluster:purge_rites'] }
+    ] });
+
+  // survival and support: the healer
+  add({ id: 'saint', name: 'Saint of the Lamp', design: '4.9', difficulty: 1, start: 'mending_flame', arms: ['mercy', 'flock'],
+    pitch: 'The healer: big heals that land when they matter, spill over into Ward, and never let a friend drop.',
+    tags: ['Survival', 'Healing', 'Support'],
+    stages: [
+      { to: 10, goals: ['mut:mend_two', 'mut:mend_quick', 'cluster:mercy_infirmary'] },
+      { to: 25, goals: ['cluster:mercy_vigil', 'cluster:mercy_bedside', 'cluster:mercy_searing', 'skill:sanctuary_circle', 'mut:sanc_holy'] },
+      { to: 40, goals: ["The Martyr's Lamp", 'cluster:mercy_afterglow', 'cluster:mercy_dressing', 'cluster:mercy_blood', 'cluster:mercy_flock_mid'] },
+      { to: 60, goals: ['Last Lantern', 'cluster:mercy_hands_on', 'cluster:mercy_kind', 'cluster:mercy_hospice', 'cluster:mercy_oil'] }
+    ] });
+
+  // support: hirelings and friends
+  add({ id: 'good_shepherd', name: 'The Good Shepherd', design: '4.10', difficulty: 2, start: 'sanctuary_circle', arms: ['flock', 'glow'],
+    pitch: 'Bring friends and hirelings: everyone in your light hits harder and falls later, on holy ground you draw yourself.',
+    tags: ['Support', 'Allies', 'Hirelings'],
+    stages: [
+      { to: 10, goals: ['mut:sanc_long', 'mut:sanc_bulwark', 'cluster:flock_fold'] },
+      { to: 25, goals: ['cluster:flock_gathered', 'cluster:flock_shoulder', 'skill:beacon', 'mut:beacon_bright', 'cluster:flock_posts'] },
+      { to: 40, goals: ['The Good Shepherd', 'cluster:flock_hired', 'cluster:flock_dog', 'cluster:flock_table', 'cluster:flock_glow_mid'] },
+      { to: 60, goals: ['Many Hands', 'cluster:flock_fires', 'cluster:flock_bell', 'cluster:flock_night', 'cluster:glow_wick'] }
     ] });
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -31713,6 +33203,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.83', date: '2026-10-16', title: 'Lanternbearer talent tree', notes: [
+      'The Lanternbearer has its own talent tree: The Long Vigil, 1,500 nodes in eight arms',
+      'Glow, Ward, mace, sun, light, purging, healing and the flock: every skill now comes from the tree',
+      'Over 100 mutations, 24 keystones and 10 recommended builds, from the Saint of the Lamp to the one-Health Hollow Lantern'
+    ] },
     { version: '0.7.82', date: '2026-10-16', title: 'The Wildmask\'s Moon Grove', notes: [
       'The Wildmask has its own skill tree now: The Moon Grove, eight arms from the Wolf Run to the Howling Hill',
       'Start with one skill, any skill, and grow the rest of your beast in the tree',
@@ -52223,7 +53718,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   };
 
   KD.classB = KD.classB || {};
-  KD.classB.lanternbearer = { TUNE: T, fallen: fallen, glowRadius: glowRadius, inGlow: inGlow };
+  KD.classB.lanternbearer = { TUNE: T, fallen: fallen, glowRadius: glowRadius, inGlow: inGlow,
+    lights: lights, glowHeal: glowHeal, poolOf: poolOf, fighting: fighting };     // [w8 lanternbearer tree] the last four for src/sim/56_tree_lanternbearer.js
   // reference loadout (balance harness, bot playthroughs): slot order is the bot's priority; 2 skills at level 1, a third at 5, the fourth at 10
   if (KD.classes && KD.classes.registerLoadout) KD.classes.registerLoadout('lanternbearer', ['dawnbreaker_strike', 'mending_flame', 'sunburst', 'guiding_light']);
   if (KD.classes && KD.classes.registerMechanic) KD.classes.registerMechanic('lanternbearer', {
@@ -53680,6 +55176,279 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       S.heal(c.world, p, p.hpMax * T.mendHeal * c.dt, p, { noScale: true, silent: true });
     }
   });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/sim/56_tree_lanternbearer.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var U = KD.util, B = KD.balance;
+  var S = KD.sim = KD.sim || {};
+  var K = KD.skills = KD.skills || {};
+  if (!K.registerHook) return;
+
+  /**
+   * LANTERNBEARER, the rules of the class tree (docs/TREE_LANTERNBEARER.md): the `effect` keys `tree_lanternbearer_<id>` of the
+   * rule notables and keystones in src/data/36_tree_lanternbearer_<arm>.js. The tree also reuses the Chapel's rules of the
+   * Crownweb (`web_lanternbearer_*`, src/sim/55_class_lanternbearer.js) and the web keystone Last Lantern (src/sim/32_webfx.js);
+   * the mutations are pure data. Every hook acts on the owner's own hits, heals, cleanses and glow, uses world.rng / world.time
+   * only, and guards re-entry. Every number is in the T table; the node texts quote them (tests/tree_lanternbearer.test.js).
+   */
+  var T = {
+    flareEvery: 5, flareMult: 0.35,                       // Sudden Flare: the glow flares every 5 s
+    mothSlow: 0.15,                                       // Moth to the Flame: enemies in the glow move slower
+    hollowWard: 0.7,                                      // The Hollow Lantern: share of Health that becomes Ward
+    dayRadius: 4, dayMult: 0.8, dayWeaken: 4, dayKnock: 2, dayIcd: 6,   // Breaking Dawn: when the Ward breaks
+    judgeMore: 1.15,                                      // Weighed and Found Wanting: hits on Weakened enemies
+    tollLight: 3,                                         // Tolling Bell: Light per Lantern Swing that hits
+    crusadeHeal: 0.04,                                    // Crusader's Vow: heavy hits heal
+    coronaWindow: 4, coronaRadius: 3, coronaMult: 0.6,    // Corona: the Lantern Swing after a skill
+    spotRadius: 3, spotMult: 0.5,                         // Sunspots: Weakened enemies burst when they die
+    blindStun: 0.6, blindIcd: 4,                          // Blinding Sun: critical Holy hits Stun
+    markLonger: 1.5,                                      // Long Mark: Mark duration
+    burnMore: 1.15,                                       // Feed the Fire: Holy hits on Burning enemies
+    farMore: 0.3, farNear: 3, farFull: 12, farMelee: 0.9, // Far Light: spell hits by distance, melee hits less
+    absolveLight: 6,                                      // Absolved: Light per harmful effect cleansed
+    inqMore: 1.25, inqLess: 0.85,                         // Inquisitor
+    vigilAt: 0.35, vigilHeal: 0.08, vigilIcd: 12,         // Watchful Vigil
+    afterMore: 0.1, afterDur: 4,                          // Warm Afterglow
+    foldLess: 0.12,                                       // Into the Fold
+    shepMore: 0.25, shepLess: 0.2                         // The Good Shepherd
+  };
+  S.treeLantern = { T: T };
+  var Q = [];
+
+  function LB() { return KD.classB && KD.classB.lanternbearer; }
+  function enemy(e) { return !!e && e.kind === 'enemy' && !e.dead && !e.removed; }
+  function holy(c) { return (c.info ? c.info.elem : c.spec && c.spec.elem) === 'holy'; }
+  function gain(c, n, why) { S.player.gainRes(c.world, c.self, n, why || 'tree'); }
+  function icd(world, tgt, k, owner, secs) {
+    var m = tgt.lanternIcd || (tgt.lanternIcd = {}), key = k + ':' + owner.id;
+    if ((m[key] || 0) > world.time) return false;
+    m[key] = world.time + secs;
+    return true;
+  }
+  /** Calls fn(o) once for everything inside the owner's Lantern Glow (the bearer's own and, with Twin Lanterns, every Beacon's). */
+  function eachInGlow(world, p, fn) {
+    var lb = LB(); if (!lb) return;
+    var L = lb.lights(world, p), R = lb.glowRadius(p), seen = L.length > 1 ? {} : null, i, j, n, o, list;
+    for (j = 0; j < L.length; j++) {
+      n = S.qCircle(world, L[j].x, L[j].z, R, Q); list = Q.slice(0, n);
+      for (i = 0; i < list.length; i++) {
+        o = list[i];
+        if (o.dead || o.removed) continue;
+        if (seen) { if (seen[o.id]) continue; seen[o.id] = 1; }
+        fn(o);
+      }
+    }
+  }
+  /** A periodic tick: true every `every` seconds (st keeps the timer). */
+  function every(st, key, dt, secs) { st[key] = (st[key] || 0) + dt; if (st[key] < secs - 1e-9) return false; st[key] -= secs; return true; }
+  function burst(c, x, z, r, mult, ability, skip) {
+    var w = c.world, p = c.self, n = S.qCircle(w, x, z, r, Q), list = Q.slice(0, n), lb = LB();
+    for (var i = 0; i < list.length; i++) {
+      var o = list[i];
+      if (o === skip || !(lb ? lb.fighting(o) : enemy(o)) || !S.hostile(p, o)) continue;
+      S.damage(w, p, o, { mult: mult, elem: 'holy', delivery: 'spell', proc: true, ability: ability });
+    }
+    w.events.emit('fx', { name: 'holy_burst', x: x, y: 0.5, z: z, r: r, elem: 'holy', src: p });
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // The Honest Light (glow)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_lanternbearer_flare', {
+    onTick: function (c, eff, st) {
+      var p = c.self, w = c.world, lb = LB();
+      if (p.dead || !lb || !every(st, 't', c.dt, T.flareEvery)) return;
+      var hit = 0;
+      eachInGlow(w, p, function (o) {
+        if (!lb.fighting(o) || !S.hostile(p, o)) return;
+        S.damage(w, p, o, { mult: T.flareMult, elem: 'holy', delivery: 'spell', proc: true, ability: 'lantern_flare' });
+        hit++;
+      });
+      if (hit) w.events.emit('fx', { name: 'holy_burst', x: p.x, y: 0.5, z: p.z, r: lb.glowRadius(p), elem: 'holy', src: p });
+    }
+  });
+  K.registerHook('tree_lanternbearer_moth', {
+    onTick: function (c, eff, st) {
+      var p = c.self, w = c.world, lb = LB();
+      if (p.dead || !lb || !every(st, 't', c.dt, 0.25)) return;
+      eachInGlow(w, p, function (o) {
+        if (!lb.fighting(o) || !S.hostile(p, o)) return;
+        S.addBuff(w, o, { id: 'lantern_moth', name: 'Moth to the Flame', kind: 'debuff', dur: 0.4, src: p, quiet: true, color: '#ffe9a0', icon: 'lantern',
+          mods: [{ s: 'moveSpeed', t: 'more', v: -T.mothSlow }] });
+      });
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Daybreak Ward (dawn)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_lanternbearer_hollow', {
+    setup: function (p) { p.knobs.hpToWard = T.hollowWard; },
+    // the glow restores the Ward instead of Health (nothing with Lantern of Wrath: that glow does not heal)
+    onTick: function (c) {
+      var p = c.self, lb = LB();
+      if (p.dead || !lb || !(p.wardMax > 0) || p.ward >= p.wardMax || (p.knobs && p.knobs.lanternWrath)) return;
+      var hp = p.stats && p.stats.healPower > 0 ? p.stats.healPower : 1;
+      p.ward = Math.min(p.wardMax, p.ward + p.wardMax * lb.glowHeal(p) * hp * c.dt);
+    }
+  });
+  K.registerHook('tree_lanternbearer_daybreak', {
+    onDamaged: function (c, eff, st) {
+      var p = c.self, w = c.world;
+      if (p.dead || !(c.info && c.info.absorbed > 0) || p.ward > 0.001 || (st.ready || 0) > w.time) return;
+      st.ready = w.time + T.dayIcd;
+      var n = S.qCircle(w, p.x, p.z, T.dayRadius, Q), list = Q.slice(0, n), lb = LB();
+      for (var i = 0; i < list.length; i++) {
+        var o = list[i];
+        if (!(lb ? lb.fighting(o) : enemy(o)) || !S.hostile(p, o)) continue;
+        S.damage(w, p, o, { mult: T.dayMult, elem: 'holy', delivery: 'spell', proc: true, ability: 'breaking_dawn' });
+        if (!o.dead) { S.applyStatus(w, o, 'weaken', { src: p, dur: T.dayWeaken }); S.knockback(w, o, p.x, p.z, T.dayKnock); }
+      }
+      w.events.emit('fx', { name: 'holy_burst', x: p.x, y: 0.5, z: p.z, r: T.dayRadius, elem: 'holy', src: p });
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Censer (mace)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_lanternbearer_judgement', {
+    onBeforeHit: function (c) { if (enemy(c.target) && S.hasStatus(c.target, 'weaken')) c.mult *= T.judgeMore; }
+  });
+  K.registerHook('tree_lanternbearer_toll', {
+    onHit: function (c) {
+      var sp = c.spec, inst = sp && sp.inst;
+      if (!sp || sp.proc || sp.dot || sp.ability !== 'lantern_swing' || c.self.dead) return;
+      if (inst) { if (inst.lanternToll) return; inst.lanternToll = true; }
+      gain(c, T.tollLight, 'toll');
+    }
+  });
+  K.registerHook('tree_lanternbearer_crusade', {
+    onHit: function (c) {
+      var sp = c.spec, inst = sp && sp.inst, p = c.self;
+      if (!sp || sp.proc || sp.dot || !sp.heavy || p.dead || !enemy(c.target)) return;
+      if (inst) { if (inst.lanternVow) return; inst.lanternVow = true; }
+      S.heal(c.world, p, p.hpMax * T.crusadeHeal, p, { noScale: true });
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The High Sun (sun)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_lanternbearer_corona', {
+    onCast: function (c, eff, st) {
+      var ab = c.ability;
+      if (ab && (ab.slot === 'skill' || ab.slot === 'ultimate')) st.until = c.world.time + T.coronaWindow;
+    },
+    onHit: function (c, eff, st) {
+      var sp = c.spec, w = c.world;
+      if (st.busy || !sp || sp.proc || sp.dot || sp.ability !== 'lantern_swing' || !((st.until || 0) > w.time) || !enemy(c.target)) return;
+      st.until = 0; st.busy = true;
+      try { burst(c, c.target.x, c.target.z, T.coronaRadius, T.coronaMult, 'corona'); } finally { st.busy = false; }
+    }
+  });
+  K.registerHook('tree_lanternbearer_sunspot', {
+    onKill: function (c, eff, st) {
+      var t = c.target;
+      if (st.busy || !t || t.kind !== 'enemy' || !S.hasStatus(t, 'weaken')) return;
+      st.busy = true;
+      try { burst(c, t.x, t.z, T.spotRadius, T.spotMult, 'sunspot', t); } finally { st.busy = false; }
+    }
+  });
+  K.registerHook('tree_lanternbearer_blinding', {
+    onCrit: function (c) {
+      if (!holy(c) || !enemy(c.target) || (c.spec && c.spec.dot) || !icd(c.world, c.target, 'blind', c.self, T.blindIcd)) return;
+      S.applyStatus(c.world, c.target, 'stun', { src: c.self, dur: T.blindStun });
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Guiding Ray (ray)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_lanternbearer_longmark', {
+    setup: function (p) {
+      var m = {}, cur = p.knobs.statusDur || {}, k;
+      for (k in cur) m[k] = cur[k];
+      m.mark = (m.mark || 1) * T.markLonger;
+      p.knobs.statusDur = m;
+    }
+  });
+  K.registerHook('tree_lanternbearer_burning', {
+    onBeforeHit: function (c) { if (holy(c) && enemy(c.target) && S.hasStatus(c.target, 'burn')) c.mult *= T.burnMore; }
+  });
+  K.registerHook('tree_lanternbearer_far', {
+    onBeforeHit: function (c) {
+      var sp = c.spec, p = c.self, t = c.target;
+      if (!sp || !t || t.kind !== 'enemy') return;
+      if (sp.delivery === 'melee') { c.mult *= T.farMelee; return; }
+      if (sp.delivery !== 'spell') return;
+      var d = Math.sqrt(U.dist2(p.x, p.z, t.x, t.z)), k = (d - T.farNear) / (T.farFull - T.farNear);
+      if (k > 0) c.mult *= 1 + T.farMore * Math.min(1, k);
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Purifier (purge)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_lanternbearer_absolve', {
+    onCleanse: function (c) { if (c.count > 0 && !c.self.dead) gain(c, T.absolveLight * c.count, 'absolve'); }
+  });
+  K.registerHook('tree_lanternbearer_inquisitor', {
+    onBeforeHit: function (c) {
+      var t = c.target;
+      if (!enemy(t)) return;
+      c.mult *= (S.hasStatus(t, 'weaken') || S.hasStatus(t, 'mark') || S.hasStatus(t, 'burn')) ? T.inqMore : T.inqLess;
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Mercy Seat (mercy)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_lanternbearer_vigil', {
+    onTick: function (c, eff, st) {
+      var p = c.self, w = c.world, lb = LB();
+      if (p.dead || !lb || !every(st, 't', c.dt, 0.25)) return;
+      var ready = st.ready || (st.ready = {});
+      eachInGlow(w, p, function (o) {
+        if (o.team !== p.team || !(o.hpMax > 0) || o.hp <= 0 || o.hp >= o.hpMax * T.vigilAt) return;
+        if ((ready[o.id] || 0) > w.time) return;
+        ready[o.id] = w.time + T.vigilIcd;
+        S.heal(w, o, lb.poolOf(p, o) * T.vigilHeal, p);
+      });
+    }
+  });
+  K.registerHook('tree_lanternbearer_afterglow', {
+    onHealDone: function (c) {
+      var t = c.target;
+      if (!t || t.dead || (c.opts && (c.opts.silent || c.opts.leech)) || !(c.healed > 0)) return;
+      var b = S.addBuff(c.world, t, { id: 'lantern_afterglow', name: 'Afterglow', dur: T.afterDur, src: c.self, icon: 'sun', color: '#ffe9a0',
+        mods: [{ s: 'dmg', t: 'more', v: T.afterMore }] });
+      if (b && !b.def.desc) b.def.desc = Math.round(T.afterMore * 100) + '% more damage after a heal.';
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Flock (flock)
+  // ---------------------------------------------------------------------------------------------
+  function shelter(id, name, mods) {
+    return {
+      onTick: function (c, eff, st) {
+        var p = c.self, w = c.world;
+        if (p.dead || !every(st, 't', c.dt, 0.25)) return;
+        eachInGlow(w, p, function (o) {
+          if (o === p || o.team !== p.team || !(o.hpMax > 0)) return;
+          S.addBuff(w, o, { id: id, name: name, dur: 0.4, src: p, quiet: true, color: '#ffe9a0', icon: 'lantern', mods: mods });
+        });
+      }
+    };
+  }
+  K.registerHook('tree_lanternbearer_fold', shelter('lantern_fold', 'Into the Fold', [{ s: 'dmgTaken', t: 'more', v: -T.foldLess }]));
+  K.registerHook('tree_lanternbearer_shepherd', shelter('lantern_shepherd', 'The Good Shepherd', [{ s: 'dmg', t: 'more', v: T.shepMore }, { s: 'dmgTaken', t: 'more', v: -T.shepLess }]));
+  void B;
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
