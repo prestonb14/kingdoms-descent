@@ -3872,7 +3872,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.77';
+  KD.VERSION = '0.7.78';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -11236,6 +11236,68 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/data/35_tree_00_kit.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree;
+
+  /**
+   * Cluster shorthands for the arm files of a class tree (docs/TREE.md section 5): pure data helpers, nothing is built when
+   * they run. Used by the Ironbound's and the Bannerlord's trees (KD.data.tree.iron, KD.data.tree.host); any tree may use them.
+   * The slot grid is docs/TREE.md 3.1.
+   */
+  var kit = T.kit = {
+    mut: function (id) { return { t: 'mutation', mut: id }; },
+    /** A keystone (cost 2). `effect` optional (a hook key), `extra` merged in. */
+    key: function (name, mods, spec, effect, est, extra) {
+      var k = { t: 'keystone', name: name, mods: mods, spec: spec, est: est || { off: 1.04, def: 1.02 } };
+      if (effect) k.effect = effect;
+      if (extra) for (var f in extra) k[f] = extra[f];
+      return k;
+    },
+    pact: function (name, mods) { return { name: name, mods: mods, pact: true }; },
+    abil: function (name, mods, a, k, v) { return { name: name, mods: mods || [], abil: [{ a: a, k: k, v: v }] }; },
+    trophy: function (name, mods, boss) { return { t: 'trophy', name: name, mods: mods, req: { boss: boss } }; },
+    corrupt: function (name, mods, at) { return { t: 'corrupted', name: name, mods: mods, req: { corruption: at } }; },
+    faction: function (name, mods, id, rep) { return { t: 'faction', name: name, mods: mods, req: { faction: { id: id, rep: rep } } }; },
+    /** A mutation star: an entry leaf, the mutation leaves, a named core. */
+    star: function (id, name, row, lane, entry, muts, core) {
+      return { id: id, name: name, row: row, lane: lane, shape: 'star', kind: 'mutation', nodes: [entry].concat(muts.map(kit.mut)), core: core };
+    },
+    /** A wheel: rim nodes in order (nodes[0] is the entrance), a core and the bonus for owning all of it. */
+    ring: function (id, name, row, lane, nodes, core, bonus, extra) {
+      var c = { id: id, name: name, row: row, lane: lane, shape: 'ring', kind: 'stat', nodes: nodes, core: core, bonus: bonus };
+      if (extra) for (var f in extra) c[f] = extra[f];
+      return c;
+    },
+    altar: function (id, name, row, lane, nodes) {
+      return { id: id, name: name, row: row, lane: lane, shape: 'ring', kind: 'altar', nodes: nodes, core: { t: 'altar', name: name }, bonus: ['sigilPower 1.5'] };
+    },
+    /** A keystone at the end of a short arc of two guards. */
+    keystone: function (id, name, row, lane, a, b, k) {
+      return { id: id, name: name, row: row, lane: lane, shape: 'arc', kind: 'keystone', spokes: [0, 1], nodes: [a, b], core: k };
+    },
+    pacts: function (id, name, row, lane, entry, list, core) {
+      return { id: id, name: name, row: row, lane: lane, shape: 'star', kind: 'special', nodes: [entry].concat(list), core: core };
+    },
+    /** Adds `v` more damage of the primary `ability` to trunk nodes T5, T10 .. T25 (the primary grows with the points). */
+    primaryTrunk: function (tr, ability, v) {
+      [4, 9, 14, 19, 24].forEach(function (i) {
+        var n = tr[i];
+        if (typeof n === 'string') n = { mods: [n] };
+        else if (Array.isArray(n)) n = { name: n[0], mods: n.slice(1) };
+        else { var c = {}; for (var k in n) c[k] = n[k]; n = c; }
+        n.abil = (n.abil || []).concat([{ a: ability, k: 'dmg', v: v }]);
+        tr[i] = n;
+      });
+      return tr;
+    }
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/data/35_tree_gloamblade.js
 (function (root) {
   'use strict';
@@ -11446,6 +11508,101 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     // build off 2.24 / def 1.83, pure defence 2.99; tests/classes_b_balance.test.js dps
     tune: { off: 1.3, def: 0.85, arms: { blood: { def: 0.8 } } },      // [w9 checker] def 0.66 -> 0.85: survive builds gained 10% Health for 45% of their damage (docs/BALANCE_BENCH.md)
     road: ['hp 1', 'moveSpeed 1', 'resAll 1'],
+    links: { bypass: false, rows: false, road: ['moveSpeed 1'] }
+  });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/35_tree_ironbound.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree;
+
+  /**
+   * The Ironbound's own talent tree, THE IRON KEEP: the class-wide record (arm order, hub, tuning) and the small helpers the
+   * eight arm files use. The arms live in src/data/36_tree_ironbound_<armId>.js, the mutations in
+   * src/data/37_mutations_ironbound.js, the recommended builds in src/data/38_tree_builds_ironbound.js and the rules (rule
+   * notables, keystones) in src/sim/56_tree_ironbound.js. Design: docs/TREE_IRONBOUND.md. Format and grid: docs/TREE.md.
+   * Switch: KD.config.trees.ironbound (src/core/00_base.js). Off = the Ironbound uses the Crownweb (its Bastion) as before.
+   *
+   * Arms, clockwise from the top (neighbours are the arms whose play mixes best; cross-border links join neighbours only):
+   *   wall     blocking, Guard, Bulwark Stance, the Ultimate      counter  parries and counter blows (Riposte)
+   *   breaker  Poise, Breaks and Stuns (Ground Slam)               charge   the charge, moving, knocking aside (Lance Charge)
+   *   hook     reach: pull them in, throw the shield               warcry   shouts, Taunts, Weaken, healing (Warcry, Rally Cry)
+   *   anchor   holding ground, Thorns, standing still (Anchor)     plate    Armor, Ward, Health, resistances (Fortify)
+   */
+
+  /** Helpers of the arm files (data only): the shared cluster shorthands (src/data/35_tree_00_kit.js) and two rule makers. */
+  var K0 = T.kit, IB = T.iron = {};
+  for (var f in K0) IB[f] = K0[f];
+  /** A rule notable whose rule is a hook of src/sim/56_tree_ironbound.js (`tree_ironbound_<id>`). */
+  IB.rule = function (id, name, mods, spec, est) { return { t: 'notable', name: name, mods: mods, effect: 'tree_ironbound_' + id, spec: spec, est: est || { off: 1.02, def: 1.01 } }; };
+  /** A rule notable whose rule is one of the Crownweb's Bastion hooks (src/sim/51_class_ironbound.js, `web_ironbound_<key>`). */
+  IB.web = function (key, name, mods, spec, est) { return { t: 'notable', name: name, mods: mods, effect: 'web_ironbound_' + key, spec: spec, est: est || { off: 1.02, def: 1.01 } }; };
+  /** Every fifth trunk node (T5, T10 .. T25) also gives TRUNK_BASH more Shield Bash damage: the primary grows with the
+   *  points like the rest of the kit (the tree's own damage leans on counters, Breaks and skills). */
+  IB.TRUNK_BASH = 0.02; IB.HUB_BASH = 0.03;
+  IB.bashTrunk = function (tr) { return K0.primaryTrunk(tr, 'shield_bash', IB.TRUNK_BASH); };
+
+  // ---------------------------------------------------------------------------------------------
+  // What the estimator cannot see in stats (KD.data.tree.EST; never touches gameplay). Damage parts: the share of each
+  // slotted ability in a fight and the stat keys its hits use (Shield Bash is the primary, w 1). Skill worths start at the
+  // class's measured kit (docs/CLASSES.md) and are refined by tools/tree_real.js --class ironbound.
+  // ---------------------------------------------------------------------------------------------
+  (function () {
+    var E = T.EST, P = E.parts, S = E.skills;
+    var MELEE = ['dmg', 'dmgPhys', 'dmgMelee'], RANGED = ['dmg', 'dmgPhys', 'dmgRanged'];
+    P.shield_bash = { w: 1, keys: MELEE, speed: 'atkSpeed' };
+    P.ground_slam = { w: 0.5, keys: MELEE };
+    P.lance_charge = { w: 0.35, keys: MELEE };
+    P.shield_throw = { w: 0.35, keys: RANGED };
+    P.chain_hook = { w: 0.12, keys: RANGED };
+    P.riposte = { w: 0.2, keys: MELEE };
+    P.bulwark_stance = { w: 0.12, keys: MELEE };
+    P.anchor_point = { w: 0.12, keys: MELEE };
+    P.iron_citadel = { w: 0.3, keys: MELEE };
+    P.rally_cry = { w: 0.05, keys: ['dmg'] };
+    P.warcry_of_iron = { w: 0.05, keys: ['dmg'] };
+    P.fortify = { w: 0.02, keys: ['dmg'] };
+    S.ground_slam = { off: 0.09, def: 0.04 };
+    S.shield_throw = { off: 0.07, def: 0.02 };
+    S.lance_charge = { off: 0.07, def: 0.03 };
+    S.fortify = { off: 0.02, def: 0.11 };
+    S.bulwark_stance = { off: 0.02, def: 0.1 };
+    S.rally_cry = { off: 0.04, def: 0.09 };
+    S.chain_hook = { off: 0.04, def: 0.03 };
+    S.riposte = { off: 0.05, def: 0.06 };
+    S.warcry_of_iron = { off: 0.03, def: 0.11 };
+    S.anchor_point = { off: 0.04, def: 0.08 };
+    S.iron_citadel = { off: 0.07, def: 0.05 };
+  })();
+
+  /** A hub node: a named minor with two half-size mods and HUB_BASH more Shield Bash damage (the primary keeps its share). */
+  function bash(name, a, b) { return { name: name, mods: [a, b], abil: [{ a: 'shield_bash', k: 'dmg', v: IB.HUB_BASH }] }; }
+  // Version 1: the first tree (docs/TREE_IRONBOUND.md).
+  T.define('ironbound', {
+    version: 1, name: 'The Iron Keep',
+    arms: ['wall', 'counter', 'breaker', 'charge', 'hook', 'warcry', 'anchor', 'plate'],
+    hub: [
+      bash('Raised Rim', 'block 0.75', 'hp 0.75'),              // wall
+      bash('Watchful Blade', 'dmgCounter 0.75', 'hp 0.75'),      // counter
+      bash('Heavy Hands', 'breakPower 0.75', 'hp 0.75'),         // breaker
+      bash('Long Stride', 'moveSpeed 0.75', 'armor 0.75'),       // charge
+      bash('Iron Links', 'dmgRanged 0.75', 'hp 0.75'),           // hook
+      bash('Deep Lungs', 'cdr 0.75', 'resAll 0.75'),             // warcry
+      bash('Set Feet', 'poise 0.75', 'thorns 0.75'),             // anchor
+      bash('Riveted', 'armor 0.75', 'hp 0.75')                   // plate
+    ],
+    hubBonus: ['hp 1.5', 'resAll 1'],
+    // A new tree Ironbound knows Shield Bash and ONE skill where the Crownweb hero starts with two: until its third skill it
+    // hits harder and stands a little firmer (the Gravecaller's and Gloamblade's rule, docs/TREE_BALANCE.md).
+    startBonus: { skills: 2, mods: ['hp*20'], text: 'While you know two skills or fewer besides Shield Bash, you have 20% more Health.' },
+    // Balance (docs/TREE_IRONBOUND.md section 5).
+    tune: { off: 0.75, def: 0.6, arms: { plate: { def: 0.8 } } },
+    road: ['hp 1', 'armor 1', 'resAll 1'],
+    // the owner's rule for class trees: links across the borders to the neighbouring arms only, no diagonals inside an arm
     links: { bypass: false, rows: false, road: ['moveSpeed 1'] }
   });
 })(typeof window !== 'undefined' ? window : globalThis);
@@ -14318,6 +14475,961 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/data/36_tree_ironbound_anchor.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, I = T.iron;
+  var rule = I.rule, web = I.web, key = I.key, pact = I.pact, abil = I.abil, star = I.star, ring = I.ring, altar = I.altar, keystone = I.keystone;
+
+  /**
+   * IRONBOUND, arm 6 of 8: THE HOLDFAST (`anchor`). Holding ground: plant the standard, stand still, let them break on Thorns.
+   * Skill: Anchor Point (trunk, 4 points). Design: docs/TREE_IRONBOUND.md. Rules: src/sim/56_tree_ironbound.js.
+   * Holds the three bridges to the plate arm.
+   */
+  T.arm('ironbound', {
+    id: 'anchor', name: 'The Holdfast', focus: 'Hold the ground: plant the standard, stand still and let them break on you', color: '#6f8a5a', vein: 'order',
+
+    trunk: I.bashTrunk([
+      'poise 1', 'hp 1', { t: 'skill', grants: 'anchor_point', abil: [{ a: 'anchor_point', k: 'area', v: 0.08 }] }, 'thorns 1', 'armor 1',   // T1..T5
+      'hp 1', 'dmgTaken 1@still', 'resAll 1', ['Holdfast Road', 'moveSpeed 1', 'poise 0.5'], 'hp 1',                                       // T6..T10
+      'thorns 1', 'armor 1', 'hp 1', 'hpRegen 1', 'resAll 1',                                                                              // T11..T15
+      'hp 1', 'poise 1', 'block 1', 'hp 1', 'thorns 1',                                                                                    // T16..T20
+      'armor 1', 'hp 1', 'dmgTaken 1@still', 'resAll 1', 'hp 1'                                                                            // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Anchor Point, shape and essence
+      star('anchor_point_shape', 'Anchor Point: shape', 1, -1, 'hp 1', ['ap_wide', 'ap_long'], ['Staked Out', 'aoe 1', 'hp 1']),
+      star('anchor_point_essence', 'Anchor Point: essence', 1, 1, 'armor 1', ['ap_might', 'ap_heal', 'ap_stun'], ['Rooted Standard', 'armor 1', 'poise 1']),
+
+      // ---- Row 2
+      star('anchor_point_rite', 'Anchor Point: rite', 2, -1, 'poise 1', ['ap_quick', 'ap_guard', 'ap_cheap'], abil('Driven Deep', ['poise 1', 'hp 1'], 'anchor_point', 'cd', -0.08)),
+      ring('anchor_thorns', 'Bramble Shield', 2, 1, ['thorns 1', 'hp 1', abil('Long Watch', ['armor 0.5'], 'anchor_point', 'dur', 0.1), 'resAll 1', 'dmgMelee 1'],
+        web('turn', 'Turn the Blow', ['thorns 2'], 'When you block a hit, the attacker takes 100% of your Thorns Damage, at any range.', { off: 1.02, def: 1 }),
+        ['thorns 1.5', 'hp 1']),
+
+      // ---- Row 3
+      ring('anchor_rooted', 'Rooted', 3, -2, ['dmgTaken 1@still', 'hp 1', 'poise 1', 'resAll 1'],
+        rule('rooted', 'Deep Roots', ['poise 1'], 'While you stand still, every second gives you Ward equal to 1.5% of your Health for 3 s, up to 10% of your Health.', { off: 1, def: 1.04 }),
+        ['poise 1.5', 'hp 1']),
+      ring('anchor_bramble', 'Bramble', 3, -1, ['thorns 1', 'hp 1', 'armor 1', 'hpRegen 1'],
+        ['Briar Hedge', 'thorns 2', 'armor 1'], ['thorns 1.5', 'hp 1']),
+      ring('anchor_stone', 'Standing Stone', 3, 1, ['armor 1', 'hp 1', 'block 1', 'resAll 1'],
+        ['Menhir', 'armor 2', 'block 1'], ['armor 1.5', 'hp 1']),
+      ring('anchor_stakes', 'Stakes', 3, 2, ['dmgMelee 1', 'hp 1', 'thorns 1', 'armor 1'],
+        ['Sharpened Stakes', 'dmgMelee 1.5', 'thorns 1.5'], ['thorns 1', 'hp 1.5']),
+
+      // ---- Row 4
+      ring('anchor_moss', 'Moss and Lichen', 4, -2, ['hpRegen 1', 'hp 1', 'resAll 1', 'poise 1'],
+        ['Green Growth', 'hpRegen 2', 'resAll 1'], ['hpRegen 1.5', 'hp 1']),
+      altar('anchor_altar_a', 'Altar of the Stone', 4, -1, ['hp 1', 'poise 1', 'armor 1']),
+      ring('anchor_line', 'The Line', 4, 1, ['dmg 1@still', 'hp 1', abil('Wide Anchor', ['armor 0.5'], 'anchor_point', 'area', 0.1), 'armor 1'],
+        ['Drawn in the Dirt', 'dmg 1.5@still', 'poise 1.5'], ['poise 1', 'hp 1.5']),
+      ring('anchor_mire', 'Mire', 4, 2, ['statusDur 1', 'hp 1', 'thorns 1', 'resAll 1'],
+        ['Sucking Mud', 'statusDur 2', 'thorns 1'], ['statusDur 1', 'hp 1.5']),
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      ring('anchor_hold', 'Holding Pattern', 5, -2, ['hp 1', 'poise 1', 'armor 1', 'resAll 1'],
+        ['Hold Steady', 'poise 1.5', 'armor 1.5'], ['poise 1', 'hp 1.5']),
+      ring('anchor_spite', 'Spite', 5, -1, ['thorns 1', 'hp 1', 'critChance 1', 'armor 1'],
+        ['Barbed Plate', 'thorns 2', 'critChance 1'], ['thorns 1', 'hp 1.5']),
+      ring('anchor_well', 'The Well', 5, 1, ['hpRegen 1', 'hp 1', 'healTaken 1', 'resAll 1'],
+        ['Deep Water', 'hpRegen 1.5', 'healTaken 1.5'], ['healTaken 1', 'hp 1.5']),
+      ring('anchor_post', 'Last Post', 5, 2, ['dmg 1@still', 'hp 1', 'block 1', 'armor 1'],
+        ['Hold Until Relieved', 'dmg 1.5@still', 'block 1.5'], ['block 1', 'hp 1.5']),
+
+      // ---- Row 6
+      ring('anchor_earth', 'Packed Earth', 6, -2, ['armor 1', 'hp 1', 'dmgMelee 1', 'poise 1'],
+        ['Rammed Earth', 'armor 2', 'dmgMelee 1'], ['armor 1', 'hp 1.5']),
+      ring('anchor_toll', 'The Toll Gate', 6, -1, ['hp 1', I.trophy("Toll Warden's Bell", ['poise 1.5', 'hp 1.5'], 'toll_warden'), 'armor 1', 'resAll 1'],
+        ['Pay or Pass', 'poise 2', 'armor 1'], ['poise 1.5', 'hp 1']),
+      ring('anchor_cult', 'Hollow Roots', 6, 1, ['hp 1', I.corrupt('Grasping Roots', ['thorns 2', 'poise 1.5'], 20), 'armor 1', 'resAll 1'],
+        I.corrupt('Heart of Thorns', ['dmg*2', 'thorns 3', 'hpRegen 2'], 40), ['thorns 1', 'hp 1.5']),
+      ring('anchor_crown', 'Crown Pikemen', 6, 2, ['armor 1', I.faction('Pike Wall', ['thorns 1.5', 'block 1'], 'crown', 20), 'hp 1', 'resAll 1'],
+        I.faction('Royal Square', ['dmgTaken 2@still', 'thorns 2'], 'crown', 60), ['thorns 1', 'armor 1.5']),
+
+      // ---- Row 7
+      I.pacts('anchor_pacts', 'Holdfast Bargains', 7, -2, 'hp 1',
+        [pact('Rooted Feet', ['dmgTaken*-8@still', 'moveSpeed*-6']), pact('Thorned Hide', ['thorns*40', 'healTaken*-8']), pact('Stubborn', ['poise*30', 'atkSpeed*-5'])],
+        ['Terms of the Hold', 'poise 1', 'hp 1']),
+      ring('anchor_gargoyle', 'Gargoyle Ledge', 7, -1, ['hp 1', 'armor 1', 'poise 1', I.trophy('Stone Wing', ['armor 1.5', 'poise 1.5'], 'gargoyle_pair')],
+        ['Watch in Stone', 'armor 2', 'hp 1'], ['armor 1.5', 'hp 1']),
+      altar('anchor_altar_b', 'Altar of the Hold', 7, 1, ['hp 1', 'thorns 1', 'poise 1']),
+      keystone('anchor_key_line', 'Hold the Line', 7, 2, 'dmgTaken 1@still', 'poise 1',
+        key('Hold the Line', ['dmgTaken*-15@still', 'moveSpeed*-10'], 'While you stand still you take 15% less damage. You move 10% slower.', null, { off: 1, def: 1.06 })),
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      ring('anchor_cairn', 'Cairn', 8, -3, ['hp 1', 'armor 1', 'hpRegen 1', 'resAll 1'],
+        ['Piled Stones', 'armor 1.5', 'hpRegen 1.5'], ['armor 1', 'hp 1.5']),
+      keystone('anchor_key_thorn', 'The Thornwall', 8, -2, 'thorns 1', 'armor 1',
+        key('Thornwall', ['thorns*100', 'dmg*-10'], 'Your Thorns Damage is doubled, but you deal 10% less damage with everything else.', null, { off: 1.01, def: 1.03 })),
+      ring('anchor_oak', 'Old Oak', 8, -1, ['hp 1', 'thorns 1', 'poise 1', 'resAll 1'],
+        ['Heartwood', 'thorns 1.5', 'hp 1.5'], ['thorns 1', 'hp 1.5']),
+      ring('anchor_bastion', 'Bastion Stone', 8, 1, ['block 1', 'hp 1', 'dmg 1@still', 'armor 1'],
+        ['Foundation', 'block 1.5', 'dmg 1.5@still'], ['block 1', 'hp 1.5']),
+      keystone('anchor_key_retreat', 'Never Retreat', 8, 2, 'dmg 1@still', 'thorns 1',
+        key('Never Retreat', ['dmg*15@still', 'dodgeCdr*-30'], 'While you stand still you deal 15% more damage, but your dodge roll recovers 30% slower.', null, { off: 1.04, def: 0.99 })),
+      ring('anchor_root', 'Taproot', 8, 3, ['hp 1', 'hpRegen 1', 'poise 1', 'resAll 1'],
+        ['Deepest Root', 'hpRegen 1.5', 'hp 1.5'], ['hpRegen 1', 'hp 1.5'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['poise 2', 'hp 2'] },
+      { at: 35, mods: ['thorns 3', 'armor 2'] },
+      { at: 60, mods: ['dmgTaken 3@still', 'thorns 2', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Holdfast and the Armoury (gap 6).
+  T.bridge('ironbound', { id: 'anchor_plate_inner', between: ['anchor', 'plate'], ring: 'inner', name: 'Planted Plate', shape: 'star',
+    nodes: ['poise 1', I.mut('bash_guard'), 'armor 1', 'hp 1'],
+    core: ['Braced Rim', 'guardBlock 1', 'armor 1'], bonus: ['hp 1', 'resAll 1'] });
+  T.bridge('ironbound', { id: 'anchor_plate_mid', between: ['anchor', 'plate'], ring: 'mid', name: 'Spiked Plate', shape: 'diamond',
+    nodes: ['thorns 1', 'hp 1', 'armor 1', 'resAll 1'],
+    core: ['Plate Barbs', 'thorns 1.5', 'armor 1.5'], bonus: ['thorns 1.5', 'hp 1'] });
+  T.bridge('ironbound', { id: 'anchor_plate_outer', between: ['anchor', 'plate'], ring: 'outer', name: 'Iron Roots', shape: 'diamond',
+    nodes: ['poise 1', 'hp 1', 'hpRegen 1', 'armor 1'],
+    core: ['Rooted in Iron', 'poise 1.5', 'hpRegen 1.5'], bonus: ['armor 1', 'hp 1.5'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_ironbound_breaker.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, I = T.iron;
+  var rule = I.rule, web = I.web, key = I.key, pact = I.pact, abil = I.abil, star = I.star, ring = I.ring, altar = I.altar, keystone = I.keystone;
+
+  /**
+   * IRONBOUND, arm 2 of 8: THE ANVIL (`breaker`). Poise, Breaks and Stuns: crack the guard, then crack the skull.
+   * Skill: Ground Slam (trunk, 4 points). Design: docs/TREE_IRONBOUND.md. Rules: src/sim/56_tree_ironbound.js.
+   * Holds the three bridges to the charge arm.
+   */
+  T.arm('ironbound', {
+    id: 'breaker', name: 'The Anvil', focus: 'Poise, Breaks and Stuns: crack the guard, then crack the skull', color: '#b56a3a', vein: 'war',
+
+    trunk: I.bashTrunk([
+      'breakPower 1', 'hp 1', { t: 'skill', grants: 'ground_slam', abil: [{ a: 'ground_slam', k: 'dmg', v: 0.05 }] }, 'dmgBroken 1', 'armor 1',   // T1..T5
+      'hp 1', 'breakDur 1', 'aoe 1', ['Anvil Road', 'moveSpeed 1', 'breakPower 0.5'], 'hp 1',                                                    // T6..T10
+      'breakPower 1', 'resAll 1', 'hp 1', 'statusDur 1', 'armor 1',                                                                            // T11..T15
+      'hp 1', 'dmgBroken 1', 'poise 1', 'hp 1', 'breakPower 1',                                                                                // T16..T20
+      'aoe 1', 'hp 1', 'breakDur 1', 'resAll 1', 'hp 1'                                                                                        // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Ground Slam, shape and essence
+      star('breaker_slam_shape', 'Ground Slam: shape', 1, -1, 'hp 1', ['gs_ring', 'gs_line', 'gs_twice'], ['Wide Swing', 'aoe 1', 'hp 1']),
+      star('breaker_slam_essence', 'Ground Slam: essence', 1, 1, 'breakPower 1', ['gs_long', 'gs_break', 'gs_quake'], ['Cracked Stone', 'breakPower 1', 'armor 1']),
+
+      // ---- Row 2
+      star('breaker_slam_rite', 'Ground Slam: rite', 2, -1, 'statusDur 1', ['gs_charges', 'gs_echo', 'gs_cheap'], abil('Hard Landing', ['breakPower 1', 'hp 1'], 'ground_slam', 'cd', -0.08)),
+      ring('breaker_forge', 'The Forge', 2, 1, ['breakPower 1', 'hp 1', abil('Heavier Hammer', ['armor 0.5'], 'ground_slam', 'dmg', 0.08), 'resAll 1', 'dmgPhys 1'],
+        web('breach', 'Spoils of the Breach', ['breakPower 1.5'], 'Breaking an enemy gives you 25 Guard.', { off: 1.025, def: 1 }),
+        ['breakPower 1', 'hp 1.5']),
+
+      // ---- Row 3
+      ring('breaker_after', 'Aftershock', 3, -2, ['breakPower 1', 'hp 1', 'aoe 1', 'armor 1'],
+        rule('aftershock', 'Aftershock', ['aoe 1'], 'Breaking an enemy sends out a shockwave: 60% weapon damage to other enemies within 3 m.', { off: 1.03, def: 1 }),
+        ['aoe 1.5', 'hp 1']),
+      ring('breaker_daze', 'Daze', 3, -1, ['statusDur 1', 'hp 1', 'breakDur 1', 'resAll 1'],
+        ['Ringing Ears', 'statusDur 2', 'breakDur 1'], ['statusDur 1.5', 'hp 1']),
+      ring('breaker_cracks', 'Cracks', 3, 1, ['dmgBroken 1', 'hp 1', 'poise 1', 'armor 1'],
+        ['Shattered Guard', 'dmgBroken 2', 'poise 1'], ['dmgBroken 1.5', 'hp 1']),
+      ring('breaker_skull', 'Skullringer', 3, 2, ['statusDur 1', 'hp 1', 'breakPower 1', 'resAll 1'],
+        web('skullringer', 'Ringing Skull', ['statusDur 1.5'], 'Enemies you Stun or Break deal 15% less damage for 3 s.', { off: 1, def: 1.03 }),
+        ['statusDur 1', 'hp 1.5']),
+
+      // ---- Row 4
+      ring('breaker_weight', 'Dead Weight', 4, -2, ['dmgPhys 1', 'hp 1', 'armor 1', 'poise 1'],
+        ['Lead in the Rim', 'dmgPhys 2', 'poise 1'], ['dmgPhys 1', 'hp 1.5']),
+      altar('breaker_altar_a', 'Altar of the Anvil', 4, -1, ['hp 1', 'breakPower 1', 'armor 1']),
+      ring('breaker_tremor', 'Tremors', 4, 1, ['aoe 1', 'hp 1', abil('Deep Crack', ['breakPower 0.5'], 'ground_slam', 'area', 0.1), 'resAll 1'],
+        ['Faultline', 'aoe 2', 'breakPower 1'], ['aoe 1.5', 'hp 1']),
+      ring('breaker_hammer', 'Smith\'s Arm', 4, 2, ['meleeSpeed 1', 'hp 1', 'breakPower 1', 'armor 1'],
+        ['Steady Blows', 'meleeSpeed 1.5', 'breakPower 1.5'], ['meleeSpeed 1', 'hp 1.5']),
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      ring('breaker_stagger', 'Stagger', 5, -2, ['breakDur 1', 'hp 1', 'statusDur 1', 'resAll 1'],
+        ['Reeling', 'breakDur 2', 'statusDur 1'], ['breakDur 1.5', 'hp 1']),
+      ring('breaker_bones', 'Bonecrusher', 5, -1, ['dmgBroken 1', 'hp 1', 'critChance 1', 'armor 1'],
+        ['Splinters', 'dmgBroken 2', 'critChance 1'], ['dmgBroken 1', 'hp 1.5']),
+      ring('breaker_hide', 'Thick Hide', 5, 1, ['hp 1', 'armor 1', 'poise 1', 'resAll 1'],
+        ['Anvil-Born', 'armor 1.5', 'poise 1.5'], ['armor 1', 'hp 1.5']),
+      ring('breaker_giants', 'Giantsbane', 5, 2, ['dmgBoss 1', 'hp 1', 'breakPower 1', 'resAll 1'],
+        ['Bring Them Down', 'dmgBoss 2', 'dmgElite 1'], ['dmgBoss 1', 'hp 1.5']),
+
+      // ---- Row 6
+      ring('breaker_quarry', 'The Quarry', 6, -2, ['breakPower 1', 'hp 1', 'aoe 1', 'armor 1'],
+        ['Rock Splitter', 'breakPower 2', 'aoe 1'], ['breakPower 1', 'hp 1.5']),
+      ring('breaker_rockjaw', "Rockjaw's Den", 6, -1, ['hp 1', I.trophy("Rockjaw's Tooth", ['breakPower 1.5', 'hp 1.5'], 'rockjaw'), 'poise 1', 'resAll 1'],
+        ['Stone Jaw', 'poise 2', 'breakPower 1'], ['poise 1.5', 'hp 1']),
+      ring('breaker_cult', 'Cracked Altar', 6, 1, ['hp 1', I.corrupt('Hollow Strength', ['breakPower 2', 'dmgBroken 1.5'], 20), 'armor 1', 'resAll 1'],
+        I.corrupt('The Breaking', ['dmg*2', 'dmgBroken 3', 'breakDur 2'], 40), ['breakPower 1', 'hp 1.5']),
+      ring('breaker_crown', 'Crown Sappers', 6, 2, ['armor 1', I.faction('Siege Drill', ['breakPower 1.5', 'aoe 1'], 'crown', 20), 'hp 1', 'resAll 1'],
+        I.faction('Royal Sappers', ['dmgBroken 2', 'breakDur 2'], 'crown', 60), ['breakDur 1', 'armor 1.5']),
+
+      // ---- Row 7
+      I.pacts('breaker_pacts', 'Anvil Bargains', 7, -2, 'hp 1',
+        [pact('Hasty Hammer', ['breakPower%18', 'breakDur%-10']), pact('Heavy Swings', ['dmgMelee*14', 'meleeSpeed*-12']), pact('Stunned Silence', ['statusDur*25', 'dmg*-5'])],
+        ['Forge Terms', 'breakPower 1', 'hp 1']),
+      ring('breaker_foreman', "The Foreman's Yard", 7, -1, ['hp 1', 'breakPower 1', 'aoe 1', I.trophy("Foreman's Maul", ['aoe 1.5', 'breakPower 1.5'], 'siege_foreman')],
+        ['Demolition', 'aoe 2', 'dmgBroken 1'], ['aoe 1.5', 'hp 1']),
+      altar('breaker_altar_b', 'Altar of the Hammer', 7, 1, ['hp 1', 'dmgBroken 1', 'statusDur 1']),
+      keystone('breaker_key_hammer', 'Hammerfall', 7, 2, 'breakPower 1', 'dmgBroken 1',
+        key('Hammerfall', ['breakPower*50', 'dmgBroken*40', 'atkSpeed*-8'], 'You break Poise 50% faster and deal 40% more damage to Broken enemies, but attack and cast 8% slower.', null, { off: 1.06, def: 1 })),
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      ring('breaker_slag', 'Slag Heap', 8, -3, ['hp 1', 'armor 1', 'breakPower 1', 'resAll 1'],
+        ['Slag and Cinder', 'armor 1.5', 'breakPower 1.5'], ['armor 1', 'hp 1.5']),
+      keystone('breaker_key_quake', 'The Earthshaker', 8, -2, 'statusDur 1', 'breakPower 1',
+        key('Earthshaker', [], 'Your Stuns last 50% longer, but you deal 10% less damage to enemies that are neither Stunned nor Broken.', 'tree_ironbound_quake', { off: 1.04, def: 1.03 })),
+      ring('breaker_crater', 'Crater', 8, -1, ['hp 1', 'aoe 1', 'dmgBroken 1', 'armor 1'],
+        ['Impact', 'aoe 1.5', 'dmgBroken 1.5'], ['aoe 1', 'hp 1.5']),
+      ring('breaker_ore', 'Iron Ore', 8, 1, ['breakDur 1', 'hp 1', 'poise 1', 'resAll 1'],
+        ['Hard Ore', 'breakDur 1.5', 'poise 1.5'], ['breakDur 1', 'hp 1.5']),
+      keystone('breaker_key_bones', 'The Bonebreaker', 8, 2, 'breakDur 1', 'dmgBroken 1',
+        key('Bonebreaker', ['breakDur*60', 'breakPower*-15'], 'Enemies you Break stay Broken 60% longer, but you break Poise 15% slower.', null, { off: 1.04, def: 1.01 })),
+      ring('breaker_spark', 'Sparks', 8, 3, ['hp 1', 'critChance 1', 'statusDur 1', 'resAll 1'],
+        ['Struck Sparks', 'critChance 1.5', 'statusDur 1.5'], ['statusDur 1', 'hp 1.5'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['breakPower 2', 'hp 2'] },
+      { at: 35, mods: ['dmgBroken 3', 'armor 2'] },
+      { at: 60, mods: ['breakPower 3', 'breakDur 3', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Anvil and the Shield Charge (gap 2).
+  T.bridge('ironbound', { id: 'breaker_charge_inner', between: ['breaker', 'charge'], ring: 'inner', name: 'Battering Ram', shape: 'star',
+    nodes: ['breakPower 1', I.mut('bash_daze'), 'moveSpeed 1', 'hp 1'],
+    core: ['Ram and Rim', 'breakPower 1', 'moveSpeed 1'], bonus: ['hp 1', 'armor 1'] });
+  T.bridge('ironbound', { id: 'breaker_charge_mid', between: ['breaker', 'charge'], ring: 'mid', name: 'Running Hammer', shape: 'diamond',
+    nodes: ['breakPower 1', 'hp 1', 'moveSpeed 1', 'armor 1'],
+    core: ['Momentum Strike', 'breakPower 1.5', 'dmg 1@moving'], bonus: ['breakPower 1.5', 'hp 1'] });
+  T.bridge('ironbound', { id: 'breaker_charge_outer', between: ['breaker', 'charge'], ring: 'outer', name: 'Siege Line', shape: 'diamond',
+    nodes: ['dmgBroken 1', 'hp 1', 'poise 1', 'resAll 1'],
+    core: ['Breach and Clear', 'dmgBroken 1.5', 'poise 1.5'], bonus: ['poise 1', 'hp 1.5'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_ironbound_charge.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, I = T.iron;
+  var rule = I.rule, key = I.key, pact = I.pact, abil = I.abil, star = I.star, ring = I.ring, altar = I.altar, keystone = I.keystone;
+
+  /**
+   * IRONBOUND, arm 3 of 8: THE TILT YARD (`charge`). The charge: crash in, knock them aside, keep moving.
+   * Skill: Lance Charge (trunk, 4 points). Design: docs/TREE_IRONBOUND.md. Rules: src/sim/56_tree_ironbound.js.
+   * Holds the three bridges to the hook arm.
+   */
+  T.arm('ironbound', {
+    id: 'charge', name: 'The Shield Charge', focus: 'Shield first: crash in behind the shield, knock them aside and never stop moving', color: '#c24a3a', vein: 'war',
+
+    trunk: I.bashTrunk([
+      'moveSpeed 1', 'hp 1', { t: 'skill', grants: 'lance_charge', abil: [{ a: 'lance_charge', k: 'cd', v: -0.05 }] }, 'dmgMelee 1', 'armor 1',   // T1..T5
+      'hp 1', 'dodgeCdr 1', 'poise 1', ['Tilting Road', 'moveSpeed 1', 'dmg 0.5@moving'], 'hp 1',                                                // T6..T10
+      'moveSpeed 1', 'resAll 1', 'hp 1', 'breakPower 1', 'armor 1',                                                                            // T11..T15
+      'hp 1', 'dmg 1@moving', 'dodgeCdr 1', 'hp 1', 'critChance 1',                                                                            // T16..T20
+      'moveSpeed 1', 'hp 1', 'armor 1', 'resAll 1', 'hp 1'                                                                                     // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Lance Charge, shape and essence
+      star('charge_lance_shape', 'Lance Charge: shape', 1, -1, 'hp 1', ['lc_far', 'lc_wide'], ['Long Run-Up', 'moveSpeed 1', 'hp 1']),
+      star('charge_lance_essence', 'Lance Charge: essence', 1, 1, 'breakPower 1', ['lc_stun', 'lc_heavy', 'lc_vuln'], ['Couched Lance', 'breakPower 1', 'armor 1']),
+
+      // ---- Row 2
+      star('charge_lance_rite', 'Lance Charge: rite', 2, -1, 'moveSpeed 1', ['lc_charges', 'lc_guard', 'lc_ward'], abil('Second Wind', ['moveSpeed 1', 'hp 1'], 'lance_charge', 'cd', -0.08)),
+      ring('charge_destrier', 'Destrier', 2, 1, ['moveSpeed 1', 'hp 1', abil('Sharpened Lance', ['armor 0.5'], 'lance_charge', 'dmg', 0.08), 'resAll 1', 'dmgMelee 1'],
+        rule('momentum', 'Momentum', ['moveSpeed 1'], 'After a Lance Charge you take 20% less damage for 3 s.', { off: 1, def: 1.04 }),
+        ['moveSpeed 1', 'hp 1.5']),
+
+      // ---- Row 3
+      ring('charge_spurs', 'Spurs', 3, -2, ['moveSpeed 1', 'hp 1', 'dodgeCdr 1', 'armor 1'],
+        ['Gilded Spurs', 'moveSpeed 1.5', 'dodgeCdr 1.5'], ['dodgeCdr 1', 'hp 1.5']),
+      ring('charge_trample', 'Trample', 3, -1, ['breakPower 1', 'hp 1', 'dmg 1@moving', 'resAll 1'],
+        ['Hooves', 'breakPower 1.5', 'dmg 1.5@moving'], ['breakPower 1', 'hp 1.5']),
+      ring('charge_banners', 'Pennants', 3, 1, ['critChance 1', 'hp 1', 'moveSpeed 1', 'armor 1'],
+        ['Colours Flying', 'critChance 2', 'moveSpeed 1'], ['critChance 1', 'hp 1.5']),
+      ring('charge_barding', 'Barding', 3, 2, ['armor 1', 'hp 1', 'dmgTaken 1@moving', 'resAll 1'],
+        ['Steel Caparison', 'armor 2', 'dmgTaken 1@moving'], ['armor 1.5', 'hp 1']),
+
+      // ---- Row 4
+      ring('charge_gallop', 'Gallop', 4, -2, ['moveSpeed 1', 'hp 1', 'meleeSpeed 1', 'resAll 1'],
+        ['Full Tilt', 'moveSpeed 2', 'meleeSpeed 1'], ['moveSpeed 1.5', 'hp 1']),
+      altar('charge_altar_a', 'Altar of the Lists', 4, -1, ['hp 1', 'moveSpeed 1', 'armor 1']),
+      ring('charge_shock', 'Shock Cavalry', 4, 1, ['dmgMelee 1', 'hp 1', abil('Long Charge', ['moveSpeed 0.5'], 'lance_charge', 'range', 0.12), 'armor 1'],
+        ['First Rank', 'dmgMelee 1.5', 'breakPower 1.5'], ['dmgMelee 1', 'hp 1.5']),
+      ring('charge_rider', 'Rough Rider', 4, 2, ['hp 1', 'poise 1', 'hpRegen 1', 'resAll 1'],
+        ['Saddle Sore', 'poise 1.5', 'hpRegen 1.5'], ['poise 1', 'hp 1.5']),
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      ring('charge_wedge', 'The Wedge', 5, -2, ['moveSpeed 1', 'hp 1', 'breakPower 1', 'resAll 1'],
+        ['Point of the Wedge', 'breakPower 2', 'moveSpeed 1'], ['breakPower 1', 'hp 1.5']),
+      ring('charge_crash', 'Crash Through', 5, -1, ['dmg 1@moving', 'hp 1', 'critMult 1', 'armor 1'],
+        ['Shattered Line', 'dmg 2@moving', 'critMult 1'], ['critMult 1', 'hp 1.5']),
+      ring('charge_scout', 'Outrider', 5, 1, ['hp 1', 'moveSpeed 1', 'dodgeCdr 1', 'resAll 1'],
+        ['Far Ahead', 'moveSpeed 1.5', 'resAll 1.5'], ['moveSpeed 1', 'hp 1.5']),
+      ring('charge_glory', 'Glory', 5, 2, ['dmgElite 1', 'hp 1', 'critChance 1', 'armor 1'],
+        ['Glory Seeker', 'dmgElite 2', 'critChance 1'], ['dmgElite 1', 'hp 1.5']),
+
+      // ---- Row 6
+      ring('charge_ride', 'Ride Them Down', 6, -2, ['dmgMelee 1', 'hp 1', 'moveSpeed 1', 'armor 1'],
+        ['Run Through', 'dmgMelee 2', 'moveSpeed 1'], ['dmgMelee 1', 'hp 1.5']),
+      ring('charge_pale', "The Pale Rider's Road", 6, -1, ['hp 1', I.trophy('Pale Bridle', ['moveSpeed 1.5', 'hp 1.5'], 'pale_rider'), 'dodgeCdr 1', 'resAll 1'],
+        ['Deathless Ride', 'moveSpeed 1.5', 'hp 1.5'], ['moveSpeed 1', 'hp 1.5']),
+      ring('charge_cult', 'Hollow Steed', 6, 1, ['hp 1', I.corrupt('Rot Gallop', ['moveSpeed 2', 'dmg 1.5@moving'], 20), 'armor 1', 'resAll 1'],
+        I.corrupt('Nightmare Charger', ['dmg*2', 'moveSpeed 2', 'breakPower 2'], 40), ['moveSpeed 1', 'hp 1.5']),
+      ring('charge_crown', 'Crown Lancers', 6, 2, ['armor 1', I.faction("Lancer's Oath", ['dmgMelee 1.5', 'moveSpeed 1'], 'crown', 20), 'hp 1', 'resAll 1'],
+        I.faction('Royal Charge', ['dmgElite 2', 'breakPower 2'], 'crown', 60), ['breakPower 1', 'armor 1.5']),
+
+      // ---- Row 7
+      I.pacts('charge_pacts', 'Tilting Bargains', 7, -2, 'hp 1',
+        [pact('Reckless Charge', ['moveSpeed*10', 'armor*-10']), pact('Heavy Horse', ['breakPower*20', 'moveSpeed*-6']), pact('No Brakes', ['dmg*8@moving', 'dmg*-8@still'])],
+        ['Terms of the Lists', 'moveSpeed 1', 'hp 1']),
+      ring('charge_wyvern', 'Wyvern Roost', 7, -1, ['hp 1', 'moveSpeed 1', 'critChance 1', I.trophy('Wyvern Saddle', ['critChance 1.5', 'moveSpeed 1.5'], 'wyvern_rider')],
+        ['Sky Lance', 'critChance 2', 'moveSpeed 1'], ['critChance 1', 'hp 1.5']),
+      altar('charge_altar_b', 'Altar of the Charge', 7, 1, ['hp 1', 'dmgMelee 1', 'moveSpeed 1']),
+      keystone('charge_key_jugg', 'The Juggernaut', 7, 2, 'dmg 1@moving', 'armor 1',
+        key('Juggernaut', ['dmg*20@moving', 'dmgTaken*-15@moving', 'dmg*-15@still'], 'While you move you deal 20% more damage and take 15% less. Standing still, you deal 15% less damage.', null, { off: 1.04, def: 1.04 })),
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      ring('charge_road', 'The Long Road', 8, -3, ['hp 1', 'moveSpeed 1', 'armor 1', 'resAll 1'],
+        ['Miles Behind', 'moveSpeed 1.5', 'armor 1.5'], ['moveSpeed 1', 'hp 1.5']),
+      keystone('charge_key_neck', 'Breakneck', 8, -2, 'moveSpeed 1', 'dodgeCdr 1',
+        key('Breakneck', ['moveSpeed*20', 'armor*-20'], 'You move 20% faster, but have 20% less Armor.', null, { off: 1.02, def: 1.01 })),
+      ring('charge_crest', 'Crested Helm', 8, -1, ['hp 1', 'critMult 1', 'dmgMelee 1', 'resAll 1'],
+        ['Plumed Crest', 'critMult 2', 'hp 1'], ['critMult 1.5', 'hp 1']),
+      ring('charge_hoof', 'Iron Hooves', 8, 1, ['poise 1', 'hp 1', 'breakPower 1', 'armor 1'],
+        ['Shod in Iron', 'poise 1.5', 'breakPower 1.5'], ['poise 1', 'hp 1.5']),
+      keystone('charge_key_ram', "The Ram's Head", 8, 2, 'breakPower 1', 'moveSpeed 1',
+        key("Ram's Head", ['breakPower*40@moving', 'block*-25'], 'While you move you break Poise 40% faster, but you have 25% less Block Chance.', null, { off: 1.04, def: 0.98 })),
+      ring('charge_dust', 'Dust Cloud', 8, 3, ['hp 1', 'dodgeCdr 1', 'moveSpeed 1', 'resAll 1'],
+        ['Kicked Up Dust', 'dodgeCdr 1.5', 'hp 1.5'], ['dodgeCdr 1', 'hp 1.5'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['moveSpeed 2', 'hp 2'] },
+      { at: 35, mods: ['breakPower 2', 'armor 2'] },
+      { at: 60, mods: ['dmg 3@moving', 'moveSpeed 2', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Shield Charge and the Chain Gate (gap 3).
+  T.bridge('ironbound', { id: 'charge_hook_inner', between: ['charge', 'hook'], ring: 'inner', name: 'Shoving Match', shape: 'star',
+    nodes: ['moveSpeed 1', I.mut('bash_shove'), 'dmgRanged 1', 'hp 1'],
+    core: ['Out of My Way', 'moveSpeed 1', 'breakPower 1'], bonus: ['hp 1', 'armor 1'] });
+  T.bridge('ironbound', { id: 'charge_hook_mid', between: ['charge', 'hook'], ring: 'mid', name: 'Run and Reel', shape: 'diamond',
+    nodes: ['moveSpeed 1', 'hp 1', 'dmgRanged 1', 'armor 1'],
+    core: ['Close the Gap', 'moveSpeed 1.5', 'dmgRanged 1.5'], bonus: ['moveSpeed 1.5', 'hp 1'] });
+  T.bridge('ironbound', { id: 'charge_hook_outer', between: ['charge', 'hook'], ring: 'outer', name: 'Ride and Throw', shape: 'diamond',
+    nodes: ['critChance 1', 'hp 1', 'projSpeed 1', 'resAll 1'],
+    core: ['Thrown at the Gallop', 'critChance 1.5', 'projSpeed 1.5'], bonus: ['critChance 1', 'hp 1.5'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_ironbound_counter.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, I = T.iron;
+  var rule = I.rule, web = I.web, key = I.key, pact = I.pact, abil = I.abil, star = I.star, ring = I.ring, altar = I.altar, keystone = I.keystone;
+
+  /**
+   * IRONBOUND, arm 1 of 8: THE DUELLING YARD (`counter`). Parries and counter blows: wait for the swing, then answer it.
+   * Skill: Riposte (trunk, 4 points). Design: docs/TREE_IRONBOUND.md. Rules: src/sim/56_tree_ironbound.js.
+   * Holds the three bridges to the breaker arm.
+   */
+  T.arm('ironbound', {
+    id: 'counter', name: 'The Duelling Yard', focus: 'Parries and counter blows: let them swing first, then answer', color: '#c8b27a', vein: 'war',
+
+    trunk: I.bashTrunk([
+      'dmgCounter 1', 'hp 1', { t: 'skill', grants: 'riposte', abil: [{ a: 'riposte', k: 'cd', v: -0.05 }] }, 'dmgWindup 1', 'block 1',   // T1..T5
+      'hp 1', 'critChance 1', 'guardHold 1', ['Yard Road', 'moveSpeed 1', 'dmgCounter 0.5'], 'hp 1',                                   // T6..T10
+      'dmgCounter 1', 'resAll 1', 'hp 1', 'meleeSpeed 1', 'block 1',                                                                     // T11..T15
+      'hp 1', 'dmgWindup 1', 'armor 1', 'hp 1', 'critMult 1',                                                                          // T16..T20
+      'dmgCounter 1', 'hp 1', 'block 1', 'resAll 1', 'hp 1'                                                                            // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Riposte, shape and essence
+      star('counter_rip_shape', 'Riposte: shape', 1, -1, 'hp 1', ['rp_long', 'rp_wide', 'rp_reach'], ['Open Guard', 'block 1', 'hp 1']),
+      star('counter_rip_essence', 'Riposte: essence', 1, 1, 'dmgCounter 1', ['rp_heavy', 'rp_bleed', 'rp_leech'], ['Steel Answer', 'dmgCounter 1', 'armor 1']),
+
+      // ---- Row 2
+      star('counter_rip_rite', 'Riposte: rite', 2, -1, 'block 1', ['rp_guard', 'rp_quick', 'rp_ward'], abil('Quick Wrist', ['meleeSpeed 1', 'hp 1'], 'riposte', 'cd', -0.08)),
+      ring('counter_fencer', 'Fencing Master', 2, 1, ['dmgCounter 1', 'hp 1', abil('Clean Parry', ['block 0.5'], 'riposte', 'dmg', 0.08), 'armor 1', 'critChance 1'],
+        ['Point and Edge', 'dmgCounter 2', 'critChance 1', 'hp 1'], ['dmgCounter 1', 'hp 1.5']),
+
+      // ---- Row 3
+      ring('counter_reprisal', 'Reprisal', 3, -2, ['dmgCounter 1', 'hp 1', 'hpRegen 1', 'resAll 1'],
+        rule('reprisal', 'Blood for Blood', ['dmgCounter 1'], 'Your counter blows heal you for 3% of your Health.', { off: 1, def: 1.04 }),
+        ['dmgCounter 1.5', 'hp 1']),
+      ring('counter_timing', 'Timing', 3, -1, ['dmgWindup 1', 'hp 1', 'block 1', 'armor 1'],
+        ['Read the Shoulder', 'dmgWindup 2', 'block 1'], ['dmgWindup 1.5', 'hp 1']),
+      ring('counter_measure', 'Take Their Measure', 3, 1, ['meleeSpeed 1', 'hp 1', 'guardBlock 1', 'resAll 1'],
+        rule('measure', 'Measured', ['meleeSpeed 1'], 'Each hit you block gives you 8% more Attack Speed for 4 s, up to 3 times.', { off: 1.03, def: 1 }),
+        ['meleeSpeed 1.5', 'hp 1']),
+      ring('counter_edge', 'Edge Work', 3, 2, ['critMult 1', 'hp 1', 'dmgCounter 1', 'armor 1'],
+        ['Thrust and Cut', 'critMult 2', 'dmgCounter 1'], ['critMult 1.5', 'hp 1']),
+
+      // ---- Row 4
+      ring('counter_patience', 'Patience', 4, -2, ['guardHold 1', 'hp 1', 'dmgWindup 1', 'resAll 1'],
+        ['Wait for It', 'guardHold 2', 'guardBlock 1'], ['guardHold 1.5', 'hp 1']),
+      altar('counter_altar_a', 'Altar of the Yard', 4, -1, ['hp 1', 'dmgCounter 1', 'block 1']),
+      ring('counter_duel', 'The Duel', 4, 1, ['dmg 1@duel', 'hp 1', 'block 1', 'poise 1'],
+        ['Single Combat', 'dmg 1.5@duel', 'block 1.5'], ['block 1', 'hp 1.5']),
+      ring('counter_feint', 'Feints', 4, 2, ['critChance 1', 'hp 1', 'dodgeCdr 1', 'armor 1'],
+        ['False Opening', 'critChance 2', 'dmgWindup 1'], ['critChance 1', 'hp 1.5']),
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      ring('counter_stance', 'High Guard', 5, -2, ['block 1', 'hp 1', 'dmgCounter 1', 'resAll 1'],
+        ['Ox Guard', 'block 1.5', 'dmgCounter 1.5'], ['block 1', 'hp 1.5']),
+      ring('counter_reply', 'Measured Reply', 5, -1, ['dmgCounter 1', 'hp 1', 'meleeSpeed 1', 'armor 1'],
+        ['Second Intention', 'dmgCounter 2', 'meleeSpeed 1'], ['dmgCounter 1.5', 'hp 1']),
+      ring('counter_scars', 'Scar Tissue', 5, 1, ['hp 1', 'armor 1', 'hpRegen 1', 'resAll 1'],
+        ['Old Wounds', 'hp 1.5', 'hpRegen 1.5'], ['hpRegen 1', 'hp 1.5']),
+      ring('counter_salle', 'The Salle', 5, 2, ['critChance 1', 'hp 1', 'block 1', 'resAll 1'],
+        ['Salute', 'critChance 1.5', 'critMult 1.5'], ['critChance 1', 'hp 1.5']),
+
+      // ---- Row 6
+      ring('counter_riposte', 'Riposte Drill', 6, -2, ['meleeSpeed 1', 'hp 1', 'dmgCounter 1', 'block 1'],
+        ['Thousand Parries', 'meleeSpeed 2', 'block 1'], ['meleeSpeed 1', 'hp 1.5']),
+      ring('counter_guard', 'Royal Gauntlet', 6, -1, ['hp 1', I.trophy("Champion's Gauntlet", ['dmgCounter 1.5', 'block 1.5'], 'royal_guard_gauntlet'), 'armor 1', 'critChance 1'],
+        ['Gauntlet Thrown', 'dmgCounter 2', 'hp 1'], ['dmgCounter 1', 'hp 1.5']),
+      ring('counter_cult', 'Hollow Duel', 6, 1, ['hp 1', I.corrupt('Spite', ['dmgCounter 2', 'critMult 1.5'], 20), 'block 1', 'resAll 1'],
+        I.corrupt('Grudge Eternal', ['dmg*2', 'dmgCounter 3', 'dmgWindup 2'], 40), ['dmgCounter 1', 'hp 1.5']),
+      ring('counter_crown', 'Crown Duellists', 6, 2, ['block 1', I.faction('Court Fencer', ['dmgCounter 1.5', 'critChance 1'], 'crown', 20), 'hp 1', 'armor 1'],
+        I.faction("King's Champion", ['dmgElite 2', 'dmgCounter 2'], 'crown', 60), ['dmgElite 1', 'block 1.5']),
+
+      // ---- Row 7
+      I.pacts('counter_pacts', 'Duel Bargains', 7, -2, 'hp 1',
+        [pact('Blade Bared', ['dmgCounter+15', 'blockStop+-4']), pact('Quick Hands', ['meleeSpeed*12', 'dmgMelee*-8']), pact('Hold Nothing Back', ['critMult*15', 'armor*-10'])],
+        ['Rules of the Yard', 'dmgCounter 1', 'hp 1']),
+      ring('counter_axe', "The Headsman's Block", 7, -1, ['hp 1', 'dmgWindup 1', 'block 1', I.trophy("Headsman's Hood", ['dmgWindup 1.5', 'hp 1.5'], 'executioner')],
+        ['Measured Stroke', 'dmgWindup 2', 'critChance 1'], ['dmgWindup 1.5', 'hp 1']),
+      altar('counter_altar_b', 'Altar of the Blade', 7, 1, ['hp 1', 'critChance 1', 'dmgCounter 1']),
+      keystone('counter_key_reply', 'No Blow Unanswered', 7, 2, 'dmgCounter 1', 'block 1',
+        key('No Blow Unanswered', [], 'Each hit you block or parry is answered with a counter blow for 150% weapon damage if the attacker is within 5 m (at most one every 0.5 s). Your primary attack deals 20% less damage.', 'web_no_blow_unanswered', { off: 1.05, def: 1 })),
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      ring('counter_lists', 'The Lists', 8, -3, ['hp 1', 'critChance 1', 'block 1', 'resAll 1'],
+        ['Tilt and Turn', 'critChance 1.5', 'hp 1.5'], ['critChance 1', 'hp 1.5']),
+      keystone('counter_key_oath', "The Duelist's Oath", 8, -2, 'dmgCounter 1', 'critChance 1',
+        key("Duelist's Oath", ['dmgCounter+40', 'block*-30'], 'Your counter blows deal +40% damage, but you have 30% less Block Chance.', null, { off: 1.05, def: 0.97 })),
+      ring('counter_scarlet', 'Scarlet Sash', 8, -1, ['hp 1', 'critMult 1', 'dmgCounter 1', 'armor 1'],
+        ['Blood on the Sand', 'critMult 2', 'hp 1'], ['critMult 1.5', 'hp 1']),
+      ring('counter_master', 'Swordmaster', 8, 1, ['dmgWindup 1', 'hp 1', 'meleeSpeed 1', 'resAll 1'],
+        ['Masterstroke', 'dmgWindup 2', 'meleeSpeed 1'], ['dmgWindup 1', 'hp 1.5']),
+      keystone('counter_key_patient', 'The Patient Blade', 8, 2, 'dmgWindup 1', 'guardHold 1',
+        key('Patient Blade', ['dmgWindup+50', 'atkSpeed*-10'], 'Your hits deal +50% damage to enemies winding up an attack, but you attack and cast 10% slower.', null, { off: 1.05, def: 1 })),
+      ring('counter_honour', 'Honour Bound', 8, 3, ['hp 1', 'block 1', 'dmgCounter 1', 'resAll 1'],
+        ['Unbowed', 'block 1.5', 'hp 1.5'], ['block 1', 'hp 1.5'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['dmgCounter 2', 'hp 2'] },
+      { at: 35, mods: ['dmgWindup 3', 'block 2'] },
+      { at: 60, mods: ['dmgCounter 4', 'critChance 2', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Duelling Yard and the Anvil (gap 1).
+  T.bridge('ironbound', { id: 'counter_breaker_inner', between: ['counter', 'breaker'], ring: 'inner', name: 'Pommel and Rim', shape: 'star',
+    nodes: ['dmgCounter 1', I.mut('bash_heavy'), 'breakPower 1', 'hp 1'],
+    core: ['Hilt Strike', 'breakPower 1', 'dmgCounter 1'], bonus: ['hp 1', 'armor 1'] });
+  T.bridge('ironbound', { id: 'counter_breaker_mid', between: ['counter', 'breaker'], ring: 'mid', name: 'Mid-Swing', shape: 'diamond',
+    nodes: ['dmgWindup 1', 'hp 1', 'breakPower 1', 'armor 1'],
+    core: web('swing', 'Break the Swing', ['dmgWindup 1.5'], 'Your hits deal 40% more Poise damage to enemies that are winding up an attack.', { off: 1.02, def: 1 }),
+    bonus: ['dmgWindup 1.5', 'hp 1'] });
+  T.bridge('ironbound', { id: 'counter_breaker_outer', between: ['counter', 'breaker'], ring: 'outer', name: 'Crushing Reply', shape: 'diamond',
+    nodes: ['dmgCounter 1', 'hp 1', 'breakDur 1', 'resAll 1'],
+    core: ['Hammer Answer', 'dmgCounter 1.5', 'breakPower 1.5'], bonus: ['breakPower 1', 'hp 1.5'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_ironbound_hook.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, I = T.iron;
+  var rule = I.rule, key = I.key, pact = I.pact, abil = I.abil, star = I.star, ring = I.ring, altar = I.altar, keystone = I.keystone;
+
+  /**
+   * IRONBOUND, arm 4 of 8: THE CHAIN GATE (`hook`). Reach: drag them in on a chain, throw the shield at the ones behind.
+   * Skills: Chain Hook (trunk, 4 points), Shield Throw (the core of a row-2 wheel, 10 points). Design: docs/TREE_IRONBOUND.md.
+   * Rules: src/sim/56_tree_ironbound.js. Holds the three bridges to the warcry arm.
+   */
+  T.arm('ironbound', {
+    id: 'hook', name: 'The Chain Gate', focus: 'Reach: drag them in on a chain and throw the shield at the rest', color: '#7d8f9c', vein: 'dread',
+
+    trunk: I.bashTrunk([
+      'dmgRanged 1', 'hp 1', { t: 'skill', grants: 'chain_hook', abil: [{ a: 'chain_hook', k: 'cd', v: -0.05 }] }, 'statusDur 1', 'armor 1',   // T1..T5
+      'hp 1', 'projSpeed 1', 'resAll 1', ['Chain Road', 'moveSpeed 1', 'dmgRanged 0.5'], 'hp 1',                                               // T6..T10
+      'dmgRanged 1', 'armor 1', 'hp 1', 'statusChance 1', 'resAll 1',                                                                        // T11..T15
+      'hp 1', 'critChance 1', 'poise 1', 'hp 1', 'dmgRanged 1',                                                                              // T16..T20
+      'statusDur 1', 'hp 1', 'armor 1', 'resAll 1', 'hp 1'                                                                                   // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Chain Hook, shape and essence
+      star('hook_chain_shape', 'Chain Hook: shape', 1, -1, 'hp 1', ['ch_far', 'ch_fast'], ['Long Chain', 'dmgRanged 1', 'hp 1']),
+      star('hook_chain_essence', 'Chain Hook: essence', 1, 1, 'statusDur 1', ['ch_stun', 'ch_bleed', 'ch_heavy'], ['Barbed Hook', 'statusDur 1', 'armor 1']),
+
+      // ---- Row 2: Chain Hook, rite; Shield Throw in the core of a wheel
+      star('hook_chain_rite', 'Chain Hook: rite', 2, -1, 'armor 1', ['ch_charges', 'ch_guard', 'ch_quick'], abil('Oiled Links', ['dmgRanged 1', 'hp 1'], 'chain_hook', 'cd', -0.08)),
+      ring('hook_throw', 'The Throwing Yard', 2, 1, ['dmgRanged 1', 'hp 1', abil('True Throw', ['projSpeed 1'], 'shield_throw', 'dmg', 0.08), 'armor 1', 'resAll 1'],
+        { t: 'skill', grants: 'shield_throw', abil: [{ a: 'shield_throw', k: 'range', v: 0.08 }] }, ['dmgRanged 1', 'hp 1.5'], { kind: 'skill', spokes: [0] }),
+
+      // ---- Row 3: Shield Throw, shape and essence
+      star('hook_throw_shape', 'Shield Throw: shape', 3, -2, 'hp 1', ['st_pierce', 'st_split', 'st_far'], ['Flat Arc', 'projSpeed 1', 'hp 1']),
+      ring('hook_reel', 'Reel Them In', 3, -1, ['statusDur 1', 'hp 1', 'dmgRanged 1', 'resAll 1'],
+        rule('reel', 'Reeled In', ['statusDur 1'], 'An enemy you drag with Chain Hook is Stunned for 0.6 s when it lands.', { off: 1.02, def: 1.02 }),
+        ['statusDur 1.5', 'hp 1']),
+      ring('hook_rebound', 'Rebound', 3, 1, ['dmgRanged 1', 'hp 1', 'guardBlock 1', 'armor 1'],
+        rule('ricochet', 'Ringing Rebound', ['dmgRanged 1'], 'Each enemy your Shield Throw hits gives you 5 Guard.', { off: 1.03, def: 1 }),
+        ['dmgRanged 1.5', 'hp 1']),
+      star('hook_throw_essence', 'Shield Throw: essence', 3, 2, 'dmgRanged 1', ['st_stun', 'st_heavy', 'st_sunder'], ['Heavy Rim', 'breakPower 1', 'armor 1']),
+
+      // ---- Row 4
+      ring('hook_links', 'Iron Links', 4, -2, ['hp 1', 'armor 1', 'statusChance 1', 'resAll 1'],
+        ['Forged Links', 'armor 1.5', 'statusChance 1.5'], ['armor 1', 'hp 1.5']),
+      altar('hook_altar_a', 'Altar of Chains', 4, -1, ['hp 1', 'dmgRanged 1', 'armor 1']),
+      ring('hook_aim', 'Steady Aim', 4, 1, ['critChance 1', 'hp 1', abil('Wide Throw', ['projSpeed 0.5'], 'shield_throw', 'cd', -0.08), 'resAll 1'],
+        ['Eye on the Mark', 'critChance 2', 'projSpeed 1'], ['critChance 1', 'hp 1.5']),
+      star('hook_throw_rite', 'Shield Throw: rite', 4, 2, 'hp 1', ['st_charges', 'st_guard', 'st_cheap'], ['Strap and Catch', 'cdr 1', 'hp 1']),
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      ring('hook_gaol', 'The Gaol', 5, -2, ['statusDur 1', 'hp 1', 'armor 1', 'resAll 1'],
+        ['Shackles', 'statusDur 2', 'armor 1'], ['statusDur 1', 'hp 1.5']),
+      ring('hook_near', 'Come Closer', 5, -1, ['dmgMelee 1', 'hp 1', 'dmgRanged 1', 'armor 1'],
+        ['Within Arm\'s Reach', 'dmgMelee 1.5', 'dmgRanged 1.5'], ['dmgMelee 1', 'hp 1.5']),
+      ring('hook_net', 'The Net', 5, 1, ['hp 1', 'statusChance 1', 'poise 1', 'resAll 1'],
+        ['Cast Net', 'statusChance 1.5', 'poise 1.5'], ['poise 1', 'hp 1.5']),
+      ring('hook_disc', 'Spinning Disc', 5, 2, ['projSpeed 1', 'hp 1', 'critMult 1', 'armor 1'],
+        ['Whirling Rim', 'projSpeed 1.5', 'critMult 1.5'], ['critMult 1', 'hp 1.5']),
+
+      // ---- Row 6
+      ring('hook_anchor', 'Anchor Chain', 6, -2, ['dmgRanged 1', 'hp 1', 'statusDur 1', 'armor 1'],
+        ['Heavy Anchor', 'dmgRanged 2', 'statusDur 1'], ['dmgRanged 1', 'hp 1.5']),
+      ring('hook_admiral', "The Admiral's Deck", 6, -1, ['hp 1', I.trophy("Admiral's Grapnel", ['dmgRanged 1.5', 'statusDur 1.5'], 'smuggler_admiral'), 'armor 1', 'resAll 1'],
+        ['Boarding Hooks', 'dmgRanged 1.5', 'hp 1.5'], ['dmgRanged 1', 'hp 1.5']),
+      ring('hook_cult', 'Hollow Chains', 6, 1, ['hp 1', I.corrupt('Cold Iron', ['statusDur 2', 'dmgRanged 1.5'], 20), 'armor 1', 'resAll 1'],
+        I.corrupt('Chains of the Hollow', ['dmg*2', 'dmgRanged 3', 'statusChance 2'], 40), ['statusDur 1', 'hp 1.5']),
+      ring('hook_crown', 'Crown Jailers', 6, 2, ['armor 1', I.faction("Jailer's Ring", ['statusDur 1.5', 'hp 1'], 'crown', 20), 'hp 1', 'resAll 1'],
+        I.faction('Royal Gaoler', ['dmgElite 2', 'statusChance 2'], 'crown', 60), ['statusChance 1', 'armor 1.5']),
+
+      // ---- Row 7
+      I.pacts('hook_pacts', 'Chain Bargains', 7, -2, 'hp 1',
+        [pact('Long Reach', ['dmgRanged*12', 'dmgMelee*-6']), pact('Heavy Links', ['statusDur*25', 'moveSpeed*-5']), pact('Loose Grip', ['projSpeed*30', 'critChance*-10'])],
+        ['Terms of the Gaol', 'dmgRanged 1', 'hp 1']),
+      ring('hook_ferry', "The Ferryman's Pole", 7, -1, ['hp 1', 'statusDur 1', 'armor 1', I.trophy("Ferryman's Hook", ['statusDur 1.5', 'hp 1.5'], 'drowned_ferryman')],
+        ['Across the Water', 'statusDur 2', 'resAll 1'], ['statusDur 1', 'hp 1.5']),
+      altar('hook_altar_b', 'Altar of the Gate', 7, 1, ['hp 1', 'statusDur 1', 'dmgRanged 1']),
+      keystone('hook_key_arm', 'The Long Arm', 7, 2, 'dmgRanged 1', 'projSpeed 1',
+        key('Long Arm', ['dmgRanged*30', 'dmgMelee*-10'], 'Your ranged hits deal 30% more damage, your melee hits 10% less.', null, { off: 1.03, def: 1 })),
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      ring('hook_winch', 'The Winch', 8, -3, ['hp 1', 'armor 1', 'statusChance 1', 'resAll 1'],
+        ['Windlass', 'armor 1.5', 'statusChance 1.5'], ['armor 1', 'hp 1.5']),
+      keystone('hook_key_here', 'Come Here', 8, -2, 'dmgMelee 1', 'statusDur 1',
+        key('Come Here', [], 'Your hits deal 20% more damage to enemies within 3.5 m of you and 20% less to enemies further than 6 m away.', 'tree_ironbound_comehere', { off: 1.05, def: 1 })),
+      ring('hook_spikes', 'Spiked Rim', 8, -1, ['hp 1', 'critChance 1', 'dmgRanged 1', 'resAll 1'],
+        ['Rim Spikes', 'critChance 1.5', 'dmgRanged 1.5'], ['critChance 1', 'hp 1.5']),
+      ring('hook_shackle', 'Shackle and Bolt', 8, 1, ['statusDur 1', 'hp 1', 'poise 1', 'armor 1'],
+        ['Bolted Shut', 'statusDur 1.5', 'poise 1.5'], ['poise 1', 'hp 1.5']),
+      keystone('hook_key_chained', 'Chained', 8, 2, 'statusDur 1', 'statusChance 1',
+        key('Chained', ['statusDur*40', 'aoe*-15'], 'Your Stuns, Slows and other effects last 40% longer, but your areas are 15% smaller.', null, { off: 1.02, def: 1.03 })),
+      ring('hook_tow', 'Towline', 8, 3, ['hp 1', 'projSpeed 1', 'moveSpeed 1', 'resAll 1'],
+        ['Hauled In', 'projSpeed 1.5', 'hp 1.5'], ['projSpeed 1', 'hp 1.5'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['dmgRanged 2', 'hp 2'] },
+      { at: 35, mods: ['statusDur 3', 'armor 2'] },
+      { at: 60, mods: ['dmgRanged 4', 'critChance 2', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Chain Gate and the Warhorn (gap 4).
+  T.bridge('ironbound', { id: 'hook_warcry_inner', between: ['hook', 'warcry'], ring: 'inner', name: 'Reach and Roar', shape: 'star',
+    nodes: ['dmgRanged 1', I.mut('bash_reach'), 'cdr 1', 'hp 1'],
+    core: ['Long Rim', 'dmgMelee 1', 'cdr 1'], bonus: ['hp 1', 'armor 1'] });
+  T.bridge('ironbound', { id: 'hook_warcry_mid', between: ['hook', 'warcry'], ring: 'mid', name: 'Dragged and Cowed', shape: 'diamond',
+    nodes: ['statusDur 1', 'hp 1', 'cdr 1', 'armor 1'],
+    core: ['Cowed Prisoner', 'statusDur 1.5', 'resAll 1.5'], bonus: ['statusDur 1.5', 'hp 1'] });
+  T.bridge('ironbound', { id: 'hook_warcry_outer', between: ['hook', 'warcry'], ring: 'outer', name: 'Gate Bell', shape: 'diamond',
+    nodes: ['dmgRanged 1', 'hp 1', 'aoe 1', 'resAll 1'],
+    core: ['Bell and Chain', 'aoe 1.5', 'dmgRanged 1.5'], bonus: ['aoe 1', 'hp 1.5'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_ironbound_plate.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, I = T.iron;
+  var rule = I.rule, key = I.key, pact = I.pact, abil = I.abil, star = I.star, ring = I.ring, altar = I.altar, keystone = I.keystone;
+
+  /**
+   * IRONBOUND, arm 7 of 8: THE ARMOURY (`plate`). Plate, Ward and Health: the heaviest armour in the kingdom.
+   * Skill: Fortify (trunk, 4 points). Design: docs/TREE_IRONBOUND.md. Rules: src/sim/56_tree_ironbound.js.
+   * Holds the three bridges to the wall arm.
+   */
+  T.arm('ironbound', {
+    id: 'plate', name: 'The Armoury', focus: 'Plate, Ward and Health: wear the heaviest armour in the kingdom', color: '#8c96a6', vein: null,
+
+    trunk: I.bashTrunk([
+      'armor 1', 'hp 1', { t: 'skill', grants: 'fortify', abil: [{ a: 'fortify', k: 'cd', v: -0.05 }] }, 'resAll 1', 'hpRegen 1',   // T1..T5
+      'hp 1', 'armor 1', 'healTaken 1', ['Armoury Road', 'moveSpeed 1', 'armor 0.5'], 'hp 1',                                       // T6..T10
+      'armor 1', 'resAll 1', 'hp 1', 'ward 1', 'armor 1',                                                                          // T11..T15
+      'hp 1', 'resAll 1', 'poise 1', 'hp 1', 'armor 1',                                                                            // T16..T20
+      'healTaken 1', 'hp 1', 'armor 1', 'resAll 1', 'hp 1'                                                                         // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Fortify, shape and essence
+      { id: 'plate_fort_shape', name: 'Fortify: shape', row: 1, lane: -1, shape: 'star', kind: 'mutation',
+        nodes: ['hp 1', I.mut('fo_long'), ['Buckled Tight', 'armor 1', 'resAll 0.5']], core: ['Reinforced', 'armor 1', 'hp 1'] },
+      star('plate_fort_essence', 'Fortify: essence', 1, 1, 'armor 1', ['fo_big', 'fo_iron'], ['Iron Will', 'armor 1', 'resAll 1']),
+
+      // ---- Row 2
+      star('plate_fort_rite', 'Fortify: rite', 2, -1, 'resAll 1', ['fo_cheap', 'fo_guard', 'fo_cleanse', 'fo_allies'], abil('Quick Buckles', ['armor 1', 'hp 1'], 'fortify', 'cd', -0.08)),
+      ring('plate_smith', 'The Smithy', 2, 1, ['armor 1', 'hp 1', abil('Thick Plates', ['resAll 0.5'], 'fortify', 'dur', 0.1), 'resAll 1', 'dmgMelee 1'],
+        rule('temper', 'Tempered', ['armor 1.5'], 'When your Ward breaks you gain 30% increased Armor for 4 s (at most once every 6 s).', { off: 1, def: 1.04 }),
+        ['armor 1.5', 'hp 1']),
+
+      // ---- Row 3
+      ring('plate_mail', 'Chain Mail', 3, -2, ['armor 1', 'hp 1', 'resAll 1', 'poise 1'],
+        ['Riveted Rings', 'armor 2', 'resAll 1'], ['armor 1.5', 'hp 1']),
+      ring('plate_padding', 'Padding', 3, -1, ['hp 1', 'hpRegen 1', 'healTaken 1', 'armor 1'],
+        ['Quilted Gambeson', 'hp 2', 'hpRegen 1'], ['hp 2']),
+      ring('plate_mend', 'Mending', 3, 1, ['hpRegen 1', 'hp 1', 'resMax 1', 'resAll 1'],
+        rule('mending', 'Iron Patience', ['hpRegen 1'], 'While your Guard is full you regain 1% of your Health every second.', { off: 1, def: 1.04 }),
+        ['hpRegen 1.5', 'hp 1']),
+      ring('plate_visor', 'Visor', 3, 2, ['critChance 1', 'hp 1', 'armor 1', 'resAll 1'],
+        ['Narrow Slit', 'critChance 1.5', 'armor 1.5'], ['armor 1', 'hp 1.5']),
+
+      // ---- Row 4
+      ring('plate_ward', 'Warded Plate', 4, -2, ['ward 1', 'hp 1', 'armor 1', 'resAll 1'],
+        ['Runed Steel', 'ward 2', 'armor 1'], ['ward 1.5', 'hp 1']),
+      altar('plate_altar_a', 'Altar of Steel', 4, -1, ['hp 1', 'armor 1', 'resAll 1']),
+      ring('plate_harness', 'Full Harness', 4, 1, ['armor 1', 'hp 1', abil('Bolted Plate', ['hp 0.5'], 'fortify', 'dmg', 0.1), 'dmgMelee 1'],
+        ['Cap-a-pie', 'armor 2', 'hp 1'], ['armor 1.5', 'hp 1']),
+      ring('plate_enamel', 'Enamel', 4, 2, ['resFire 1', 'hp 1', 'resCold 1', 'resShock 1'],
+        ['Painted Plate', 'resAll 2', 'hp 1'], ['resAll 1.5', 'hp 1']),
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      ring('plate_gorget', 'Gorget', 5, -2, ['hp 1', 'armor 1', 'poise 1', 'resAll 1'],
+        ['Steel Collar', 'armor 1.5', 'poise 1.5'], ['armor 1', 'hp 1.5']),
+      ring('plate_heart', 'Iron Heart', 5, -1, ['hp 1', 'hpRegen 1', 'dmgMelee 1', 'armor 1'],
+        ['Heart of the Keep', 'hp 2', 'dmgMelee 1'], ['hp 2']),
+      ring('plate_salve', 'Salves', 5, 1, ['healTaken 1', 'hp 1', 'hpRegen 1', 'resAll 1'],
+        ['Field Dressing', 'healTaken 2', 'hp 1'], ['healTaken 1', 'hp 1.5']),
+      ring('plate_holy', 'Blessed Steel', 5, 2, ['resHoly 1', 'hp 1', 'resShadow 1', 'armor 1'],
+        ['Consecrated', 'resAll 1.5', 'armor 1.5'], ['resAll 1', 'hp 1.5']),
+
+      // ---- Row 6
+      ring('plate_greaves', 'Greaves', 6, -2, ['armor 1', 'hp 1', 'moveSpeed 1', 'resAll 1'],
+        ['Steel Shins', 'armor 1.5', 'moveSpeed 1.5'], ['armor 1', 'hp 1.5']),
+      ring('plate_haunt', 'Haunted Plate', 6, -1, ['hp 1', I.trophy('Empty Helm', ['armor 1.5', 'resAll 1.5'], 'haunted_plate'), 'hpRegen 1', 'resAll 1'],
+        ['Nobody Inside', 'armor 2', 'resShadow 1.5'], ['armor 1.5', 'hp 1']),
+      ring('plate_cult', 'Hollow Plate', 6, 1, ['hp 1', I.corrupt('Rusted Rivets', ['hp 2', 'armor 1.5'], 20), 'resAll 1', 'armor 1'],
+        I.corrupt('Black Iron Shell', ['dmg*2', 'armor 3', 'hp 2'], 40), ['armor 1', 'hp 1.5']),
+      ring('plate_lantern', 'Lantern Armourers', 6, 2, ['resAll 1', I.faction('Hallowed Rivets', ['resAll 1.5', 'hp 1'], 'lantern', 20), 'hp 1', 'armor 1'],
+        I.faction('Lantern Plate', ['healTaken 2', 'armor 2'], 'lantern', 60), ['resAll 1', 'armor 1.5']),
+
+      // ---- Row 7
+      I.pacts('plate_pacts', 'Armoury Bargains', 7, -2, 'hp 1',
+        [pact('Heavier Plate', ['armor*20', 'moveSpeed*-6']), pact('Thick Skull', ['hp*10', 'critChance*-12']), pact('Sealed Visor', ['dmgTaken*-5', 'critChance*-15'])],
+        ['Armourer\'s Terms', 'armor 1', 'hp 1']),
+      ring('plate_carrion', "The Carrion Knight's Rest", 7, -1, ['hp 1', 'armor 1', 'resAll 1', I.trophy('Carrion Pauldron', ['hp 1.5', 'armor 1.5'], 'carrion_knight')],
+        ['Rotted Steel', 'hp 2', 'armor 1'], ['hp 2']),
+      altar('plate_altar_b', 'Altar of the Armoury', 7, 1, ['hp 1', 'resAll 1', 'hpRegen 1']),
+      keystone('plate_key_fortress', 'The Living Fortress', 7, 2, 'hp 1', 'armor 1',
+        key('Living Fortress', ['hp*15', 'moveSpeed*-10'], 'You have 15% more Health, but move 10% slower.', null, { off: 1, def: 1.07 })),
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      ring('plate_oil', 'Oiled Joints', 8, -3, ['hp 1', 'armor 1', 'moveSpeed 1', 'resAll 1'],
+        ['No Squeak', 'moveSpeed 1.5', 'armor 1.5'], ['armor 1', 'hp 1.5']),
+      keystone('plate_key_skin', 'Iron Skin', 8, -2, 'armor 1', 'resAll 1',
+        key('Iron Skin', ['armor*40', 'atkSpeed*-6'], 'You have 40% more Armor, but attack and cast 6% slower.', null, { off: 0.99, def: 1.07 })),
+      ring('plate_mantle', 'Mantle', 8, -1, ['hp 1', 'ward 1', 'armor 1', 'resAll 1'],
+        ['Fur-lined', 'ward 1.5', 'hp 1.5'], ['ward 1', 'hp 1.5']),
+      ring('plate_crest', 'Family Crest', 8, 1, ['hp 1', 'critMult 1', 'armor 1', 'hpRegen 1'],
+        ['Old Blood', 'critMult 1.5', 'hp 1.5'], ['hp 2']),
+      keystone('plate_key_unfeeling', 'Unfeeling', 8, 2, 'hp 1', 'resAll 1',
+        key('Unfeeling', ['dmgTaken*-10', 'healTaken*-30'], 'You take 10% less damage, but all healing you receive is 30% weaker.', null, { off: 1, def: 1.06 })),
+      ring('plate_vault', 'Armoury Vault', 8, 3, ['hp 1', 'armor 1', 'healTaken 1', 'resAll 1'],
+        ['Locked Racks', 'armor 1.5', 'healTaken 1.5'], ['armor 1', 'hp 1.5'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['armor 2', 'hp 2'] },
+      { at: 35, mods: ['resAll 2', 'hp 2'] },
+      { at: 60, mods: ['armor 3', 'hpRegen 2', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Armoury and the Shield Wall (gap 7).
+  T.bridge('ironbound', { id: 'plate_wall_inner', between: ['plate', 'wall'], ring: 'inner', name: 'Plate and Rim', shape: 'star',
+    nodes: ['armor 1', I.mut('bash_double'), 'block 1', 'hp 1'],
+    core: ['Two Blows', 'block 1', 'armor 1'], bonus: ['hp 1', 'resAll 1'] });
+  T.bridge('ironbound', { id: 'plate_wall_mid', between: ['plate', 'wall'], ring: 'mid', name: 'Iron Curtain', shape: 'diamond',
+    nodes: ['armor 1', 'hp 1', 'block 1', 'resAll 1'],
+    core: ['Curtain Wall', 'armor 1.5', 'block 1.5'], bonus: ['armor 1.5', 'hp 1'] });
+  T.bridge('ironbound', { id: 'plate_wall_outer', between: ['plate', 'wall'], ring: 'outer', name: 'Last Bastion', shape: 'diamond',
+    nodes: ['hp 1', 'blockStop 1', 'armor 1', 'resAll 1'],
+    core: ['Final Wall', 'blockStop 1.5', 'hp 1.5'], bonus: ['blockStop 1', 'hp 1.5'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_ironbound_wall.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, I = T.iron;
+  var rule = I.rule, web = I.web, key = I.key, pact = I.pact, abil = I.abil, star = I.star, ring = I.ring, altar = I.altar, keystone = I.keystone;
+
+  /**
+   * IRONBOUND, arm 0 of 8: THE SHIELD WALL (`wall`). Blocking, Guard and Bulwark Stance. Skills: Bulwark Stance (trunk, 4
+   * points), Iron Citadel (the Ultimate, row 3). Design: docs/TREE_IRONBOUND.md. Rules: src/sim/56_tree_ironbound.js.
+   * Holds the three bridges on its clockwise side (wall and counter).
+   */
+  T.arm('ironbound', {
+    id: 'wall', name: 'The Shield Wall', focus: 'Block, build Guard and plant your feet: nothing gets past the shield', color: '#9aa7b8', vein: 'order',
+
+    trunk: I.bashTrunk([
+      'block 1', 'hp 1', { t: 'skill', grants: 'bulwark_stance', abil: [{ a: 'bulwark_stance', k: 'area', v: 0.08 }] }, 'guardBlock 1', 'armor 1',   // T1..T5
+      'hp 1', 'blockStop 1', 'resAll 1', ['Wall Road', 'moveSpeed 1', 'block 0.5'], 'hp 1',                                                         // T6..T10
+      'block 1', 'armor 1', 'hp 1', 'guardBlock 1', 'resAll 1',                                                                                     // T11..T15
+      'hp 1', 'blockStop 1', 'poise 1', 'hp 1', 'block 1',                                                                                          // T16..T20
+      'armor 1', 'hp 1', 'guardHold 1', 'resAll 1', 'hp 1'                                                                                          // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Bulwark Stance, shape and essence
+      star('wall_stance_shape', 'Bulwark Stance: shape', 1, -1, 'hp 1', ['bw_wide', 'bw_long', 'bw_front'], ['Wide Stance', 'block 1', 'hp 1']),
+      star('wall_stance_essence', 'Bulwark Stance: essence', 1, 1, 'armor 1', ['bw_iron', 'bw_hold', 'bw_stun'], ['Planted', 'armor 1', 'poise 1']),
+
+      // ---- Row 2: Bulwark Stance, rite; the first shield wheel
+      star('wall_stance_rite', 'Bulwark Stance: rite', 2, -1, 'guardBlock 1', ['bw_free', 'bw_guard', 'bw_ward'], abil('Drilled Stance', ['block 1', 'hp 1'], 'bulwark_stance', 'cd', -0.1)),
+      ring('wall_rim', 'Rim and Boss', 2, 1, ['block 1', 'hp 1', 'blockStop 1', 'armor 1', 'dmgMelee 1'],
+        web('shieldup', 'Shield Up', ['poise 1.5'], '+15% Block Chance while you are not attacking or casting.', { off: 1, def: 1.03 }),
+        ['block 1', 'hp 1.5']),
+
+      // ---- Row 3: the Ultimate and its rite and essence
+      star('wall_cit_rite', 'Iron Citadel: rite', 3, -2, 'hp 1', ['ic_quick', 'ic_guard', 'ic_heal'], ['Keep Bell', 'cdr 1', 'hp 1']),
+      ring('wall_vigil', 'Vigil', 3, -1, ['guardHold 1', 'hp 1', 'block 1@bulwark', 'resAll 1'],
+        ['Long Watch', 'guardHold 2', 'block 1'], ['guardHold 1.5', 'hp 1']),
+      ring('wall_citadel', 'The Citadel', 3, 1, ['armor 1', 'hp 1', abil('High Walls', ['resAll 1'], 'iron_citadel', 'cd', -0.08), 'block 1'],
+        { t: 'skill', grants: 'iron_citadel', abil: [{ a: 'iron_citadel', k: 'area', v: 0.1 }] }, ['armor 1.5', 'hp 1'], { kind: 'skill', spokes: [0] }),
+      star('wall_cit_essence', 'Iron Citadel: essence', 3, 2, 'armor 1', ['ic_heavy', 'ic_ward', 'ic_batter'], ['Siege Stone', 'dmgMelee 1', 'armor 1']),
+
+      // ---- Row 4
+      ring('wall_braced', 'Braced', 4, -2, ['block 1@bulwark', 'hp 1', 'poise 1', 'armor 1'],
+        rule('brace', 'Braced Shield', ['poise 1'], 'In Bulwark Stance, an enemy whose hit you block is Slowed by 30% for 2 s.', { off: 1, def: 1.03 }),
+        ['poise 1.5', 'hp 1']),
+      altar('wall_altar_a', 'Altar of the Wall', 4, -1, ['hp 1', 'block 1', 'armor 1']),
+      star('wall_cit_shape', 'Iron Citadel: shape', 4, 1, 'hp 1', ['ic_wide', 'ic_long'], ['Bailey', 'aoe 1', 'hp 1']),
+      ring('wall_tower', 'Tower Shield', 4, 2, ['blockStop 1', 'hp 1', 'resAll 1', 'dmgMelee 1'],
+        ['Tall as a Door', 'blockStop 2', 'block 1'], ['blockStop 1.5', 'hp 1']),
+
+      // ---- Row 5 (the MID ring road runs along lane +-2)
+      ring('wall_line', 'Shield Line', 5, -2, ['hp 1', 'block 1', 'moveSpeed 1', 'resAll 1'],
+        ['Shoulder to Shoulder', 'block 1.5', 'resAll 1.5'], ['block 1', 'hp 1.5']),
+      ring('wall_fast', 'Stand Fast', 5, -1, ['guardBlock 1', 'hp 1', 'resMax 1', 'armor 1'],
+        web('standfast', 'Full Guard', ['hp 1.5'], 'Blocking a hit while your Guard is full gives you Ward equal to 2% of your Health for 5 s (at most once per second).', { off: 1, def: 1.03 }),
+        ['resMax 1.5', 'hp 1']),
+      ring('wall_bulwark', 'Bulwark Drill', 5, 1, ['armor 1@bulwark', 'hp 1', 'dmgMelee 1', 'guardBlock 1'],
+        ['Shield Drill', 'armor 2@bulwark', 'guardBlock 1.5'], ['guardBlock 1.5', 'hp 1']),
+      ring('wall_gate', 'Gatehouse', 5, 2, ['hp 1', 'blockStop 1', 'critChance 1', 'resAll 1'],
+        ['Portcullis', 'blockStop 1.5', 'hp 1.5'], ['blockStop 1', 'hp 1.5']),
+
+      // ---- Row 6
+      ring('wall_heavy', 'Heavy Rim', 6, -2, ['block 1', 'hp 1', 'dmgMelee 1', 'poise 1'],
+        ['Iron Banded', 'block 2', 'dmgMelee 1'], ['block 1', 'hp 1.5']),
+      ring('wall_warden', "The Warden's Gate", 6, -1, ['hp 1', I.trophy("Warden's Key", ['blockStop 1.5', 'hp 1.5'], 'iron_warden'), 'armor 1', 'resAll 1'],
+        ['Locked Tight', 'armor 2', 'blockStop 1'], ['armor 1.5', 'hp 1']),
+      ring('wall_cult', 'Rusted Wall', 6, 1, ['hp 1', I.corrupt('Rust in the Rim', ['block 1.5', 'thorns 2'], 20), 'armor 1', 'resAll 1'],
+        I.corrupt('Hollow Bulwark', ['dmg*2', 'block 2', 'guardBlock 2'], 40), ['block 1', 'hp 1.5']),
+      ring('wall_crown', 'Crown Shieldmen', 6, 2, ['armor 1', I.faction('King\'s Shield', ['block 1.5', 'hp 1'], 'crown', 20), 'hp 1', 'resAll 1'],
+        I.faction('Royal Bulwark', ['blockStop 2', 'guardBlock 2'], 'crown', 60), ['blockStop 1', 'armor 1.5']),
+
+      // ---- Row 7
+      I.pacts('wall_pacts', 'Shield Bargains', 7, -2, 'hp 1',
+        [pact('Shield First', ['block+5', 'dmg*-6']), pact('Tower Weight', ['blockStop+6', 'moveSpeed*-6']), pact('Guard Hoard', ['guardBlock*25', 'bashGuard*-15'])],
+        ['Terms of Siege', 'block 1', 'hp 1']),
+      ring('wall_marble', 'Marble Hall', 7, -1, ['hp 1', 'armor 1', 'block 1', I.trophy('Sentinel Plinth', ['armor 1.5', 'hp 1.5'], 'marble_sentinel')],
+        ['Unmoved', 'armor 2', 'poise 1.5'], ['poise 1.5', 'hp 1']),
+      altar('wall_altar_b', 'Altar of the Keep', 7, 1, ['hp 1', 'blockStop 1', 'resAll 1']),
+      keystone('wall_key_unbroken', 'The Unbroken Wall', 7, 2, 'block 1', 'blockStop 1',
+        key('Unbroken Wall', ['dmg*-5'], 'A blocked hit deals no damage (a block normally stops 70%). Your Block Chance is capped at 50% instead of 75%. You deal 5% less damage.', 'web_unbroken_wall', { off: 0.97, def: 1.1 })),
+
+      // ---- Row 8 (the OUTER ring road runs along lane +-3)
+      ring('wall_ramparts', 'Ramparts', 8, -3, ['hp 1', 'block 1', 'resAll 1', 'armor 1'],
+        ['Crenellations', 'block 1.5', 'armor 1.5'], ['block 1', 'hp 1.5']),
+      keystone('wall_key_vow', 'The Iron Vow', 8, -2, 'guardHold 1', 'resMax 1',
+        key('Iron Vow', ['block+4', 'poise+20'], 'Your Guard never fades, but you cannot dodge. +4% Block Chance and +20 Poise.', 'web_iron_vow', { off: 1.04, def: 0.98 })),
+      ring('wall_last', 'Last Shield', 8, -1, ['hp 1', 'blockStop 1', 'dmgMelee 1', 'resAll 1'],
+        ['Shield of the Fallen', 'blockStop 2', 'hp 1'], ['blockStop 1.5', 'hp 1']),
+      ring('wall_keep', 'Inner Keep', 8, 1, ['guardBlock 1', 'hp 1', 'armor 1', 'hpRegen 1'],
+        ['Hearth of the Keep', 'guardBlock 2', 'hpRegen 1.5'], ['guardBlock 1', 'hp 1.5']),
+      keystone('wall_key_master', 'Shield Master', 8, 2, 'bashGuard 1', 'block 1',
+        key('Shield Master', ['moveSpeed*-8'], 'Every third Shield Bash Stuns the enemies it hits for 0.6 s, and a Shield Bash that lands builds 3 more Guard. You move 8% slower.', 'tree_ironbound_shieldmaster', { off: 1.04, def: 1.03 })),
+      ring('wall_watch', 'Night Watch', 8, 3, ['hp 1', 'critChance 1', 'block 1', 'resAll 1'],
+        ['Watchtower', 'critChance 1.5', 'block 1.5'], ['block 1', 'hp 1.5'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['block 2', 'hp 2'] },
+      { at: 35, mods: ['blockStop 2', 'guardBlock 3'] },
+      { at: 60, mods: ['block 3', 'armor 3', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Shield Wall and the Duelling Yard (gap 0).
+  T.bridge('ironbound', { id: 'wall_counter_inner', between: ['wall', 'counter'], ring: 'inner', name: 'Shield and Sword', shape: 'star',
+    nodes: ['block 1', I.mut('bash_wide'), 'dmgCounter 1', 'hp 1'],
+    core: ['Sword and Board', 'block 1', 'dmgMelee 1'], bonus: ['hp 1', 'armor 1'] });
+  T.bridge('ironbound', { id: 'wall_counter_mid', between: ['wall', 'counter'], ring: 'mid', name: 'The Answer', shape: 'diamond',
+    nodes: ['block 1', 'hp 1', 'dmgCounter 1', 'armor 1'],
+    core: web('answer', 'Answering Blow', ['dmgMelee 1'], 'After you block or parry a hit, your next primary attack within 4 s is a counter blow that deals 40% more damage.', { off: 1.035, def: 1 }),
+    bonus: ['dmgCounter 1.5', 'hp 1'] });
+  T.bridge('ironbound', { id: 'wall_counter_outer', between: ['wall', 'counter'], ring: 'outer', name: 'Shield Fencer', shape: 'diamond',
+    nodes: ['blockStop 1', 'hp 1', 'dmgCounter 1', 'resAll 1'],
+    core: ['Turned Aside', 'dmgCounter 2', 'block 1'], bonus: ['block 1', 'hp 1.5'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_ironbound_warcry.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, I = T.iron;
+  var rule = I.rule, key = I.key, pact = I.pact, abil = I.abil, star = I.star, ring = I.ring, altar = I.altar, keystone = I.keystone;
+
+  /**
+   * IRONBOUND, arm 5 of 8: THE WARHORN (`warcry`). Shouts: Taunt the room, Weaken it, rally the ones behind you.
+   * Skills: Warcry of Iron (trunk, 4 points), Rally Cry (the core of a row-2 wheel, 10 points). Design: docs/TREE_IRONBOUND.md.
+   * Rules: src/sim/56_tree_ironbound.js. Holds the three bridges to the anchor arm.
+   */
+  T.arm('ironbound', {
+    id: 'warcry', name: 'The Warhorn', focus: 'Shouts: Taunt the room, Weaken it and rally everyone behind you', color: '#d08a3a', vein: 'dread',
+
+    trunk: I.bashTrunk([
+      'cdr 1', 'hp 1', { t: 'skill', grants: 'warcry_of_iron', abil: [{ a: 'warcry_of_iron', k: 'area', v: 0.08 }] }, 'aoe 1', 'armor 1',   // T1..T5
+      'hp 1', 'healPower 1', 'resAll 1', ['Horn Road', 'moveSpeed 1', 'cdr 0.5'], 'hp 1',                                                  // T6..T10
+      'cdr 1', 'armor 1', 'hp 1', 'statusDur 1', 'resAll 1',                                                                               // T11..T15
+      'hp 1', 'aoe 1', 'resMax 1', 'hp 1', 'healPower 1',                                                                                  // T16..T20
+      'cdr 1', 'hp 1', 'armor 1', 'resAll 1', 'hp 1'                                                                                       // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Warcry of Iron, shape and essence
+      star('warcry_cry_shape', 'Warcry of Iron: shape', 1, -1, 'hp 1', ['wc_wide', 'wc_long'], ['Carrying Voice', 'aoe 1', 'hp 1']),
+      star('warcry_cry_essence', 'Warcry of Iron: essence', 1, 1, 'armor 1', ['wc_expose', 'wc_iron', 'wc_rage'], ['Iron Throat', 'armor 1', 'resAll 1']),
+
+      // ---- Row 2: Warcry, rite; Rally Cry in the core of a wheel
+      star('warcry_cry_rite', 'Warcry of Iron: rite', 2, -1, 'cdr 1', ['wc_guard', 'wc_quick', 'wc_heal'], abil('Second Breath', ['cdr 1', 'hp 1'], 'warcry_of_iron', 'cd', -0.08)),
+      ring('warcry_rally', 'The Rallying Point', 2, 1, ['healPower 1', 'hp 1', abil('Long Call', ['resAll 1'], 'rally_cry', 'dur', 0.1), 'armor 1', 'cdr 1'],
+        { t: 'skill', grants: 'rally_cry', abil: [{ a: 'rally_cry', k: 'area', v: 0.08 }] }, ['healPower 1', 'hp 1.5'], { kind: 'skill', spokes: [0] }),
+
+      // ---- Row 3: Rally Cry, shape and essence
+      star('warcry_rally_shape', 'Rally Cry: shape', 3, -2, 'hp 1', ['rc_wide', 'rc_long'], ['To Me', 'aoe 1', 'hp 1']),
+      ring('warcry_echo', 'Echoes', 3, -1, ['resMax 1', 'hp 1', 'cdr 1', 'resAll 1'],
+        rule('echo', 'Echoing Shout', ['resMax 1'], 'Each shout you use gives you 20 Guard.', { off: 1.03, def: 1.01 }),
+        ['resMax 1.5', 'hp 1']),
+      ring('warcry_dread', 'Dread', 3, 1, ['statusDur 1', 'hp 1', 'dmgMelee 1', 'armor 1'],
+        rule('dread', 'Cowed', ['statusDur 1'], 'Weakened enemies take 10% more damage from your hits.', { off: 1.03, def: 1 }),
+        ['statusDur 1.5', 'hp 1']),
+      star('warcry_rally_essence', 'Rally Cry: essence', 3, 2, 'healPower 1', ['rc_fury', 'rc_iron', 'rc_quick'], ['Rousing Song', 'healPower 1', 'armor 1']),
+
+      // ---- Row 4
+      ring('warcry_lungs', 'Iron Lungs', 4, -2, ['hp 1', 'cdr 1', 'hpRegen 1', 'resAll 1'],
+        ['Bellows', 'cdr 1.5', 'hpRegen 1.5'], ['cdr 1', 'hp 1.5']),
+      altar('warcry_altar_a', 'Altar of the Horn', 4, -1, ['hp 1', 'cdr 1', 'armor 1']),
+      ring('warcry_roar', 'Roar', 4, 1, ['aoe 1', 'hp 1', abil('Deep Roar', ['armor 0.5'], 'warcry_of_iron', 'dur', 0.12), 'resAll 1'],
+        ['Lion Voice', 'aoe 2', 'statusDur 1'], ['aoe 1.5', 'hp 1']),
+      star('warcry_rally_rite', 'Rally Cry: rite', 4, 2, 'hp 1', ['rc_cheap', 'rc_guard', 'rc_cleanse'], ['Muster', 'cdr 1', 'hp 1']),
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      ring('warcry_drums', 'Drums of War', 5, -2, ['meleeSpeed 1', 'hp 1', 'cdr 1', 'resAll 1'],
+        ['Beat to Quarters', 'meleeSpeed 1.5', 'cdr 1.5'], ['meleeSpeed 1', 'hp 1.5']),
+      ring('warcry_taunt', 'Taunting', 5, -1, ['armor 1', 'hp 1', 'dmgTaken 1@crowded', 'resAll 1'],
+        ['Come and Try', 'armor 2', 'dmgTaken 1@crowded'], ['armor 1.5', 'hp 1']),
+      ring('warcry_hymn', 'War Hymn', 5, 1, ['healPower 1', 'hp 1', 'healTaken 1', 'armor 1'],
+        ['Hymn of Iron', 'healPower 1.5', 'healTaken 1.5'], ['healTaken 1', 'hp 1.5']),
+      ring('warcry_herald', 'The Herald', 5, 2, ['critChance 1', 'hp 1', 'aoe 1', 'resAll 1'],
+        ['Heraldry', 'critChance 1.5', 'aoe 1.5'], ['critChance 1', 'hp 1.5']),
+
+      // ---- Row 6
+      ring('warcry_sergeant', 'Drill Sergeant', 6, -2, ['cdr 1', 'hp 1', 'dmgMelee 1', 'armor 1'],
+        ['On the Double', 'cdr 2', 'dmgMelee 1'], ['cdr 1', 'hp 1.5']),
+      ring('warcry_varr', "General Varr's Tent", 6, -1, ['hp 1', I.trophy("Varr's Horn", ['cdr 1.5', 'aoe 1.5'], 'general_varr'), 'armor 1', 'resAll 1'],
+        ['Orders from Above', 'cdr 1.5', 'hp 1.5'], ['cdr 1', 'hp 1.5']),
+      ring('warcry_cult', 'Hollow Choir', 6, 1, ['hp 1', I.corrupt('Howl of the Hollow', ['aoe 2', 'statusDur 1.5'], 20), 'armor 1', 'resAll 1'],
+        I.corrupt('Scream of the Pit', ['dmg*2', 'aoe 2', 'cdr 2'], 40), ['aoe 1', 'hp 1.5']),
+      ring('warcry_lantern', 'Lantern Chaplains', 6, 2, ['healPower 1', I.faction("Chaplain's Blessing", ['healPower 1.5', 'hp 1'], 'lantern', 20), 'hp 1', 'resAll 1'],
+        I.faction('Lantern Litany', ['healTaken 2', 'resAll 2'], 'lantern', 60), ['healPower 1', 'resAll 1.5']),
+
+      // ---- Row 7
+      I.pacts('warcry_pacts', 'Horn Bargains', 7, -2, 'hp 1',
+        [pact('Hoarse', ['cdr*12', 'aoe*-10']), pact('Loud Mouth', ['aoe*20', 'armor*-8']), pact('Sharp Tongue', ['statusDur*20', 'healPower*-10'])],
+        ['Terms of Muster', 'cdr 1', 'hp 1']),
+      ring('warcry_frost', "The Sergeant's Post", 7, -1, ['hp 1', 'armor 1', 'resAll 1', I.trophy('Frozen Whistle', ['resAll 1.5', 'hp 1.5'], 'frostbitten_sergeant')],
+        ['Frostbitten Order', 'resAll 2', 'armor 1'], ['resAll 1', 'hp 1.5']),
+      altar('warcry_altar_b', 'Altar of the Call', 7, 1, ['hp 1', 'aoe 1', 'healPower 1']),
+      keystone('warcry_key_challenger', 'The Challenger', 7, 2, 'armor 1', 'statusDur 1',
+        key('Challenger', [], 'Enemies you have Taunted deal 20% less damage to you. Your hits on enemies that are not Taunted deal 10% less damage.', 'tree_ironbound_challenge', { off: 0.98, def: 1.06 })),
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      ring('warcry_banner', 'Battle Banner', 8, -3, ['hp 1', 'aoe 1', 'armor 1', 'resAll 1'],
+        ['Raised High', 'aoe 1.5', 'armor 1.5'], ['aoe 1', 'hp 1.5']),
+      keystone('warcry_key_hymn', 'The Battle Hymn', 8, -2, 'healPower 1', 'healTaken 1',
+        key('Battle Hymn', ['healPower*40', 'dmg*-8'], 'Your healing is 40% stronger, but you deal 8% less damage.', null, { off: 0.98, def: 1.05 })),
+      ring('warcry_thunder', 'Thunder Voice', 8, -1, ['hp 1', 'critMult 1', 'statusDur 1', 'resAll 1'],
+        ['Thunderclap', 'critMult 2', 'hp 1'], ['critMult 1.5', 'hp 1']),
+      ring('warcry_tower', 'Bell Tower', 8, 1, ['cdr 1', 'hp 1', 'resMax 1', 'armor 1'],
+        ['Tolling', 'cdr 1.5', 'resMax 1.5'], ['resMax 1', 'hp 1.5']),
+      keystone('warcry_key_voice', 'Voice of the Keep', 8, 2, 'cdr 1', 'aoe 1',
+        key('Voice of the Keep', ['cdr*20', 'hp*-10'], 'Your cooldowns recover 20% faster, but you have 10% less Health.', null, { off: 1.04, def: 0.98 })),
+      ring('warcry_last', 'Last Call', 8, 3, ['hp 1', 'healTaken 1', 'cdr 1', 'resAll 1'],
+        ['Closing Time', 'healTaken 1.5', 'hp 1.5'], ['healTaken 1', 'hp 1.5'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['cdr 2', 'hp 2'] },
+      { at: 35, mods: ['aoe 2', 'healPower 2'] },
+      { at: 60, mods: ['cdr 3', 'armor 3', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Warhorn and the Holdfast (gap 5).
+  T.bridge('ironbound', { id: 'warcry_anchor_inner', between: ['warcry', 'anchor'], ring: 'inner', name: 'Hold and Holler', shape: 'star',
+    nodes: ['cdr 1', I.mut('bash_quick'), 'poise 1', 'hp 1'],
+    core: ['Quick Rim', 'meleeSpeed 1', 'poise 1'], bonus: ['hp 1', 'armor 1'] });
+  T.bridge('ironbound', { id: 'warcry_anchor_mid', between: ['warcry', 'anchor'], ring: 'mid', name: 'Rallying Ground', shape: 'diamond',
+    nodes: ['healPower 1', 'hp 1', 'thorns 1', 'armor 1'],
+    core: ['Hold This Ground', 'healPower 1.5', 'armor 1.5'], bonus: ['healPower 1.5', 'hp 1'] });
+  T.bridge('ironbound', { id: 'warcry_anchor_outer', between: ['warcry', 'anchor'], ring: 'outer', name: 'Defiance', shape: 'diamond',
+    nodes: ['aoe 1', 'hp 1', 'poise 1', 'resAll 1'],
+    core: ['Not One Step', 'poise 1.5', 'aoe 1.5'], bonus: ['poise 1', 'hp 1.5'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/data/37_mutations_gloamblade.js
 (function (root) {
   'use strict';
@@ -15400,6 +16512,309 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/data/37_mutations_ironbound.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+
+  /**
+   * IRONBOUND, every mutation of the Ironbound's own tree (docs/TREE_IRONBOUND.md section 4). One record changes ONE
+   * ability in ONE slot (shape: where and how many; essence: what the hit carries; rite: cost, cooldown, charges, extra
+   * effects), so two mutations of one ability never write the same field: KD.skills.mutationReport() proves it
+   * (tests/mutations.test.js, tests/tree_ironbound.test.js). Format: docs/SKILLS.md section 12. Pure data, no hooks.
+   * The tree nodes that hold these ids: src/data/36_tree_ironbound_<arm>.js (the Shield Bash ones sit in the inner bridges).
+   * Texts quote the numbers of the records; change both together.
+   */
+  var M = [];
+  function shape(id, ability, name, text, rec) { rec.id = id; rec.ability = ability; rec.slot = 'shape'; rec.name = name; rec.text = text; M.push(rec); }
+  function essence(id, ability, name, text, rec) { rec.id = id; rec.ability = ability; rec.slot = 'essence'; rec.name = name; rec.text = text; M.push(rec); }
+  function rite(id, ability, name, text, rec) { rec.id = id; rec.ability = ability; rec.slot = 'rite'; rec.name = name; rec.text = text; M.push(rec); }
+
+  var MEL = { type: 'melee' }, AOE = { type: 'aoe' }, PROJ = { type: 'projectile' }, HOOK = { type: 'hook' }, DASH = { type: 'dash' },
+    ZONE = { type: 'zone' }, BUFF = { type: 'buff' }, SHIELD = { type: 'shield' }, HEAL = { type: 'heal' }, TAUNT = { type: 'taunt' },
+    STANCE = { type: 'stance' }, BANNER = { type: 'banner' };
+  function guard(n) { return { type: 'resource', gain: n }; }
+
+  // =============================================================================================
+  // SHIELD BASH (primary). Base: an 85% arc (2.5 m, 100 degrees) that builds 7 Guard. One mutation in each inner bridge.
+  // =============================================================================================
+  shape('bash_wide', 'shield_bash', 'Wide Bash', 'The bash sweeps 170 degrees and hits up to 5 enemies, for 85% of the damage.',
+    { power: 0.85, fx: [{ find: MEL, set: { arc: 170, max: 5 } }] });
+  shape('bash_reach', 'shield_bash', 'Long Rim', 'The bash reaches 3.3 m instead of 2.5.',
+    { set: { range: 3.0, aiUse: { use: 'attack', range: 3.0 } }, fx: [{ find: MEL, set: { range: 3.3 } }] });
+  shape('bash_double', 'shield_bash', 'Rim and Pommel', 'Two blows instead of one, each dealing 60% of the damage.',
+    { power: 0.6, fx: [{ find: MEL, set: { hits: 2, interval: 0.15 } }] });
+
+  essence('bash_heavy', 'shield_bash', 'Heavy Rim', 'The bash breaks Poise twice as hard.',
+    { fx: [{ find: MEL, set: { poise: 2.0 } }] });
+  essence('bash_daze', 'shield_bash', 'Dazing Bash', 'The bash Weakens the enemy (10% less damage) for 2 s, but deals 8% less damage.',
+    { fx: [{ find: MEL, set: { mult: 0.78, status: { id: 'weaken', dur: 2, power: 0.1 } } }] });
+  essence('bash_shove', 'shield_bash', 'Shove', 'The bash knocks enemies back, but deals 6% less damage.',
+    { fx: [{ find: MEL, set: { mult: 0.8, knockback: 2 } }] });
+
+  rite('bash_guard', 'shield_bash', 'Guard Builder', 'A bash that lands builds 11 Guard instead of 7, but you recover from it a little slower.',
+    { set: { gain: 11, recover: 0.5 } });
+  rite('bash_quick', 'shield_bash', 'Quick Bash', 'You bash about a fifth faster: shorter windup and recovery.',
+    { set: { windup: 0.2, recover: 0.34 } });
+
+  // =============================================================================================
+  // BULWARK STANCE. Base: toggle, 5 s; +25% Block, 30% Armor, 12% slower; setting it slams 90% around you (3.4 m) and
+  // Taunts within 5 m for 2 s.
+  // =============================================================================================
+  shape('bw_wide', 'bulwark_stance', 'Wide Stance', 'The slam reaches 5 m and the Taunt 7 m.',
+    { fx: [{ find: AOE, set: { radius: 5 } }, { find: TAUNT, set: { radius: 7 } }] });
+  shape('bw_long', 'bulwark_stance', 'Stubborn Challenge', 'The Taunt lasts 4 s instead of 2.',
+    { fx: [{ find: TAUNT, set: { dur: 4 } }] });
+  shape('bw_front', 'bulwark_stance', 'Close Slam', 'The slam reaches only 2.4 m but deals 40% more damage.',
+    { power: 1.4, fx: [{ find: AOE, set: { radius: 2.4 } }] });
+
+  essence('bw_iron', 'bulwark_stance', 'Iron Stance', 'In the stance you have 60% increased Armor instead of 30%, and +20% Block Chance instead of 25%.',
+    { fx: [{ find: STANCE, set: { mods: [{ s: 'block', t: 'add', v: 0.2 }, { s: 'armor', t: 'inc', v: 0.6 }, { s: 'moveSpeed', t: 'more', v: -0.12 }] } }] });
+  essence('bw_hold', 'bulwark_stance', 'Hold Fast', 'In the stance you also take 8% less damage.',
+    { fx: [{ find: STANCE, add: { mods: [{ s: 'dmgTaken', t: 'more', v: -0.08 }] } }] });
+  essence('bw_stun', 'bulwark_stance', 'Stunning Slam', 'The slam Stuns for 0.8 s.',
+    { fx: [{ find: AOE, set: { status: { id: 'stun', dur: 0.8 } } }] });
+
+  rite('bw_free', 'bulwark_stance', 'Quick Footwork', 'You can set or lift the stance every 2 s instead of 5.',
+    { set: { cooldown: 2 } });
+  rite('bw_guard', 'bulwark_stance', 'Guarded Stance', 'Each use of Bulwark Stance gives 15 Guard.',
+    { add: [guard(15)] });
+  rite('bw_ward', 'bulwark_stance', 'Shield Ward', 'Each use of Bulwark Stance gives Ward worth 10% of your Health for 4 s. Cooldown 8 s.',
+    { set: { cooldown: 8 }, add: [{ type: 'shield', pct: 0.1, dur: 4 }] });
+
+  // =============================================================================================
+  // SHIELD THROW. Base: 15 Guard, 6 s; a 130% shield (12 m) that pierces 2 enemies and comes back for 60%.
+  // =============================================================================================
+  shape('st_pierce', 'shield_throw', 'Through the Line', 'The shield pierces 5 enemies instead of 2.',
+    { fx: [{ find: PROJ, set: { pierce: 5 } }] });
+  shape('st_split', 'shield_throw', 'Three Rims', 'Three shields fly out in a fan, each dealing 55% of the damage.',
+    { power: 0.55, fx: [{ find: PROJ, set: { count: 3, spread: 30 } }] });
+  shape('st_far', 'shield_throw', 'Long Throw', 'The shield flies 18 m instead of 12, and faster.',
+    { set: { range: 17, aiUse: { use: 'attack', range: 16, minRange: 3.5 } }, fx: [{ find: PROJ, set: { range: 18, speed: 30 } }] });
+
+  essence('st_stun', 'shield_throw', 'Ringing Rim', 'The shield Stuns for 0.8 s.',
+    { fx: [{ find: PROJ, set: { status: { id: 'stun', dur: 0.8 } } }] });
+  essence('st_heavy', 'shield_throw', 'Heavy Throw', 'The shield breaks Poise more than twice as hard and knocks enemies back.',
+    { fx: [{ find: PROJ, set: { poise: 3, knockback: 2 } }] });
+  essence('st_sunder', 'shield_throw', 'Sundering Rim', 'Enemies hit are Vulnerable for 4 s, but the shield deals 15% less damage.',
+    { fx: [{ find: PROJ, set: { mult: 1.1, status: { id: 'vulnerable', dur: 4 } } }] });
+
+  rite('st_charges', 'shield_throw', 'Spare Shield', 'Shield Throw has 2 charges. Each takes 7 s.',
+    { set: { charges: 2, cooldown: 7 } });
+  rite('st_guard', 'shield_throw', 'Guard on the Rebound', 'Each enemy the shield hits gives 5 Guard.',
+    { fx: [{ find: PROJ, add: { onHit: [guard(5)] } }] });
+  rite('st_cheap', 'shield_throw', 'Light Shield', 'Shield Throw costs 5 Guard instead of 15. Cooldown 7 s.',
+    { set: { cost: 5, cooldown: 7 } });
+
+  // =============================================================================================
+  // RALLY CRY. Base: 25 Guard, 20 s; you and allies within 8 m recover 18% Health over 6 s and deal 15% more damage for 8 s.
+  // =============================================================================================
+  shape('rc_wide', 'rally_cry', 'Rally the Field', 'The cry reaches allies 14 m away instead of 8.',
+    { fx: [{ find: HEAL, set: { radius: 14 } }, { find: BUFF, set: { radius: 14 } }] });
+  shape('rc_long', 'rally_cry', 'Long Rally', 'The damage bonus lasts 14 s instead of 8.',
+    { fx: [{ find: BUFF, set: { dur: 14 } }] });
+
+  essence('rc_fury', 'rally_cry', 'Keep Fury', 'The cry gives 25% increased damage instead of 15%, but heals only 10% of Health.',
+    { fx: [{ find: BUFF, set: { mods: [{ s: 'dmg', t: 'inc', v: 0.25 }] } }, { find: HEAL, set: { pct: 0.1 } }] });
+  essence('rc_iron', 'rally_cry', 'Ironclad Rally', 'The cry also gives 40% increased Armor, but only 10% increased damage.',
+    { fx: [{ find: BUFF, set: { mods: [{ s: 'dmg', t: 'inc', v: 0.1 }, { s: 'armor', t: 'inc', v: 0.4 }] } }] });
+  essence('rc_quick', 'rally_cry', 'Sharp Rally', 'The healing comes in 1 s instead of 6.',
+    { fx: [{ find: HEAL, set: { hot: 1 } }] });
+
+  rite('rc_cheap', 'rally_cry', 'Ready Voice', 'Cooldown 14 s instead of 20.',
+    { set: { cooldown: 14 } });
+  rite('rc_guard', 'rally_cry', 'Rally to the Shield', 'Rally Cry gives you 30 Guard.',
+    { add: [guard(30)] });
+  rite('rc_cleanse', 'rally_cry', 'Clear Heads', 'Rally Cry also removes up to 2 harmful effects from you and allies within 8 m.',
+    { add: [{ type: 'cleanse', radius: 8, count: 2 }] });
+
+  // =============================================================================================
+  // GROUND SLAM. Base: 30 Guard, 8 s; 220% in front of you (3 m), heavy Poise damage, Stun 1 s.
+  // =============================================================================================
+  shape('gs_ring', 'ground_slam', 'Shockwave', 'The slam hits all around you, 4 m wide, for 80% of the damage.',
+    { power: 0.8, fx: [{ find: AOE, set: { at: 'self', radius: 4 } }] });
+  shape('gs_line', 'ground_slam', 'Fissure', 'The slam opens a crack 7 m long in front of you.',
+    { fx: [{ find: AOE, set: { at: 'self', shape: 'line', length: 7, width: 2.2 } }] });
+  shape('gs_twice', 'ground_slam', 'Double Slam', 'You slam twice, half a second apart, each for 60% of the damage.',
+    { power: 0.6, fx: [{ find: AOE, set: { hits: 2, interval: 0.5 } }] });
+
+  essence('gs_long', 'ground_slam', 'Skull Crack', 'The Stun lasts 1.8 s, but the slam deals 18% less damage.',
+    { fx: [{ find: AOE, set: { mult: 1.8, status: { id: 'stun', dur: 1.8 } } }] });
+  essence('gs_break', 'ground_slam', 'Bone-Deep', 'The slam breaks Poise two thirds harder.',
+    { fx: [{ find: AOE, set: { poise: 5 } }] });
+  essence('gs_quake', 'ground_slam', 'Quake', 'Enemies hit are also Slowed by 40% for 3 s.',
+    { fx: [{ find: AOE, set: { status: [{ id: 'stun', dur: 1.0 }, { id: 'slow', dur: 3, power: 0.4 }] } }] });
+
+  rite('gs_charges', 'ground_slam', 'Two Slams', 'Ground Slam has 2 charges. Each takes 10 s.',
+    { set: { charges: 2, cooldown: 10 } });
+  rite('gs_echo', 'ground_slam', 'Aftershock', 'An aftershock hits the same ground 0.6 s later for 80% weapon damage.',
+    { add: [{ copy: AOE, keep: 'shape', type: 'aoe', mult: 0.8, poise: 1.5, t: 0.6 }] });
+  rite('gs_cheap', 'ground_slam', 'Easy Swing', 'Ground Slam costs 15 Guard instead of 30. Cooldown 9 s.',
+    { set: { cost: 15, cooldown: 9 } });
+
+  // =============================================================================================
+  // CHAIN HOOK. Base: 15 Guard, 9 s; an 80% hook (12 m) that drags the enemy in, Slowed and Vulnerable for 3 s.
+  // =============================================================================================
+  shape('ch_far', 'chain_hook', 'Gaoler\'s Reach', 'The hook flies 18 m instead of 12.',
+    { set: { range: 17, aiUse: { use: 'attack', range: 16, minRange: 5 } }, fx: [{ find: HOOK, set: { range: 18 } }] });
+  shape('ch_fast', 'chain_hook', 'Whip Chain', 'The hook flies more than half again as fast.',
+    { fx: [{ find: HOOK, set: { speed: 45 } }] });
+
+  essence('ch_stun', 'chain_hook', 'Hooked and Dazed', 'The hooked enemy is Stunned for 1 s instead of Slowed.',
+    { fx: [{ find: HOOK, set: { status: [{ id: 'stun', dur: 1 }, { id: 'vulnerable', dur: 3 }] } }] });
+  essence('ch_bleed', 'chain_hook', 'Barbed Hook', 'The hook also adds 3 stacks of Bleed.',
+    { fx: [{ find: HOOK, set: { status: [{ id: 'slow', dur: 3, power: 0.4 }, { id: 'vulnerable', dur: 3 }, { id: 'bleed', stacks: 3, power: 0.1 }] } }] });
+  essence('ch_heavy', 'chain_hook', 'Anchor Hook', 'The hook deals twice the damage and breaks Poise hard.',
+    { fx: [{ find: HOOK, set: { mult: 1.6, poise: 2.5 } }] });
+
+  rite('ch_charges', 'chain_hook', 'Two Hooks', 'Chain Hook has 2 charges. Each takes 10 s.',
+    { set: { charges: 2, cooldown: 10 } });
+  rite('ch_guard', 'chain_hook', 'Reel In Guard', 'A hooked enemy gives you 15 Guard.',
+    { fx: [{ find: HOOK, add: { onHit: [guard(15)] } }] });
+  rite('ch_quick', 'chain_hook', 'Quick Chain', 'Chain Hook costs 10 Guard instead of 15. Cooldown 6 s.',
+    { set: { cost: 10, cooldown: 6 } });
+
+  // =============================================================================================
+  // FORTIFY. Base: 25 Guard, 16 s; Ward worth 25% of your Health for 6 s and Unstoppable for 3 s.
+  // =============================================================================================
+  shape('fo_long', 'fortify', 'Steady Walls', 'The Ward lasts 10 s instead of 6.',
+    { fx: [{ find: SHIELD, set: { dur: 10 } }] });
+
+  essence('fo_big', 'fortify', 'Thick Walls', 'The Ward is worth 40% of your Health instead of 25%.',
+    { fx: [{ find: SHIELD, set: { pct: 0.4 } }] });
+  essence('fo_iron', 'fortify', 'Iron Resolve', 'You are Unstoppable for 5 s instead of 3.',
+    { fx: [{ find: BUFF, set: { status: { id: 'unstoppable', dur: 5 } } }] });
+
+  rite('fo_cheap', 'fortify', 'Ready Walls', 'Cooldown 11 s instead of 16.',
+    { set: { cooldown: 11 } });
+  rite('fo_guard', 'fortify', 'Guard Up', 'Fortify gives you 25 Guard instead of costing it.',
+    { set: { cost: 0 }, add: [guard(25)] });
+  rite('fo_allies', 'fortify', 'Shield Brothers', 'Allies within 8 m also get Ward worth 15% of your Health for 6 s. Cooldown 18 s.',
+    { set: { cooldown: 18 }, add: [{ type: 'shield', radius: 8, pct: 0.15, dur: 6 }] });
+  rite('fo_cleanse', 'fortify', 'Shrug Off', 'Fortify also removes up to 3 harmful effects from you.',
+    { add: [{ type: 'cleanse', self: true, count: 3 }] });
+
+  // =============================================================================================
+  // RIPOSTE. Base: 10 Guard, 7 s; parry everything from the front for 0.7 s; each parry answers with a 240% counter blow
+  // (2.8 m, 140 degrees) that Stuns for 1.2 s.
+  // =============================================================================================
+  shape('rp_long', 'riposte', 'Patient Parry', 'You parry for 1.2 s instead of 0.7.',
+    { fx: [{ find: BUFF, set: { dur: 1.2 } }] });
+  shape('rp_wide', 'riposte', 'Whirling Answer', 'The counter blow hits all around you.',
+    { fx: [{ find: MEL, set: { arc: 300 } }] });
+  shape('rp_reach', 'riposte', 'Long Answer', 'The counter blow reaches 4 m instead of 2.8.',
+    { fx: [{ find: MEL, set: { range: 4 } }] });
+
+  essence('rp_heavy', 'riposte', 'Crushing Answer', 'The counter blow deals 310% weapon damage instead of 240%.',
+    { set: { dmgLines: [{ label: 'counter', mult: 3.1 }] }, fx: [{ find: MEL, set: { mult: 3.1 } }] });
+  essence('rp_bleed', 'riposte', 'Cutting Answer', 'The counter blow also adds 3 stacks of Bleed.',
+    { fx: [{ find: MEL, set: { status: [{ id: 'stun', dur: 1.2 }, { id: 'bleed', stacks: 3, power: 0.1 }] } }] });
+  essence('rp_leech', 'riposte', 'Thirsty Riposte', 'The counter blow heals you for 20% of the damage it deals.',
+    { fx: [{ find: MEL, set: { leech: 0.2 } }] });
+
+  rite('rp_guard', 'riposte', 'Guard Return', 'Each parry also gives 10 more Guard.',
+    { fx: [{ find: BUFF, add: { onBlock: [guard(10)] } }] });
+  rite('rp_quick', 'riposte', 'Ready Blade', 'Cooldown 4.5 s instead of 7.',
+    { set: { cooldown: 4.5 } });
+  rite('rp_ward', 'riposte', 'Parry Ward', 'Riposte gives Ward worth 8% of your Health for 3 s.',
+    { add: [{ type: 'shield', pct: 0.08, dur: 3 }] });
+
+  // =============================================================================================
+  // WARCRY OF IRON. Base: 20 Guard, 14 s; Taunt and Weaken enemies within 9 m for 4 s; you take 15% less damage and have
+  // 50% more Armor for 6 s.
+  // =============================================================================================
+  shape('wc_wide', 'warcry_of_iron', 'Booming Voice', 'The cry reaches enemies 14 m away instead of 9.',
+    { fx: [{ find: TAUNT, set: { radius: 14 } }] });
+  shape('wc_long', 'warcry_of_iron', 'Long Echo', 'The Taunt lasts 6 s and your Armor bonus 9 s.',
+    { fx: [{ find: TAUNT, set: { dur: 6 } }, { find: BUFF, set: { dur: 9 } }] });
+
+  essence('wc_expose', 'warcry_of_iron', 'Shaming Cry', 'Enemies are made Vulnerable for 4 s instead of Weakened.',
+    { fx: [{ find: TAUNT, set: { status: { id: 'vulnerable', dur: 4 } } }] });
+  essence('wc_iron', 'warcry_of_iron', 'Voice of Iron', 'You gain 80% increased Armor instead of 50%.',
+    { fx: [{ find: BUFF, set: { mods: [{ s: 'armor', t: 'inc', v: 0.8 }, { s: 'dmgTaken', t: 'more', v: -0.15 }] } }] });
+  essence('wc_rage', 'warcry_of_iron', 'War Rage', 'You also deal 20% increased damage while the cry lasts.',
+    { fx: [{ find: BUFF, add: { mods: [{ s: 'dmg', t: 'inc', v: 0.2 }] } }] });
+
+  rite('wc_guard', 'warcry_of_iron', 'Guard Call', 'Warcry of Iron gives you 25 Guard instead of costing it.',
+    { set: { cost: 0 }, add: [guard(25)] });
+  rite('wc_quick', 'warcry_of_iron', 'Short Bellow', 'Cooldown 9 s instead of 14.',
+    { set: { cooldown: 9 } });
+  rite('wc_heal', 'warcry_of_iron', 'Roaring Breath', 'Warcry of Iron heals you for 8% of your Health.',
+    { add: [{ type: 'heal', self: true, pct: 0.08 }] });
+
+  // =============================================================================================
+  // LANCE CHARGE. Base: 20 Guard, 9 s; charge 8 m for 150%, knocking enemies aside, then a wide swing for 100%.
+  // =============================================================================================
+  shape('lc_far', 'lance_charge', 'Long Tilt', 'The charge runs 12 m instead of 8.',
+    { set: { range: 12, aiUse: { use: 'gapclose', range: 12, minRange: 4 } }, fx: [{ find: DASH, set: { dist: 12 } }] });
+  shape('lc_wide', 'lance_charge', 'Broad Charge', 'The charge is half again as wide and the swing at the end hits all around you.',
+    { fx: [{ find: DASH, set: { width: 3.5 } }, { find: MEL, set: { arc: 300 } }] });
+
+  essence('lc_stun', 'lance_charge', 'Unhorsed', 'Enemies you charge through are Stunned for 0.8 s.',
+    { fx: [{ find: DASH, set: { status: { id: 'stun', dur: 0.8 } } }] });
+  essence('lc_heavy', 'lance_charge', 'Battering Charge', 'The charge breaks Poise twice as hard and throws enemies further.',
+    { fx: [{ find: DASH, set: { poise: 4, knockback: 4 } }] });
+  essence('lc_vuln', 'lance_charge', 'Opening Swing', 'Enemies hit by the swing at the end are Vulnerable for 4 s.',
+    { fx: [{ find: MEL, set: { status: { id: 'vulnerable', dur: 4 } } }] });
+
+  rite('lc_charges', 'lance_charge', 'Second Pass', 'Lance Charge has 2 charges. Each takes 11 s.',
+    { set: { charges: 2, cooldown: 11 } });
+  rite('lc_guard', 'lance_charge', 'Charging Guard', 'Lance Charge gives you 15 Guard.',
+    { add: [guard(15)] });
+  rite('lc_ward', 'lance_charge', 'Shielded Tilt', 'Lance Charge gives Ward worth 10% of your Health for 4 s.',
+    { add: [{ type: 'shield', pct: 0.1, dur: 4 }] });
+
+  // =============================================================================================
+  // ANCHOR POINT. Base: 30 Guard, 22 s; 120% around you (4 m); for 10 s allies within 6 m get 40% Armor and +15% Block,
+  // enemies there are Slowed by 30%.
+  // =============================================================================================
+  shape('ap_wide', 'anchor_point', 'Wide Ground', 'The standard covers 9 m instead of 6, and the blow 5 m.',
+    { fx: [{ find: BANNER, set: { radius: 9 } }, { find: AOE, set: { radius: 5 } }] });
+  shape('ap_long', 'anchor_point', 'Long Stand', 'The standard stays 16 s instead of 10.',
+    { fx: [{ find: BANNER, set: { duration: 16 } }] });
+
+  essence('ap_might', 'anchor_point', 'Standard of Might', 'Allies by the standard also deal 15% increased damage.',
+    { fx: [{ find: BANNER, add: { mods: [{ s: 'dmg', t: 'inc', v: 0.15 }] } }] });
+  essence('ap_heal', 'anchor_point', 'Mending Standard', 'Allies by the standard heal 1% of their Health every second.',
+    { fx: [{ find: BANNER, set: { healPct: 0.01 } }] });
+  essence('ap_stun', 'anchor_point', 'Staggering Stake', 'The blow Stuns for 1 s.',
+    { fx: [{ find: AOE, set: { status: { id: 'stun', dur: 1 } } }] });
+
+  rite('ap_quick', 'anchor_point', 'Ready Stake', 'Cooldown 15 s instead of 22.',
+    { set: { cooldown: 15 } });
+  rite('ap_guard', 'anchor_point', 'Anchor Guard', 'Anchor Point gives you 30 Guard instead of costing it.',
+    { set: { cost: 0 }, add: [guard(30)] });
+  rite('ap_cheap', 'anchor_point', 'Light Stake', 'Anchor Point costs 15 Guard instead of 30.',
+    { set: { cost: 15 } });
+
+  // =============================================================================================
+  // IRON CITADEL (Ultimate). Base: 75 s; 400% around you (6.5 m), Stun 1.5 s; Ward 40% for 8 s; a moving fortress (6 m,
+  // 8 s): allies take 30% less damage, enemies are Slowed and battered for 60% each second.
+  // =============================================================================================
+  shape('ic_wide', 'iron_citadel', 'Outer Walls', 'The blast reaches 9 m and the fortress 8 m.',
+    { fx: [{ find: AOE, set: { radius: 9 } }, { find: ZONE, set: { radius: 8 } }] });
+  shape('ic_long', 'iron_citadel', 'Long Siege', 'The fortress and its Ward last 12 s instead of 8.',
+    { fx: [{ find: ZONE, set: { duration: 12 } }, { find: SHIELD, set: { dur: 12 } }] });
+
+  essence('ic_heavy', 'iron_citadel', 'Falling Keep', 'The blast deals 550% weapon damage instead of 400%.',
+    { fx: [{ find: AOE, set: { mult: 5.5 } }] });
+  essence('ic_ward', 'iron_citadel', 'Inner Keep', 'The Ward is worth 60% of your Health instead of 40%.',
+    { fx: [{ find: SHIELD, set: { pct: 0.6 } }] });
+  essence('ic_batter', 'iron_citadel', 'Murder Holes', 'Enemies inside are battered for 100% each second instead of 60%.',
+    { fx: [{ find: ZONE, set: { mult: 1.0 } }] });
+
+  rite('ic_quick', 'iron_citadel', 'Rebuilt Walls', 'Cooldown 55 s instead of 75.',
+    { set: { cooldown: 55 } });
+  rite('ic_guard', 'iron_citadel', 'Full Garrison', 'Iron Citadel fills your Guard.',
+    { add: [guard(100)] });
+  rite('ic_heal', 'iron_citadel', 'Healing Hall', 'Iron Citadel heals you for 25% of your Health.',
+    { add: [{ type: 'heal', self: true, pct: 0.25 }] });
+
+  KD.register('mutations', M);
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/data/38_tree_builds_gloamblade.js
 (function (root) {
   'use strict';
@@ -15673,6 +17088,141 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       { to: 25, goals: ['skill:bloodletting', 'mut:blood_free', 'cluster:carrion_rhythm', 'cluster:blood_frenzy', 'cluster:blood_leech'] },
       { to: 40, goals: ['cluster:carrion_scythe', 'cluster:blood_wound', 'skill:marrow_shield', 'cluster:carrion_scavenger'] },
       { to: 60, goals: ['Last Drop', 'cluster:blood_thicker', 'cluster:carrion_yard', 'cluster:br_mid_2', 'cluster:carrion_crow', 'cluster:blood_scar', 'cluster:blood_basin', 'cluster:carrion_hunger', 'cluster:rot_hand'] }
+    ] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/38_tree_builds_ironbound.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+
+  /**
+   * RECOMMENDED BUILDS of the Ironbound's tree (docs/TREE_IRONBOUND.md section 6). Pure data; the registry and the format
+   * are in src/data/38_tree_builds_gravecaller.js (KD.data.treeBuilds.add), the logic in src/meta/35_tree_builds.js, the screen
+   * is the Builds tab of the tree page. Goals are stable names: 'skill:<abilityId>', 'mut:<mutationId>', 'cluster:<clusterId>'
+   * (complete it) or a node's name. Every build starts from a different skill and fits KD.treeBuilds.BUDGET (152) points
+   * (tests/tree_ironbound.test.js).
+   */
+  var R = KD.data = KD.data || {};
+  var TBD = R.treeBuilds = R.treeBuilds || { byClass: {} };
+  TBD.add = TBD.add || function (classId, rec) {
+    if (!rec || typeof rec.id !== 'string') throw new Error('KD.data.treeBuilds.add(' + classId + '): a record with an id is needed');
+    rec.cls = classId;
+    (TBD.byClass[classId] = TBD.byClass[classId] || []).push(rec);
+    return rec;
+  };
+  function add(rec) { return TBD.add('ironbound', rec); }
+
+  // 6.1 the wall: block everything, never fall
+  add({ id: 'shield_wall', name: 'Shield Wall', design: '6.1', difficulty: 1, start: 'bulwark_stance', arms: ['wall', 'plate'],
+    pitch: 'Plant your feet in Bulwark Stance and block until a blocked hit costs you nothing at all.',
+    tags: ['Block', 'Guard', 'Tank'],
+    stages: [
+      { to: 10, goals: ['mut:bw_iron', 'mut:bw_guard', 'cluster:wall_rim'] },
+      { to: 25, goals: ['mut:bw_wide', 'cluster:wall_braced', 'cluster:wall_vigil', 'skill:fortify', 'mut:fo_big'] },
+      { to: 40, goals: ['Unbroken Wall', 'cluster:wall_tower', 'cluster:wall_fast', 'cluster:wall_bulwark', 'skill:iron_citadel', 'mut:ic_ward'] },
+      { to: 60, goals: ['Shield Master', 'cluster:wall_line', 'cluster:wall_keep', 'cluster:plate_wall_mid', 'cluster:wall_last'] }
+    ] });
+
+  // 6.2 the counter-fighter
+  add({ id: 'duelist', name: 'Duelist', design: '6.2', difficulty: 2, start: 'riposte', arms: ['counter', 'wall'],
+    pitch: 'Let them swing first. Every parry answers with a counter blow that Stuns and bleeds.',
+    tags: ['Parry', 'Counter blows', 'Melee'],
+    stages: [
+      { to: 10, goals: ['mut:rp_bleed', 'mut:rp_quick', 'cluster:counter_fencer'] },
+      { to: 25, goals: ['mut:rp_long', 'cluster:counter_reprisal', 'cluster:counter_measure', 'cluster:wall_counter_mid', 'skill:bulwark_stance'] },
+      { to: 40, goals: ['No Blow Unanswered', 'cluster:counter_timing', 'cluster:counter_reply', 'cluster:counter_patience', 'cluster:counter_edge'] },
+      { to: 60, goals: ["Duelist's Oath", 'cluster:counter_master', 'cluster:counter_scarlet', 'cluster:counter_riposte', 'cluster:counter_stance'] }
+    ] });
+
+  // 6.3 the breaker
+  add({ id: 'hammer', name: 'Hammer of the Keep', design: '6.3', difficulty: 1, start: 'ground_slam', arms: ['breaker', 'counter'],
+    pitch: 'Slam, Stun, Break: every Broken enemy shakes the ground under its friends.',
+    tags: ['Breaks', 'Stuns', 'Area'],
+    stages: [
+      { to: 10, goals: ['mut:gs_ring', 'mut:gs_break', 'cluster:breaker_forge'] },
+      { to: 25, goals: ['mut:gs_echo', 'cluster:breaker_after', 'cluster:breaker_cracks', 'cluster:breaker_skull', 'skill:riposte'] },
+      { to: 40, goals: ['Hammerfall', 'cluster:breaker_tremor', 'cluster:breaker_bones', 'cluster:counter_breaker_mid', 'cluster:breaker_daze'] },
+      { to: 60, goals: ['Earthshaker', 'cluster:breaker_stagger', 'cluster:breaker_quarry', 'cluster:breaker_crater', 'cluster:breaker_weight'] }
+    ] });
+
+  // 6.4 the lancer
+  add({ id: 'lancer', name: 'Lancer', design: '6.4', difficulty: 2, start: 'lance_charge', arms: ['charge', 'breaker'],
+    pitch: 'Never stand still: charge through the line, knock it flat and be gone before it gets up.',
+    tags: ['Moving', 'Charge', 'Knockback'],
+    stages: [
+      { to: 10, goals: ['mut:lc_stun', 'mut:lc_charges', 'cluster:charge_destrier'] },
+      { to: 25, goals: ['mut:lc_wide', 'cluster:charge_trample', 'cluster:charge_spurs', 'skill:ground_slam', 'mut:gs_line'] },
+      { to: 40, goals: ['Juggernaut', 'cluster:charge_shock', 'cluster:charge_gallop', 'cluster:charge_crash', 'cluster:breaker_charge_mid'] },
+      { to: 60, goals: ['Breakneck', 'cluster:charge_wedge', 'cluster:charge_ride', 'cluster:charge_crest', 'cluster:charge_glory'] }
+    ] });
+
+  // 6.5 the gaoler
+  add({ id: 'gaoler', name: 'Gaoler', design: '6.5', difficulty: 2, start: 'chain_hook', arms: ['hook', 'charge'],
+    pitch: 'Hook the one you want, drag it into your shield and keep it Stunned until it stops struggling.',
+    tags: ['Pull', 'Control', 'Stuns'],
+    stages: [
+      { to: 10, goals: ['mut:ch_stun', 'mut:ch_charges', 'mut:ch_far'] },
+      { to: 25, goals: ['cluster:hook_reel', 'cluster:hook_links', 'skill:lance_charge', 'mut:lc_vuln'] },
+      { to: 40, goals: ['Come Here', 'cluster:hook_gaol', 'cluster:hook_near', 'cluster:charge_hook_mid', 'cluster:hook_net'] },
+      { to: 60, goals: ['Chained', 'cluster:hook_anchor', 'cluster:hook_shackle', 'cluster:hook_spikes', 'cluster:hook_winch'] }
+    ] });
+
+  // 6.6 the shield thrower
+  add({ id: 'shield_thrower', name: 'Shield Thrower', design: '6.6', difficulty: 2, start: 'shield_throw', arms: ['hook', 'warcry'],
+    pitch: 'Three shields in a fan, all coming back: fight from range and catch Guard on every rebound.',
+    tags: ['Ranged', 'Throwing', 'Guard'],
+    stages: [
+      { to: 10, goals: ['mut:st_split', 'cluster:hook_throw'] },
+      { to: 25, goals: ['mut:st_guard', 'mut:st_sunder', 'cluster:hook_rebound', 'cluster:hook_aim', 'skill:chain_hook'] },
+      { to: 40, goals: ['Long Arm', 'cluster:hook_disc', 'cluster:hook_warcry_mid', 'cluster:hook_anchor', 'skill:warcry_of_iron'] },
+      { to: 60, goals: ['cluster:hook_spikes', 'cluster:hook_tow', 'cluster:hook_warcry_outer', 'cluster:warcry_herald', 'cluster:warcry_dread'] }
+    ] });
+
+  // 6.7 the warlord
+  add({ id: 'warlord', name: 'Warlord', design: '6.7', difficulty: 1, start: 'warcry_of_iron', arms: ['warcry', 'anchor'],
+    pitch: 'Shout the whole room onto you, Weaken it and stand there laughing.',
+    tags: ['Taunt', 'Weaken', 'Shouts'],
+    stages: [
+      { to: 10, goals: ['mut:wc_wide', 'mut:wc_iron', 'mut:wc_guard'] },
+      { to: 25, goals: ['cluster:warcry_echo', 'cluster:warcry_dread', 'cluster:warcry_lungs', 'skill:anchor_point', 'mut:ap_might'] },
+      { to: 40, goals: ['Challenger', 'cluster:warcry_taunt', 'cluster:warcry_roar', 'cluster:warcry_anchor_mid', 'cluster:warcry_sergeant'] },
+      { to: 60, goals: ['Voice of the Keep', 'cluster:warcry_drums', 'cluster:warcry_thunder', 'cluster:warcry_tower', 'cluster:anchor_rooted'] }
+    ] });
+
+  // 6.8 the chaplain
+  add({ id: 'field_chaplain', name: 'Field Chaplain', design: '6.8', difficulty: 1, start: 'rally_cry', arms: ['warcry', 'plate'],
+    pitch: 'The voice that keeps the party standing: heal, cleanse and rally everyone in earshot.',
+    tags: ['Healing', 'Allies', 'Support'],
+    stages: [
+      { to: 10, goals: ['mut:rc_wide', 'mut:rc_cleanse', 'cluster:warcry_rally'] },
+      { to: 25, goals: ['mut:rc_iron', 'cluster:warcry_echo', 'cluster:warcry_hymn', 'skill:warcry_of_iron', 'mut:wc_heal'] },
+      { to: 40, goals: ['Battle Hymn', 'cluster:warcry_lungs', 'cluster:warcry_roar', 'skill:fortify', 'mut:fo_allies'] },
+      { to: 60, goals: ['cluster:warcry_last', 'cluster:warcry_tower', 'cluster:plate_salve', 'cluster:plate_padding', 'cluster:plate_mend'] }
+    ] });
+
+  // 6.9 the holdfast
+  add({ id: 'holdfast', name: 'Holdfast', design: '6.9', difficulty: 2, start: 'anchor_point', arms: ['anchor', 'plate'],
+    pitch: 'Drive the stake in and do not move: Ward grows on you while everything that hits you bleeds on Thorns.',
+    tags: ['Thorns', 'Standing still', 'Tank'],
+    stages: [
+      { to: 10, goals: ['mut:ap_long', 'mut:ap_stun', 'cluster:anchor_thorns'] },
+      { to: 25, goals: ['mut:ap_guard', 'cluster:anchor_rooted', 'cluster:anchor_bramble', 'cluster:anchor_stone', 'skill:fortify'] },
+      { to: 40, goals: ['Hold the Line', 'cluster:anchor_line', 'cluster:anchor_spite', 'cluster:anchor_plate_mid', 'cluster:anchor_post'] },
+      { to: 60, goals: ['Thornwall', 'cluster:anchor_hold', 'cluster:anchor_oak', 'cluster:anchor_earth', 'cluster:anchor_bastion'] }
+    ] });
+
+  // 6.10 the fortress
+  add({ id: 'iron_fortress', name: 'Iron Fortress', design: '6.10', difficulty: 1, start: 'fortify', arms: ['plate', 'wall'],
+    pitch: 'The heaviest armour in the kingdom and a Ward that never quite breaks. Slow, and very hard to kill.',
+    tags: ['Ward', 'Armor', 'Health'],
+    stages: [
+      { to: 10, goals: ['mut:fo_big', 'mut:fo_cheap', 'cluster:plate_smith'] },
+      { to: 25, goals: ['mut:fo_long', 'cluster:plate_mail', 'cluster:plate_mend', 'cluster:plate_padding', 'skill:bulwark_stance'] },
+      { to: 40, goals: ['Living Fortress', 'cluster:plate_ward', 'cluster:plate_harness', 'cluster:plate_heart', 'cluster:plate_wall_mid'] },
+      { to: 60, goals: ['Iron Skin', 'cluster:plate_gorget', 'cluster:plate_enamel', 'cluster:plate_salve', 'cluster:plate_mantle'] }
     ] });
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -17603,9 +19153,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       effects: [{ type: 'heal', radius: 8, pct: 0.18, hot: 6 }, { type: 'buff', radius: 8, id: 'rally_cry', name: 'Rally Cry', dur: 8, mods: [{ s: 'dmg', t: 'inc', v: 0.15 }] }],
       aiUse: { use: 'heal', hpBelow: 0.6 } },
 
-    { id: 'ground_slam', name: 'Ground Slam', cls: 'ironbound', slot: 'skill', icon: 'crack', anim: 'slam', start: true,
-      desc: 'Smash the ground in front of you: 220% weapon damage, heavy Poise damage and a 1 s Stun. The opener for a Break.',
-      flavor: 'The cobbles remember every one of these.',
+    { id: 'ground_slam', name: 'Ground Slam',      // [w8 ironbound tree] owner: the kit revolves around the shield (a shield slam; the name is the class table's)
+      cls: 'ironbound', slot: 'skill', icon: 'crack', anim: 'slam', start: true,
+      desc: 'Slam the rim of your shield into the ground in front of you: 220% weapon damage, heavy Poise damage and a 1 s Stun. The opener for a Break.',
+      flavor: 'The cobbles remember every one of these. So does the shield.',
       cost: 30, cooldown: 8, windup: 0.45, recover: 0.5, delivery: 'melee', elem: 'phys', heavy: true, tags: ['melee', 'aoe'], range: 3,
       effects: [{ type: 'aoe', at: 'front', dist: 1.8, radius: 3.0, mult: 2.2, poise: 3, status: { id: 'stun', dur: 1.0 } }],
       aiUse: { use: 'attack', range: 3.2 } },
@@ -17640,9 +19191,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         { type: 'buff', id: 'warcry_of_iron', name: 'Warcry of Iron', dur: 6, mods: [{ s: 'armor', t: 'inc', v: 0.5 }, { s: 'dmgTaken', t: 'more', v: -0.15 }] }],
       aiUse: { use: 'defense', minTargets: 3 } },
 
-    { id: 'lance_charge', name: 'Lance Charge', cls: 'ironbound', slot: 'skill', icon: 'spear', anim: 'thrust',
-      desc: 'Charge 8 m through enemies for 150% weapon damage, knocking them aside, and finish with a wide swing for 100%.',
-      flavor: 'No lance, no horse. The charge was never about those.',
+    { id: 'lance_charge', name: 'Lance Charge',      // [w8 ironbound tree] owner: the kit revolves around the shield (a shield charge; the name is the class table's)
+      cls: 'ironbound', slot: 'skill', icon: 'spear', anim: 'thrust',
+      desc: 'Charge 8 m behind your raised shield through enemies for 150% weapon damage, knocking them aside, and finish with a wide shield sweep for 100%.',
+      flavor: 'No lance, no horse. Just a wall of iron coming at you fast.',
       cost: 20, cooldown: 9, windup: 0.25, recover: 0.35, delivery: 'melee', elem: 'phys', tags: ['melee', 'movement'], range: 8,
       effects: [{ type: 'dash', dist: 8, speed: 22, width: 2.2, mult: 1.5, poise: 2, knockback: 2.5, iframes: 0.15, onEnd: [{ type: 'melee', range: 2.6, arc: 150, mult: 1.0 }] }],
       aiUse: { use: 'gapclose', range: 8, minRange: 4 } },
@@ -23637,6 +25189,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.78', date: '2026-10-15', title: 'Ironbound shield moves', notes: [
+      'The Ironbound\'s Ground Slam and Lance Charge now read as shield moves: a slam with the shield\'s rim and a charge behind the raised shield'
+    ] },
     { version: '0.7.77', date: '2026-10-15', title: 'Slower, cleaner melee', notes: [
       'Melee attacks are slower and cleaner: every swing has a real wind-up and follow-through, and hits harder to make up for it',
       'Heavy hitters like the Ironbound and Bannerlord swing about once a second, the Gloamblade is still the quickest and you can see both of his stabs',
@@ -44727,6 +46282,229 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/sim/56_tree_ironbound.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var S = KD.sim = KD.sim || {};
+  var K = KD.skills = KD.skills || {};
+  if (!K.registerHook) return;
+
+  /**
+   * IRONBOUND, the rules of the class tree (docs/TREE_IRONBOUND.md section 3): the `effect` keys `tree_ironbound_<id>` of
+   * the rule notables and keystones in src/data/36_tree_ironbound_<arm>.js. The tree also reuses the Bastion rules of the
+   * Crownweb (`web_ironbound_*`, src/sim/51_class_ironbound.js) and three web keystones (Iron Vow, Unbroken Wall, No Blow
+   * Unanswered); the mutations are pure data. Every hook acts on the owner's own hits, blocks, statuses and casts, uses
+   * world.rng / world.time only, and guards the places where it could start itself again. Every number is in the T table;
+   * the node texts quote them (tests/tree_ironbound.test.js compares).
+   */
+  var T = {
+    braceSlow: 0.3, braceDur: 2,            // Braced Shield: blocked attackers are Slowed while you stand in Bulwark Stance
+    reprisalHeal: 0.03,                     // Blood for Blood: share of Health healed per counter blow
+    measureSpeed: 0.08, measureDur: 4, measureMax: 3,     // Measured: Attack Speed per block, its duration and stacks
+    shockMult: 0.6, shockRadius: 3,         // Aftershock: a Break sends out a shockwave
+    quakeLonger: 1.5, quakeLess: 0.9,       // Earthshaker: Stun duration; damage to enemies neither Stunned nor Broken
+    momentumLess: 0.2, momentumDur: 3,      // Momentum: less damage taken after a Lance Charge
+    reelStun: 0.6,                          // Reeled In: Stun on a hooked enemy
+    reboundGuard: 5,                        // Ringing Rebound: Guard per enemy hit by Shield Throw
+    nearAt: 3.5, nearMore: 1.2, farAt: 6, farLess: 0.8,   // Come Here: damage by distance
+    echoGuard: 20,                          // Echoing Shout: Guard per shout
+    cowedMore: 1.1,                         // Cowed: Weakened enemies take more from your hits
+    challengeLess: 0.8, challengeOther: 0.9,              // Challenger: Taunted enemies hit you for less; your hits on the others
+    rootWard: 0.015, rootDur: 3, rootCap: 0.1,            // Deep Roots: Ward per second standing still, how long, up to this share
+    temperArmor: 0.3, temperDur: 4, temperIcd: 6,         // Tempered: Armor when the Ward breaks, once every 6 s
+    mendHeal: 0.01,                         // Iron Patience: Health per second while Guard is full
+    masterEvery: 3, masterStun: 0.6, masterGuard: 3        // Shield Master: every third Shield Bash Stuns; Guard per bash that lands
+  };
+  S.treeIronbound = { T: T };
+
+  function enemy(e) { return !!e && e.kind === 'enemy' && !e.dead && !e.removed; }
+  function inBulwark(p) { var st = p.hero && p.hero.flags && p.hero.flags.stances; return !!(st && st.stance === 'bulwark'); }
+  function counterHit(spec) { return !!(spec && (spec.counter || (spec.inst && spec.inst.counter) || (typeof spec.ability === 'string' && /(^|_)riposte$/.test(spec.ability)))); }
+  function ability(spec, id) { return !!spec && !spec.proc && !spec.dot && (spec.ability === id || spec.ability === 'ref_' + id); }
+  function gain(c, n, why) { S.player.gainRes(c.world, c.self, n, why || 'tree'); }
+  function stunned(t) { return !!(t.stunned || S.hasStatus(t, 'stun')); }
+  var NEAR = [];
+
+  // ---------------------------------------------------------------------------------------------
+  // The Shield Wall (wall)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_ironbound_brace', {
+    onBlock: function (c) {
+      var a = c.attacker;
+      if (!enemy(a) || !inBulwark(c.self)) return;
+      S.applyStatus(c.world, a, 'slow', { src: c.self, dur: T.braceDur, power: T.braceSlow });
+    }
+  });
+
+  /** Shield Master (keystone): every third Shield Bash Stuns what it hits; a bash that lands builds more Guard. */
+  function isPrimary(p, def) {
+    var pr = p.hero && p.hero.skills ? p.hero.skills.primary : null;
+    return !!def && (def.slot === 'primary' || (!!pr && (pr === def.id || 'ref_' + pr === def.id)));
+  }
+  K.registerHook('tree_ironbound_shieldmaster', {
+    onCast: function (c, eff, st) {
+      if (!isPrimary(c.self, c.ability) || !c.inst) return;
+      st.n = ((st.n || 0) + 1) % T.masterEvery;
+      if (st.n === 0) c.inst.ironStun = true;
+    },
+    onHit: function (c) {
+      var inst = c.spec && c.spec.inst;
+      if (!inst || c.spec.proc || c.spec.dot || !enemy(c.target) || !isPrimary(c.self, inst.def)) return;
+      if (!inst.ironGuard) { inst.ironGuard = true; gain(c, T.masterGuard, 'bash'); }
+      if (inst.ironStun) S.applyStatus(c.world, c.target, 'stun', { src: c.self, dur: T.masterStun });
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Duelling Yard (counter)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_ironbound_reprisal', {
+    onHit: function (c, eff, st) {
+      var p = c.self;
+      if (p.dead || !enemy(c.target) || c.spec.dot || !counterHit(c.spec) || c.world.time < (st.next || 0)) return;
+      st.next = c.world.time + 0.2;
+      S.heal(c.world, p, p.hpMax * T.reprisalHeal, p, { noScale: true, silent: true });
+    }
+  });
+  K.registerHook('tree_ironbound_measure', {
+    onBlock: function (c) {
+      var b = S.addBuff(c.world, c.self, { id: 'iron_measure', name: 'Measured', dur: T.measureDur, maxStacks: T.measureMax, stacks: 1, src: c.self, icon: 'sword_cross', color: '#c8b27a',
+        mods: [{ s: 'atkSpeed', t: 'inc', v: T.measureSpeed }] });
+      if (b && !b.def.desc) b.def.desc = Math.round(T.measureSpeed * 100) + '% more Attack Speed per stack after a block.';
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Anvil (breaker)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_ironbound_aftershock', {
+    onBreak: function (c, eff, st) {
+      var p = c.self, t = c.target, w = c.world;
+      if (st.busy || p.dead || !t || t.kind !== 'enemy') return;
+      st.busy = true;
+      try {
+        w.events.emit('fx', { name: 'shockwave', x: t.x, y: 0.2, z: t.z, r: T.shockRadius, src: p, key: 'tree_ironbound_aftershock' });
+        var n = S.qCircle(w, t.x, t.z, T.shockRadius, NEAR), list = NEAR.slice(0, n);
+        for (var i = 0; i < list.length; i++) {
+          var o = list[i];
+          if (o === t || !enemy(o) || !S.hostile(p, o)) continue;
+          S.damage(w, p, o, { mult: T.shockMult, elem: 'phys', delivery: 'melee', proc: true, ability: 'iron_aftershock', fromX: t.x, fromZ: t.z });
+        }
+      } finally { st.busy = false; }
+    }
+  });
+  K.registerHook('tree_ironbound_quake', {
+    onStatusApplied: function (c) {
+      var s = c.status;
+      if (c.id !== 'stun' || !s || s.ironQuake || !enemy(c.target)) return;
+      s.ironQuake = true;
+      if (typeof s.dur === 'number') s.dur *= T.quakeLonger;
+    },
+    onBeforeHit: function (c) {
+      var t = c.target;
+      if (!t || t.kind !== 'enemy' || !c.spec || c.spec.dot) return;
+      if (!stunned(t) && !(t.broken > 0)) c.mult *= T.quakeLess;
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Tilt Yard (charge)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_ironbound_momentum', {
+    onCast: function (c) {
+      var id = c.ability && c.ability.id;
+      if (id !== 'lance_charge' && id !== 'ref_lance_charge') return;
+      var b = S.addBuff(c.world, c.self, { id: 'iron_momentum', name: 'Momentum', dur: T.momentumDur, src: c.self, icon: 'spear', color: '#c24a3a',
+        mods: [{ s: 'dmgTaken', t: 'more', v: -T.momentumLess }] });
+      if (b && !b.def.desc) b.def.desc = 'You take ' + Math.round(T.momentumLess * 100) + '% less damage after a Lance Charge.';
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Chain Gate (hook)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_ironbound_reel', {
+    onHit: function (c) {
+      if (!enemy(c.target) || !ability(c.spec, 'chain_hook')) return;
+      S.applyStatus(c.world, c.target, 'stun', { src: c.self, dur: T.reelStun });
+    }
+  });
+  K.registerHook('tree_ironbound_ricochet', {
+    onHit: function (c) { if (enemy(c.target) && ability(c.spec, 'shield_throw')) gain(c, T.reboundGuard, 'rebound'); }
+  });
+  K.registerHook('tree_ironbound_comehere', {
+    onBeforeHit: function (c) {
+      var p = c.self, t = c.target;
+      if (!t || t.kind !== 'enemy' || !c.spec || c.spec.dot) return;
+      var dx = t.x - p.x, dz = t.z - p.z, d = Math.sqrt(dx * dx + dz * dz) - (t.r || 0);
+      if (d <= T.nearAt) c.mult *= T.nearMore;
+      else if (d > T.farAt) c.mult *= T.farLess;
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Warhorn (warcry)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_ironbound_echo', {
+    onCast: function (c) {
+      var ab = c.ability;
+      if (ab && ab.tags && ab.tags.indexOf('shout') >= 0) gain(c, T.echoGuard, 'shout');
+    }
+  });
+  K.registerHook('tree_ironbound_dread', {
+    onBeforeHit: function (c) { var t = c.target; if (t && t.kind === 'enemy' && S.hasStatus(t, 'weaken')) c.mult *= T.cowedMore; }
+  });
+  K.registerHook('tree_ironbound_challenge', {
+    onBeforeDamaged: function (c) {
+      var a = c.attacker;
+      if (a && a.kind === 'enemy' && c.amount > 0 && S.hasStatus(a, 'taunted')) c.amount *= T.challengeLess;
+    },
+    onBeforeHit: function (c) {
+      var t = c.target;
+      if (t && t.kind === 'enemy' && c.spec && !c.spec.dot && !S.hasStatus(t, 'taunted')) c.mult *= T.challengeOther;
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Holdfast (anchor)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_ironbound_rooted', {
+    onTick: function (c, eff, st) {
+      var p = c.self;
+      if (p.dead || !(p.spd <= 0.6)) { st.acc = 0; return; }
+      st.acc = (st.acc || 0) + c.dt;
+      if (st.acc < 1) return;
+      st.acc -= 1;
+      var cap = p.hpMax * T.rootCap, room = cap - (p.ward || 0);
+      if (room > 0) S.addWard(c.world, p, Math.min(room, p.hpMax * T.rootWard), T.rootDur);
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Armoury (plate)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_ironbound_temper', {
+    onDamaged: function (c, eff, st) {
+      var p = c.self, w = c.world;
+      if (p.dead || !c.info || !(c.info.absorbed > 0) || p.ward > 0 || w.time < (st.next || 0)) return;
+      st.next = w.time + T.temperIcd;
+      var b = S.addBuff(w, p, { id: 'iron_temper', name: 'Tempered', dur: T.temperDur, src: p, icon: 'shield', color: '#8c96a6',
+        mods: [{ s: 'armor', t: 'inc', v: T.temperArmor }] });
+      if (b && !b.def.desc) b.def.desc = Math.round(T.temperArmor * 100) + '% increased Armor after your Ward broke.';
+    }
+  });
+  K.registerHook('tree_ironbound_mending', {
+    onTick: function (c) {
+      var p = c.self;
+      if (p.dead || !(p.resMax > 0) || p.res < p.resMax - 1e-6 || p.hp >= p.hpMax) return;
+      S.heal(c.world, p, p.hpMax * T.mendHeal * c.dt, p, { noScale: true, silent: true });
+    }
+  });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/sim/60_enemies_act1_fx.js
 (function (root) {
   'use strict';
@@ -49704,7 +51482,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     // ---- the generator checks its own work -----------------------------------------------------
     checkLayout(nodes, links, clusters, clusterAt, arms, G, bad);
     if (nodes.length - 1 < 1200) WARN.push('the tree has ' + (nodes.length - 1) + ' nodes; the owner asked for at least 1,200');
-    Object.keys(abilities).forEach(function (id) { var ab = abilities[id]; if (ab.cls === classId && ab.slot !== 'primary' && !granted[id]) WARN.push('ability "' + id + '" has no skill node: only a start pick can teach it'); });
+    // [w8 ironbound tree] the reference kit (src/sim/40_ref_content.js, ids ref_*) is not the class's own: no warning for it
+    // [w8 emberscribe tree] nor for `internal` abilities (bonus spells cast by a class hook, never slotted: the rune lines)
+    Object.keys(abilities).forEach(function (id) { var ab = abilities[id]; if (ab.cls === classId && ab.slot !== 'primary' && !ab.internal && !granted[id] && id.indexOf('ref_') !== 0) WARN.push('ability "' + id + '" has no skill node: only a start pick can teach it'); });
 
     // ---- output --------------------------------------------------------------------------------
     var counts = {}, maxR = 0, sig = '';
