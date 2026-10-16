@@ -3872,7 +3872,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.79';
+  KD.VERSION = '0.7.80';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -11298,6 +11298,147 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/data/35_tree_emberscribe.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree;
+
+  /**
+   * The Emberscribe's own talent tree, THE BURNING LIBRARY: the class-wide record (arm order, hub, tuning) and the small
+   * helpers the eight arm files use. The arms live in src/data/36_tree_emberscribe_<armId>.js, the mutations in
+   * src/data/37_mutations_emberscribe.js, the recommended builds in src/data/38_tree_builds_emberscribe.js and the rules (rule
+   * notables, keystones) in src/sim/56_tree_emberscribe.js. Design: docs/TREE_EMBERSCRIBE.md. Format and grid: docs/TREE.md.
+   * Switch: KD.config.trees.emberscribe (src/core/00_base.js). Off = the Emberscribe uses the Crownweb (its Scriptorium) as before.
+   *
+   * Arms, clockwise from the top; each arm's neighbours are the ones its play mixes with best (the cross-border links of the
+   * generator join neighbours only):
+   *   ember    Fire and Burn (Flame Wall)                                  glyph    rune lines and line spells (Inscribe Rune, Overwrite)
+   *   margin   Rune Traps and detonations (Rune Trap)                      quill    quills, projectiles and critical hits (Quill Storm)
+   *   ink      Ink, Ward and escapes (Ink Blink)                           winter   Cold, Chill and Freeze (Frost Script, Gale Sigil)
+   *   storm    Shock and speed (Arc Scroll)                                alchemy  reactions and statuses (Chain Glyph, Grand Inscription)
+   */
+
+  /** Helpers of the arm files (data only). */
+  var EB = T.ember = {
+    mut: function (id) { return { t: 'mutation', mut: id }; },
+    /** A rule notable whose rule is a hook of src/sim/56_tree_emberscribe.js (`tree_emberscribe_<id>`). */
+    rule: function (id, name, mods, spec, est) { return { t: 'notable', name: name, mods: mods, effect: 'tree_emberscribe_' + id, spec: spec, est: est || { off: 1.02, def: 1 } }; },
+    /** A rule notable whose rule is one of the Crownweb's Scriptorium hooks (src/sim/51_class_emberscribe.js, `web_emberscribe_<key>`). */
+    web: function (key, name, mods, spec, est) { return { t: 'notable', name: name, mods: mods, effect: 'web_emberscribe_' + key, spec: spec, est: est || { off: 1.02, def: 1 } }; },
+    /** A keystone (cost 2). `effect` optional (a hook key), `extra` merged in (abil, flags, pact). */
+    key: function (name, mods, spec, effect, est, extra) {
+      var k = { t: 'keystone', name: name, mods: mods, spec: spec, est: est || { off: 1.05, def: 1 } };
+      if (effect) k.effect = effect;
+      if (extra) for (var f in extra) k[f] = extra[f];
+      return k;
+    },
+    pact: function (name, mods) { return { name: name, mods: mods, pact: true }; },
+    trophy: function (name, mods, boss) { return { t: 'trophy', name: name, mods: mods, req: { boss: boss } }; },
+    corrupted: function (name, mods, at) { return { t: 'corrupted', name: name, mods: mods, req: { corruption: at } }; },
+    faction: function (name, mods, id, rep) { return { t: 'faction', name: name, mods: mods, req: { faction: { id: id, rep: rep } } }; },
+    pacts: function (id, name, row, lane, entry, list, core) { return { id: id, name: name, row: row, lane: lane, shape: 'star', kind: 'special', nodes: [entry].concat(list), core: core }; },
+    abil: function (name, mods, a, k, v) { return { name: name, mods: mods || [], abil: [{ a: a, k: k, v: v }] }; },
+    /** A plain stat wheel: a ring of rim nodes around a named core, with a cluster bonus. */
+    ring: function (id, name, row, lane, nodes, core, bonus, extra) {
+      var c = { id: id, name: name, row: row, lane: lane, shape: 'ring', kind: 'stat', nodes: nodes, core: core, bonus: bonus };
+      if (extra) for (var f in extra) c[f] = extra[f];
+      return c;
+    },
+    /** A mutation star: an entrance leaf, the mutations of one ability and slot as the other leaves, a named core. */
+    star: function (id, name, row, lane, entry, muts, core) {
+      return { id: id, name: name, row: row, lane: lane, shape: 'star', kind: 'mutation', nodes: [entry].concat(muts.map(EB.mut)), core: core };
+    },
+    altar: function (id, name, row, lane, nodes) {
+      return { id: id, name: name, row: row, lane: lane, shape: 'ring', kind: 'altar', nodes: nodes, core: { t: 'altar', name: name }, bonus: ['sigilPower 1.5'] };
+    },
+    /** A keystone at the end of a row: two guard nodes and the keystone as the core of an arc. */
+    keyArc: function (id, name, row, lane, guards, keystone) {
+      return { id: id, name: name, row: row, lane: lane, shape: 'arc', kind: 'keystone', spokes: [0, 1], nodes: guards, core: keystone };
+    },
+    /** Every fifth trunk node (T5, T10 .. T25) also gives TRUNK_BOLT more Ember Bolt damage: the primary grows with the points
+     *  like the class's other damage (much of the tree's damage wants a line, a status or a reaction). */
+    TRUNK_BOLT: 0.03, HUB_BOLT: 0.055,
+    boltTrunk: function (tr) {
+      [4, 9, 14, 19, 24].forEach(function (i) {
+        var n = tr[i];
+        if (typeof n === 'string') n = { mods: [n] };
+        else if (Array.isArray(n)) n = { name: n[0], mods: n.slice(1) };
+        else { var c = {}; for (var k in n) c[k] = n[k]; n = c; }
+        n.abil = (n.abil || []).concat([{ a: 'ember_bolt', k: 'dmg', v: EB.TRUNK_BOLT }]);
+        tr[i] = n;
+      });
+      return tr;
+    }
+  };
+
+  // ---------------------------------------------------------------------------------------------
+  // What the estimator cannot see in stats (KD.data.tree.EST; never touches gameplay). Damage parts: the share of each
+  // slotted ability in a fight and the stat keys its hits use (Ember Bolt is the primary, w 1). Skill worths start at the
+  // class's measured kit (docs/CLASSES.md) and are refined by tools/tree_real.js --class emberscribe.
+  // ---------------------------------------------------------------------------------------------
+  (function () {
+    var E = T.EST, P = E.parts, S = E.skills;
+    P.ember_bolt = { w: 1, keys: ['dmg', 'dmgFire', 'dmgSpell'], speed: 'atkSpeed' };
+    P.inscribe_rune = { w: 0.35, keys: ['dmg', 'dmgFire', 'dmgSpell'] };
+    P.chain_glyph = { w: 0.35, keys: ['dmg', 'dmgShock', 'dmgSpell'] };
+    P.flame_wall = { w: 0.25, keys: ['dmg', 'dmgFire', 'dmgSpell', 'dmgDot'] };
+    P.frost_script = { w: 0.4, keys: ['dmg', 'dmgCold', 'dmgSpell'] };
+    P.arc_scroll = { w: 0.4, keys: ['dmg', 'dmgShock', 'dmgSpell'] };
+    P.rune_trap = { w: 0.3, keys: ['dmg', 'dmgFire', 'dmgSpell', 'dmgTrap'] };
+    P.ink_blink = { w: 0.05, keys: ['dmg', 'dmgSpell'] };
+    P.gale_sigil = { w: 0.25, keys: ['dmg', 'dmgCold', 'dmgSpell'] };
+    P.overwrite = { w: 0.1, keys: ['dmg', 'dmgSpell'] };
+    P.quill_storm = { w: 0.4, keys: ['dmg', 'dmgPhys', 'dmgSpell'] };
+    P.grand_inscription = { w: 0.3, keys: ['dmg', 'dmgFire', 'dmgCold', 'dmgShock', 'dmgSpell'] };
+    S.inscribe_rune = { off: 0.09, def: 0 };
+    S.chain_glyph = { off: 0.08, def: 0.01 };
+    S.flame_wall = { off: 0.05, def: 0.07 };
+    S.frost_script = { off: 0.1, def: 0.04 };
+    S.arc_scroll = { off: 0.09, def: 0 };
+    S.rune_trap = { off: 0.07, def: 0.01 };
+    S.ink_blink = { off: 0.02, def: 0.08 };
+    S.gale_sigil = { off: 0.06, def: 0.06 };
+    S.overwrite = { off: 0.05, def: 0 };
+    S.quill_storm = { off: 0.08, def: 0 };
+    S.grand_inscription = { off: 0.07, def: 0.03 };
+  })();
+
+  /** A hub node: a named minor with two half-size mods and 2% more Ember Bolt damage (the primary keeps its share). */
+  function bolt(name, a, b) { return { name: name, mods: [a, b], abil: [{ a: 'ember_bolt', k: 'dmg', v: EB.HUB_BOLT }] }; }
+  // The switch (docs/TREE.md section 1): on unless something set it before. It lives here, next to the content, instead of in
+  // src/core/00_base.js so that turning one class tree on never touches another tree agent's line. [w8 emberscribe tree]
+  if (KD.config && KD.config.trees && KD.config.trees.emberscribe === undefined) KD.config.trees.emberscribe = true;
+
+  // Version 1: the first tree (docs/TREE_EMBERSCRIBE.md).
+  T.define('emberscribe', {
+    version: 1, name: 'The Burning Library',
+    arms: ['ember', 'glyph', 'margin', 'quill', 'ink', 'winter', 'storm', 'alchemy'],
+    hub: [
+      bolt('First Spark', 'dmgFire 0.75', 'ward 0.75'),          // ember
+      bolt('First Letter', 'lineDmg 0.75', 'hp 0.75'),           // glyph
+      bolt('Margin Note', 'dmgTrap 0.75', 'ward 0.75'),          // margin
+      bolt('Sharpened Quill', 'critChance 0.75', 'hp 0.75'),     // quill
+      bolt('Full Inkpot', 'resMax 0.75', 'ward 0.75'),           // ink
+      bolt('Cold Page', 'dmgCold 0.75', 'resAll 0.75'),          // winter
+      bolt('Static Hand', 'dmgShock 0.75', 'moveSpeed 0.75'),    // storm
+      bolt('Strange Salts', 'reactDmg 0.375', 'hp 0.75')          // alchemy
+    ],
+    hubBonus: ['resRegen 1.5', 'resAll 1'],
+    // A new tree Emberscribe knows Ember Bolt and ONE skill where the Crownweb hero starts with two: until its third skill node
+    // it hits harder and is a little tougher (the rule of the earlier trees, docs/TREE_BALANCE.md). With one skill no line
+    // can be written but by repeating it.
+    startBonus: { skills: 2, mods: ['dmg*30', 'hp*15'], text: 'While you know two skills or fewer besides Ember Bolt, you deal 30% more damage and have 15% more Health.' },
+    // Balance (docs/TREE_EMBERSCRIBE.md section 5): set by the balance pass.
+    tune: { off: 0.55, def: 0.6, arms: { alchemy: { off: 0.5 } } },
+    road: ['hp 1', 'moveSpeed 1', 'resAll 1'],
+    // the owner's rule for class trees: links across the borders to the neighbouring arms only, no diagonals inside an arm
+    links: { bypass: false, rows: false, road: ['moveSpeed 1'] }
+  });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/data/35_tree_gloamblade.js
 (function (root) {
   'use strict';
@@ -11750,6 +11891,879 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     // the owner's rule for class trees: links across the borders to the neighbouring arms only, no diagonals inside an arm
     links: { bypass: false, rows: false, road: ['moveSpeed 1'] }
   });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_emberscribe_alchemy.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, E = T.ember;
+  var mut = E.mut, rule = E.rule, web = E.web, key = E.key, pact = E.pact, abil = E.abil, ring = E.ring, star = E.star;
+
+  /**
+   * EMBERSCRIBE, arm 7 of 8: THE GREAT WORK (`alchemy`). Reactions and statuses. Skills: Chain Glyph (trunk, 4 points), Grand
+   * Inscription (the Ultimate, row 3). Design: docs/TREE_EMBERSCRIBE.md. Rules: src/sim/56_tree_emberscribe.js.
+   * Holds the three bridges to the ember arm.
+   */
+  T.arm('emberscribe', {
+    id: 'alchemy', name: 'The Great Work', focus: 'Reactions: mix Fire, Frost and Storm on one page until it boils over', color: '#9adf6a', vein: 'plague',
+
+    trunk: E.boltTrunk([
+      'reactDmg 0.5', 'hp 1', { t: 'skill', grants: 'chain_glyph', abil: [{ a: 'chain_glyph', k: 'cd', v: -0.05 }] }, 'statusChance 1', 'resAll 1',   // T1..T5
+      'hp 1', 'dmgAfflicted 1', 'statusDur 1', ['Alembic Road', 'moveSpeed 1', 'reactDmg 0.25'], 'hp 1',                                           // T6..T10
+      'reactDmg 0.5', 'ward 1', 'hp 1', 'dmgSpell 1', 'resAll 1',                                                                                  // T11..T15
+      'hp 1', 'statusChance 1', 'reactDmg 0.5', 'hp 1', 'dmgAfflicted 1',                                                                          // T16..T20
+      'resAll 1', 'hp 1', 'dmgBoss 1', 'ward 1', 'hp 1'                                                                                          // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Chain Glyph, shape and essence
+      star('alch_glyph_shape', 'Chain Glyph: shape', 1, -1, 'hp 1', ['es_glyph_long', 'es_glyph_short', 'es_glyph_far'], ['Wide Hand', 'aoe 1', 'hp 1']),
+      star('alch_glyph_essence', 'Chain Glyph: essence', 1, 1, 'statusChance 1', ['es_glyph_sure', 'es_glyph_fire', 'es_glyph_frost'], ['Mixed Inks', 'statusChance 1', 'resAll 1']),
+
+      // ---- Row 2
+      star('alch_glyph_rite', 'Chain Glyph: rite', 2, -1, 'reactDmg 0.5', ['es_glyph_quick', 'es_glyph_cheap', 'es_glyph_charges'],
+        abil('Practised Signature', ['ward 1', 'hp 1'], 'chain_glyph', 'cd', -0.06)),
+      ring('alch_wet', 'Wet Ink', 2, 1, ['reactDmg 0.5', 'hp 1', abil('Bright Signature', ['statusChance 0.5'], 'chain_glyph', 'dmg', 0.08), 'resAll 1', 'statusDur 1'],
+        web('wet_ink', 'Wet Ink', ['reactDmg 0.5'], 'Line spells that end in a Frost rune (Prison, Glacier) Soak the enemies they hit for 5 s. Soaked enemies Overload when Shocked and Freeze when Chilled.', { off: 1.04, def: 1.01 }),
+        ['reactDmg 0.75', 'hp 1']),
+
+      // ---- Row 3: the Ultimate and its rites and essences
+      star('alch_gi_rite', 'Grand Inscription: rite', 3, -2, 'hp 1', ['es_gi_early', 'es_gi_twice', 'es_gi_pact'], ['Late Chapters', 'cdr 1', 'hp 1']),
+      ring('alch_catalyst', 'Catalyst', 3, -1, ['dmgAfflicted 1', 'hp 1', 'statusChance 1', 'resAll 1'],
+        rule('catalyst', 'Catalyst', ['dmgAfflicted 1'], 'Your hits on enemies carrying two or more of Burn, Chill, Shock and Soak deal 15% more damage.', { off: 1.03, def: 1 }), ['dmgAfflicted 1.5', 'hp 1']),
+      { id: 'alch_opus', name: 'The Opus', row: 3, lane: 1, shape: 'ring', kind: 'skill', spokes: [0],
+        nodes: ['dmgSpell 1', 'hp 1', abil('Long Night\'s Work', ['resAll 1'], 'grand_inscription', 'cd', -0.08), 'ward 1'],
+        core: { t: 'skill', grants: 'grand_inscription', abil: [{ a: 'grand_inscription', k: 'area', v: 0.1 }] },
+        bonus: ['dmgSpell 1.5', 'hp 1'] },
+      star('alch_gi_essence', 'Grand Inscription: essence', 3, 2, 'dmgSpell 1', ['es_gi_heavy', 'es_gi_freeze', 'es_gi_soak'], ['Illumination', 'dmgSpell 1', 'ward 1']),
+
+      // ---- Row 4
+      ring('alch_spine', 'Cracked Spine', 4, -2, ['reactDmg 0.5', 'hp 1', 'dmgFire 1', 'resAll 1'],
+        web('cracked_spine', 'Cracked Spine', ['dmgAfflicted 1.5'], 'Your Fire hits Shatter Frozen enemies: 80% of the hit again as Cold to enemies within 2.6 m, heavy Poise damage, and the Freeze ends.', { off: 1.03, def: 1 }),
+        ['reactDmg 0.75', 'hp 1']),
+      E.altar('alch_altar_a', 'Altar of Salts', 4, -1, ['hp 1', 'reactDmg 0.5', 'resAll 1']),
+      star('alch_gi_shape', 'Grand Inscription: shape', 4, 1, 'hp 1', ['es_gi_wide', 'es_gi_close', 'es_gi_long'], ['Wide Folio', 'aoe 1', 'hp 1']),
+      ring('alch_transmute', 'Transmutation', 4, 2, ['statusChance 1', 'hp 1', 'resRegen 1', 'resAll 1'],
+        rule('transmute', 'Transmutation', ['resRegen 1'], 'Setting off a reaction restores 10 Ink.', { off: 1.03, def: 1 }), ['statusChance 1.5', 'hp 1']),
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      ring('alch_still', 'The Still', 5, -2, ['hp 1', 'resAll 1', 'moveSpeed 1', 'ward 1'], ['Distilled', 'resAll 2', 'moveSpeed 1'], ['resAll 1.5', 'hp 1']),
+      ring('alch_reagents', 'Reagents', 5, -1, ['reactDmg 0.5', 'hp 1', 'dmgSpell 1', 'armor 1'], ['Rare Salts', 'reactDmg 1', 'dmgSpell 1'], ['reactDmg 0.5', 'hp 1.5']),
+      ring('alch_magnum', 'Magnum Opus', 5, 1, ['dmgSpell 1', 'hp 1', 'cdr 1', 'resAll 1'],
+        rule('magnum', 'Magnum Opus', ['cdr 1'], 'While Grand Inscription lasts, you deal 15% more damage.', { off: 1.03, def: 1 }), ['cdr 1.5', 'hp 1']),
+      ring('alch_salt', 'Salt Circle', 5, 2, ['hp 1', 'ward 1', 'statusDur 1', 'armor 1'], ['Warding Salt', 'ward 2', 'statusDur 1'], ['ward 1.5', 'hp 1']),
+
+      // ---- Row 6
+      ring('alch_flask', 'Flasks', 6, -2, ['hp 1', 'potionPower 1', 'hpRegen 1', 'resAll 1'], ['Elixir', 'potionPower 2', 'hp 1'], ['potionPower 1', 'hp 1.5']),
+      ring('alch_lab', 'The Alchemist\'s Lab', 6, -1, ['hp 1', E.trophy("Alchemist's Retort", ['reactDmg 0.75', 'statusChance 1.5'], 'plague_alchemist'), 'reactDmg 0.5', 'resAll 1'],
+        ['Bubbling Retort', 'reactDmg 1', 'hp 1'], ['reactDmg 0.5', 'hp 1.5']),
+      ring('alch_cult', 'The Black Work', 6, 1, ['hp 1', E.corrupted('Leaden Want', ['reactDmg 1.5', 'dmgAfflicted 1.5'], 20), 'moveSpeed 1', 'resAll 1'],
+        E.corrupted('Nigredo', ['dmg*2', 'reactDmg 1.5', 'statusDur 2'], 40), ['reactDmg 0.5', 'hp 1.5']),
+      ring('alch_choir', 'Choir Apothecary', 6, 2, ['resAll 1', E.faction('Holy Salts', ['statusDur 1.5', 'ward 1'], 'choir', 20), 'hp 1', 'reactDmg 0.5'],
+        E.faction('Blessed Elixir', ['reactDmg 1', 'hp 2'], 'choir', 60), ['resAll 1', 'hp 1.5']),
+
+      // ---- Row 7
+      E.pacts('alch_pacts', 'Alchemical Bargains', 7, -2, 'hp 1', [
+        pact('Volatile Ink', ['reactDmg*30', 'statusDur*-6']),
+        pact('Strong Mixture', ['statusDur*25', 'reactDmg*-10']),
+        pact('Unstable', ['dmgAfflicted*15', 'hp*-6'])], ['Mixed Terms', 'reactDmg 0.5', 'hp 1']),
+      ring('alch_saint', 'The Saint\'s Phial', 7, -1, ['hp 1', 'dmgAfflicted 1', 'resAll 1', E.trophy("Saint's Phial", ['dmgAfflicted 1.5', 'hp 1.5'], 'plague_saint')],
+        ['Holy Phial', 'dmgAfflicted 2', 'hp 1'], ['dmgAfflicted 1.5', 'hp 1']),
+      E.altar('alch_altar_b', 'Altar of the Work', 7, 1, ['hp 1', 'statusChance 1', 'dmgSpell 1']),
+      E.keyArc('alch_key_stone', 'The Philosopher\'s Stone', 7, 2, ['reactDmg 0.5', 'statusChance 1'],
+        key('Philosopher\'s Stone', ['dmgSpell*-10'], 'Your spell hits inflict the status of the last rune in your line: Ember Burn, Frost a 2 s Chill, Arc Shock. Your spells deal 10% less damage.', 'tree_emberscribe_stone', { off: 1.05, def: 1 })),
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      ring('alch_lead', 'Lead', 8, -3, ['hp 1', 'armor 1', 'resAll 1', 'ward 1'], ['Leaden Skin', 'armor 2', 'hp 1.5'], ['armor 1', 'hp 1.5']),
+      E.keyArc('alch_key_volatile', 'Volatile Mixture', 8, -2, ['reactDmg 0.5', 'statusDur 1'],
+        key('Volatile Mixture', ['reactDmg*50', 'statusDur*-25'], 'Your reactions deal 50% more damage, but your statuses last 25% shorter.', null, { off: 1.05, def: 1 })),
+      ring('alch_gold', 'Gold', 8, -1, ['hp 1', 'reactDmg 0.5', 'dmgBoss 1', 'resAll 1'], ['Rubedo', 'reactDmg 1.25', 'dmgBoss 1'], ['reactDmg 0.75', 'hp 1']),
+      ring('alch_mercury', 'Mercury', 8, 1, ['statusChance 1', 'hp 1', 'cdr 1', 'resAll 1'], ['Running Silver', 'statusChance 2', 'cdr 1.5'], ['statusChance 1.5', 'hp 1']),
+      E.keyArc('alch_key_opus', 'The Grand Opus', 8, 2, ['dmgSpell 1', 'cdr 1'],
+        key('Grand Opus', [], 'Grand Inscription deals 60% more damage, but its cooldown is 40% longer.', null, { off: 1.03, def: 1 },
+          { abil: [{ a: 'grand_inscription', k: 'dmg', v: 0.6 }, { a: 'grand_inscription', k: 'cd', v: 0.4 }] })),
+      ring('alch_elixir', 'Elixir of Life', 8, 3, ['hp 1', 'hpRegen 1', 'ward 1', 'resAll 1'], ['Long Life', 'hp 2', 'hpRegen 1.5'], ['hpRegen 1', 'hp 1.5'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['reactDmg 1', 'hp 2'] },
+      { at: 35, mods: ['statusChance 3', 'ward 2'] },
+      { at: 60, mods: ['reactDmg 2', 'dmgAfflicted 3', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Great Work and the Burning Page.
+  T.bridge('emberscribe', { id: 'alchemy_ember_inner', between: ['alchemy', 'ember'], ring: 'inner', name: 'Fire Salts', shape: 'star',
+    nodes: ['reactDmg 0.5', mut('es_bolt_fast'), 'dmgFire 1', 'hp 1'],
+    core: ['Burning Salts', 'dmgFire 1.5', 'reactDmg 0.5'], bonus: ['hp 1', 'resAll 1'] });
+  T.bridge('emberscribe', { id: 'alchemy_ember_mid', between: ['alchemy', 'ember'], ring: 'mid', name: 'Calcination', shape: 'diamond',
+    nodes: ['reactDmg 0.5', 'hp 1', 'dmgDot 1', 'resAll 1'],
+    core: ['Calcined', 'reactDmg 1', 'dmgDot 1.5'], bonus: ['reactDmg 0.75', 'hp 1'] });
+  T.bridge('emberscribe', { id: 'alchemy_ember_outer', between: ['alchemy', 'ember'], ring: 'outer', name: 'Greek Fire', shape: 'diamond',
+    nodes: ['dmgFire 1', 'hp 1', 'reactDmg 0.5', 'resAll 1'],
+    core: ['Sea Fire', 'dmgFire 2', 'reactDmg 0.75'], bonus: ['dmgFire 1.5', 'hp 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_emberscribe_ember.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, E = T.ember;
+  var mut = E.mut, rule = E.rule, web = E.web, key = E.key, pact = E.pact, abil = E.abil, ring = E.ring, star = E.star;
+
+  /**
+   * EMBERSCRIBE, arm 0 of 8: THE BURNING PAGE (`ember`). Fire and Burn. Skill: Flame Wall (trunk, 4 points).
+   * Design: docs/TREE_EMBERSCRIBE.md. Rules: src/sim/56_tree_emberscribe.js. Holds the three bridges to the glyph arm.
+   */
+  T.arm('emberscribe', {
+    id: 'ember', name: 'The Burning Page', focus: 'Fire and Burn: set the page alight and let it spread', color: '#e8743a', vein: 'war',
+
+    trunk: E.boltTrunk([
+      'dmgFire 1', 'hp 1', { t: 'skill', grants: 'flame_wall', abil: [{ a: 'flame_wall', k: 'cd', v: -0.05 }] }, 'dmgDot 1', 'resFire 1',   // T1..T5
+      'hp 1', 'statusChance 1', 'dmgSpell 1', ['Cinder Path', 'moveSpeed 1', 'dmgFire 0.5'], 'hp 1',                                      // T6..T10
+      'dmgFire 1', 'ward 1', 'hp 1', 'dmgDot 1', 'resAll 1',                                                                             // T11..T15
+      'hp 1', 'aoe 1', 'dmgFire 1', 'hp 1', 'statusDur 1',                                                                               // T16..T20
+      'resFire 1', 'hp 1', 'dmgDot 1', 'resAll 1', 'hp 1'                                                                                // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Flame Wall, shape and essence
+      star('ember_wall_shape', 'Flame Wall: shape', 1, -1, 'hp 1', ['es_wall_long', 'es_wall_lasting', 'es_wall_close'], ['Spreading Fire', 'aoe 1', 'hp 1']),
+      star('ember_wall_essence', 'Flame Wall: essence', 1, 1, 'dmgFire 1', ['es_wall_hot', 'es_wall_frost', 'es_wall_arc'], ['Hot Ink', 'dmgFire 1', 'resAll 1']),
+
+      // ---- Row 2
+      star('ember_wall_rite', 'Flame Wall: rite', 2, -1, 'statusChance 1', ['es_wall_quick', 'es_wall_cheap', 'es_wall_twice'],
+        abil('Practised Flame', ['ward 1', 'hp 1'], 'flame_wall', 'cd', -0.06)),
+      ring('ember_hearth', 'The Hearth', 2, 1, ['dmgFire 1', 'hp 1', abil('Tall Flames', ['aoe 0.5'], 'flame_wall', 'area', 0.08), 'resAll 1', 'dmgDot 1'],
+        rule('kindling', 'Kindling', ['dmgFire 1'], 'Your hits on Burning enemies deal 10% more damage.', { off: 1.03, def: 1 }), ['dmgFire 1.5', 'hp 1']),
+
+      // ---- Row 3
+      ring('ember_after', 'Burn After Reading', 3, -2, ['dmgFire 1', 'hp 1', 'aoe 1', 'resFire 1'],
+        web('burn_after_reading', 'Burn After Reading', ['dmgFire 1'], 'Enemies you kill while they are Burning explode: 40% weapon damage as Fire to enemies within 3 m.', { off: 1.03, def: 1 }), ['aoe 1.5', 'hp 1']),
+      ring('ember_coals', 'Live Coals', 3, -1, ['dmgDot 1', 'hp 1', 'statusDur 1', 'ward 1'],
+        rule('long_burn', 'Slow Burn', ['dmgDot 1'], 'Your Burns last 40% longer.', { off: 1.03, def: 1 }), ['dmgDot 1.5', 'hp 1']),
+      ring('ember_fuel', 'Fuel', 3, 1, ['statusChance 1', 'hp 1', 'dmgFire 1', 'resAll 1'],
+        rule('fuel', 'Fuel for the Fire', ['statusChance 1'], 'Killing a Burning enemy restores 5 Ink.', { off: 1.02, def: 1 }), ['statusChance 1.5', 'hp 1']),
+      ring('ember_soot', 'Soot', 3, 2, ['hp 1', 'ward 1', 'resFire 1', 'moveSpeed 1'], ['Sooty Pages', 'ward 2', 'resFire 1'], ['ward 1.5', 'hp 1']),
+
+      // ---- Row 4
+      ring('ember_kiln', 'The Kiln', 4, -2, ['dmgFire 1', 'hp 1', 'dmgElite 1', 'resAll 1'], ['Fired Clay', 'dmgFire 2', 'dmgElite 1'], ['dmgFire 1', 'hp 1.5']),
+      E.altar('ember_altar_a', 'Altar of Cinders', 4, -1, ['hp 1', 'dmgFire 1', 'resAll 1']),
+      ring('ember_smoke', 'Smoke Screen', 4, 1, ['hp 1', 'dmgTaken 1', 'ward 1', 'resFire 1'],
+        rule('smoke', 'Choking Smoke', ['dmgTaken 1'], 'Burning enemies deal 10% less damage to you.', { off: 1, def: 1.04 }), ['dmgTaken 1.5', 'hp 1']),
+      ring('ember_brand', 'Branding', 4, 2, ['dmgDot 1', 'hp 1', 'dmgAfflicted 1', 'resAll 1'], ['Red Brand', 'dmgDot 2', 'dmgAfflicted 1'], ['dmgAfflicted 1.5', 'hp 1']),
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      ring('ember_lamp', 'Lamplight', 5, -2, ['hp 1', 'moveSpeed 1', 'ward 1', 'resAll 1'], ['Lantern Hand', 'moveSpeed 1.5', 'ward 1.5'], ['moveSpeed 1.5', 'hp 1']),
+      ring('ember_ash', 'Ash Pages', 5, -1, ['dmgSpell 1', 'hp 1', 'dmgFire 1', 'resFire 1'], ['Charred Margins', 'dmgSpell 2', 'dmgFire 1'], ['dmgSpell 1.5', 'hp 1']),
+      ring('ember_warm', 'Warm Hands', 5, 1, ['hp 1', 'hpRegen 1', 'ward 1', 'resAll 1'],
+        rule('warmth', 'Warmth', ['hpRegen 1'], 'While an enemy within 6 m of you is Burning, you regain 0.5% of your maximum Health each second.', { off: 1, def: 1.04 }), ['hpRegen 1.5', 'hp 1']),
+      ring('ember_pyre', 'The Pyre', 5, 2, ['aoe 1', 'hp 1', 'dmgDot 1', 'armor 1'], ['Bonfire', 'aoe 2', 'dmgDot 1'], ['aoe 1.5', 'hp 1']),
+
+      // ---- Row 6
+      ring('ember_glow', 'Afterglow', 6, -2, ['hp 1', 'resFire 1', 'statusDur 1', 'resAll 1'], ['Embers', 'resFire 2', 'hp 1.5'], ['resAll 1.5', 'hp 1']),
+      ring('ember_mill', 'The Mill Fire', 6, -1, ['hp 1', E.trophy("Miller's Lantern", ['dmgFire 1.5', 'ward 1.5'], 'millers_shade'), 'dmgDot 1', 'resAll 1'],
+        ['Flour and Flame', 'dmgFire 2', 'hp 1'], ['dmgFire 1', 'hp 1.5']),
+      ring('ember_cult', 'The Burning Cult', 6, 1, ['hp 1', E.corrupted('Ash Want', ['dmgFire 3', 'dmgDot 1.5'], 20), 'moveSpeed 1', 'resAll 1'],
+        E.corrupted('Book Burner', ['dmg*2', 'dmgFire 3', 'aoe 2'], 40), ['dmgFire 1', 'hp 1.5']),
+      ring('ember_lantern', 'Lantern Keepers', 6, 2, ['resAll 1', E.faction("Keeper's Wick", ['ward 1.5', 'resFire 1'], 'lantern', 20), 'hp 1', 'dmgFire 1'],
+        E.faction('Eternal Flame', ['dmgFire 2', 'ward 2'], 'lantern', 60), ['resAll 1', 'hp 1.5']),
+
+      // ---- Row 7
+      E.pacts('ember_pacts', 'Fire Bargains', 7, -2, 'hp 1', [
+        pact('Hot Hand', ['dmgFire*15', 'ward*-20']),
+        pact('Bonfire Night', ['aoe*20', 'dmgSpell*-8']),
+        pact('Smouldering', ['statusDur*25', 'dmgFire*-8'])], ['Burning Terms', 'dmgFire 1', 'hp 1']),
+      ring('ember_treant', 'The Burning Heartwood', 7, -1, ['hp 1', 'dmgDot 1', 'ward 1', E.trophy('Treant Ember', ['dmgDot 1.5', 'hp 1.5'], 'hollow_treant')],
+        ['Heartfire', 'dmgDot 2', 'hp 1'], ['dmgDot 1.5', 'hp 1']),
+      E.altar('ember_altar_b', 'Altar of Flame', 7, 1, ['hp 1', 'dmgDot 1', 'statusChance 1']),
+      E.keyArc('ember_key_pyro', 'Pyromancy', 7, 2, ['dmgFire 1', 'resFire 1'],
+        key('Pyromancer', ['dmgFire*30', 'dmgCold*-25', 'dmgShock*-25'], 'You deal 30% more Fire damage and 25% less Cold and Shock damage.', null, { off: 1.05, def: 1 })),
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      ring('ember_candle', 'Candlewax', 8, -3, ['hp 1', 'ward 1', 'resAll 1', 'resFire 1'], ['Dripping Wax', 'ward 2', 'hp 1.5'], ['ward 1', 'hp 1.5']),
+      E.keyArc('ember_key_burns', 'Everything Burns', 8, -2, ['statusChance 1', 'dmgDot 1'],
+        key('Everything Burns', ['dmg*-10'], 'Every hit of your spells Burns, but you deal 10% less damage.', 'tree_emberscribe_everburn', { off: 1.05, def: 1 })),
+      ring('ember_inferno', 'Inferno', 8, -1, ['hp 1', 'dmgFire 1', 'aoe 1', 'resFire 1'], ['Firestorm', 'dmgFire 2.5', 'aoe 1'], ['dmgFire 1.5', 'hp 1']),
+      ring('ember_char', 'Charring', 8, 1, ['dmgDot 1', 'hp 1', 'statusDur 1', 'resAll 1'], ['Blackened', 'dmgDot 2', 'statusDur 1.5'], ['dmgDot 1.5', 'hp 1']),
+      E.keyArc('ember_key_wild', 'Wildfire', 8, 2, ['dmgDot 1', 'aoe 1'],
+        key('Wildfire', [], 'When a Burning enemy dies, its Burn spreads to every enemy within 3.5 m.', 'tree_emberscribe_wildfire', { off: 1.05, def: 1 })),
+      ring('ember_phoenix', 'Phoenix Feather', 8, 3, ['hp 1', 'hpRegen 1', 'ward 1', 'resAll 1'], ['Rekindled', 'hp 2', 'hpRegen 1.5'], ['hpRegen 1', 'hp 1.5'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['dmgFire 2', 'hp 2'] },
+      { at: 35, mods: ['dmgDot 3', 'ward 2'] },
+      { at: 60, mods: ['dmgFire 4', 'statusChance 3', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Burning Page and the Glyph Hall.
+  T.bridge('emberscribe', { id: 'ember_glyph_inner', between: ['ember', 'glyph'], ring: 'inner', name: 'Fire Letters', shape: 'star',
+    nodes: ['dmgFire 1', mut('es_bolt_burn'), 'lineDmg 0.5', 'hp 1'],
+    core: ['Letters of Flame', 'dmgFire 1.5', 'lineDmg 0.5'], bonus: ['hp 1', 'resAll 1'] });
+  T.bridge('emberscribe', { id: 'ember_glyph_mid', between: ['ember', 'glyph'], ring: 'mid', name: 'Burning Lines', shape: 'diamond',
+    nodes: ['dmgFire 1', 'hp 1', 'lineDmg 0.5', 'resAll 1'],
+    core: ['Lines of Fire', 'lineDmg 1', 'dmgFire 1.5'], bonus: ['lineDmg 0.75', 'hp 1'] });
+  T.bridge('emberscribe', { id: 'ember_glyph_outer', between: ['ember', 'glyph'], ring: 'outer', name: 'Ember Stanza', shape: 'diamond',
+    nodes: ['pureLine 1', 'hp 1', 'dmgFire 1', 'resAll 1'],
+    core: ['Stanza of Ash', 'pureLine 1.5', 'dmgFire 2'], bonus: ['pureLine 1.5', 'hp 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_emberscribe_glyph.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, E = T.ember;
+  var mut = E.mut, rule = E.rule, web = E.web, key = E.key, pact = E.pact, abil = E.abil, ring = E.ring, star = E.star;
+
+  /**
+   * EMBERSCRIBE, arm 1 of 8: THE GLYPH HALL (`glyph`). Rune lines and line spells. Skills: Inscribe Rune (trunk, 4 points),
+   * Overwrite (core of a row-2 wheel, 10 points). Design: docs/TREE_EMBERSCRIBE.md. Rules: src/sim/56_tree_emberscribe.js.
+   * Holds the three bridges to the margin arm.
+   */
+  T.arm('emberscribe', {
+    id: 'glyph', name: 'The Glyph Hall', focus: 'Rune lines: write them fast, write them pure, and make every line spell count', color: '#d8b45a', vein: 'order',
+
+    trunk: E.boltTrunk([
+      'lineDmg 0.5', 'hp 1', { t: 'skill', grants: 'inscribe_rune', abil: [{ a: 'inscribe_rune', k: 'cd', v: -0.05 }] }, 'dmgSpell 1', 'resAll 1',   // T1..T5
+      'hp 1', 'runeInk 1', 'pureLine 1', ['Reading Room', 'moveSpeed 1', 'lineDmg 0.25'], 'hp 1',                                                 // T6..T10
+      'lineDmg 0.5', 'ward 1', 'hp 1', 'aoe 1', 'resAll 1',                                                                                       // T11..T15
+      'hp 1', 'runeInk 1', 'lineDmg 0.5', 'hp 1', 'cdr 1',                                                                                         // T16..T20
+      'ward 1', 'hp 1', 'pureLine 1', 'resAll 1', 'hp 1'                                                                                         // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Inscribe Rune, shape and essence
+      star('glyph_ins_shape', 'Inscribe Rune: shape', 1, -1, 'hp 1', ['es_ins_wide', 'es_ins_quick', 'es_ins_far'], ['Wide Letters', 'aoe 1', 'hp 1']),
+      star('glyph_ins_essence', 'Inscribe Rune: essence', 1, 1, 'lineDmg 0.5', ['es_ins_heavy', 'es_ins_soak', 'es_ins_weaken'], ['Heavy Hand', 'lineDmg 0.5', 'resAll 1']),
+
+      // ---- Row 2: Inscribe Rune, rite; Overwrite
+      star('glyph_ins_rite', 'Inscribe Rune: rite', 2, -1, 'resRegen 1', ['es_ins_cheap', 'es_ins_charges', 'es_ins_echo'],
+        abil('Practised Hand', ['ward 1', 'hp 1'], 'inscribe_rune', 'cd', -0.06)),
+      { id: 'glyph_over', name: 'The Eraser', row: 2, lane: 1, shape: 'ring', kind: 'skill', spokes: [0],
+        nodes: ['lineDmg 0.5', 'hp 1', abil('Swift Eraser', ['resRegen 0.5'], 'overwrite', 'cd', -0.08), 'ward 1'],
+        core: { t: 'skill', grants: 'overwrite', abil: [{ a: 'overwrite', k: 'cost', v: -0.1 }] },
+        bonus: ['lineDmg 0.75', 'hp 1'] },
+
+      // ---- Row 3
+      star('glyph_over_shape', 'Overwrite: shape and essence', 3, -2, 'hp 1', ['es_over_far', 'es_over_bold', 'es_over_pure'], ['Bold Strokes', 'lineDmg 0.5', 'hp 1']),
+      ring('glyph_flourish', 'Flourish', 3, -1, ['lineDmg 0.5', 'hp 1', 'atkSpeed 1@afterLine', 'resAll 1'],
+        rule('margin_note', 'Margin Notes', ['resRegen 1'], 'Completing a rune line restores 8 Ink.', { off: 1.03, def: 1 }), ['lineDmg 0.75', 'hp 1']),
+      ring('glyph_poly', 'The Polyglot', 3, 1, ['resRegen 1', 'hp 1', 'dmgSpell 1', 'ward 1'],
+        web('polyglot', 'Polyglot', ['dmgSpell 1'], 'A rune line with no repeated rune restores 10 Ink.', { off: 1.03, def: 1 }), ['resRegen 1.5', 'hp 1']),
+      ring('glyph_copy', 'Fair Copy', 3, 2, ['pureLine 1', 'hp 1', 'lineHold 1', 'resAll 1'], ['Clean Copy', 'pureLine 2', 'lineHold 1'], ['pureLine 1.5', 'hp 1']),
+
+      // ---- Row 4
+      ring('glyph_lexicon', 'The Lexicon', 4, -2, ['lineDmg 0.5', 'hp 1', 'cdr 1', 'resAll 1'], ['Grand Lexicon', 'lineDmg 1', 'cdr 1'], ['lineDmg 0.5', 'hp 1.5']),
+      E.altar('glyph_altar_a', 'Altar of Letters', 4, -1, ['hp 1', 'lineDmg 0.5', 'ward 1']),
+      ring('glyph_underline', 'Underlined', 4, 1, ['dmgElite 1', 'hp 1', 'lineDmg 0.5', 'armor 1'],
+        rule('underline', 'Underline', ['dmgElite 1'], 'Your line spells deal 30% more damage to elites and bosses.', { off: 1.03, def: 1 }), ['dmgElite 1.5', 'hp 1']),
+      star('glyph_over_rite', 'Overwrite: rite', 4, 2, 'hp 1', ['es_over_quick', 'es_over_ward', 'es_over_charges'],
+        abil('Steady Eraser', ['ward 1', 'hp 1'], 'overwrite', 'cd', -0.06)),
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      ring('glyph_stacks', 'The Stacks', 5, -2, ['hp 1', 'moveSpeed 1', 'ward 1', 'resAll 1'], ['Between Shelves', 'moveSpeed 1.5', 'ward 1.5'], ['moveSpeed 1.5', 'hp 1']),
+      ring('glyph_rhyme', 'Rhyme', 5, -1, ['pureLine 1', 'hp 1', 'lineDmg 0.5', 'resAll 1'], ['Perfect Rhyme', 'pureLine 2', 'lineDmg 0.5'], ['pureLine 1', 'hp 1.5']),
+      ring('glyph_wax', 'Sealing Wax', 5, 1, ['lineWard 1', 'hp 1', 'ward 1', 'resAll 1'],
+        rule('seal', 'Sealed Line', ['lineWard 1'], 'Completing a rune line gives you Ward equal to 5% of your maximum Health for 4 s.', { off: 1, def: 1.04 }), ['ward 1.5', 'hp 1']),
+      ring('glyph_hand', 'Steady Hand', 5, 2, ['atkSpeed 1', 'hp 1', 'cdr 1', 'armor 1'], ['Practised Strokes', 'atkSpeed 2', 'cdr 1'], ['atkSpeed 1.5', 'hp 1']),
+
+      // ---- Row 6
+      ring('glyph_vellum', 'Vellum', 6, -2, ['hp 1', 'ward 1', 'resAll 1', 'hpRegen 1'], ['Fine Vellum', 'ward 2', 'hp 1'], ['ward 1', 'hp 1.5']),
+      ring('glyph_seln', 'The Archmagus\'s Codex', 6, -1, ['hp 1', E.trophy("Seln's Codex", ['lineDmg 0.75', 'resRegen 1'], 'archmagus_seln'), 'lineDmg 0.5', 'resAll 1'],
+        ['Codex Pages', 'lineDmg 1', 'hp 1'], ['lineDmg 0.5', 'hp 1.5']),
+      ring('glyph_cult', 'The Black Letter', 6, 1, ['hp 1', E.corrupted('Ink Want', ['lineDmg 1.5', 'pureLine 1.5'], 20), 'moveSpeed 1', 'resAll 1'],
+        E.corrupted('Forbidden Text', ['dmg*2', 'lineDmg 1.5', 'runeInk 2'], 40), ['lineDmg 0.5', 'hp 1.5']),
+      ring('glyph_choir', 'Choir Scribes', 6, 2, ['resAll 1', E.faction('Hymnal', ['lineWard 1', 'ward 1'], 'choir', 20), 'hp 1', 'lineDmg 0.5'],
+        E.faction('Illuminated Psalter', ['lineDmg 1', 'ward 2'], 'choir', 60), ['resAll 1', 'hp 1.5']),
+
+      // ---- Row 7
+      E.pacts('glyph_pacts', 'Written Bargains', 7, -2, 'hp 1', [
+        pact('Hasty Hand', ['runeInk+1.5', 'lineDmg*-15']),
+        pact('Narrow Margins', ['pureLine*15', 'aoe*-3']),
+        pact('Long Sentences', ['lineDmg*15', 'cdr*-8'])], ['Written Terms', 'lineDmg 0.5', 'hp 1']),
+      ring('glyph_bell', 'The Bell Tower Library', 7, -1, ['hp 1', 'lineDmg 0.5', 'ward 1', E.trophy("Ringer's Hymnbook", ['lineDmg 0.75', 'hp 1.5'], 'bell_ringer')],
+        ['Bell Verse', 'lineDmg 1', 'hp 1'], ['lineDmg 0.75', 'hp 1']),
+      E.altar('glyph_altar_b', 'Altar of Lines', 7, 1, ['hp 1', 'pureLine 1', 'resRegen 1']),
+      E.keyArc('glyph_key_open', 'The Open Book', 7, 2, ['lineDmg 0.5', 'resRegen 1'],
+        key('Open Book', [], 'A rune line completes after 2 runes instead of 3 (the bonus spell is decided by those 2 runes in order). Line bonus spells deal 25% less damage.', 'web_open_book', { off: 1.06, def: 1 })),
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      ring('glyph_index', 'The Index', 8, -3, ['hp 1', 'ward 1', 'resAll 1', 'cdr 1'], ['Cross Reference', 'cdr 2', 'hp 1.5'], ['cdr 1', 'hp 1.5']),
+      E.keyArc('glyph_key_mono', 'Monochrome Page', 8, -2, ['pureLine 1', 'lineDmg 0.5'],
+        key('Monochrome', [], 'Every rune in a line is written as the rune of the first spell of that line, so every line is three of a kind. Three-of-a-kind line spells deal 40% more damage. Mixed lines can no longer be made.', 'web_monochrome', { off: 1.07, def: 1 })),
+      ring('glyph_epic', 'The Epic', 8, -1, ['hp 1', 'lineDmg 0.5', 'pureLine 1', 'resAll 1'], ['Ten Thousand Lines', 'lineDmg 1.25', 'pureLine 1'], ['lineDmg 0.75', 'hp 1']),
+      ring('glyph_gloss', 'Glosses', 8, 1, ['resRegen 1', 'hp 1', 'lineHold 1', 'resAll 1'], ['Annotated', 'runeInk 2', 'lineHold 1.5'], ['resRegen 1.5', 'hp 1']),
+      E.keyArc('glyph_key_calli', 'Calligraphy', 8, 2, ['lineDmg 0.5', 'atkSpeed 1'],
+        key('Calligrapher', ['lineDmg*25', 'atkSpeed*-10'], 'Your line spells deal 25% more damage, but you cast 10% slower.', null, { off: 1.04, def: 1 })),
+      ring('glyph_colophon', 'Colophon', 8, 3, ['hp 1', 'lineWard 1', 'ward 1', 'resAll 1'], ['The Last Page', 'lineWard 2', 'ward 1.5'], ['lineWard 1', 'hp 1.5'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['lineDmg 1', 'hp 2'] },
+      { at: 35, mods: ['runeInk 2', 'ward 2'] },
+      { at: 60, mods: ['lineDmg 2', 'pureLine 3', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Glyph Hall and the Margins.
+  T.bridge('emberscribe', { id: 'glyph_margin_inner', between: ['glyph', 'margin'], ring: 'inner', name: 'Inked Fuse', shape: 'star',
+    nodes: ['resRegen 1', mut('es_bolt_ink'), 'dmgTrap 1', 'hp 1'],
+    core: ['Fuse of Ink', 'dmgTrap 1.5', 'resRegen 1'], bonus: ['hp 1', 'resAll 1'] });
+  T.bridge('emberscribe', { id: 'glyph_margin_mid', between: ['glyph', 'margin'], ring: 'mid', name: 'Footnotes', shape: 'diamond',
+    nodes: ['dmgTrap 1', 'hp 1', 'lineDmg 0.5', 'resAll 1'],
+    core: rule('footnote', 'Footnotes', ['dmgTrap 1'], 'When one of your Rune Traps erupts it writes an Ember rune. Once every 3 s.', { off: 1.04, def: 1 }),
+    bonus: ['dmgTrap 1.5', 'hp 1'] });
+  T.bridge('emberscribe', { id: 'glyph_margin_outer', between: ['glyph', 'margin'], ring: 'outer', name: 'Annotated Traps', shape: 'diamond',
+    nodes: ['lineDmg 0.5', 'hp 1', 'dmgTrap 1', 'resAll 1'],
+    core: ['Glossed Fuses', 'dmgTrap 2', 'lineDmg 0.75'], bonus: ['lineDmg 0.75', 'hp 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_emberscribe_ink.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, E = T.ember;
+  var mut = E.mut, rule = E.rule, web = E.web, key = E.key, pact = E.pact, abil = E.abil, ring = E.ring, star = E.star;
+
+  /**
+   * EMBERSCRIBE, arm 4 of 8: THE INKWELL (`ink`). Ink, Ward and escapes. Skill: Ink Blink (trunk, 4 points).
+   * Design: docs/TREE_EMBERSCRIBE.md. Rules: src/sim/56_tree_emberscribe.js. Holds the three bridges to the winter arm.
+   */
+  T.arm('emberscribe', {
+    id: 'ink', name: 'The Inkwell', focus: 'Ink and Ward: a full well, a sealed page, and a way out through the margin', color: '#4a5aa8', vein: 'plague',
+
+    trunk: E.boltTrunk([
+      'resMax 1', 'hp 1', { t: 'skill', grants: 'ink_blink', abil: [{ a: 'ink_blink', k: 'cd', v: -0.05 }] }, 'ward 1', 'resAll 1',   // T1..T5
+      'hp 1', 'resRegen 1', 'dodgeCdr 1', ['Ink Stairs', 'moveSpeed 1', 'ward 0.5'], 'hp 1',                                      // T6..T10
+      'lineWard 1', 'resAll 1', 'hp 1', 'ward 1', 'armor 1',                                                                     // T11..T15
+      'hp 1', 'resMax 1', 'dodgeCdr 1', 'hp 1', 'ward 1',                                                                        // T16..T20
+      'resAll 1', 'hp 1', 'resRegen 1', 'ward 1', 'hp 1'                                                                         // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Ink Blink, shape and essence
+      star('ink_blot_shape', 'Ink Blink: shape', 1, -1, 'hp 1', ['es_blot_wide', 'es_blot_long', 'es_blot_tight'], ['Wide Spill', 'aoe 1', 'hp 1']),
+      star('ink_blot_essence', 'Ink Blink: essence', 1, 1, 'ward 1', ['es_blot_frost', 'es_blot_fire', 'es_blot_ward'], ['Dark Ink', 'ward 1', 'resAll 1']),
+
+      // ---- Row 2
+      star('ink_blot_rite', 'Ink Blink: rite', 2, -1, 'dodgeCdr 1', ['es_iblink_charges', 'es_iblink_quick', 'es_iblink_ink'],
+        abil('Practised Blink', ['moveSpeed 1', 'hp 1'], 'ink_blink', 'cd', -0.06)),
+      ring('ink_blotter', 'Blotting Paper', 2, 1, ['ward 1', 'hp 1', abil('Long Blot', ['resMax 0.5'], 'ink_blink', 'dur', 0.15), 'resAll 1', 'lineWard 1'],
+        rule('blot_ward', 'Blotter', ['ward 1'], 'Ink Blink gives you Ward equal to 8% of your maximum Health for 4 s.', { off: 1, def: 1.05 }), ['ward 1.5', 'hp 1']),
+
+      // ---- Row 3
+      ring('ink_spill', 'Spilled Ink', 3, -2, ['dmgAfflicted 1', 'hp 1', 'statusDur 1', 'resAll 1'],
+        rule('spill', 'Spilled Ink', ['dmgAfflicted 1'], 'Your hits on Soaked enemies deal 12% more damage.', { off: 1.03, def: 1 }), ['dmgAfflicted 1.5', 'hp 1']),
+      ring('ink_well', 'Deep Well', 3, -1, ['resMax 1', 'hp 1', 'resRegen 1', 'armor 1'],
+        rule('deep_well', 'Deep Well', ['resMax 1'], 'While you have 80 Ink or more, you take 8% less damage.', { off: 1, def: 1.04 }), ['resMax 1.5', 'hp 1']),
+      ring('ink_wax', 'Cracked Wax', 3, 1, ['ward 1', 'hp 1', 'lineWard 1', 'resAll 1'],
+        web('cracked_wax', 'Cracked Wax', ['ward 1'], 'When a hit breaks your Ward, enemies within 4 m are Frozen for 1.5 s. Once every 12 s.', { off: 1, def: 1.03 }), ['ward 1.5', 'hp 1']),
+      ring('ink_flow', 'Flow', 3, 2, ['resRegen 1', 'hp 1', 'resRegen 1', 'resAll 1'], ['Steady Flow', 'resRegen 2', 'resRegen 1'], ['resRegen 1.5', 'hp 1']),
+
+      // ---- Row 4
+      ring('ink_binding', 'Binding', 4, -2, ['hp 1', 'ward 1', 'armor 1', 'resAll 1'], ['Leather Binding', 'ward 2', 'armor 1'], ['ward 1', 'hp 1.5']),
+      E.altar('ink_altar_a', 'Altar of Ink', 4, -1, ['hp 1', 'ward 1', 'resMax 1']),
+      ring('ink_escape', 'Escape', 4, 1, ['dodgeCdr 1', 'hp 1', 'moveSpeed 1', 'resAll 1'], ['Exit Stage', 'dodgeCdr 2', 'moveSpeed 1'], ['dodgeCdr 1.5', 'hp 1']),
+      ring('ink_seals', 'Seals', 4, 2, ['lineWard 1', 'hp 1', 'ward 1', 'armor 1'], ['Wax Seal', 'lineWard 2', 'ward 1'], ['lineWard 1.5', 'hp 1']),
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      ring('ink_pots', 'Inkpots', 5, -2, ['hp 1', 'resMax 1', 'resAll 1', 'moveSpeed 1'], ['Spare Pots', 'resMax 2', 'hp 1'], ['resMax 1', 'hp 1.5']),
+      ring('ink_stain', 'Stains', 5, -1, ['dmgSpell 1', 'hp 1', 'statusChance 1', 'resAll 1'], ['Indelible Stain', 'dmgSpell 2', 'statusChance 1'], ['dmgSpell 1.5', 'hp 1']),
+      ring('ink_shield', 'Ink Shield', 5, 1, ['ward 1', 'hp 1', 'hpRegen 1', 'resAll 1'], ['Black Shield', 'ward 2', 'hpRegen 1'], ['ward 1.5', 'hp 1']),
+      ring('ink_quick', 'Quick Ink', 5, 2, ['hp 1', 'dodgeCdr 1', 'resRegen 1', 'armor 1'], ['Wet Feet', 'dodgeCdr 2', 'resRegen 1'], ['resRegen 1', 'hp 1.5']),
+
+      // ---- Row 6
+      ring('ink_lining', 'Lining', 6, -2, ['hp 1', 'resAll 1', 'ward 1', 'hpRegen 1'], ['Silk Lining', 'resAll 2', 'hp 1'], ['resAll 1', 'hp 1.5']),
+      ring('ink_pool', 'The Black Pool', 6, -1, ['hp 1', E.trophy("Sovereign's Black Ink", ['resMax 1.5', 'ward 1.5'], 'ooze_sovereign'), 'ward 1', 'resAll 1'],
+        ['Tar Pool', 'ward 2', 'hp 1'], ['ward 1', 'hp 1.5']),
+      ring('ink_cult', 'Black Inkwell', 6, 1, ['hp 1', E.corrupted('Dark Want', ['ward 3', 'resMax 1.5'], 20), 'moveSpeed 1', 'resAll 1'],
+        E.corrupted('Ink of the Deep', ['dmg*2', 'resMax 3', 'lineWard 2'], 40), ['ward 1', 'hp 1.5']),
+      ring('ink_choir', 'Choir Copyists', 6, 2, ['resAll 1', E.faction("Copyist's Seal", ['ward 1.5', 'resMax 1'], 'choir', 20), 'hp 1', 'lineWard 1'],
+        E.faction('Sacred Ink', ['ward 2', 'hp 2'], 'choir', 60), ['resAll 1', 'hp 1.5']),
+
+      // ---- Row 7
+      E.pacts('ink_pacts', 'Ink Bargains', 7, -2, 'hp 1', [
+        pact('Thin Vellum', ['lineWard+3', 'ward*-4']),
+        pact('Bottled Ink', ['resMax*20', 'resRegen*-10']),
+        pact('Heavy Pages', ['ward*20', 'moveSpeed*-6'])], ['Ink Terms', 'ward 1', 'hp 1']),
+      ring('ink_wyrm', 'The Wyrm\'s Ink', 7, -1, ['hp 1', 'resMax 1', 'resAll 1', E.trophy('Wyrm Ink', ['resMax 1.5', 'hp 1.5'], 'tide_wyrm')],
+        ['Sea Ink', 'resMax 2', 'hp 1'], ['resMax 1.5', 'hp 1']),
+      E.altar('ink_altar_b', 'Altar of the Well', 7, 1, ['hp 1', 'lineWard 1', 'dodgeCdr 1']),
+      E.keyArc('ink_key_palimpsest', 'The Palimpsest', 7, 2, ['ward 1', 'lineWard 1'],
+        key('Palimpsest', ['ward*20', 'hp*-12'], 'You have 20% more Ward and 12% less Health.', null, { off: 1, def: 1.04 })),
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      ring('ink_ledger', 'Ledger', 8, -3, ['hp 1', 'ward 1', 'resAll 1', 'armor 1'], ['Balanced Books', 'ward 2', 'hp 1.5'], ['ward 1', 'hp 1.5']),
+      E.keyArc('ink_key_blood', 'Ink for Blood', 8, -2, ['resMax 1', 'ward 1'],
+        key('Ink for Blood', [], 'A fifth of the damage you take is paid from your Ink instead of your Health: 1 Ink for every 1% of your maximum Health.', 'tree_emberscribe_ink_blood', { off: 1, def: 1.06 })),
+      ring('ink_reserve', 'Reserve', 8, -1, ['hp 1', 'resMax 1', 'resRegen 1', 'resAll 1'], ['Full Reserve', 'resMax 2.5', 'resRegen 1'], ['resMax 1.5', 'hp 1']),
+      ring('ink_mirror', 'Mirror Writing', 8, 1, ['ward 1', 'hp 1', 'dodgeCdr 1', 'resAll 1'], ['Reversed', 'ward 2', 'dodgeCdr 1.5'], ['ward 1.5', 'hp 1']),
+      E.keyArc('ink_key_bottomless', 'Bottomless Well', 8, 2, ['resMax 1', 'resRegen 1'],
+        key('Bottomless Well', ['resMax*50', 'resRegen*-30'], 'You have 50% more maximum Ink, but it regenerates 30% slower.', null, { off: 1.03, def: 1 })),
+      ring('ink_stopper', 'Stopper', 8, 3, ['hp 1', 'hpRegen 1', 'ward 1', 'resAll 1'], ['Corked', 'hp 2', 'ward 1.5'], ['ward 1', 'hp 1.5'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['ward 2', 'hp 2'] },
+      { at: 35, mods: ['resMax 3', 'resAll 2'] },
+      { at: 60, mods: ['ward 4', 'lineWard 3', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Inkwell and the Winter Codex.
+  T.bridge('emberscribe', { id: 'ink_winter_inner', between: ['ink', 'winter'], ring: 'inner', name: 'Frozen Ink', shape: 'star',
+    nodes: ['ward 1', mut('es_bolt_quick'), 'dmgCold 1', 'hp 1'],
+    core: ['Ice in the Well', 'dmgCold 1.5', 'ward 1'], bonus: ['hp 1', 'resAll 1'] });
+  T.bridge('emberscribe', { id: 'ink_winter_mid', between: ['ink', 'winter'], ring: 'mid', name: 'Frost Seal', shape: 'diamond',
+    nodes: ['ward 1', 'hp 1', 'dmgCold 1', 'resAll 1'],
+    core: ['Sealed in Ice', 'ward 2', 'dmgCold 1.5'], bonus: ['ward 1.5', 'hp 1'] });
+  T.bridge('emberscribe', { id: 'ink_winter_outer', between: ['ink', 'winter'], ring: 'outer', name: 'Rime Binding', shape: 'diamond',
+    nodes: ['lineWard 1', 'hp 1', 'resCold 1', 'resAll 1'],
+    core: ['Bound in Rime', 'ward 2', 'resCold 1.5'], bonus: ['lineWard 1.5', 'hp 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_emberscribe_margin.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, E = T.ember;
+  var mut = E.mut, rule = E.rule, key = E.key, pact = E.pact, abil = E.abil, ring = E.ring, star = E.star;
+
+  /**
+   * EMBERSCRIBE, arm 2 of 8: THE MARGINS (`margin`). Rune Traps and detonations. Skill: Rune Trap (trunk, 4 points).
+   * Design: docs/TREE_EMBERSCRIBE.md. Rules: src/sim/56_tree_emberscribe.js. Holds the three bridges to the quill arm.
+   */
+  T.arm('emberscribe', {
+    id: 'margin', name: 'The Margins', focus: 'Rune Traps: write danger into the margins and let them walk into it', color: '#c46a8a', vein: 'dread',
+
+    trunk: E.boltTrunk([
+      'dmgTrap 1', 'hp 1', { t: 'skill', grants: 'rune_trap', abil: [{ a: 'rune_trap', k: 'cd', v: -0.05 }] }, 'aoe 1', 'resAll 1',   // T1..T5
+      'hp 1', 'dmgTrap 1', 'dmgFire 1', ['Side Notes', 'moveSpeed 1', 'dmgTrap 0.5'], 'hp 1',                                    // T6..T10
+      'critChance 1', 'ward 1', 'hp 1', 'dmgTrap 1', 'resAll 1',                                                                // T11..T15
+      'hp 1', 'aoe 1', 'dmgTrap 1', 'hp 1', 'statusChance 1',                                                                   // T16..T20
+      'resAll 1', 'hp 1', 'dmgTrap 1', 'ward 1', 'hp 1'                                                                         // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Rune Trap, shape and essence
+      star('margin_trap_shape', 'Rune Trap: shape', 1, -1, 'hp 1', ['es_trap_three', 'es_trap_wide', 'es_trap_far'], ['Spread Notes', 'aoe 1', 'hp 1']),
+      star('margin_trap_essence', 'Rune Trap: essence', 1, 1, 'dmgTrap 1', ['es_trap_frost', 'es_trap_arc', 'es_trap_big'], ['Loaded Rune', 'dmgTrap 1', 'resAll 1']),
+
+      // ---- Row 2
+      star('margin_trap_rite', 'Rune Trap: rite', 2, -1, 'aoe 1', ['es_trap_quick', 'es_trap_cheap', 'es_trap_charges'],
+        abil('Practised Trap', ['ward 1', 'hp 1'], 'rune_trap', 'cd', -0.06)),
+      ring('margin_snare', 'Snare Glyphs', 2, 1, ['dmgTrap 1', 'hp 1', abil('Bigger Bang', ['aoe 0.5'], 'rune_trap', 'dmg', 0.08), 'resAll 1', 'statusChance 1'],
+        rule('snare', 'Snare Glyph', ['dmgTrap 1'], 'Enemies hit by your Rune Traps are Slowed by 30% for 3 s.', { off: 1.01, def: 1.03 }), ['dmgTrap 1.5', 'hp 1']),
+
+      // ---- Row 3
+      ring('margin_fuse', 'Short Fuse', 3, -2, ['dmgTrap 1', 'hp 1', 'atkSpeed 1', 'resAll 1'],
+        rule('ink_trap', 'Ink Trap', ['dmgTrap 1'], 'When one of your Rune Traps erupts, you restore 6 Ink.', { off: 1.02, def: 1 }), ['dmgTrap 1.5', 'hp 1']),
+      ring('margin_doodle', 'Doodles', 3, -1, ['aoe 1', 'hp 1', 'dmgFire 1', 'ward 1'], ['Scribbles', 'aoe 2', 'dmgFire 1'], ['aoe 1.5', 'hp 1']),
+      ring('margin_bait', 'Bait', 3, 1, ['hp 1', 'dmgTaken 1', 'ward 1', 'resAll 1'],
+        rule('bait', 'Bait and Switch', ['dmgTaken 1'], 'Enemies within 3.5 m of one of your Rune Traps deal 10% less damage to you.', { off: 1, def: 1.03 }), ['dmgTaken 1.5', 'hp 1']),
+      ring('margin_redink', 'Red Ink', 3, 2, ['dmgTrap 1', 'hp 1', 'critMult 1', 'resAll 1'], ['Red Pen', 'dmgTrap 2', 'critMult 1'], ['critMult 1.5', 'hp 1']),
+
+      // ---- Row 4
+      ring('margin_detonate', 'Detonation', 4, -2, ['dmgTrap 1', 'hp 1', 'breakPower 1', 'armor 1'], ['Big Bang', 'dmgTrap 2', 'breakPower 1.5'], ['breakPower 1.5', 'hp 1']),
+      E.altar('margin_altar_a', 'Altar of Notes', 4, -1, ['hp 1', 'dmgTrap 1', 'resAll 1']),
+      ring('margin_wire', 'Tripwire', 4, 1, ['statusChance 1', 'hp 1', 'dmgTrap 1', 'resAll 1'],
+        rule('primed', 'Primed', ['statusChance 1'], 'Your Ember Bolts deal 20% more damage to enemies within 4 m of one of your Rune Traps.', { off: 1.03, def: 1 }), ['statusChance 1.5', 'hp 1']),
+      ring('margin_guard', 'Margin Guard', 4, 2, ['hp 1', 'ward 1', 'armor 1', 'resAll 1'], ['Wide Margins', 'ward 2', 'armor 1'], ['ward 1.5', 'hp 1']),
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      ring('margin_corner', 'Dog-Eared', 5, -2, ['hp 1', 'moveSpeed 1', 'dodgeCdr 1', 'resAll 1'], ['Folded Corner', 'dodgeCdr 2', 'moveSpeed 1'], ['dodgeCdr 1.5', 'hp 1']),
+      ring('margin_blast', 'Blast Radius', 5, -1, ['aoe 1', 'hp 1', 'dmgTrap 1', 'resFire 1'], ['Shock Wave', 'aoe 2', 'dmgTrap 1'], ['aoe 1.5', 'hp 1']),
+      ring('margin_mend', 'Mending Notes', 5, 1, ['hp 1', 'hpRegen 1', 'ward 1', 'resAll 1'], ['Errata', 'hpRegen 2', 'ward 1'], ['hpRegen 1.5', 'hp 1']),
+      ring('margin_sharp', 'Sharp Notes', 5, 2, ['critChance 1', 'hp 1', 'critMult 1', 'armor 1'], ['Pointed Remark', 'critChance 2', 'critMult 1'], ['critChance 1', 'hp 1.5']),
+
+      // ---- Row 6
+      ring('margin_ward', 'Warded Margins', 6, -2, ['hp 1', 'ward 1', 'resAll 1', 'resFire 1'], ['Fireproof Notes', 'ward 2', 'resAll 1'], ['ward 1', 'hp 1.5']),
+      ring('margin_cog', 'The Clockwork Notes', 6, -1, ['hp 1', E.trophy("Grindwell's Cog", ['dmgTrap 1.5', 'armor 1.5'], 'grindwell'), 'dmgTrap 1', 'resAll 1'],
+        ['Ticking Notes', 'dmgTrap 2', 'hp 1'], ['dmgTrap 1', 'hp 1.5']),
+      ring('margin_cult', 'Forbidden Margins', 6, 1, ['hp 1', E.corrupted('Scrawled Want', ['dmgTrap 3', 'aoe 1.5'], 20), 'moveSpeed 1', 'resAll 1'],
+        E.corrupted('Blasphemous Gloss', ['dmg*2', 'dmgTrap 3', 'critChance 2'], 40), ['dmgTrap 1', 'hp 1.5']),
+      ring('margin_crown', 'The King\'s Clerks', 6, 2, ['resAll 1', E.faction("Clerk's Seal", ['dmgTrap 1.5', 'ward 1'], 'crown', 20), 'hp 1', 'dmgTrap 1'],
+        E.faction('Royal Decree', ['dmgBoss 2', 'dmgTrap 2'], 'crown', 60), ['resAll 1', 'hp 1.5']),
+
+      // ---- Row 7
+      E.pacts('margin_pacts', 'Margin Bargains', 7, -2, 'hp 1', [
+        pact('Light Touch', ['dmgTrap*15', 'ward*-20']),
+        pact('Long Fuse', ['aoe*20', 'dmgTrap*-8']),
+        pact('Volatile Notes', ['critMult*15', 'hp*-6'])], ['Fine Print', 'dmgTrap 1', 'hp 1']),
+      ring('margin_auction', 'The Auction House', 7, -1, ['hp 1', 'dmgTrap 1', 'ward 1', E.trophy("Auctioneer's Gavel", ['dmgTrap 1.5', 'hp 1.5'], 'auctioneer')],
+        ['Going Once', 'dmgTrap 2', 'hp 1'], ['dmgTrap 1.5', 'hp 1']),
+      E.altar('margin_altar_b', 'Altar of Footnotes', 7, 1, ['hp 1', 'aoe 1', 'critChance 1']),
+      E.keyArc('margin_key_mine', 'The Minefield', 7, 2, ['dmgTrap 1', 'aoe 1'],
+        key('Minefield', ['dmgTrap*40', 'dmgSpell*-15'], 'Your traps deal 40% more damage, but your spells deal 15% less.', null, { off: 1.04, def: 1 })),
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      ring('margin_ruled', 'Ruled Lines', 8, -3, ['hp 1', 'ward 1', 'resAll 1', 'armor 1'], ['Straight Lines', 'armor 2', 'ward 1.5'], ['armor 1', 'hp 1.5']),
+      E.keyArc('margin_key_hair', 'Hair Trigger', 8, -2, ['dmgTrap 1', 'atkSpeed 1'],
+        key('Hair Trigger', [], 'Rune Trap\'s cooldown is 40% shorter, but it deals 20% less damage.', null, { off: 1.03, def: 1 },
+          { abil: [{ a: 'rune_trap', k: 'cd', v: -0.4 }, { a: 'rune_trap', k: 'dmg', v: -0.2 }] })),
+      ring('margin_sidebar', 'Sidebar', 8, -1, ['hp 1', 'dmgTrap 1', 'critMult 1', 'resAll 1'], ['Long Aside', 'dmgTrap 2.5', 'critMult 1'], ['dmgTrap 1.5', 'hp 1']),
+      ring('margin_errata', 'Errata', 8, 1, ['aoe 1', 'hp 1', 'dmgFire 1', 'resAll 1'], ['Corrections', 'aoe 2', 'dmgFire 1.5'], ['aoe 1.5', 'hp 1']),
+      E.keyArc('margin_key_marg', 'Marginalia', 8, 2, ['resRegen 1', 'dmgTrap 1'],
+        key('Marginalia', [], 'Every third Ember Bolt you cast writes an Ember rune. Ember Bolt deals 15% less damage.', 'tree_emberscribe_marginalia', { off: 1.05, def: 1 },
+          { abil: [{ a: 'ember_bolt', k: 'dmg', v: -0.15 }] })),
+      ring('margin_end', 'Endnotes', 8, 3, ['hp 1', 'hpRegen 1', 'ward 1', 'resAll 1'], ['The End', 'hp 2', 'ward 1.5'], ['ward 1', 'hp 1.5'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['dmgTrap 2', 'hp 2'] },
+      { at: 35, mods: ['aoe 3', 'ward 2'] },
+      { at: 60, mods: ['dmgTrap 4', 'critChance 3', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Margins and the Quill.
+  T.bridge('emberscribe', { id: 'margin_quill_inner', between: ['margin', 'quill'], ring: 'inner', name: 'Pinned Notes', shape: 'star',
+    nodes: ['dmgTrap 1', mut('es_bolt_pierce'), 'critChance 1', 'hp 1'],
+    core: ['Pinned Down', 'critChance 1.5', 'dmgTrap 1'], bonus: ['hp 1', 'resAll 1'] });
+  T.bridge('emberscribe', { id: 'margin_quill_mid', between: ['margin', 'quill'], ring: 'mid', name: 'Quilled Traps', shape: 'diamond',
+    nodes: ['dmgTrap 1', 'hp 1', 'critMult 1', 'resAll 1'],
+    core: ['Barbed Runes', 'dmgTrap 2', 'critMult 1.5'], bonus: ['dmgTrap 1.5', 'hp 1'] });
+  T.bridge('emberscribe', { id: 'margin_quill_outer', between: ['margin', 'quill'], ring: 'outer', name: 'Nib and Fuse', shape: 'diamond',
+    nodes: ['critChance 1', 'hp 1', 'dmgTrap 1', 'resAll 1'],
+    core: ['Sparking Nib', 'critChance 2', 'dmgTrap 1.5'], bonus: ['critChance 1', 'hp 1.5'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_emberscribe_quill.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, E = T.ember;
+  var mut = E.mut, rule = E.rule, key = E.key, pact = E.pact, abil = E.abil, ring = E.ring, star = E.star;
+
+  /**
+   * EMBERSCRIBE, arm 3 of 8: THE QUILL (`quill`). Quills, projectiles and critical hits. Skill: Quill Storm (trunk, 4 points).
+   * Design: docs/TREE_EMBERSCRIBE.md. Rules: src/sim/56_tree_emberscribe.js. Holds the three bridges to the ink arm.
+   */
+  T.arm('emberscribe', {
+    id: 'quill', name: 'The Quill', focus: 'Quills and critical hits: every one of them signed, every one of them sharp', color: '#b8b8c8', vein: 'war',
+
+    trunk: E.boltTrunk([
+      'critChance 1', 'hp 1', { t: 'skill', grants: 'quill_storm', abil: [{ a: 'quill_storm', k: 'cd', v: -0.05 }] }, 'dmgPhys 1', 'resAll 1',   // T1..T5
+      'hp 1', 'critMult 1', 'atkSpeed 1', ['Writing Desk', 'moveSpeed 1', 'critChance 0.5'], 'hp 1',                                            // T6..T10
+      'dmgSpell 1', 'ward 1', 'hp 1', 'projSpeed 1', 'armor 1',                                                                                // T11..T15
+      'hp 1', 'critChance 1', 'breakPower 1', 'hp 1', 'critMult 1',                                                                            // T16..T20
+      'resAll 1', 'hp 1', 'atkSpeed 1', 'ward 1', 'hp 1'                                                                                       // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Quill Storm, shape and essence
+      star('quill_storm_shape', 'Quill Storm: shape', 1, -1, 'hp 1', ['es_quill_more', 'es_quill_pierce', 'es_quill_homing'], ['Fan of Quills', 'projSpeed 1', 'hp 1']),
+      star('quill_storm_essence', 'Quill Storm: essence', 1, 1, 'dmgPhys 1', ['es_quill_fire', 'es_quill_frost', 'es_quill_heavy'], ['Iron Nibs', 'dmgPhys 1', 'resAll 1']),
+
+      // ---- Row 2
+      star('quill_storm_rite', 'Quill Storm: rite', 2, -1, 'critChance 1', ['es_quill_quick', 'es_quill_cheap', 'es_quill_walk'],
+        abil('Practised Flick', ['atkSpeed 1', 'hp 1'], 'quill_storm', 'cd', -0.06)),
+      ring('quill_nib', 'The Nib', 2, 1, ['critChance 1', 'hp 1', abil('Sharper Quills', ['critMult 0.5'], 'quill_storm', 'dmg', 0.08), 'resAll 1', 'projSpeed 1'],
+        rule('sharp_nib', 'Sharp Nib', ['critChance 1'], 'Your critical hits with Ember Bolt and Quill Storm restore 2 Ink.', { off: 1.03, def: 1 }), ['critChance 1', 'hp 1.5']),
+
+      // ---- Row 3
+      ring('quill_pinned', 'Pinned', 3, -2, ['dmgPhys 1', 'hp 1', 'breakPower 1', 'armor 1'],
+        rule('pinned', 'Pinned Down', ['breakPower 1'], 'An enemy hit by 4 quills of one Quill Storm is Rooted for 1 s.', { off: 1.01, def: 1.03 }), ['dmgPhys 1.5', 'hp 1']),
+      ring('quill_blot', 'Blotted', 3, -1, ['critChance 1', 'hp 1', 'critMult 1', 'resAll 1'],
+        rule('blotted', 'Blotted Page', ['critMult 1'], 'Your hits on Soaked enemies have +15% Critical Chance.', { off: 1.03, def: 1 }), ['critMult 1.5', 'hp 1']),
+      ring('quill_flight', 'Feathers', 3, 1, ['projSpeed 1', 'hp 1', 'moveSpeed 1', 'ward 1'], ['Light as a Feather', 'projSpeed 2', 'moveSpeed 1'], ['projSpeed 1.5', 'hp 1']),
+      ring('quill_inkpot', 'Inkpot', 3, 2, ['resMax 1', 'hp 1', 'resRegen 1', 'resAll 1'], ['Deep Inkpot', 'resMax 2', 'resRegen 1'], ['resMax 1.5', 'hp 1']),
+
+      // ---- Row 4
+      ring('quill_point', 'Fine Point', 4, -2, ['critMult 1', 'hp 1', 'dmgElite 1', 'resAll 1'], ['Needle Point', 'critMult 2', 'dmgElite 1'], ['critMult 1', 'hp 1.5']),
+      E.altar('quill_altar_a', 'Altar of Quills', 4, -1, ['hp 1', 'critChance 1', 'ward 1']),
+      ring('quill_scratch', 'Scratching', 4, 1, ['atkSpeed 1', 'hp 1', 'dmgSpell 1', 'armor 1'], ['Fast Hand', 'atkSpeed 2', 'dmgSpell 1'], ['atkSpeed 1.5', 'hp 1']),
+      ring('quill_guard', 'Quill Guard', 4, 2, ['hp 1', 'ward 1', 'evasion 1', 'resAll 1'],
+        rule('quill_ward', 'Feather Ward', ['ward 1'], 'Each Quill Storm gives you Ward equal to 6% of your maximum Health for 4 s.', { off: 1, def: 1.04 }), ['ward 1.5', 'hp 1']),
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      ring('quill_desk', 'The Desk', 5, -2, ['hp 1', 'armor 1', 'ward 1', 'resAll 1'], ['Oak Desk', 'armor 2', 'hp 1'], ['armor 1.5', 'hp 1']),
+      ring('quill_volley', 'Volley', 5, -1, ['dmgSpell 1', 'hp 1', 'projSpeed 1', 'resAll 1'], ['Storm of Pens', 'dmgSpell 2', 'projSpeed 1'], ['dmgSpell 1.5', 'hp 1']),
+      ring('quill_iron', 'Iron Pens', 5, 1, ['dmgPhys 1', 'hp 1', 'breakPower 1', 'armor 1'], ['Steel Nib', 'dmgPhys 2', 'breakPower 1'], ['breakPower 1.5', 'hp 1']),
+      ring('quill_swift', 'Swift Hand', 5, 2, ['hp 1', 'moveSpeed 1', 'dodgeCdr 1', 'resAll 1'], ['Quick Exit', 'moveSpeed 2', 'dodgeCdr 1'], ['moveSpeed 1', 'hp 1.5']),
+
+      // ---- Row 6
+      ring('quill_wax', 'Wax Seal', 6, -2, ['hp 1', 'ward 1', 'resAll 1', 'hpRegen 1'], ['Red Seal', 'ward 2', 'hp 1'], ['ward 1', 'hp 1.5']),
+      ring('quill_log', 'The Captain\'s Log', 6, -1, ['hp 1', E.trophy("Redtooth's Logbook", ['critChance 1.5', 'dmgPhys 1.5'], 'captain_redtooth'), 'critMult 1', 'resAll 1'],
+        ['Ship\'s Log', 'critChance 2', 'hp 1'], ['critChance 1', 'hp 1.5']),
+      ring('quill_cult', 'The Bloodied Quill', 6, 1, ['hp 1', E.corrupted('Sharp Want', ['critMult 3', 'dmgPhys 1.5'], 20), 'moveSpeed 1', 'resAll 1'],
+        E.corrupted('Written in Red', ['dmg*2', 'critChance 3', 'atkSpeed 2'], 40), ['critChance 1', 'hp 1.5']),
+      ring('quill_lantern', 'Lantern Scribes', 6, 2, ['resAll 1', E.faction('Scribe Badge', ['critChance 1', 'ward 1.5'], 'lantern', 20), 'hp 1', 'dmgSpell 1'],
+        E.faction('Keeper\'s Quill', ['dmgSpell 2', 'critMult 2'], 'lantern', 60), ['resAll 1', 'hp 1.5']),
+
+      // ---- Row 7
+      E.pacts('quill_pacts', 'Quill Bargains', 7, -2, 'hp 1', [
+        pact('Sharpened Edge', ['critMult*15', 'hp*-6']),
+        pact('Quick Scrawl', ['atkSpeed*8', 'dmgSpell*-8']),
+        pact('Steel Nibs', ['dmgPhys*20', 'dmgFire*-10'])], ['Signed Terms', 'critChance 1', 'hp 1']),
+      ring('quill_barker', 'The Barker\'s Stand', 7, -1, ['hp 1', 'critChance 1', 'ward 1', E.trophy("Barker's Pen", ['critMult 1.5', 'hp 1.5'], 'the_barker')],
+        ['Loud Ink', 'critMult 2', 'hp 1'], ['critMult 1.5', 'hp 1']),
+      E.altar('quill_altar_b', 'Altar of Pens', 7, 1, ['hp 1', 'critMult 1', 'projSpeed 1']),
+      E.keyArc('quill_key_master', 'The Quillmaster', 7, 2, ['critChance 1', 'atkSpeed 1'],
+        key('Quillmaster', [], 'Quill Storm\'s cooldown is 30% shorter, but it costs 50% more Ink.', null, { off: 1.04, def: 1 },
+          { abil: [{ a: 'quill_storm', k: 'cd', v: -0.3 }, { a: 'quill_storm', k: 'cost', v: 0.5 }] })),
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      ring('quill_folio', 'Folio', 8, -3, ['hp 1', 'ward 1', 'resAll 1', 'armor 1'], ['Bound Folio', 'ward 2', 'armor 1.5'], ['ward 1', 'hp 1.5']),
+      E.keyArc('quill_key_point', 'Sharpened Point', 8, -2, ['critMult 1', 'critChance 1'],
+        key('Sharpened Point', ['critMult*40', 'critChance*-30'], 'You have 30% less Critical Chance, but your critical hits deal 40% more damage.', null, { off: 1.04, def: 1 })),
+      ring('quill_flourish', 'Flourishes', 8, -1, ['hp 1', 'critMult 1', 'dmgSpell 1', 'resAll 1'], ['Grand Flourish', 'critMult 2.5', 'dmgSpell 1'], ['critMult 1.5', 'hp 1']),
+      ring('quill_paper', 'Paper Storm', 8, 1, ['atkSpeed 1', 'hp 1', 'projSpeed 1', 'resAll 1'], ['Whirlwind', 'atkSpeed 2', 'projSpeed 1.5'], ['atkSpeed 1.5', 'hp 1']),
+      E.keyArc('quill_key_barrage', 'Barrage', 8, 2, ['projSpeed 1', 'resRegen 1'],
+        key('Barrage', ['dmgPhys*-10'], 'Quill Storm writes its rune twice. You deal 10% less Physical damage.', 'tree_emberscribe_barrage', { off: 1.05, def: 1 })),
+      ring('quill_rest', 'Pen Rest', 8, 3, ['hp 1', 'hpRegen 1', 'ward 1', 'resAll 1'], ['At Rest', 'hp 2', 'hpRegen 1.5'], ['hpRegen 1', 'hp 1.5'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['critChance 2', 'hp 2'] },
+      { at: 35, mods: ['critMult 3', 'ward 2'] },
+      { at: 60, mods: ['atkSpeed 3', 'critChance 3', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Quill and the Inkwell.
+  T.bridge('emberscribe', { id: 'quill_ink_inner', between: ['quill', 'ink'], ring: 'inner', name: 'Inked Nib', shape: 'star',
+    nodes: ['critChance 1', mut('es_bolt_twin'), 'resMax 1', 'hp 1'],
+    core: ['Dipped Nib', 'resMax 1.5', 'critChance 1'], bonus: ['hp 1', 'resAll 1'] });
+  T.bridge('emberscribe', { id: 'quill_ink_mid', between: ['quill', 'ink'], ring: 'mid', name: 'Flowing Ink', shape: 'diamond',
+    nodes: ['resRegen 1', 'hp 1', 'critChance 1', 'resAll 1'],
+    core: ['Free Flow', 'resRegen 2', 'critChance 1.5'], bonus: ['resRegen 1.5', 'hp 1'] });
+  T.bridge('emberscribe', { id: 'quill_ink_outer', between: ['quill', 'ink'], ring: 'outer', name: 'Full Nib', shape: 'diamond',
+    nodes: ['resRegen 1', 'hp 1', 'critMult 1', 'resAll 1'],
+    core: ['Loaded Nib', 'resRegen 1.5', 'critMult 1.5'], bonus: ['resRegen 1.5', 'hp 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_emberscribe_storm.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, E = T.ember;
+  var mut = E.mut, rule = E.rule, web = E.web, key = E.key, pact = E.pact, abil = E.abil, ring = E.ring, star = E.star;
+
+  /**
+   * EMBERSCRIBE, arm 6 of 8: THE STORM MARGIN (`storm`). Shock, critical hits and speed. Skill: Arc Scroll (trunk, 4 points).
+   * Design: docs/TREE_EMBERSCRIBE.md. Rules: src/sim/56_tree_emberscribe.js. Holds the three bridges to the alchemy arm.
+   */
+  T.arm('emberscribe', {
+    id: 'storm', name: 'The Storm Margin', focus: 'Shock and speed: a scroll that reads itself aloud, and fast', color: '#e8cf3a', vein: 'war',
+
+    trunk: E.boltTrunk([
+      'dmgShock 1', 'hp 1', { t: 'skill', grants: 'arc_scroll', abil: [{ a: 'arc_scroll', k: 'cd', v: -0.05 }] }, 'critChance 1', 'resShock 1',   // T1..T5
+      'hp 1', 'atkSpeed 1', 'dmgSpell 1', ['Lightning Road', 'moveSpeed 1', 'dmgShock 0.5'], 'hp 1',                                            // T6..T10
+      'dmgShock 1', 'ward 1', 'hp 1', 'critMult 1', 'resAll 1',                                                                                // T11..T15
+      'hp 1', 'statusChance 1', 'dmgShock 1', 'hp 1', 'moveSpeed 1',                                                                           // T16..T20
+      'resShock 1', 'hp 1', 'dmgShock 1', 'resAll 1', 'hp 1'                                                                                   // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Arc Scroll, shape and essence
+      star('storm_arc_shape', 'Arc Scroll: shape', 1, -1, 'hp 1', ['es_arc_long', 'es_arc_wide', 'es_arc_twin'], ['Long Lightning', 'aoe 1', 'hp 1']),
+      star('storm_arc_essence', 'Arc Scroll: essence', 1, 1, 'dmgShock 1', ['es_arc_sure', 'es_arc_fire', 'es_arc_stun'], ['Charged Ink', 'dmgShock 1', 'resAll 1']),
+
+      // ---- Row 2
+      star('storm_arc_rite', 'Arc Scroll: rite', 2, -1, 'critChance 1', ['es_arc_quick', 'es_arc_cheap', 'es_arc_charges'],
+        abil('Practised Scroll', ['atkSpeed 1', 'hp 1'], 'arc_scroll', 'cd', -0.06)),
+      ring('storm_static', 'Static', 2, 1, ['dmgShock 1', 'hp 1', abil('Longer Scroll', ['critChance 0.5'], 'arc_scroll', 'dmg', 0.08), 'resAll 1', 'statusChance 1'],
+        rule('static', 'Static', ['dmgShock 1'], 'Your hits on Shocked enemies have +10% Critical Chance.', { off: 1.03, def: 1 }), ['dmgShock 1.5', 'hp 1']),
+
+      // ---- Row 3
+      ring('storm_quill', 'Crackling Quill', 3, -2, ['critChance 1', 'hp 1', 'resRegen 1', 'resAll 1'],
+        web('crackling_quill', 'Crackling Quill', ['critMult 1'], 'Hitting a Shocked enemy with a spell restores 3 Ink. Once every 2 s.', { off: 1.04, def: 1 }), ['critChance 1', 'hp 1.5']),
+      ring('storm_clap', 'Thunderclap', 3, -1, ['critMult 1', 'hp 1', 'aoe 1', 'resShock 1'],
+        rule('thunderclap', 'Thunderclap', ['critMult 1'], 'Your critical hits with Shock spells Shock every enemy within 2.5 m of the target.', { off: 1.03, def: 1 }), ['critMult 1.5', 'hp 1']),
+      ring('storm_step', 'Storm Step', 3, 1, ['moveSpeed 1', 'hp 1', 'dodgeCdr 1', 'resAll 1'],
+        rule('storm_step', 'Storm Step', ['moveSpeed 1'], 'Your dodge roll and Ink Blink Shock enemies within 3 m.', { off: 1.02, def: 1.01 }), ['moveSpeed 1.5', 'hp 1']),
+      ring('storm_cloud', 'Clouds', 3, 2, ['hp 1', 'ward 1', 'resShock 1', 'armor 1'], ['Storm Cloud', 'ward 2', 'resShock 1'], ['ward 1.5', 'hp 1']),
+
+      // ---- Row 4
+      ring('storm_blue', 'Bolt from the Blue', 4, -2, ['critMult 1', 'hp 1', 'dmgElite 1', 'resAll 1'], ['Out of Nowhere', 'critMult 2', 'dmgElite 1'], ['critMult 1', 'hp 1.5']),
+      E.altar('storm_altar_a', 'Altar of Storms', 4, -1, ['hp 1', 'dmgShock 1', 'resShock 1']),
+      ring('storm_ground', 'Grounding', 4, 1, ['hp 1', 'dmgTaken 1@moving', 'resShock 1', 'armor 1'], ['Grounded', 'dmgTaken 1.5@moving', 'resAll 1'], ['resShock 1.5', 'hp 1']),
+      ring('storm_speed', 'Quickening', 4, 2, ['atkSpeed 1', 'hp 1', 'moveSpeed 1', 'resAll 1'], ['Lightning Hand', 'atkSpeed 2', 'moveSpeed 1'], ['atkSpeed 1.5', 'hp 1']),
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      ring('storm_rain', 'Rain', 5, -2, ['hp 1', 'resAll 1', 'hpRegen 1', 'moveSpeed 1'], ['Spring Rain', 'hpRegen 2', 'resAll 1'], ['hpRegen 1.5', 'hp 1']),
+      ring('storm_arcing', 'Arcing', 5, -1, ['dmgShock 1', 'hp 1', 'statusChance 1', 'resShock 1'], ['Jumping Sparks', 'dmgShock 2', 'statusChance 1'], ['statusChance 1.5', 'hp 1']),
+      ring('storm_charge', 'Charge', 5, 1, ['resRegen 1', 'hp 1', 'resMax 1', 'resAll 1'],
+        rule('charged', 'Charged', ['resRegen 1'], 'Every 5th skill you cast restores 10 Ink.', { off: 1.03, def: 1 }), ['resRegen 1.5', 'hp 1']),
+      ring('storm_tempest', 'Tempest', 5, 2, ['pureLine 1', 'hp 1', 'dmgShock 1', 'armor 1'], ['Eye of the Storm', 'pureLine 2', 'dmgShock 1'], ['pureLine 1.5', 'hp 1']),
+
+      // ---- Row 6
+      ring('storm_rod', 'Lightning Rod', 6, -2, ['hp 1', 'resShock 1', 'armor 1', 'resAll 1'], ['Copper Rod', 'resShock 2', 'hp 1'], ['resAll 1', 'hp 1.5']),
+      ring('storm_caul', 'The Windlord\'s Storm', 6, -1, ['hp 1', E.trophy("Caul's Thunder", ['dmgShock 1.5', 'moveSpeed 1.5'], 'windlord_caul'), 'dmgShock 1', 'resAll 1'],
+        ['Thunderhead', 'dmgShock 2', 'hp 1'], ['dmgShock 1', 'hp 1.5']),
+      ring('storm_cult', 'The Storm Cult', 6, 1, ['hp 1', E.corrupted('Bright Want', ['dmgShock 3', 'critChance 1.5'], 20), 'moveSpeed 1', 'resAll 1'],
+        E.corrupted('Struck Twice', ['dmg*2', 'dmgShock 3', 'atkSpeed 2'], 40), ['dmgShock 1', 'hp 1.5']),
+      ring('storm_lantern', 'Storm Lanterns', 6, 2, ['resAll 1', E.faction('Storm Lamp', ['dmgShock 1.5', 'ward 1'], 'lantern', 20), 'hp 1', 'critChance 1'],
+        E.faction('Lighthouse', ['dmgShock 2', 'critMult 2'], 'lantern', 60), ['resAll 1', 'hp 1.5']),
+
+      // ---- Row 7
+      E.pacts('storm_pacts', 'Storm Bargains', 7, -2, 'hp 1', [
+        pact('Live Wire', ['dmgShock*15', 'hp*-6']),
+        pact('Restless Hand', ['atkSpeed*8', 'ward*-15']),
+        pact('Wide Storm', ['aoe*20', 'dmgShock*-8'])], ['Charged Terms', 'dmgShock 1', 'hp 1']),
+      ring('storm_gale', 'The Matriarch\'s Storm', 7, -1, ['hp 1', 'dmgShock 1', 'moveSpeed 1', E.trophy('Storm Feather', ['atkSpeed 1.5', 'hp 1.5'], 'gale_matriarch')],
+        ['Gale Force', 'atkSpeed 2', 'hp 1'], ['atkSpeed 1.5', 'hp 1']),
+      E.altar('storm_altar_b', 'Altar of Thunder', 7, 1, ['hp 1', 'critChance 1', 'atkSpeed 1']),
+      E.keyArc('storm_key_caller', 'The Stormcaller', 7, 2, ['dmgShock 1', 'resShock 1'],
+        key('Stormcaller', ['dmgShock*30', 'dmgFire*-25', 'dmgCold*-25'], 'You deal 30% more Shock damage and 25% less Fire and Cold damage.', null, { off: 1.05, def: 1 })),
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      ring('storm_eye', 'Calm Eye', 8, -3, ['hp 1', 'ward 1', 'resAll 1', 'armor 1'], ['Stillness', 'ward 2', 'hp 1.5'], ['ward 1', 'hp 1.5']),
+      E.keyArc('storm_key_over', 'Overcharge', 8, -2, ['statusChance 1', 'dmgShock 1'],
+        key('Overcharge', [], 'The Shock you inflict is twice as strong but lasts half as long.', 'tree_emberscribe_overcharge', { off: 1.05, def: 1 })),
+      ring('storm_fork', 'Forked Lightning', 8, -1, ['hp 1', 'dmgShock 1', 'critMult 1', 'resShock 1'], ['Fork', 'dmgShock 2.5', 'critMult 1'], ['dmgShock 1.5', 'hp 1']),
+      ring('storm_flash', 'Flash', 8, 1, ['atkSpeed 1', 'hp 1', 'critChance 1', 'resAll 1'], ['Blinding Flash', 'atkSpeed 2', 'critChance 1.5'], ['atkSpeed 1.5', 'hp 1']),
+      E.keyArc('storm_key_quick', 'Quicksilver', 8, 2, ['atkSpeed 1', 'moveSpeed 1'],
+        key('Quicksilver', ['atkSpeed*20', 'hp*-15'], 'You cast 20% faster, but have 15% less Health.', null, { off: 1.04, def: 0.98 })),
+      ring('storm_after', 'After the Storm', 8, 3, ['hp 1', 'hpRegen 1', 'ward 1', 'resAll 1'], ['Clear Skies', 'hp 2', 'hpRegen 1.5'], ['hpRegen 1', 'hp 1.5'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['dmgShock 2', 'hp 2'] },
+      { at: 35, mods: ['critChance 3', 'moveSpeed 2'] },
+      { at: 60, mods: ['dmgShock 4', 'atkSpeed 3', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Storm Margin and the Great Work.
+  T.bridge('emberscribe', { id: 'storm_alchemy_inner', between: ['storm', 'alchemy'], ring: 'inner', name: 'Galvanic', shape: 'star',
+    nodes: ['dmgShock 1', mut('es_bolt_arc'), 'reactDmg 0.5', 'hp 1'],
+    core: ['Galvanic Salts', 'reactDmg 0.75', 'dmgShock 1'], bonus: ['hp 1', 'resAll 1'] });
+  T.bridge('emberscribe', { id: 'storm_alchemy_mid', between: ['storm', 'alchemy'], ring: 'mid', name: 'Electrolysis', shape: 'diamond',
+    nodes: ['reactDmg 0.5', 'hp 1', 'statusChance 1', 'resAll 1'],
+    core: ['Split by Lightning', 'reactDmg 1', 'statusChance 1.5'], bonus: ['reactDmg 0.75', 'hp 1'] });
+  T.bridge('emberscribe', { id: 'storm_alchemy_outer', between: ['storm', 'alchemy'], ring: 'outer', name: 'Charged Salts', shape: 'diamond',
+    nodes: ['dmgShock 1', 'hp 1', 'reactDmg 0.5', 'resAll 1'],
+    core: ['Live Salts', 'dmgShock 2', 'reactDmg 0.75'], bonus: ['dmgShock 1.5', 'hp 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_emberscribe_winter.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, E = T.ember;
+  var mut = E.mut, rule = E.rule, web = E.web, key = E.key, pact = E.pact, abil = E.abil, ring = E.ring, star = E.star;
+
+  /**
+   * EMBERSCRIBE, arm 5 of 8: THE WINTER CODEX (`winter`). Cold, Chill and Freeze. Skills: Frost Script (trunk, 4 points), Gale
+   * Sigil (core of a row-2 wheel, 10 points). Design: docs/TREE_EMBERSCRIBE.md. Rules: src/sim/56_tree_emberscribe.js.
+   * Holds the three bridges to the storm arm.
+   */
+  T.arm('emberscribe', {
+    id: 'winter', name: 'The Winter Codex', focus: 'Cold, Chill and Freeze: a hand that shakes, a page that holds them still', color: '#7fd4ff', vein: 'order',
+
+    trunk: E.boltTrunk([
+      'dmgCold 1', 'hp 1', { t: 'skill', grants: 'frost_script', abil: [{ a: 'frost_script', k: 'cd', v: -0.05 }] }, 'lineHold 1', 'resCold 1',   // T1..T5
+      'hp 1', 'statusDur 1', 'dmgSpell 1', ['Frozen Stair', 'moveSpeed 1', 'dmgCold 0.5'], 'hp 1',                                              // T6..T10
+      'dmgCold 1', 'ward 1', 'hp 1', 'lineHold 1', 'armor 1',                                                                                   // T11..T15
+      'hp 1', 'dmgCold 1', 'statusDur 1', 'hp 1', 'dmgAfflicted 1',                                                                             // T16..T20
+      'resCold 1', 'hp 1', 'dmgCold 1', 'resAll 1', 'hp 1'                                                                                      // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Frost Script, shape and essence
+      star('winter_frost_shape', 'Frost Script: shape', 1, -1, 'hp 1', ['es_frost_wide', 'es_frost_long', 'es_frost_ring'], ['Cold Breath', 'aoe 1', 'hp 1']),
+      star('winter_frost_essence', 'Frost Script: essence', 1, 1, 'dmgCold 1', ['es_frost_freeze', 'es_frost_deep', 'es_frost_shatter'], ['Bitter Cold', 'dmgCold 1', 'resAll 1']),
+
+      // ---- Row 2: Frost Script, rite; Gale Sigil
+      star('winter_frost_rite', 'Frost Script: rite', 2, -1, 'lineHold 1', ['es_frost_quick', 'es_frost_cheap', 'es_frost_charges'],
+        abil('Practised Breath', ['ward 1', 'hp 1'], 'frost_script', 'cd', -0.06)),
+      { id: 'winter_gale', name: 'The Gale Room', row: 2, lane: 1, shape: 'ring', kind: 'skill', spokes: [0],
+        nodes: ['dmgCold 1', 'hp 1', abil('Steady Gale', ['resCold 0.5'], 'gale_sigil', 'cd', -0.08), 'armor 1'],
+        core: { t: 'skill', grants: 'gale_sigil', abil: [{ a: 'gale_sigil', k: 'area', v: 0.1 }] },
+        bonus: ['dmgCold 1.5', 'hp 1'] },
+
+      // ---- Row 3
+      star('winter_gale_shape', 'Gale Sigil: shape', 3, -2, 'hp 1', ['es_gale_wide', 'es_gale_self', 'es_gale_far'], ['Wide Wind', 'aoe 1', 'hp 1']),
+      ring('winter_bite', 'Frostbite', 3, -1, ['dmgCold 1', 'hp 1', 'statusDur 1', 'resAll 1'],
+        rule('frostbite', 'Frostbite', ['dmgCold 1'], 'Your hits on Chilled enemies deal 10% more damage.', { off: 1.03, def: 1 }), ['dmgCold 1.5', 'hp 1']),
+      ring('winter_rime', 'Rime', 3, 1, ['hp 1', 'dmgTaken 1', 'resCold 1', 'armor 1'],
+        web('rime', 'Rime on the Page', ['dmgCold 1'], 'Chilled enemies deal 12% less damage to you.', { off: 1, def: 1.03 }), ['dmgTaken 1.5', 'hp 1']),
+      star('winter_gale_essence', 'Gale Sigil: essence', 3, 2, 'dmgCold 1', ['es_gale_arc', 'es_gale_fire', 'es_gale_freeze'], ['Wild Wind', 'dmgCold 1', 'resCold 1']),
+
+      // ---- Row 4
+      ring('winter_hoar', 'Hoarfrost', 4, -2, ['dmgAfflicted 1', 'hp 1', 'lineHold 1', 'resAll 1'],
+        rule('hoarfrost', 'Hoarfrost', ['lineHold 1'], 'Frozen enemies take 20% more damage from you.', { off: 1.03, def: 1 }), ['lineHold 1.5', 'hp 1']),
+      E.altar('winter_altar_a', 'Altar of Frost', 4, -1, ['hp 1', 'dmgCold 1', 'resCold 1']),
+      ring('winter_snap', 'Cold Snap', 4, 1, ['statusDur 1', 'hp 1', 'dmgCold 1', 'armor 1'],
+        rule('cold_snap', 'Cold Snap', ['statusDur 1'], 'Chilling an enemy you have already Chilled Freezes it for 1 s. Once per enemy every 8 s.', { off: 1.03, def: 1.02 }), ['statusDur 1.5', 'hp 1']),
+      star('winter_gale_rite', 'Gale Sigil: rite', 4, 2, 'hp 1', ['es_gale_quick', 'es_gale_cheap', 'es_gale_twice'],
+        abil('Steady Wind', ['ward 1', 'hp 1'], 'gale_sigil', 'cd', -0.06)),
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      ring('winter_snow', 'Snowfall', 5, -2, ['hp 1', 'resCold 1', 'moveSpeed 1', 'resAll 1'], ['Deep Snow', 'resCold 2', 'moveSpeed 1'], ['resCold 1.5', 'hp 1']),
+      ring('winter_glacier', 'Glacier', 5, -1, ['pureLine 1', 'hp 1', 'lineHold 1', 'armor 1'], ['Slow Ice', 'pureLine 2', 'lineHold 1'], ['pureLine 1.5', 'hp 1']),
+      ring('winter_shell', 'Ice Shell', 5, 1, ['ward 1', 'hp 1', 'armor 1', 'resAll 1'], ['Frozen Shell', 'armor 2', 'ward 1'], ['armor 1.5', 'hp 1']),
+      ring('winter_spell', 'Winter Spells', 5, 2, ['dmgSpell 1', 'hp 1', 'dmgCold 1', 'resCold 1'], ['Cold Tongue', 'dmgSpell 2', 'dmgCold 1'], ['dmgSpell 1.5', 'hp 1']),
+
+      // ---- Row 6
+      ring('winter_fur', 'Fur Lining', 6, -2, ['hp 1', 'armor 1', 'resCold 1', 'hpRegen 1'], ['Bearskin', 'hp 2', 'armor 1'], ['hp 1.5', 'armor 1']),
+      ring('winter_warden', 'The Ice Warden\'s Codex', 6, -1, ['hp 1', E.trophy('Warden Frost', ['dmgCold 1.5', 'lineHold 1.5'], 'ice_warden'), 'dmgCold 1', 'resAll 1'],
+        ['Codex of Ice', 'dmgCold 2', 'hp 1'], ['dmgCold 1', 'hp 1.5']),
+      ring('winter_cult', 'Black Ice', 6, 1, ['hp 1', E.corrupted('Cold Want', ['dmgCold 3', 'lineHold 1.5'], 20), 'moveSpeed 1', 'resAll 1'],
+        E.corrupted('Heart of Winter', ['dmg*2', 'dmgCold 3', 'statusDur 2'], 40), ['dmgCold 1', 'hp 1.5']),
+      ring('winter_crown', 'The King\'s Winter', 6, 2, ['resAll 1', E.faction('Winter Writ', ['dmgCold 1.5', 'armor 1'], 'crown', 20), 'hp 1', 'lineHold 1'],
+        E.faction('Royal Frost', ['dmgElite 2', 'dmgCold 2'], 'crown', 60), ['resAll 1', 'hp 1.5']),
+
+      // ---- Row 7
+      E.pacts('winter_pacts', 'Winter Bargains', 7, -2, 'hp 1', [
+        pact('Brittle', ['dmgCold*15', 'armor*-30']),
+        pact('Long Winter', ['statusDur*25', 'dmgCold*-8']),
+        pact('Hard Freeze', ['lineHold*30', 'lineDmg*-10'])], ['Cold Terms', 'dmgCold 1', 'hp 1']),
+      ring('winter_deep', 'The Frozen Deep', 7, -1, ['hp 1', 'dmgCold 1', 'armor 1', E.trophy('Maw Frost', ['armor 1.5', 'hp 1.5'], 'maw_of_the_deep')],
+        ['Deep Cold', 'armor 2', 'hp 1'], ['armor 1.5', 'hp 1']),
+      E.altar('winter_altar_b', 'Altar of Snow', 7, 1, ['hp 1', 'lineHold 1', 'statusDur 1']),
+      E.keyArc('winter_key_glacial', 'Glacial', 7, 2, ['dmgCold 1', 'resCold 1'],
+        key('Glacial Hand', ['dmgCold*30', 'dmgFire*-25', 'dmgShock*-25'], 'You deal 30% more Cold damage and 25% less Fire and Shock damage.', null, { off: 1.05, def: 1 })),
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      ring('winter_hearth', 'Winter Hearth', 8, -3, ['hp 1', 'ward 1', 'resAll 1', 'hpRegen 1'], ['Fireside', 'hp 2', 'ward 1.5'], ['ward 1', 'hp 1.5']),
+      E.keyArc('winter_key_perma', 'Permafrost', 8, -2, ['statusDur 1', 'lineHold 1'],
+        key('Permafrost', ['dmgCold*-10'], 'Your Chills last twice as long. You deal 10% less Cold damage.', 'tree_emberscribe_permafrost', { off: 1.03, def: 1.03 })),
+      ring('winter_shatter', 'Shatter', 8, -1, ['hp 1', 'dmgCold 1', 'breakPower 1', 'resCold 1'], ['Shards', 'dmgCold 2.5', 'breakPower 1'], ['dmgCold 1.5', 'hp 1']),
+      ring('winter_still', 'Stillness', 8, 1, ['lineHold 1', 'hp 1', 'statusDur 1', 'resAll 1'], ['Frozen Time', 'lineHold 2', 'statusDur 1.5'], ['lineHold 1.5', 'hp 1']),
+      E.keyArc('winter_key_icewall', 'Ice Ward', 8, 2, ['ward 1', 'armor 1'],
+        key('Ice Ward', ['hp*-15'], 'While you have Ward, enemies that hit you are Frozen for 1 s, each at most once every 6 s. You have 15% less Health.', 'tree_emberscribe_ice_ward', { off: 1.01, def: 1.05 })),
+      ring('winter_white', 'White Out', 8, 3, ['hp 1', 'resCold 1', 'ward 1', 'resAll 1'], ['Snow Blind', 'resCold 2', 'ward 1.5'], ['resCold 1', 'hp 1.5'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['dmgCold 2', 'hp 2'] },
+      { at: 35, mods: ['lineHold 3', 'resAll 2'] },
+      { at: 60, mods: ['dmgCold 4', 'statusDur 3', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Winter Codex and the Storm Margin.
+  T.bridge('emberscribe', { id: 'winter_storm_inner', between: ['winter', 'storm'], ring: 'inner', name: 'Frost and Spark', shape: 'star',
+    nodes: ['dmgCold 1', mut('es_bolt_frost'), 'dmgShock 1', 'hp 1'],
+    core: ['Cold Spark', 'reactDmg 0.75', 'dmgCold 1'], bonus: ['hp 1', 'resAll 1'] });
+  T.bridge('emberscribe', { id: 'winter_storm_mid', between: ['winter', 'storm'], ring: 'mid', name: 'Thunder Snow', shape: 'diamond',
+    nodes: ['dmgShock 1', 'hp 1', 'dmgCold 1', 'resAll 1'],
+    core: ['Snow Lightning', 'dmgShock 2', 'dmgCold 1.5'], bonus: ['dmgShock 1.5', 'hp 1'] });
+  T.bridge('emberscribe', { id: 'winter_storm_outer', between: ['winter', 'storm'], ring: 'outer', name: 'Ice Storm', shape: 'diamond',
+    nodes: ['reactDmg 0.5', 'hp 1', 'resCold 1', 'resAll 1'],
+    core: ['Hail', 'reactDmg 1', 'resCold 1.5'], bonus: ['reactDmg 0.75', 'hp 1'] });
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -16446,6 +17460,320 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/data/37_mutations_emberscribe.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+
+  /**
+   * EMBERSCRIBE, every mutation of the Emberscribe's own tree (docs/TREE_EMBERSCRIBE.md section 4). One record changes ONE
+   * ability in ONE slot (shape: where and how many; essence: what the hit carries; rite: cost, cooldown, charges, extra
+   * effects), so two mutations of one ability never write the same field: KD.skills.mutationReport() proves it
+   * (tests/mutations.test.js, tests/tree_emberscribe.test.js). Format: docs/SKILLS.md section 12. Pure data, no hooks.
+   * A spell writes the rune of the element it really has, so an essence that changes a spell's element changes its rune too
+   * (src/sim/51_class_emberscribe.js). The tree nodes that hold these ids: src/data/36_tree_emberscribe_<arm>.js (the Ember
+   * Bolt ones sit in the inner bridges). Texts quote the numbers of the records; change both together.
+   */
+  var M = [];
+  function shape(id, ability, name, text, rec) { rec.id = id; rec.ability = ability; rec.slot = 'shape'; rec.name = name; rec.text = text; M.push(rec); }
+  function essence(id, ability, name, text, rec) { rec.id = id; rec.ability = ability; rec.slot = 'essence'; rec.name = name; rec.text = text; M.push(rec); }
+  function rite(id, ability, name, text, rec) { rec.id = id; rec.ability = ability; rec.slot = 'rite'; rec.name = name; rec.text = text; M.push(rec); }
+
+  var PROJ = { type: 'projectile' }, AOE = { type: 'aoe' }, CHAIN = { type: 'chain' }, ZONE = { type: 'zone' }, TRAP = { type: 'trap' },
+    PULL = { type: 'pull' }, REP = { type: 'repeat' }, BUFF = { type: 'buff' };
+  function ink(n) { return { type: 'resource', gain: n }; }
+  function ward(pct, dur) { return { type: 'shield', self: true, pct: pct, dur: dur }; }
+
+  // =============================================================================================
+  // EMBER BOLT (primary). Base: a fast bolt for 56% as Fire, 15% chance to Burn. One mutation in each inner bridge.
+  // =============================================================================================
+  shape('es_bolt_twin', 'ember_bolt', 'Twin Sparks', 'Two bolts in a narrow fan, each for 60% of the damage.',
+    { power: 0.6, fx: [{ find: PROJ, set: { count: 2, spread: 12 } }] });
+  shape('es_bolt_pierce', 'ember_bolt', 'Piercing Spark', 'The bolt passes through 2 enemies, for 85% of the damage.',
+    { power: 0.85, fx: [{ find: PROJ, set: { pierce: 2 } }] });
+  shape('es_bolt_fast', 'ember_bolt', 'Swift Spark', 'The bolt flies far faster and reaches 24 m instead of 18.',
+    { set: { range: 20, aiUse: { use: 'attack', range: 18 } }, fx: [{ find: PROJ, set: { speed: 40, range: 24 } }] });
+
+  essence('es_bolt_frost', 'ember_bolt', 'Frost Bolt', 'The bolt deals Cold damage and has a 30% chance to Chill instead of Burn.',
+    { set: { elem: 'cold' }, fx: [{ find: PROJ, set: { elem: 'cold', status: { id: 'chill', dur: 2, chance: 0.3 } } }] });
+  essence('es_bolt_arc', 'ember_bolt', 'Spark Bolt', 'The bolt deals Shock damage and has a 30% chance to Shock instead of Burn.',
+    { set: { elem: 'shock' }, fx: [{ find: PROJ, set: { elem: 'shock', status: { id: 'shock', dur: 3, chance: 0.3 } } }] });
+  essence('es_bolt_burn', 'ember_bolt', 'Kindling Bolt', 'The bolt has a 50% chance to Burn, but deals 11% less damage.',
+    { fx: [{ find: PROJ, set: { mult: 0.5, status: { id: 'burn', chance: 0.5 } } }] });
+
+  rite('es_bolt_quick', 'ember_bolt', 'Quick Hand', 'You cast about a fifth faster: shorter windup and recovery.',
+    { set: { windup: 0.22, recover: 0.36 } });
+  rite('es_bolt_ink', 'ember_bolt', 'Ink Spark', 'Each Ember Bolt that hits restores 2 Ink.',
+    { set: { gain: 2, gainOnHit: true } });
+
+  // =============================================================================================
+  // INSCRIBE RUNE. Base: 5 s, 25 Ink; a glyph at the aim (13 m) erupts after 0.7 s for 100% in 2.8 m; the rune of the last rune.
+  // =============================================================================================
+  shape('es_ins_wide', 'inscribe_rune', 'Great Glyph', 'The glyph erupts in 4 m instead of 2.8, for 80% of the damage.',
+    { power: 0.8, fx: [{ find: AOE, set: { radius: 4 } }] });
+  shape('es_ins_quick', 'inscribe_rune', 'Quick Glyph', 'The glyph erupts after 0.3 s instead of 0.7.',
+    { fx: [{ find: AOE, set: { delay: 0.3 } }] });
+  shape('es_ins_far', 'inscribe_rune', 'Far Glyph', 'The glyph can be drawn up to 18 m away instead of 13.',
+    { set: { range: 18, aiUse: { use: 'attack', range: 17 } }, fx: [{ find: AOE, set: { range: 18 } }] });
+
+  essence('es_ins_heavy', 'inscribe_rune', 'Heavy Glyph', 'The eruption breaks Poise twice as hard and deals 10% more damage.',
+    { fx: [{ find: AOE, set: { mult: 1.1, poise: 2.4 } }] });
+  essence('es_ins_soak', 'inscribe_rune', 'Wet Glyph', 'The eruption Soaks enemies for 4 s.',
+    { fx: [{ find: AOE, set: { status: { id: 'soak', dur: 4 } } }] });
+  essence('es_ins_weaken', 'inscribe_rune', 'Sapping Glyph', 'The eruption Weakens enemies for 4 s, but deals 15% less damage.',
+    { fx: [{ find: AOE, set: { mult: 0.85, status: { id: 'weaken', dur: 4 } } }] });
+
+  rite('es_ins_cheap', 'inscribe_rune', 'Short Glyph', 'Costs 15 Ink instead of 25.',
+    { set: { cost: 15 } });
+  rite('es_ins_charges', 'inscribe_rune', 'Two Glyphs', 'Inscribe Rune has 2 charges. Each takes 6 s.',
+    { set: { charges: 2, cooldown: 6 } });
+  rite('es_ins_echo', 'inscribe_rune', 'Echoing Glyph', 'The glyph erupts again a second later for 50% of the damage. Costs 35 Ink.',
+    { set: { cost: 35 }, add: [{ copy: AOE, keep: 'shape', type: 'aoe', t: 1.0, mult: 0.5, poise: 0.5 }] });
+
+  // =============================================================================================
+  // CHAIN GLYPH. Base: 5 s, 25 Ink; 90% as Shock leaping 4 times (7 m, 85% each leap), 40% chance to Shock. Arc rune.
+  // =============================================================================================
+  shape('es_glyph_long', 'chain_glyph', 'Long Signature', 'Leaps 7 times instead of 4, for 85% of the damage and losing 20% each leap.',
+    { power: 0.85, fx: [{ find: CHAIN, set: { jumps: 7, falloff: 0.8 } }] });
+  shape('es_glyph_short', 'chain_glyph', 'Short Signature', 'Leaps only twice but loses nothing with each leap, and deals 30% more damage.',
+    { power: 1.3, fx: [{ find: CHAIN, set: { jumps: 2, falloff: 1 } }] });
+  shape('es_glyph_far', 'chain_glyph', 'Wide Signature', 'Each leap reaches 11 m instead of 7.',
+    { fx: [{ find: CHAIN, set: { range: 11 } }] });
+
+  essence('es_glyph_sure', 'chain_glyph', 'Certain Spark', 'Always Shocks, but deals 20% less damage.',
+    { fx: [{ find: CHAIN, set: { mult: 0.72, status: { id: 'shock', chance: 1 } } }] });
+  essence('es_glyph_fire', 'chain_glyph', 'Fire Signature', 'Deals Fire damage with a 40% chance to Burn, and writes an Ember rune.',
+    { set: { elem: 'fire' }, fx: [{ find: CHAIN, set: { elem: 'fire', status: { id: 'burn', chance: 0.4 } } }] });
+  essence('es_glyph_frost', 'chain_glyph', 'Frost Signature', 'Deals Cold damage and Chills for 3 s, and writes a Frost rune.',
+    { set: { elem: 'cold' }, fx: [{ find: CHAIN, set: { elem: 'cold', status: { id: 'chill', dur: 3 } } }] });
+
+  rite('es_glyph_quick', 'chain_glyph', 'Quick Signature', 'Cooldown 3.5 s instead of 5, but costs 30 Ink.',
+    { set: { cooldown: 3.5, cost: 30 } });
+  rite('es_glyph_cheap', 'chain_glyph', 'Thin Signature', 'Costs 15 Ink instead of 25. Cooldown 6 s.',
+    { set: { cost: 15, cooldown: 6 } });
+  rite('es_glyph_charges', 'chain_glyph', 'Two Signatures', 'Chain Glyph has 2 charges. Each takes 6 s.',
+    { set: { charges: 2, cooldown: 6 } });
+
+  // =============================================================================================
+  // FLAME WALL. Base: 14 s, 30 Ink; a line of fire 8 m wide across the aim (9 m) for 5 s: enemies cannot cross it, 30% each
+  // half second, 40% chance to Burn. Ember rune.
+  // =============================================================================================
+  shape('es_wall_long', 'flame_wall', 'Long Wall', 'The wall is 12 m wide instead of 8, for 85% of the damage.',
+    { power: 0.85, fx: [{ find: ZONE, set: { length: 12 } }] });
+  shape('es_wall_lasting', 'flame_wall', 'Lasting Wall', 'The wall burns for 9 s instead of 5.',
+    { fx: [{ find: ZONE, set: { duration: 9 } }] });
+  shape('es_wall_close', 'flame_wall', 'Close Wall', 'The wall rises across your own feet instead of at your aim.',
+    { set: { range: 3, aiUse: { use: 'attack', range: 3, minTargets: 2, orBoss: true } }, fx: [{ find: ZONE, set: { at: 'self' } }] });
+
+  essence('es_wall_hot', 'flame_wall', 'White Flame', 'Deals 45% each half second instead of 30%, but Burns only 20% of the time.',
+    { fx: [{ find: ZONE, set: { mult: 0.45, status: { id: 'burn', chance: 0.2 } } }] });
+  essence('es_wall_frost', 'flame_wall', 'Wall of Rime', 'A wall of frost: Cold damage that Chills for 2 s, and it writes a Frost rune.',
+    { set: { elem: 'cold' }, fx: [{ find: ZONE, set: { elem: 'cold', status: { id: 'chill', dur: 2 } } }] });
+  essence('es_wall_arc', 'flame_wall', 'Wall of Sparks', 'A wall of lightning: Shock damage with a 50% chance to Shock, and it writes an Arc rune.',
+    { set: { elem: 'shock' }, fx: [{ find: ZONE, set: { elem: 'shock', status: { id: 'shock', chance: 0.5 } } }] });
+
+  rite('es_wall_quick', 'flame_wall', 'Quick Wall', 'Cooldown 10 s instead of 14.',
+    { set: { cooldown: 10 } });
+  rite('es_wall_cheap', 'flame_wall', 'Thin Wall', 'Costs 18 Ink instead of 30.',
+    { set: { cost: 18 } });
+  rite('es_wall_twice', 'flame_wall', 'Two Walls', 'Flame Wall has 2 charges. Each takes 16 s.',
+    { set: { charges: 2, cooldown: 16 } });
+
+  // =============================================================================================
+  // FROST SCRIPT. Base: 6 s, 30 Ink; a 7 m, 60 degree cone for 90% as Cold, Chill 4 s. Frost rune.
+  // =============================================================================================
+  shape('es_frost_wide', 'frost_script', 'Wide Page', 'The cone opens 120 degrees instead of 60, for 80% of the damage.',
+    { power: 0.8, fx: [{ find: AOE, set: { arc: 120 } }] });
+  shape('es_frost_long', 'frost_script', 'Winter Breath', 'The cone reaches 10 m instead of 7, for 90% of the damage.',
+    { power: 0.9, set: { range: 9.5, aiUse: { use: 'attack', range: 9 } }, fx: [{ find: AOE, set: { radius: 10 } }] });
+  shape('es_frost_ring', 'frost_script', 'Ring of Rime', 'The frost bursts all around you in 4.5 m, for 75% of the damage.',
+    { power: 0.75, set: { range: 4, aiUse: { use: 'attack', range: 4 } }, fx: [{ find: AOE, set: { arc: 360, radius: 4.5 } }] });
+
+  essence('es_frost_freeze', 'frost_script', 'Hard Frost', 'Freezes for 1 s instead of Chilling, but deals 25% less damage.',
+    { fx: [{ find: AOE, set: { mult: 0.68, status: { id: 'freeze', dur: 1 } } }] });
+  essence('es_frost_deep', 'frost_script', 'Deep Chill', 'Chills for 8 s instead of 4, but deals 15% less damage.',
+    { fx: [{ find: AOE, set: { mult: 0.76, status: { id: 'chill', dur: 8 } } }] });
+  essence('es_frost_shatter', 'frost_script', 'Splintering Frost', 'Breaks Poise twice as hard and deals 10% more damage.',
+    { fx: [{ find: AOE, set: { mult: 1, poise: 2 } }] });
+
+  rite('es_frost_quick', 'frost_script', 'Quick Breath', 'Cooldown 4 s instead of 6.',
+    { set: { cooldown: 4 } });
+  rite('es_frost_cheap', 'frost_script', 'Short Page', 'Costs 20 Ink instead of 30.',
+    { set: { cost: 20 } });
+  rite('es_frost_charges', 'frost_script', 'Two Pages', 'Frost Script has 2 charges. Each takes 7 s.',
+    { set: { charges: 2, cooldown: 7 } });
+
+  // =============================================================================================
+  // ARC SCROLL. Base: 5 s, 30 Ink; a line 13 m long for 100% as Shock, 50% chance to Shock. Arc rune.
+  // =============================================================================================
+  shape('es_arc_long', 'arc_scroll', 'Long Scroll', 'The line is 18 m long instead of 13.',
+    { set: { range: 16, aiUse: { use: 'attack', range: 16 } }, fx: [{ find: AOE, set: { length: 18 } }] });
+  shape('es_arc_wide', 'arc_scroll', 'Broad Scroll', 'The line is 3.2 m wide instead of 1.6, for 85% of the damage.',
+    { power: 0.85, fx: [{ find: AOE, set: { width: 3.2 } }] });
+  shape('es_arc_twin', 'arc_scroll', 'Double Scroll', 'The scroll strikes twice, each for 60% of the damage.',
+    { power: 0.6, fx: [{ find: AOE, set: { hits: 2, interval: 0.25 } }] });
+
+  essence('es_arc_sure', 'arc_scroll', 'Certain Storm', 'Always Shocks, but deals 15% less damage.',
+    { fx: [{ find: AOE, set: { mult: 0.85, status: { id: 'shock', chance: 1 } } }] });
+  essence('es_arc_fire', 'arc_scroll', 'Flame Scroll', 'Deals Fire damage with a 50% chance to Burn, and writes an Ember rune.',
+    { set: { elem: 'fire' }, fx: [{ find: AOE, set: { elem: 'fire', status: { id: 'burn', chance: 0.5 } } }] });
+  essence('es_arc_stun', 'arc_scroll', 'Thunder Scroll', 'Stuns for 0.6 s, but deals 20% less damage.',
+    { fx: [{ find: AOE, set: { mult: 0.8, status: [{ id: 'shock', chance: 0.5 }, { id: 'stun', dur: 0.6 }] } }] });
+
+  rite('es_arc_quick', 'arc_scroll', 'Quick Scroll', 'Cooldown 3.5 s instead of 5, but costs 35 Ink.',
+    { set: { cooldown: 3.5, cost: 35 } });
+  rite('es_arc_cheap', 'arc_scroll', 'Short Scroll', 'Costs 20 Ink instead of 30. Cooldown 6 s.',
+    { set: { cost: 20, cooldown: 6 } });
+  rite('es_arc_charges', 'arc_scroll', 'Two Scrolls', 'Arc Scroll has 2 charges. Each takes 6 s.',
+    { set: { charges: 2, cooldown: 6 } });
+
+  // =============================================================================================
+  // RUNE TRAP. Base: 8 s, 20 Ink; a waiting rune up to 10 m away (2 at a time), erupts for 130% as Fire in 3.2 m and Burns.
+  // =============================================================================================
+  var BLAST = { type: 'aoe', radius: 3.2 };
+  shape('es_trap_three', 'rune_trap', 'Three Footnotes', 'Up to 3 Rune Traps wait at a time instead of 2.',
+    { fx: [{ find: TRAP, set: { cap: 3 } }] });
+  shape('es_trap_wide', 'rune_trap', 'Wide Rune', 'The eruption covers 4.5 m instead of 3.2, for 80% of the damage.',
+    { power: 0.8, fx: [{ find: BLAST, set: { radius: 4.5 } }] });
+  shape('es_trap_far', 'rune_trap', 'Far Rune', 'The rune can be written up to 15 m away instead of 10.',
+    { set: { range: 15, aiUse: { use: 'attack', range: 14 } }, fx: [{ find: TRAP, set: { range: 15 } }] });
+
+  essence('es_trap_frost', 'rune_trap', 'Frost Rune', 'Erupts as Cold and Chills for 4 s instead of Burning, and writes a Frost rune.',
+    { set: { elem: 'cold' }, fx: [{ find: BLAST, set: { elem: 'cold', status: { id: 'chill', dur: 4 } } }] });
+  essence('es_trap_arc', 'rune_trap', 'Storm Rune', 'Erupts as Shock and Shocks instead of Burning, and writes an Arc rune.',
+    { set: { elem: 'shock' }, fx: [{ find: BLAST, set: { elem: 'shock', status: { id: 'shock' } } }] });
+  essence('es_trap_big', 'rune_trap', 'Heavy Rune', 'Erupts for 150% instead of 130% and breaks Poise twice as hard, but Burns only 25% of the time.',
+    { set: { dmgLines: [{ label: 'trap', mult: 1.5, delivery: 'trap' }] }, fx: [{ find: BLAST, set: { mult: 1.5, poise: 3, status: { id: 'burn', chance: 0.25 } } }] });
+
+  rite('es_trap_quick', 'rune_trap', 'Quick Rune', 'Cooldown 5 s instead of 8.',
+    { set: { cooldown: 5 } });
+  rite('es_trap_cheap', 'rune_trap', 'Cheap Rune', 'Costs 10 Ink instead of 20. Cooldown 9 s.',
+    { set: { cost: 10, cooldown: 9 } });
+  rite('es_trap_charges', 'rune_trap', 'Two Runes at Once', 'Rune Trap has 2 charges. Each takes 9 s.',
+    { set: { charges: 2, cooldown: 9 } });
+
+  // =============================================================================================
+  // INK BLINK. Base: 8 s, 15 Ink; you reappear 8 m away; the blot you leave lasts 4 s: Soak, Slow 30%, 15% each half second.
+  // =============================================================================================
+  shape('es_blot_wide', 'ink_blink', 'Wide Blot', 'The blot covers 5 m instead of 3.5.',
+    { fx: [{ find: ZONE, set: { radius: 5 } }] });
+  shape('es_blot_long', 'ink_blink', 'Lasting Blot', 'The blot stays 7 s instead of 4.',
+    { fx: [{ find: ZONE, set: { duration: 7 } }] });
+  shape('es_blot_tight', 'ink_blink', 'Tight Blot', 'The blot covers only 2.5 m but deals 50% more damage.',
+    { power: 1.5, fx: [{ find: ZONE, set: { radius: 2.5 } }] });
+
+  essence('es_blot_frost', 'ink_blink', 'Frost Blot', 'The blot deals Cold damage and Chills for 3 s instead of Soaking.',
+    { set: { elem: 'cold' }, fx: [{ find: ZONE, set: { elem: 'cold', status: { id: 'chill', dur: 3 } } }] });
+  essence('es_blot_fire', 'ink_blink', 'Burning Blot', 'The blot deals Fire damage and Burns instead of Soaking.',
+    { set: { elem: 'fire' }, fx: [{ find: ZONE, set: { elem: 'fire', status: { id: 'burn', chance: 0.5 } } }] });
+  essence('es_blot_ward', 'ink_blink', 'Sealing Blot', 'Allies standing in the blot gain Ward equal to 2% of their maximum Health each half second.',
+    { fx: [{ find: ZONE, set: { shield: 0.04 } }] });
+
+  rite('es_iblink_charges', 'ink_blink', 'Two Blots', 'Ink Blink has 2 charges. Each takes 10 s.',
+    { set: { charges: 2, cooldown: 10 } });
+  rite('es_iblink_quick', 'ink_blink', 'Quick Blot', 'Cooldown 5 s instead of 8.',
+    { set: { cooldown: 5 } });
+  rite('es_iblink_ink', 'ink_blink', 'Ink Returned', 'Ink Blink restores 20 Ink. Cooldown 10 s.',
+    { set: { cooldown: 10 }, add: [ink(20)] });
+
+  // =============================================================================================
+  // GALE SIGIL. Base: 12 s, 25 Ink; drags enemies within 6 m of the aim (12 m) to its centre, then 90% as Cold in 3.5 m,
+  // Chill 4 s. Frost rune.
+  // =============================================================================================
+  var GALE_AOE = { type: 'aoe', radius: 3.5 };
+  shape('es_gale_wide', 'gale_sigil', 'Great Gale', 'Drags enemies from 9 m instead of 6, and bursts in 4.5 m, for 85% of the damage.',
+    { power: 0.85, fx: [{ find: PULL, set: { radius: 9 } }, { find: GALE_AOE, set: { radius: 4.5 } }] });
+  shape('es_gale_self', 'gale_sigil', 'Eye of the Storm', 'The sigil forms around you instead of at your aim.',
+    { set: { range: 3, aiUse: { use: 'attack', range: 5, minTargets: 3, orBoss: true } }, fx: [{ find: PULL, set: { at: 'self' } }, { find: GALE_AOE, set: { at: 'self' } }] });
+  shape('es_gale_far', 'gale_sigil', 'Far Gale', 'The sigil can be drawn up to 17 m away instead of 12.',
+    { set: { range: 17, aiUse: { use: 'attack', range: 16, minTargets: 3, orBoss: true } }, fx: [{ find: PULL, set: { range: 17 } }, { find: GALE_AOE, set: { range: 17 } }] });
+
+  essence('es_gale_arc', 'gale_sigil', 'Storm Gale', 'Bursts as Shock and Shocks instead of Chilling, and writes an Arc rune.',
+    { set: { elem: 'shock' }, fx: [{ find: GALE_AOE, set: { elem: 'shock', status: { id: 'shock', dur: 4 } } }] });
+  essence('es_gale_fire', 'gale_sigil', 'Fire Whirl', 'Bursts as Fire and Burns instead of Chilling, and writes an Ember rune.',
+    { set: { elem: 'fire' }, fx: [{ find: GALE_AOE, set: { elem: 'fire', status: { id: 'burn' } } }] });
+  essence('es_gale_freeze', 'gale_sigil', 'Blizzard', 'Freezes for 1.5 s instead of Chilling, but deals 30% less damage.',
+    { fx: [{ find: GALE_AOE, set: { mult: 0.63, status: { id: 'freeze', dur: 1.5 } } }] });
+
+  rite('es_gale_quick', 'gale_sigil', 'Quick Gale', 'Cooldown 8 s instead of 12.',
+    { set: { cooldown: 8 } });
+  rite('es_gale_cheap', 'gale_sigil', 'Light Breeze', 'Costs 15 Ink instead of 25.',
+    { set: { cost: 15 } });
+  rite('es_gale_twice', 'gale_sigil', 'Two Gales', 'Gale Sigil has 2 charges. Each takes 14 s.',
+    { set: { charges: 2, cooldown: 14 } });
+
+  // =============================================================================================
+  // OVERWRITE. Base: 10 s, 15 Ink; the line is completed at once with copies of its last rune and its bonus spell is cast at
+  // the aim (13 m); with an empty line, 30 Ink instead.
+  // =============================================================================================
+  shape('es_over_far', 'overwrite', 'Long Hand', 'You can aim the bonus spell up to 18 m away instead of 13.',
+    { set: { range: 18, aiUse: { use: 'buff', range: 18 } } });
+  essence('es_over_bold', 'overwrite', 'Bold Hand', 'While you know this mutation, your line spells deal 10% more damage.',
+    { mods: ['lineDmg*10'] });
+  essence('es_over_pure', 'overwrite', 'Clean Hand', 'While you know this mutation, your three-of-a-kind line spells deal 15% more damage.',
+    { mods: ['pureLine*15'] });
+  rite('es_over_quick', 'overwrite', 'Quick Eraser', 'Cooldown 7 s instead of 10.',
+    { set: { cooldown: 7 } });
+  rite('es_over_ward', 'overwrite', 'Sealed Page', 'Overwrite also gives you Ward equal to 6% of your maximum Health for 4 s.',
+    { add: [ward(0.06, 4)] });
+  rite('es_over_charges', 'overwrite', 'Two Drafts', 'Overwrite has 2 charges. Each takes 12 s.',
+    { set: { charges: 2, cooldown: 12 } });
+
+  // =============================================================================================
+  // QUILL STORM. Base: 10 s, 35 Ink; 8 quills in a second, 30% each with solid Poise damage. Arc rune.
+  // =============================================================================================
+  shape('es_quill_more', 'quill_storm', 'Flurry of Quills', 'Twelve quills instead of eight, each for 70% of the damage.',
+    { power: 0.7, fx: [{ find: REP, set: { count: 12, interval: 0.085 } }] });
+  shape('es_quill_pierce', 'quill_storm', 'Needle Quills', 'Each quill passes through 1 enemy, for 90% of the damage.',
+    { power: 0.9, fx: [{ find: PROJ, set: { pierce: 1 } }] });
+  shape('es_quill_homing', 'quill_storm', 'Seeking Quills', 'The quills seek the nearest enemy.',
+    { fx: [{ find: PROJ, set: { homing: 4 } }] });
+
+  essence('es_quill_fire', 'quill_storm', 'Burning Quills', 'The quills deal Fire damage with a 20% chance to Burn, and write an Ember rune.',
+    { set: { elem: 'fire' }, fx: [{ find: PROJ, set: { elem: 'fire', status: { id: 'burn', chance: 0.2 } } }] });
+  essence('es_quill_frost', 'quill_storm', 'Icicle Quills', 'The quills deal Cold damage and Chill for 2 s, and write a Frost rune.',
+    { set: { elem: 'cold' }, fx: [{ find: PROJ, set: { elem: 'cold', status: { id: 'chill', dur: 2 } } }] });
+  essence('es_quill_heavy', 'quill_storm', 'Iron Quills', 'The quills break Poise far harder and deal 10% more damage.',
+    { fx: [{ find: PROJ, set: { mult: 0.33, poise: 1.4 } }] });
+
+  rite('es_quill_quick', 'quill_storm', 'Quick Quills', 'Cooldown 7 s instead of 10.',
+    { set: { cooldown: 7 } });
+  rite('es_quill_cheap', 'quill_storm', 'Thrifty Quills', 'Costs 22 Ink instead of 35.',
+    { set: { cost: 22 } });
+  rite('es_quill_walk', 'quill_storm', 'Walking Storm', 'You move at full speed while you hurl the quills.',
+    { set: { moveMult: 1 } });
+
+  // =============================================================================================
+  // GRAND INSCRIPTION (Ultimate). Base: 80 s; a 6 m circle at the aim erupts three times for 220% (Fire Burn, Cold Chill,
+  // Shock and a 1 s Stun); for 10 s every skill writes its rune twice.
+  // =============================================================================================
+  var GI_FIRE = { type: 'aoe', elem: 'fire' }, GI_COLD = { type: 'aoe', elem: 'cold' }, GI_SHOCK = { type: 'aoe', elem: 'shock' };
+  shape('es_gi_wide', 'grand_inscription', 'Great Page', 'The circle is 8 m wide instead of 6, for 80% of the damage.',
+    { power: 0.8, fx: [{ find: AOE, set: { radius: 8 } }] });
+  shape('es_gi_close', 'grand_inscription', 'Small Hand', 'The circle is only 4 m wide but deals 30% more damage.',
+    { power: 1.3, fx: [{ find: AOE, set: { radius: 4 } }] });
+  shape('es_gi_long', 'grand_inscription', 'Long Chapter', 'Every skill writes its rune twice for 16 s instead of 10.',
+    { fx: [{ find: BUFF, set: { dur: 16 } }] });
+
+  essence('es_gi_heavy', 'grand_inscription', 'Heavy Script', 'Each eruption deals 250% instead of 220% and breaks Poise harder.',
+    { fx: [{ find: GI_FIRE, set: { mult: 2.5, poise: 3 } }, { find: GI_COLD, set: { mult: 2.5, poise: 3 } }, { find: GI_SHOCK, set: { mult: 2.5, poise: 3 } }] });
+  essence('es_gi_freeze', 'grand_inscription', 'Winter Script', 'The Cold eruption Freezes for 2 s instead of Chilling.',
+    { fx: [{ find: GI_COLD, set: { status: { id: 'freeze', dur: 2 } } }] });
+  essence('es_gi_soak', 'grand_inscription', 'Wet Script', 'The Fire eruption also Soaks for 4 s, so the next two set off reactions.',
+    { fx: [{ find: GI_FIRE, set: { status: [{ id: 'burn' }, { id: 'soak', dur: 4 }] } }] });
+
+  rite('es_gi_early', 'grand_inscription', 'Early Chapter', 'Cooldown 60 s instead of 80.',
+    { set: { cooldown: 60 } });
+  rite('es_gi_twice', 'grand_inscription', 'Second Edition', 'Grand Inscription has 2 charges. Each takes 95 s.',
+    { set: { charges: 2, cooldown: 95 } });
+  rite('es_gi_pact', 'grand_inscription', 'Written in Blood', 'Costs 15% of your Health. Cooldown 45 s.',
+    { set: { hpCost: 0.15, cooldown: 45 } });
+
+  KD.register('mutations', M);
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/data/37_mutations_gloamblade.js
 (function (root) {
   'use strict';
@@ -18145,6 +19473,141 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     { add: [{ type: 'heal', self: true, pct: 0.25 }] });
 
   KD.register('mutations', M);
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/38_tree_builds_emberscribe.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+
+  /**
+   * RECOMMENDED BUILDS of the Emberscribe's tree (docs/TREE_EMBERSCRIBE.md section 4). Pure data; the registry and the format
+   * are in src/data/38_tree_builds_gravecaller.js (KD.data.treeBuilds.add), the logic in src/meta/35_tree_builds.js, the screen
+   * is the Builds tab of the tree page. Goals are stable names: 'skill:<abilityId>', 'mut:<mutationId>', 'cluster:<clusterId>'
+   * (complete it) or a node's name. Every build starts from a different skill and fits KD.treeBuilds.BUDGET (152) points
+   * (tests/tree_emberscribe.test.js).
+   */
+  var R = KD.data = KD.data || {};
+  var TBD = R.treeBuilds = R.treeBuilds || { byClass: {} };
+  TBD.add = TBD.add || function (classId, rec) {
+    if (!rec || typeof rec.id !== 'string') throw new Error('KD.data.treeBuilds.add(' + classId + '): a record with an id is needed');
+    rec.cls = classId;
+    (TBD.byClass[classId] = TBD.byClass[classId] || []).push(rec);
+    return rec;
+  };
+  function add(rec) { return TBD.add('emberscribe', rec); }
+
+  // 4.1 Fire and Burn
+  add({ id: 'pyromancer', name: 'Pyromancer', design: '4.1', difficulty: 1, start: 'flame_wall', arms: ['ember', 'alchemy'],
+    pitch: 'Walls of fire, Burns that last, and every burning death spreads the blaze to the next one.',
+    tags: ['Fire', 'Burn', 'Area'],
+    stages: [
+      { to: 10, goals: ['mut:es_wall_lasting', 'mut:es_wall_hot', 'mut:es_wall_quick', 'cluster:ember_hearth'] },
+      { to: 25, goals: ['cluster:ember_coals', 'cluster:ember_after', 'cluster:ember_fuel', 'skill:chain_glyph', 'mut:es_glyph_fire'] },
+      { to: 40, goals: ['Pyromancer', 'cluster:ember_smoke', 'cluster:ember_brand', 'cluster:alchemy_ember_mid', 'cluster:ember_kiln'] },
+      { to: 60, goals: ['Wildfire', 'cluster:ember_inferno', 'cluster:ember_char', 'cluster:ember_pyre', 'cluster:ember_warm', 'cluster:ember_ash'] }
+    ] });
+
+  // 4.2 the line writer
+  add({ id: 'line_scribe', name: 'Line Scribe', design: '4.2', difficulty: 2, start: 'inscribe_rune', arms: ['glyph', 'ember'],
+    pitch: 'Write line after line: every finished line pays back Ink, raises a Ward and casts a spell that hits harder.',
+    tags: ['Rune lines', 'Line spells', 'Burst'],
+    stages: [
+      { to: 10, goals: ['mut:es_ins_quick', 'mut:es_ins_heavy', 'mut:es_ins_charges', 'cluster:glyph_flourish'] },
+      { to: 25, goals: ['cluster:glyph_poly', 'skill:overwrite', 'mut:es_over_bold', 'cluster:glyph_copy', 'cluster:glyph_underline'] },
+      { to: 40, goals: ['Calligrapher', 'cluster:glyph_lexicon', 'cluster:glyph_wax', 'cluster:glyph_rhyme', 'cluster:ember_glyph_mid'] },
+      { to: 60, goals: ['cluster:glyph_epic', 'cluster:glyph_gloss', 'cluster:glyph_hand', 'cluster:glyph_colophon', 'cluster:glyph_stacks', 'cluster:ember_glyph_outer'] }
+    ] });
+
+  // 4.3 the trapper
+  add({ id: 'trapper', name: 'Footnote Trapper', design: '4.3', difficulty: 2, start: 'rune_trap', arms: ['margin', 'glyph'],
+    pitch: 'Three traps in the margins, each one writing your rune line for you as it blows.',
+    tags: ['Traps', 'Area', 'Control'],
+    stages: [
+      { to: 10, goals: ['mut:es_trap_three', 'mut:es_trap_big', 'mut:es_trap_quick', 'cluster:margin_snare'] },
+      { to: 25, goals: ['cluster:margin_fuse', 'cluster:margin_bait', 'cluster:glyph_margin_mid', 'cluster:margin_wire', 'skill:inscribe_rune'] },
+      { to: 40, goals: ['Minefield', 'cluster:margin_detonate', 'cluster:margin_blast', 'cluster:margin_redink', 'cluster:margin_doodle'] },
+      { to: 60, goals: ['Marginalia', 'cluster:margin_sidebar', 'cluster:margin_errata', 'cluster:margin_sharp', 'cluster:margin_guard', 'cluster:glyph_margin_outer'] }
+    ] });
+
+  // 4.4 quills and crits
+  add({ id: 'quillmaster', name: 'Quillmaster', design: '4.4', difficulty: 2, start: 'quill_storm', arms: ['quill', 'margin'],
+    pitch: 'A storm of signed quills: crits pay back Ink, four quills pin a target, and every storm writes twice.',
+    tags: ['Critical hits', 'Projectiles', 'Single target'],
+    stages: [
+      { to: 10, goals: ['mut:es_quill_more', 'mut:es_quill_heavy', 'mut:es_quill_walk', 'cluster:quill_nib'] },
+      { to: 25, goals: ['cluster:quill_pinned', 'cluster:quill_blot', 'cluster:quill_point', 'skill:rune_trap', 'mut:es_trap_far'] },
+      { to: 40, goals: ['Quillmaster', 'cluster:quill_scratch', 'cluster:quill_guard', 'cluster:margin_quill_mid', 'cluster:quill_volley'] },
+      { to: 60, goals: ['Barrage', 'cluster:quill_flourish', 'cluster:quill_paper', 'cluster:quill_iron', 'cluster:quill_flight', 'cluster:quill_desk'] }
+    ] });
+
+  // 4.5 the Ward scribe
+  add({ id: 'ink_ward', name: 'Sealed Page', design: '4.5', difficulty: 1, start: 'ink_blink', arms: ['ink', 'quill'],
+    pitch: 'Ward on every blink, a fifth of every blow paid in Ink, and a deep well that never runs dry.',
+    tags: ['Ward', 'Ink', 'Tanky'],
+    stages: [
+      { to: 10, goals: ['mut:es_blot_wide', 'mut:es_blot_ward', 'mut:es_iblink_ink', 'cluster:ink_blotter'] },
+      { to: 25, goals: ['cluster:ink_well', 'cluster:ink_wax', 'cluster:ink_flow', 'skill:quill_storm', 'cluster:quill_guard'] },
+      { to: 40, goals: ['Ink for Blood', 'cluster:ink_binding', 'cluster:ink_seals', 'cluster:ink_shield', 'cluster:quill_ink_mid'] },
+      { to: 60, goals: ['Bottomless Well', 'cluster:ink_reserve', 'cluster:ink_mirror', 'cluster:ink_ledger', 'cluster:ink_pots', 'cluster:ink_quick'] }
+    ] });
+
+  // 4.6 cold and Freeze
+  add({ id: 'winter', name: 'Winter Codex', design: '4.6', difficulty: 2, start: 'frost_script', arms: ['winter', 'ink'],
+    pitch: 'Chill twice and they Freeze; Frozen, they take more from everything you write.',
+    tags: ['Cold', 'Freeze', 'Control'],
+    stages: [
+      { to: 10, goals: ['mut:es_frost_wide', 'mut:es_frost_deep', 'mut:es_frost_quick', 'cluster:winter_gale'] },
+      { to: 25, goals: ['cluster:winter_bite', 'cluster:winter_rime', 'cluster:winter_snap', 'cluster:winter_hoar', 'mut:es_gale_freeze'] },
+      { to: 40, goals: ['Permafrost', 'cluster:winter_glacier', 'cluster:winter_shell', 'cluster:winter_spell', 'cluster:ink_winter_mid'] },
+      { to: 60, goals: ['Glacial Hand', 'cluster:winter_shatter', 'cluster:winter_still', 'cluster:winter_snow', 'cluster:winter_white', 'cluster:winter_hearth'] }
+    ] });
+
+  // 4.7 pulls and blizzards
+  add({ id: 'gale', name: 'Eye of the Gale', design: '4.7', difficulty: 3, start: 'gale_sigil', arms: ['winter', 'storm'],
+    pitch: 'Drag the whole pack into one spot, Freeze it there and break it with lightning.',
+    tags: ['Pulls', 'Area', 'Cold'],
+    stages: [
+      { to: 10, goals: ['cluster:winter_gale', 'mut:es_frost_ring'] },
+      { to: 25, goals: ['mut:es_gale_wide', 'mut:es_gale_freeze', 'mut:es_gale_quick', 'cluster:winter_hoar', 'cluster:winter_bite'] },
+      { to: 40, goals: ['skill:arc_scroll', 'mut:es_arc_sure', 'cluster:winter_storm_mid', 'cluster:winter_snap', 'cluster:winter_glacier'] },
+      { to: 60, goals: ['Ice Ward', 'cluster:winter_shatter', 'cluster:winter_still', 'cluster:winter_spell', 'cluster:storm_static', 'cluster:winter_storm_outer'] }
+    ] });
+
+  // 4.8 Shock and speed
+  add({ id: 'stormcaller', name: 'Stormcaller', design: '4.8', difficulty: 2, start: 'arc_scroll', arms: ['storm', 'winter'],
+    pitch: 'Fast scrolls of lightning: Shocked enemies take crits, crits Shock the crowd, and the Ink keeps flowing.',
+    tags: ['Shock', 'Speed', 'Critical hits'],
+    stages: [
+      { to: 10, goals: ['mut:es_arc_long', 'mut:es_arc_sure', 'mut:es_arc_quick', 'cluster:storm_static'] },
+      { to: 25, goals: ['cluster:storm_quill', 'cluster:storm_clap', 'cluster:storm_step', 'skill:frost_script', 'mut:es_frost_freeze'] },
+      { to: 40, goals: ['Stormcaller', 'cluster:storm_charge', 'cluster:storm_arcing', 'cluster:storm_speed', 'cluster:storm_blue'] },
+      { to: 60, goals: ['Overcharge', 'cluster:storm_fork', 'cluster:storm_flash', 'cluster:storm_tempest', 'cluster:winter_storm_mid', 'cluster:storm_ground'] }
+    ] });
+
+  // 4.9 reactions
+  add({ id: 'alchemist', name: 'The Alchemist', design: '4.9', difficulty: 3, start: 'chain_glyph', arms: ['alchemy', 'storm'],
+    pitch: 'Mix every element on one enemy: each reaction pays back Ink, and the Stone makes every spell carry your last rune.',
+    tags: ['Reactions', 'Statuses', 'Bosses'],
+    stages: [
+      { to: 10, goals: ['mut:es_glyph_long', 'mut:es_glyph_sure', 'mut:es_glyph_charges', 'cluster:alch_wet'] },
+      { to: 25, goals: ['cluster:alch_catalyst', 'skill:grand_inscription', 'mut:es_gi_soak', 'cluster:alch_spine', 'cluster:alch_transmute'] },
+      { to: 40, goals: ['Philosopher\'s Stone', 'cluster:alch_reagents', 'cluster:alch_magnum', 'cluster:storm_alchemy_mid', 'mut:es_gi_early'] },
+      { to: 60, goals: ['Volatile Mixture', 'cluster:alch_gold', 'cluster:alch_mercury', 'cluster:alch_salt', 'cluster:alch_still', 'cluster:storm_alchemy_outer'] }
+    ] });
+
+  // 4.10 the purist
+  add({ id: 'monochrome', name: 'Monochrome', design: '4.10', difficulty: 3, start: 'overwrite', arms: ['glyph', 'alchemy'],
+    pitch: 'One element, every line pure: Overwrite finishes the line at once and every spell is three of a kind.',
+    tags: ['Rune lines', 'Pure lines', 'Burst'],
+    stages: [
+      { to: 10, goals: ['cluster:glyph_over', 'mut:es_over_pure'] },
+      { to: 25, goals: ['mut:es_over_quick', 'cluster:glyph_copy', 'cluster:glyph_flourish', 'cluster:glyph_rhyme', 'skill:inscribe_rune'] },
+      { to: 40, goals: ['Monochrome', 'cluster:glyph_poly', 'cluster:glyph_lexicon', 'cluster:glyph_underline', 'cluster:glyph_wax'] },
+      { to: 60, goals: ['cluster:glyph_epic', 'cluster:glyph_gloss', 'cluster:glyph_index', 'cluster:glyph_hand', 'cluster:glyph_vellum', 'cluster:glyph_stacks'] }
+    ] });
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -26658,6 +28121,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.80', date: '2026-10-16', title: 'The Emberscribe\'s own tree', notes: [
+      'The Emberscribe has its own talent tree now: The Burning Library, with over 1,500 nodes in eight arms',
+      'Fire, rune lines, traps, quills, Ink and Ward, frost, storms and alchemy: every skill and over 100 mutations come from the tree',
+      'Change a spell\'s element with a mutation and it writes a different rune',
+      'Ten recommended builds to follow, from the Pyromancer to Monochrome'
+    ] },
     { version: '0.7.79', date: '2026-10-15', title: 'The Hexblade\'s own tree', notes: [
       'The Hexblade has its own talent tree now: The Gallows Wood, with over 1,500 nodes in eight arms',
       'Curses, chains, Hex, ghost blades, blinks, executions, parries and blood: every skill and over 100 mutations come from the tree',
@@ -47428,6 +48897,336 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       'Raven: Claw Rake becomes a ranged feather, ' + Math.round(T.ravenEvade * 100) + '% of attacks miss you, a further 15% increased ranged damage, 10% faster movement.',
       'Apex Form: every skill does its part for all three masks: the one you wear at full power, the others at ' + Math.round(T.apexOff * 100) + '% (all three at ' + Math.round(T.apexBare * 100) + '% with no mask on).']
   });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/sim/56_tree_emberscribe.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var S = KD.sim = KD.sim || {};
+  var K = KD.skills = KD.skills || {};
+  var U = KD.util;
+  if (!K.registerHook) return;
+
+  /**
+   * EMBERSCRIBE, the rules of the class tree (docs/TREE_EMBERSCRIBE.md section 3): the `effect` keys `tree_emberscribe_<id>` of
+   * the rule notables and keystones in src/data/36_tree_emberscribe_<arm>.js. The tree also reuses the Scriptorium rules of the
+   * Crownweb (`web_emberscribe_*`, src/sim/51_class_emberscribe.js) and two web keystones (Open Book, Monochrome); the mutations
+   * are pure data. Rules that write runes go through KD.classes.runes.write, so a written rune counts exactly like one a spell
+   * wrote (it can complete a line). Every hook acts on the owner's own hits, statuses and casts, uses world.rng / world.time
+   * only, and guards the places where it could start itself again. Every number is in the T table; the node texts quote them
+   * (tests/tree_emberscribe.test.js compares).
+   */
+  var T = {
+    kindlingMore: 1.1,                       // Kindling: hits on Burning enemies
+    burnLonger: 1.4,                         // Slow Burn: Burn duration
+    fuelInk: 5,                              // Fuel for the Fire: Ink for a Burning kill
+    smokeLess: 0.9,                          // Choking Smoke: damage from Burning enemies
+    warmRadius: 6, warmHeal: 0.005,          // Warmth: a Burning enemy this close, Health per second
+    wildRadius: 3.5,                         // Wildfire (keystone)
+    noteInk: 8,                              // Margin Notes: Ink per completed line
+    sealWard: 0.05, sealDur: 4,              // Sealed Line: Ward per completed line
+    underlineMore: 1.3,                      // Underline: line spells on elites and bosses
+    footIcd: 3,                              // Footnotes (bridge): a trap writes an Ember rune at most this often
+    snareSlow: 0.3, snareDur: 3,             // Snare Glyph
+    trapInk: 6,                              // Ink Trap
+    baitRadius: 3.5, baitLess: 0.9,          // Bait and Switch
+    primedRadius: 4, primedMore: 1.2,        // Primed
+    margEvery: 3,                            // Marginalia (keystone): every third Ember Bolt writes an Ember rune
+    nibInk: 2,                               // Sharp Nib
+    pinHits: 4, pinRoot: 1,                  // Pinned Down
+    blotCrit: 0.15,                          // Blotted Page
+    quillWard: 0.06, quillWardDur: 4,        // Feather Ward
+    blotWard: 0.08, blotWardDur: 4,          // Blotter
+    spillMore: 1.12,                         // Spilled Ink
+    wellAt: 80, wellLess: 0.92,              // Deep Well
+    inkShare: 0.2, inkPer: 0.01,             // Ink for Blood (keystone): a fifth of the damage, 1 Ink per 1% of maximum Health
+    biteMore: 1.1,                           // Frostbite
+    hoarMore: 1.2,                           // Hoarfrost
+    snapFreeze: 1, snapIcd: 8,               // Cold Snap
+    permaChill: 2,                           // Permafrost (keystone)
+    iceFreeze: 1, iceIcd: 6,                 // Ice Ward (keystone)
+    staticCrit: 0.1,                         // Static
+    clapRadius: 2.5,                         // Thunderclap
+    stepRadius: 3,                           // Storm Step
+    chargeEvery: 5, chargeInk: 10,           // Charged
+    overPower: 2, overDur: 0.5,              // Overcharge (keystone)
+    catalystMore: 1.15,                      // Catalyst
+    transmuteInk: 10,                        // Transmutation
+    magnumMore: 1.15,                        // Magnum Opus
+    stoneChill: 2                            // Philosopher's Stone (keystone): the Chill of a Frost rune
+  };
+  S.treeEmberscribe = { T: T };
+
+  var LINE_SPELLS = { rune_burst: 1, rune_prison: 1, rune_lance: 1 };
+  var RUNE_STATUS = { ember: { id: 'burn' }, frost: { id: 'chill', dur: T.stoneChill }, arc: { id: 'shock' } };
+  function R() { return KD.classes && KD.classes.runes; }
+  function enemy(e) { return !!e && e.kind === 'enemy' && !e.dead && !e.removed; }
+  function foe(p, o) { return !!o && o !== p && !o.dead && !o.removed && !o.hidden && S.hostile(p, o); }
+  function direct(c) { return !!(c.spec && !c.spec.dot && !c.spec.proc); }
+  function spellHit(c) { return direct(c) && c.spec.delivery === 'spell'; }
+  function gain(c, n, why) { if (c.self.kind === 'player' && !c.self.dead) S.player.gainRes(c.world, c.self, n, why || 'tree'); }
+  function ward(c, frac, dur) { var p = c.self; if (!p.dead) S.addWard(c.world, p, S.lifePool(p) * frac, dur); }
+  function hot(t) { return !!S.hasStatus(t, 'burn'); }
+  function frozen(t) { return !!(t && (t.frozen || S.hasStatus(t, 'freeze'))); }
+  function scribe(p) { return p.hookState && p.hookState.class_emberscribe; }
+  /** True once for every rune line the owner completes (seen on the next tick; the class hook stamps `lineAt`). */
+  function lineDone(c, st) {
+    var cs = scribe(c.self), at = cs ? cs.lineAt : undefined;
+    if (at === undefined || at === st.seen) return false;
+    st.seen = at;
+    return true;
+  }
+  function write(c, rune, x, z, target) { var r = R(); if (r && !c.self.dead) r.write(c.world, c.self, rune, { x: x, z: z, target: target || null }); }
+  function myTrapNear(world, p, x, z, r) {
+    var zs = world.zones;
+    for (var i = 0; i < zs.length; i++) {
+      var zn = zs[i];
+      if (zn.removed || !zn.trap || zn.src !== p) continue;
+      if ((zn.x - x) * (zn.x - x) + (zn.z - z) * (zn.z - z) <= r * r) return true;
+    }
+    return false;
+  }
+  function knob(p, id, mult) {
+    var m = {}, cur = p.knobs.statusDur || {}, k;
+    for (k in cur) m[k] = cur[k];
+    m[id] = (m[id] || 1) * mult;
+    p.knobs.statusDur = m;
+  }
+  function around(c, x, z, r, fn) {
+    var list = c.world.queryCircle(x, z, r);
+    for (var i = 0; i < list.length; i++) { var o = list[i]; if (foe(c.self, o) && o.kind === 'enemy') fn(o); }
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // The Burning Page (ember)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_emberscribe_kindling', {
+    onBeforeHit: function (c) { if (c.target && c.target.kind === 'enemy' && hot(c.target)) c.mult *= T.kindlingMore; }
+  });
+  K.registerHook('tree_emberscribe_long_burn', { setup: function (p) { knob(p, 'burn', T.burnLonger); } });
+  K.registerHook('tree_emberscribe_fuel', {
+    onKill: function (c) { if (!c.byMinion && c.target && c.target.kind === 'enemy' && hot(c.target)) gain(c, T.fuelInk, 'fuel'); }
+  });
+  K.registerHook('tree_emberscribe_smoke', {
+    onBeforeDamaged: function (c) { var a = c.attacker; if (a && a.kind === 'enemy' && hot(a)) c.amount *= T.smokeLess; }
+  });
+  K.registerHook('tree_emberscribe_warmth', {
+    onTick: function (c, eff, st) {
+      var p = c.self;
+      if (p.dead) return;
+      st.acc = (st.acc || 0) + c.dt;
+      if (st.acc < 1) return;
+      st.acc -= 1;
+      var warm = false;
+      around(c, p.x, p.z, T.warmRadius, function (o) { if (hot(o)) warm = true; });
+      if (warm) S.heal(c.world, p, p.hpMax * T.warmHeal, p, { noScale: true, silent: true });
+    }
+  });
+  K.registerHook('tree_emberscribe_everburn', {
+    onHit: function (c) { if (spellHit(c) && enemy(c.target) && !c.info.kill) S.applyStatus(c.world, c.target, 'burn', { src: c.self, delivery: 'spell' }); }
+  });
+  K.registerHook('tree_emberscribe_wildfire', {
+    onKill: function (c) {
+      var t = c.target;
+      if (!t || t.kind !== 'enemy' || !hot(t)) return;
+      around(c, t.x, t.z, T.wildRadius, function (o) { if (o !== t) S.applyStatus(c.world, o, 'burn', { src: c.self, delivery: 'spell' }); });
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Glyph Hall (glyph)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_emberscribe_margin_note', { onTick: function (c, eff, st) { if (lineDone(c, st)) gain(c, T.noteInk, 'note'); } });
+  K.registerHook('tree_emberscribe_seal', { onTick: function (c, eff, st) { if (lineDone(c, st)) ward(c, T.sealWard, T.sealDur); } });
+  K.registerHook('tree_emberscribe_underline', {
+    onBeforeHit: function (c) {
+      var t = c.target;
+      if (c.spec && LINE_SPELLS[c.spec.ability] && t && t.kind === 'enemy' && (t.tier === 'elite' || S.bossRank(t.tier) > 0)) c.mult *= T.underlineMore;
+    }
+  });
+  // bridge glyph / margin
+  K.registerHook('tree_emberscribe_footnote', {
+    onTrap: function (c, eff, st) {
+      var w = c.world, zn = c.trap;
+      if (!zn || (st.ready || 0) > w.time) return;
+      st.ready = w.time + T.footIcd;
+      write(c, 'ember', zn.x, zn.z, c.victim);
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Margins (margin)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_emberscribe_snare', {
+    onHit: function (c) { if (c.spec && c.spec.ability === 'rune_trap' && !c.spec.dot && enemy(c.target) && !c.info.kill) S.applyStatus(c.world, c.target, 'slow', { src: c.self, dur: T.snareDur, power: T.snareSlow }); }
+  });
+  K.registerHook('tree_emberscribe_ink_trap', { onTrap: function (c) { gain(c, T.trapInk, 'trap'); } });
+  K.registerHook('tree_emberscribe_bait', {
+    onBeforeDamaged: function (c) { var a = c.attacker; if (a && a.kind === 'enemy' && myTrapNear(c.world, c.self, a.x, a.z, T.baitRadius)) c.amount *= T.baitLess; }
+  });
+  K.registerHook('tree_emberscribe_primed', {
+    onBeforeHit: function (c) { var t = c.target; if (c.spec && c.spec.ability === 'ember_bolt' && t && t.kind === 'enemy' && myTrapNear(c.world, c.self, t.x, t.z, T.primedRadius)) c.mult *= T.primedMore; }
+  });
+  K.registerHook('tree_emberscribe_marginalia', {
+    onFire: function (c, eff, st) {
+      if (!c.ability || c.ability.id !== 'ember_bolt') return;
+      st.n = (st.n || 0) + 1;
+      if (st.n % T.margEvery) return;
+      var ec = c.ctx || {};
+      write(c, 'ember', ec.aimX !== undefined ? ec.aimX : c.self.x, ec.aimZ !== undefined ? ec.aimZ : c.self.z, ec.target);
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Quill (quill)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_emberscribe_sharp_nib', {
+    onCrit: function (c) { var id = c.spec && c.spec.ability; if (direct(c) && (id === 'ember_bolt' || id === 'quill_storm') && enemy(c.target)) gain(c, T.nibInk, 'nib'); }
+  });
+  K.registerHook('tree_emberscribe_pinned', {
+    onHit: function (c) {
+      var inst = c.spec && c.spec.inst, t = c.target;
+      if (!direct(c) || c.spec.ability !== 'quill_storm' || !inst || !enemy(t) || c.info.kill) return;
+      var m = inst.esPin || (inst.esPin = {});
+      m[t.id] = (m[t.id] || 0) + 1;
+      if (m[t.id] === T.pinHits) S.applyStatus(c.world, t, 'root', { src: c.self, dur: T.pinRoot });
+    }
+  });
+  K.registerHook('tree_emberscribe_blotted', {
+    onBeforeHit: function (c) { if (c.spec && !c.spec.dot && c.target && S.hasStatus(c.target, 'soak')) c.spec.critAdd = (c.spec.critAdd || 0) + T.blotCrit; }
+  });
+  K.registerHook('tree_emberscribe_quill_ward', {
+    onCast: function (c) { if (c.ability && c.ability.id === 'quill_storm') ward(c, T.quillWard, T.quillWardDur); }
+  });
+  K.registerHook('tree_emberscribe_barrage', {
+    onFire: function (c) {
+      var r = R();
+      if (!r || !c.ability || c.ability.id !== 'quill_storm') return;
+      var rune = r.runeOf(c.ability, c.inst, c.self), ec = c.ctx || {};
+      if (rune) write(c, rune, ec.aimX !== undefined ? ec.aimX : c.self.x, ec.aimZ !== undefined ? ec.aimZ : c.self.z, ec.target);
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Inkwell (ink)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_emberscribe_blot_ward', {
+    onCast: function (c) { if (c.ability && c.ability.id === 'ink_blink') ward(c, T.blotWard, T.blotWardDur); }
+  });
+  K.registerHook('tree_emberscribe_spill', {
+    onBeforeHit: function (c) { if (c.target && c.target.kind === 'enemy' && S.hasStatus(c.target, 'soak')) c.mult *= T.spillMore; }
+  });
+  K.registerHook('tree_emberscribe_deep_well', {
+    onBeforeDamaged: function (c) { if (c.self.res >= T.wellAt) c.amount *= T.wellLess; }
+  });
+  K.registerHook('tree_emberscribe_ink_blood', {
+    onBeforeDamaged: function (c) {
+      var p = c.self, pool = S.lifePool(p);
+      if (!(c.amount > 0) || !(p.res > 0) || !(pool > 0)) return;
+      var share = c.amount * T.inkShare, ink = Math.min(p.res, share / (pool * T.inkPer));
+      p.res -= ink;
+      c.amount -= ink * pool * T.inkPer;
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Winter Codex (winter)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_emberscribe_frostbite', {
+    onBeforeHit: function (c) { if (c.target && c.target.kind === 'enemy' && S.hasStatus(c.target, 'chill')) c.mult *= T.biteMore; }
+  });
+  K.registerHook('tree_emberscribe_hoarfrost', {
+    onBeforeHit: function (c) { if (c.target && c.target.kind === 'enemy' && frozen(c.target)) c.mult *= T.hoarMore; }
+  });
+  K.registerHook('tree_emberscribe_cold_snap', {
+    onStatusApplied: function (c, eff, st) {
+      var t = c.target, w = c.world, p = c.self;
+      if (c.id !== 'chill' || st.busy || !enemy(t)) return;
+      var m = t.esSnap || (t.esSnap = {}), kc = 'c' + p.id, kf = 'f' + p.id;
+      var was = (m[kc] || 0) > w.time;
+      m[kc] = w.time + (c.status ? c.status.dur - c.status.t : 0);
+      if (!was || (m[kf] || 0) > w.time) return;
+      m[kf] = w.time + T.snapIcd;
+      st.busy = true;
+      try { S.applyStatus(w, t, 'freeze', { src: p, dur: T.snapFreeze }); } finally { st.busy = false; }
+    }
+  });
+  K.registerHook('tree_emberscribe_permafrost', { setup: function (p) { knob(p, 'chill', T.permaChill); } });
+  K.registerHook('tree_emberscribe_ice_ward', {
+    onDamaged: function (c) {
+      var p = c.self, a = c.attacker, w = c.world;
+      if (p.dead || !a || a.kind !== 'enemy' || a.dead || !(p.ward > 0 || (c.info && c.info.absorbed > 0))) return;
+      var m = a.esIce || (a.esIce = {}), k = 'i' + p.id;
+      if ((m[k] || 0) > w.time) return;
+      m[k] = w.time + T.iceIcd;
+      S.applyStatus(w, a, 'freeze', { src: p, dur: T.iceFreeze, noReact: true });
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Storm Margin (storm)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_emberscribe_static', {
+    onBeforeHit: function (c) { if (c.spec && !c.spec.dot && c.target && S.hasStatus(c.target, 'shock')) c.spec.critAdd = (c.spec.critAdd || 0) + T.staticCrit; }
+  });
+  K.registerHook('tree_emberscribe_thunderclap', {
+    onCrit: function (c, eff, st) {
+      var t = c.target, elem = (c.info && c.info.elem) || c.spec.elem;
+      if (st.busy || !spellHit(c) || elem !== 'shock' || !t) return;
+      st.busy = true;
+      try { around(c, t.x, t.z, T.clapRadius, function (o) { if (o !== t) S.applyStatus(c.world, o, 'shock', { src: c.self }); }); } finally { st.busy = false; }
+    }
+  });
+  function stormStep(c) { var p = c.self; if (!p.dead) around(c, p.x, p.z, T.stepRadius, function (o) { S.applyStatus(c.world, o, 'shock', { src: p }); }); }
+  K.registerHook('tree_emberscribe_storm_step', {
+    onDodge: stormStep,
+    onCast: function (c) { if (c.ability && c.ability.id === 'ink_blink') stormStep(c); }
+  });
+  K.registerHook('tree_emberscribe_charged', {
+    onCast: function (c, eff, st) {
+      var ab = c.ability;
+      if (!ab || ab.slot === 'primary' || ab.internal || ab.cls !== 'emberscribe') return;
+      st.n = (st.n || 0) + 1;
+      if (st.n % T.chargeEvery === 0) gain(c, T.chargeInk, 'charged');
+    }
+  });
+  K.registerHook('tree_emberscribe_overcharge', {
+    onStatusApplied: function (c) {
+      var s = c.status;
+      if (c.id !== 'shock' || !s || !enemy(c.target)) return;
+      var base = (s.def && s.def.power) || s.power;
+      if (s.power < base * T.overPower) s.power = base * T.overPower;
+      s.dur = s.t + (s.dur - s.t) * T.overDur;
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Great Work (alchemy)
+  // ---------------------------------------------------------------------------------------------
+  var MIX = ['burn', 'chill', 'shock', 'soak'];
+  K.registerHook('tree_emberscribe_catalyst', {
+    onBeforeHit: function (c) {
+      var t = c.target, n = 0;
+      if (!t || t.kind !== 'enemy') return;
+      for (var i = 0; i < MIX.length; i++) if (S.hasStatus(t, MIX[i])) n++;
+      if (n >= 2) c.mult *= T.catalystMore;
+    }
+  });
+  K.registerHook('tree_emberscribe_transmute', { onReaction: function (c) { gain(c, T.transmuteInk, 'reaction'); } });
+  K.registerHook('tree_emberscribe_magnum', {
+    onBeforeHit: function (c) { if (c.target && c.target.kind === 'enemy' && S.hasStatus(c.self, 'grand_inscription')) c.mult *= T.magnumMore; }
+  });
+  K.registerHook('tree_emberscribe_stone', {
+    onHit: function (c) {
+      var cs = scribe(c.self), rs = cs && RUNE_STATUS[cs.last];
+      if (!rs || !spellHit(c) || !enemy(c.target) || c.info.kill) return;
+      S.applyStatus(c.world, c.target, rs.id, { src: c.self, dur: rs.dur, delivery: 'spell' });
+    }
+  });
+  void U;
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
