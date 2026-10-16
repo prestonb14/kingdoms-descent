@@ -3872,7 +3872,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.73';
+  KD.VERSION = '0.7.74';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -4409,7 +4409,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (cunning) {
       m.push({ s: 'dmgRanged', t: 'inc', v: 0.005 * cunning }, { s: 'critChance', t: 'add', v: 0.0012 * cunning }, { s: 'evasion', t: 'add', v: 1.5 * cunning });
       // finesse classes (Gloamblade, Wildmask) fight in melee with Cunning
-      if (cls && cls.finesse) m.push({ s: 'dmgMelee', t: 'inc', v: 0.005 * cunning });
+      if (cls && cls.finesse) m.push({ s: 'dmgMelee', t: 'inc', v: 0.005 * cunning * (cls.finesse === true ? 1 : cls.finesse) });      // [w9 checker] finesse may be a share
     }
     // Spirit raises the resource pool by a percentage so small pools (Souls: 10) stay small
     if (spirit) m.push({ s: 'dmgSpell', t: 'inc', v: 0.005 * spirit }, { s: 'dmgMinion', t: 'inc', v: 0.005 * spirit }, { s: 'resMax', t: 'inc', v: 0.004 * spirit }, { s: 'ward', t: 'add', v: 3 * spirit });
@@ -4704,7 +4704,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       blurb: 'A knife in the corner of your eye. Stay unseen to charge Shade, then spend it all at once.',
       resource: { id: 'shade', name: 'Shade', color: '#9aa6b8', mode: 'build', max: 100, regen: 0, decay: 0 },
       mechanic: 'Shade builds while hidden or out of enemy sight, and from backstabs. Attacks from stealth spend Shade for burst damage.',
-      weapon: 'daggers', offhand: 'cloakpin', armor: 'light', finesse: true, attr: { might: 0.2, cunning: 0.7, spirit: 0.1 },
+      weapon: 'daggers', offhand: 'cloakpin', armor: 'light', finesse: 0.6, /* [w9 checker] true -> 0.6: Cunning gave crits, evasion AND full melee damage (docs/BALANCE_BENCH.md) */ attr: { might: 0.2, cunning: 0.7, spirit: 0.1 },
       base: [{ s: 'critChance', t: 'add', v: 0.05 }, { s: 'moveSpeed', t: 'inc', v: 0.08 }, { s: 'dodgeCdr', t: 'inc', v: 0.15 },
         { s: 'dmgTaken', t: 'more', v: -0.10 }, { s: 'lifesteal', t: 'add', v: 0.03 }],      // light armor and no potions: without these the bot lost the first boss 4 times in 6 and never beat the second
       primary: 'Twin Daggers',
@@ -11274,7 +11274,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     abil: function (name, mods, a, k, v) { return { name: name, mods: mods || [], abil: [{ a: a, k: k, v: v }] }; },
     /** Every fifth trunk node (T5, T10 .. T25) also gives TRUNK_DAG more Twin Daggers damage: the primary grows with the
      *  points like the class's other damage (the tree's own stats lean on backstabs, Stealth and statuses). */
-    TRUNK_DAG: 0.045, HUB_DAG: 0.06,
+    TRUNK_DAG: 0.025, HUB_DAG: 0.03,      // [w9 checker] 0.045 / 0.06 -> 0.025 / 0.03: the primary carried 56-60% of the damage (docs/BALANCE_BENCH.md)
     dagTrunk: function (tr) {
       [4, 9, 14, 19, 24].forEach(function (i) {
         var n = tr[i];
@@ -11345,7 +11345,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     // Balance (docs/TREE_GLOAMBLADE.md section 5): most of this tree's damage stats want a backstab, Stealth or a status,
     // so the estimator rates them far above what they give a hero hitting a target from the front. Tune 0.7 / 0.6 keeps the
     // estimate inside the caps; the primary's share (6% per hub node, 4.5% on every fifth trunk node) keeps real fights in band.
-    tune: { off: 0.7, def: 0.6 },
+    tune: { off: 0.6, def: 0.6 },          // [w9 checker] off 0.7 -> 0.6 (docs/BALANCE_BENCH.md)
     road: ['hp 1', 'moveSpeed 1', 'resAll 1'],
     // the owner's rule for class trees: links across the borders to the neighbouring arms only, no diagonals inside an arm
     links: { bypass: false, rows: false, road: ['moveSpeed 1'] }
@@ -14076,7 +14076,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       { id: 'soul_key_dark', name: 'The Dark', row: 7, lane: 2, shape: 'arc', kind: 'keystone',
         nodes: ['dmgSpell 1', 'cdr 1'],
         core: { t: 'keystone', name: 'Hungry Dark', mods: [], effect: 'tree_gravecaller_dark', est: est(1.10, 1),
-          spec: 'Each Soul you spend makes your spells deal 5% more damage for 6 s (up to 10 Souls: 50%). Souls above half your maximum fade at 1 every 2 s.' } },
+          spec: 'Each Soul you spend makes your spells deal 5% more damage for 6 s (up to 7 Souls: 35%). Souls above half your maximum fade at 1 every 2 s.' } },
 
       // ---- Row 8 (T25, the rim); the OUTER ring road runs along it: lane -3 and lane +3 are joined to the outer bridges --------------
       { id: 'soul_tithe', name: 'Tithe Bowl', row: 8, lane: -3, shape: 'ring', kind: 'stat',
@@ -15275,7 +15275,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   essence('lance_break', 'soul_lance', 'Battering Ram', 'The lance deals 200%, nearly three times the Poise damage, and knocks enemies back 3 m.',
     { fx: [{ find: { type: 'projectile' }, set: { mult: 2, poise: 7, knockback: 3 } }] });
 
-  rite('lance_all', 'soul_lance', 'Empty the Urn', 'Soul Lance spends every Soul you hold (at least 3) and deals 30% more damage for each Soul beyond the third. Cooldown 8 s.',
+  rite('lance_all', 'soul_lance', 'Empty the Urn', 'Soul Lance spends every Soul you hold (at least 3) and deals 20% more damage for each Soul beyond the third. Cooldown 8 s.',
     { set: { cooldown: 8 }, hook: 'mut_lance_all' });
   rite('lance_blood', 'soul_lance', 'Lance the Vein', 'Costs 12% of your Health instead of Souls.',
     { set: { cost: 0, hpCost: 0.12 } });
@@ -17867,11 +17867,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
     // BLOOD ----------------------------------------------------------------------------------------------------------
     { id: 'bloodletting', name: 'Bloodletting', cls: 'gravecaller', slot: 'skill', icon: 'blood_drop', anim: 'cast_hand',
-      desc: 'Open your palm: pay 10% of your Health. Three needles of blood fly out for 70% weapon damage each, pass through one enemy and leave Bleed, and you gain 2 Souls. It will not take your last drop: it cannot be cast when the price would kill you.',
+      desc: 'Open your palm: pay 10% of your Health. Three needles of blood fly out for 60% weapon damage each, pass through one enemy and leave Bleed, and you gain 2 Souls. It will not take your last drop: it cannot be cast when the price would kill you.',
       flavor: 'The dead ask for very little. The living are the expensive ones.',
       cost: 0, hpCost: 0.10, gain: 2, cooldown: 6, windup: 0.2, recover: 0.25, delivery: 'spell', elem: 'phys', tags: ['spell', 'projectile', 'blood'], range: 14,
-      effects: [{ type: 'projectile', speed: 26, range: 16, count: 3, spread: 24, mult: 0.7, poise: 0.4, pierce: 1, r: 0.25, model: 'quill', status: { id: 'bleed', chance: 1 } }],
-      aiUse: { use: 'attack', range: 12 } },
+      effects: [{ type: 'projectile', speed: 26, range: 16, count: 3, spread: 24, mult: 0.6, poise: 0.4, pierce: 1, r: 0.25, model: 'quill', status: { id: 'bleed', chance: 1 } }],
+      aiUse: { use: 'attack', range: 12 } },      // [w9 checker] needles 0.7 -> 0.6
 
     // SOUL -----------------------------------------------------------------------------------------------------------
     { id: 'soul_lance', name: 'Soul Lance', cls: 'gravecaller', slot: 'skill', icon: 'spear', anim: 'cast_staff',
@@ -18193,7 +18193,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       desc: 'Two quick stabs. Hits from behind are backstabs: 15% more damage and 7 Shade each.',
       flavor: 'One for the purse, one for the throat.',
       windup: 0.16, recover: 0.36, moveMult: 0.6, delivery: 'melee', elem: 'phys', tags: ['melee', 'attack'], range: 2.0,
-      effects: [{ type: 'melee', range: 2.1, arc: 80, mult: 0.25, poise: 0.3, hits: 2, interval: 0.12, max: 2 }],
+      effects: [{ type: 'melee', range: 2.1, arc: 80, mult: 0.225, poise: 0.3, hits: 2, interval: 0.12, max: 2 }],      // [w9 checker] 0.25 -> 0.225
       aiUse: { use: 'attack', range: 2.0 } },
 
     { id: 'shadow_step', name: 'Shadow Step', cls: 'gloamblade', slot: 'skill', start: true, icon: 'dash', anim: 'stab',
@@ -23533,6 +23533,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.74', date: '2026-10-15', title: 'Balance: assassin and necromancer', notes: [
+      'Gloamblade toned down: Twin Daggers and Ambush hit a little softer',
+      'Bosses now sense a hidden Gloamblade after a couple of seconds',
+      'Gravecaller: Empty the Urn, Hungry Dark and Bloodletting trimmed',
+      'Survival and damage builds measured for every class, more tuning to come'
+    ] },
     { version: '0.7.72', date: '2026-10-15', title: 'Sigil tuning, part two', notes: [
       'Sigils fine-tuned: Chain jumps for 35%, Anchor and Reach a little smaller',
       'Toxic Blast only spreads to enemies that are not poisoned yet'
@@ -34707,7 +34713,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   // ---------------------------------------------------------------------------------------------
   // Public hooks used by the rest of the sim
   // ---------------------------------------------------------------------------------------------
-  function validTarget(e, t) { return !!t && !t.dead && !t.removed && !t.hidden && !t.stealthed && !t.untargetable && t.team !== e.team && t.team !== 2; }
+  function validTarget(e, t) { return !!t && !t.dead && !t.removed && !t.hidden && (!t.stealthed || (t.bossSees && S.bossRank(e.tier) > 0)) && !t.untargetable && t.team !== e.team && t.team !== 2; }      // [w9 checker] bossSees: 55_class_gloamblade.js
   A.validTarget = validTarget;
 
   /** Puts `e` into combat against `tgt` and alerts its pack and close friends. */
@@ -42332,9 +42338,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     coldMin: 3, coldRadius: 5, coldDur: 3,                     // Cold Comfort: 3 or more Souls spent on one skill Chill enemies within 5 m for 3 s
     stillGap: 1.5, stillSouls: 1,                              // Still Waters: a spell crit returns 1 Soul, once every 1.5 s
     furnaceMult: 0.7, furnaceRange: 14, furnaceMax: 6,         // Soul Furnace: a bolt of 70% per Soul that did not fit, nearest enemy within 14 m (at most 6 bolts at once)
-    darkPer: 0.05, darkMax: 10, darkDur: 6,                    // Hungry Dark: 5% spell damage per Soul spent, up to 10 Souls, for 6 s
+    darkPer: 0.05, darkMax: 7, darkDur: 6,                     // Hungry Dark: 5% spell damage per Soul spent, up to 7 Souls, for 6 s ([w9 checker] 10 -> 7)
     darkFadeEvery: 2, darkFadeAbove: 0.5,                      // ... Souls above half the urn fade at 1 every 2 s
-    allBonus: 0.3,                                             // Empty the Urn: 30% more damage per Soul beyond the third
+    allBonus: 0.2,                                             // Empty the Urn: 20% more damage per Soul beyond the third ([w9 checker] 0.3 -> 0.2)
     encoreAdd: 0.5, encoreMax: 8,                              // Encore: 0.5 s longer per death in the choir, 8 s at most
     soloMult: 1.0, soloRadius: 3, soloStep: 0.1, soloMax: 10   // Solo: each minion bursts for 100% within 3 m; 10% more Requiem damage per minion, up to 10 minions (100%)
   };
@@ -42463,7 +42469,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   });
 
   /**
-   * Hungry Dark: each Soul you spend makes your spells deal 5% more damage for 6 s (up to 10 Souls: 50%). Souls above half the urn fade
+   * Hungry Dark: each Soul you spend makes your spells deal 5% more damage for 6 s (up to 7 Souls: 35%). Souls above half the urn fade
    * at 1 every 2 s.
    */
   K.registerHook('tree_gravecaller_dark', {
@@ -43446,8 +43452,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     backstabHits: 3,      // backstab hits per cast that give Shade
     backstabMult: 1.15,   // damage of a backstab
     rearArc: 1.75,        // radians off the enemy's facing from which a hit counts as "from behind" (about 100 degrees)
-    ambushPer: 0.008,      // an Ambush (the attack that breaks Stealth) deals this much more damage per Shade spent
+    ambushPer: 0.006,      // an Ambush (the attack that breaks Stealth) deals this much more damage per Shade spent ([w9 checker] 0.008 -> 0.006)
     ambushCrit: 0.25,     // and has this much extra Critical Chance
+    bossSense: 2.5,       // [w9 checker] seconds of Stealth after which a boss senses you again (the Nightblade stood unharmed in it)
+    ambushPowerScale: 0.35,// [w9 checker] share of the Ambush Damage stat that counts (1 = all of it)
     fullAmbush: true,     // at full Shade the next damaging skill (not the primary) is an Ambush even without Stealth
     shadeBurst: 1.2,      // Mirror Shade: W of the burst when the double ends
     shadeBurstRadius: 3.5,
@@ -43512,7 +43520,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
   function shadeFull(p) { return p.resMax > 0 && p.res >= p.resMax - 0.5; }
   /** The Ambush bonus of this player per Shade spent. */
-  function ambushPer(p) { return T.ambushPer * stat(p, 'ambushPower', 1); }
+  // [w9 checker] the Ambush Damage stat counts at ambushPowerScale of its value: at 3x Ambush Damage and 150 Shade an Ambush
+  // dealt 4.6x (docs/BALANCE_BENCH.md: the Nightblade killed Act III and IV bosses in under a minute)
+  function ambushPer(p) { return T.ambushPer * (1 + (stat(p, 'ambushPower', 1) - 1) * T.ambushPowerScale); }
   function coated(p) { return !!(S.hasStatus(p, 'poison_edge') || (p.knobs && p.knobs.gloamCoated)); }
   /** How high this player's blades may stack Poison (the status's own 8 plus the stat poisonCap). */
   function poisonCap(p) { var d = KD.data.statuses && KD.data.statuses.poison; return ((d && d.maxStacks) || 8) + Math.max(0, Math.floor(stat(p, 'poisonCap', 0))); }
@@ -43547,6 +43557,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     onTick: function (c, eff, st) {
       var p = c.self, w = c.world;
       if (p.dead) return;
+      // [w9 checker] a boss senses a Stealthed hero after TUNE.bossSense seconds (KD.sim.ai.validTarget reads p.bossSees)
+      p.stealthT = p.stealthed ? (p.stealthT || 0) + c.dt : 0; p.bossSees = p.stealthed && p.stealthT > T.bossSense;
       if (p.stealthed) { S.player.gainRes(w, p, T.stealthShade * c.dt, 'stealth'); keepSearching(w, p); }
       else if (!seen(w, p)) {
         S.player.gainRes(w, p, T.unseenShade * c.dt, 'unseen');
@@ -43632,7 +43644,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     S.spawn.pickup(w, 'gold', gx, gz, { amount: gold });
     var items = [], rng = w.lootRng || w.rng;
     if (big || rng.next() < T.robItemChance * loot) {
-      var r = S.spawn.dropLoot(w, gx, gz, { source: 'enemy', tier: big ? 'elite' : 'normal', level: t.level, player: p, itemsOnly: true });
+      var r = S.spawn.dropLoot(w, gx, gz, { source: 'enemy', tier: big ? 'elite' : 'normal', level: t.level, player: p, itemsOnly: true, mine: true });      // [w9 drops] a steal is the thief's alone
       items = (r && r.items) || [];
     }
     w.events.emit('fx', { name: 'pickpocket', x: t.x, y: 1, z: t.z, src: p, gold: gold, items: items.length });
@@ -43727,7 +43739,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       'Backstab: a hit from behind, or on an enemy that is Stunned, Broken, Frozen, Feared, blinded by smoke or fighting someone else. Backstabs deal ' + Math.round((T.backstabMult - 1) * 100) + '% more damage and give ' + T.backstabShade + ' Shade (up to ' + T.backstabHits + ' hits per attack).',
       'Ambush: the attack that breaks Stealth spends all Shade. It deals ' + (T.ambushPer * 100) + '% more damage per Shade spent (' + Math.round(T.ambushPer * 10000) + '% more at 100) and has +' + Math.round(T.ambushCrit * 100) + '% Critical Chance.',
       'Full Shade: your next damaging skill (not Twin Daggers) is an Ambush even without Stealth. The boon Ambush Ready shows it.',
-      'While you are hidden, enemies search for you instead of returning to their posts.']
+      'While you are hidden, enemies search for you instead of returning to their posts. Bosses sense you again after ' + T.bossSense + ' s of Stealth.']
   });
 })(typeof window !== 'undefined' ? window : globalThis);
 
