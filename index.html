@@ -3872,7 +3872,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.83';
+  KD.VERSION = '0.7.84';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -3898,6 +3898,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   if (KD.config.bossMarks === undefined) KD.config.bossMarks = true;   // [boss-marks] owner: body-telling bosses (Greymaw) draw a red ground mark for every attack again; false = only their area moves (src/sim/27_boss_strings.js)
   if (KD.config.trees === undefined) KD.config.trees = { gravecaller: true, gloamblade: true }; // [w8 gloamblade tree] owner turned it on
   if (KD.config.trees && KD.config.trees.lanternbearer === undefined) KD.config.trees.lanternbearer = true; // [w8 lanternbearer tree] The Long Vigil, docs/TREE_LANTERNBEARER.md
+  if (KD.config.trees && KD.config.trees.clockwright === undefined) KD.config.trees.clockwright = true; // [w8 clockwright tree] The Great Works, docs/TREE_CLOCKWRIGHT.md
   if (KD.config.trees && KD.config.trees.thornwarden === undefined) KD.config.trees.thornwarden = true; // [w8 thornwarden tree] The Old Wood, docs/TREE_THORNWARDEN.md
   if (KD.config.trees && KD.config.trees.wildmask === undefined) KD.config.trees.wildmask = true; // [w8 wildmask tree] The Moon Grove, docs/TREE_WILDMASK.md
   // The online service (accounts, friends, invites, co-op rooms: the kd-online repository on Cloudflare Workers).
@@ -11299,6 +11300,135 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/data/35_tree_clockwright.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree;
+
+  /**
+   * The Clockwright's own talent tree, THE GREAT WORKS: the class-wide record (arm order, hub, tuning) and the small helpers
+   * the eight arm files use. The arms live in src/data/36_tree_clockwright_<armId>.js, the mutations in
+   * src/data/37_mutations_clockwright.js, the recommended builds in src/data/38_tree_builds_clockwright.js and the rules
+   * (rule notables, keystones) in src/sim/56_tree_clockwright.js. Design: docs/TREE_CLOCKWRIGHT.md. Format: docs/TREE.md.
+   * Switch: KD.config.trees.clockwright (src/core/00_base.js). Off = the Clockwright uses the Crownweb (the Foundry) as before.
+   *
+   * Arms, clockwise from the top; neighbours mix well (the generator's cross-border links join neighbours only):
+   *   pistol  the sidearm and the grapple (Grapple Hook)                 turret  the gun line (Deploy Turret)
+   *   coil    lightning, Shock, Overload (Tesla Coil, the Ultimate Grand Mechanism)
+   *   vent    steam, Soak, vent damage (Steam Vent)                       boiler  Pressure and Heat (Overclock, Pressure Burst)
+   *   mines   mines and spring traps (Gear Mine, Spring Trap)             golem   the Brass Golem (Brass Golem)
+   *   wrench  the workshop: repairs, longer devices, Ward (Repair Wrench)
+   */
+
+  /** Helpers of the arm files (data only). */
+  var CW = T.clock = {
+    /** Mutation ids of this class all start with 'cw_' (ids are global; the arm files name them without it). */
+    mut: function (id) { return { t: 'mutation', mut: 'cw_' + id }; },
+    /** A rule notable whose rule is a hook of src/sim/56_tree_clockwright.js (`tree_clockwright_<id>`). */
+    rule: function (id, name, mods, spec, est) { return { t: 'notable', name: name, mods: mods, effect: 'tree_clockwright_' + id, spec: spec, est: est || { off: 1.02, def: 1.01 } }; },
+    /** A rule notable whose rule is one of the Foundry's hooks (src/sim/55_class_clockwright.js, `web_clockwright_<key>`). */
+    web: function (key, name, mods, spec, est) { return { t: 'notable', name: name, mods: mods, effect: 'web_clockwright_' + key, spec: spec, est: est || { off: 1.02, def: 1.01 } }; },
+    key: function (name, mods, spec, effect, est, extra) {
+      var k = { t: 'keystone', name: name, mods: mods, spec: spec, est: est || { off: 1.04, def: 1.02 } };
+      if (effect) k.effect = effect;
+      if (extra) for (var f in extra) k[f] = extra[f];
+      return k;
+    },
+    pact: function (name, mods, spec) { var n = { name: name, mods: mods, pact: true }; if (spec) n.spec = spec; return n; },
+    abil: function (name, mods, a, k, v) { return { name: name, mods: mods || [], abil: [{ a: a, k: k, v: v }] }; },
+    trophy: function (name, mods, boss) { return { t: 'trophy', name: name, mods: mods, req: { boss: boss } }; },
+    corrupt: function (name, mods, at) { return { t: 'corrupted', name: name, mods: mods, req: { corruption: at } }; },
+    faction: function (name, mods, id, rep) { return { t: 'faction', name: name, mods: mods, req: { faction: { id: id, rep: rep } } }; },
+    ring: function (id, name, row, lane, nodes, core, bonus, extra) {
+      var c = { id: id, name: name, row: row, lane: lane, shape: 'ring', kind: 'stat', nodes: nodes, core: core, bonus: bonus };
+      if (extra) for (var f in extra) c[f] = extra[f];
+      return c;
+    },
+    star: function (id, name, row, lane, entry, muts, core) {
+      return { id: id, name: name, row: row, lane: lane, shape: 'star', kind: 'mutation', nodes: [entry].concat(muts.map(CW.mut)), core: core };
+    },
+    altar: function (id, name, row, lane, nodes) {
+      return { id: id, name: name, row: row, lane: lane, shape: 'ring', kind: 'altar', nodes: nodes, core: { t: 'altar', name: name }, bonus: ['sigilPower 1.5'] };
+    },
+    keyArc: function (id, row, lane, nodes, keystone) {
+      return { id: id, name: keystone.name, row: row, lane: lane, shape: 'arc', kind: 'keystone', spokes: [0, 1], nodes: nodes, core: keystone };
+    },
+    /** Every fifth trunk node (T5, T10 .. T25) also gives TRUNK_KIT more damage to the Spring Pistol and the three damage devices
+     *  (turret, mine, coil): the kit grows with the points (much of this tree is utility, Ward, Pressure and the Golem). */
+    TRUNK_KIT: 0.035, HUB_KIT: 0.04, KIT: ['spring_pistol', 'deploy_turret', 'gear_mine', 'tesla_coil'],
+    kitAbil: function (v) { return CW.KIT.map(function (a) { return { a: a, k: 'dmg', v: v }; }); },
+    pistolTrunk: function (tr) {
+      [4, 9, 14, 19, 24].forEach(function (i) {
+        var n = tr[i];
+        if (typeof n === 'string') n = { mods: [n] };
+        else if (Array.isArray(n)) n = { name: n[0], mods: n.slice(1) };
+        else { var c = {}; for (var k in n) c[k] = n[k]; n = c; }
+        n.abil = (n.abil || []).concat(CW.kitAbil(CW.TRUNK_KIT));
+        tr[i] = n;
+      });
+      return tr;
+    }
+  };
+
+  // ---------------------------------------------------------------------------------------------
+  // What the estimator cannot see in stats (KD.data.tree.EST; never touches gameplay). Devices deal the hero's own Trap Damage.
+  // ---------------------------------------------------------------------------------------------
+  (function () {
+    var E = T.EST, P = E.parts, S = E.skills;
+    var TRAP = ['dmg', 'dmgTrap'], GUN = ['dmg', 'dmgPhys', 'dmgRanged'];
+    P.spring_pistol = { w: 1, keys: GUN, speed: 'atkSpeed' };
+    P.deploy_turret = { w: 0.5, keys: TRAP.concat(['dmgPhys']) };
+    P.tesla_coil = { w: 0.4, keys: TRAP.concat(['dmgShock']) };
+    P.gear_mine = { w: 0.45, keys: TRAP.concat(['dmgPhys']) };
+    P.spring_trap = { w: 0.2, keys: TRAP.concat(['dmgPhys']) };
+    P.steam_vent = { w: 0.35, keys: TRAP.concat(['dmgFire']) };
+    P.pressure_burst = { w: 0.35, keys: TRAP.concat(['dmgFire']) };
+    P.grapple_hook = { w: 0.15, keys: GUN };
+    P.repair_wrench = { w: 0.1, keys: ['dmg', 'dmgPhys', 'dmgMelee'] };
+    P.overclock = { w: 0.05, keys: ['dmg'] };
+    P.brass_golem = { w: 0.3, minion: true };
+    P.grand_mechanism = { w: 0.25, keys: TRAP.concat(['dmgShock']) };
+    S.deploy_turret = { off: 0.1, def: 0.03 };
+    S.tesla_coil = { off: 0.08, def: 0.02 };
+    S.gear_mine = { off: 0.09, def: 0.01 };
+    S.spring_trap = { off: 0.04, def: 0.06 };
+    S.steam_vent = { off: 0.06, def: 0.04 };
+    S.pressure_burst = { off: 0.07, def: 0.02 };
+    S.grapple_hook = { off: 0.03, def: 0.04 };
+    S.repair_wrench = { off: 0.02, def: 0.08 };
+    S.overclock = { off: 0.06, def: 0 };
+    S.brass_golem = { off: 0.04, def: 0.1 };
+    S.grand_mechanism = { off: 0.07, def: 0.03 };
+  })();
+
+  /** A hub node: a named minor with two half-size mods and a little more damage for the pistol and the damage devices. */
+  function gun(name, a, b) { return { name: name, mods: [a, b], abil: CW.kitAbil(CW.HUB_KIT) }; }
+  // Version 1: the first tree (docs/TREE_CLOCKWRIGHT.md).
+  T.define('clockwright', {
+    version: 1, name: 'The Great Works',
+    arms: ['pistol', 'turret', 'coil', 'vent', 'boiler', 'mines', 'golem', 'wrench'],
+    hub: [
+      gun('Oiled Spring', 'dmgRanged 0.75', 'hp 0.75'),            // pistol
+      gun('Mounting Bolts', 'dmgTrap 0.75', 'armor 0.75'),         // turret
+      gun('Copper Wire', 'dmgShock 0.75', 'resAll 0.75'),          // coil
+      gun('Pipe Fitting', 'ventPower 0.75', 'hp 0.75'),            // vent
+      gun('Pressure Gauge', 'heatPower 0.75', 'resAll 0.75'),      // boiler
+      gun('Tripwire Spool', 'dmgTrap 0.75', 'hp 0.75'),            // mines
+      gun('Brass Rivets', 'minionHp 0.75', 'armor 0.75'),          // golem
+      gun('Tool Belt', 'deviceDur 0.75', 'hp 0.75')                // wrench
+    ],
+    hubBonus: ['hp 1.5', 'resAll 1'],
+    startBonus: { skills: 2, mods: ['dmg*15', 'hp*15'], text: 'While you know two skills or fewer besides Spring Pistol, you deal 15% more damage and have 15% more Health.' },
+    // Balance (docs/TREE_CLOCKWRIGHT.md section 5).
+    tune: { off: 0.6, def: 0.46 },
+    road: ['hp 1', 'moveSpeed 1', 'resAll 1'],
+    links: { bypass: false, rows: false, road: ['moveSpeed 1'] }
+  });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/data/35_tree_emberscribe.js
 (function (root) {
   'use strict';
@@ -12250,6 +12380,810 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     road: ['hp 1', 'moveSpeed 1', 'resAll 1'],
     links: { bypass: false, rows: false, road: ['moveSpeed 1'] }
   });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_clockwright_boiler.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, C = KD.data.tree.clock;
+  var rule = C.rule, web = C.web, key = C.key, pact = C.pact, abil = C.abil, ring = C.ring, star = C.star;
+
+  /**
+   * CLOCKWRIGHT, arm 4 of 8: THE BOILER (`boiler`). Pressure, Heat and Overheat. Skills: Overclock (trunk, 4 points), Pressure
+   * Burst (core of a row-2 wheel, 10 points). Rules: src/sim/56_tree_clockwright.js. Holds the bridges to mines.
+   */
+  T.arm('clockwright', {
+    id: 'boiler', name: 'The Boiler', focus: 'Ride the gauge into the red: Heat, Overclock, a bigger tank and a louder bang', color: '#e0703c', vein: 'war',
+
+    trunk: C.pistolTrunk([
+      'heatPower 1', 'hp 1', { t: 'skill', grants: 'overclock', abil: [{ a: 'overclock', k: 'dur', v: 0.05 }] }, 'resMax 1', 'armor 1',  // T1..T5
+      'hp 1', 'atkSpeed 1', 'resAll 1', ['Furnace Road', 'moveSpeed 1', 'heatPower 0.5'], 'hp 1',                                       // T6..T10
+      'heatPower 1', 'armor 1', 'hp 1', 'cdr 1', 'resAll 1',                                                                            // T11..T15
+      'hp 1', 'resMax 1', 'dmgTrap 1', 'hp 1', 'ventPower 1',                                                                           // T16..T20
+      'resRegen 1', 'hp 1', 'heatPower 1', 'resAll 1', 'hp 1'                                                                           // T21..T25
+    ]),
+
+    clusters: [
+      { id: 'boiler_oc_shape', name: 'Overclock: shape', row: 1, lane: -1, shape: 'star', kind: 'mutation',
+        nodes: ['hp 1', C.mut('oc_long'), 'atkSpeed 1'], core: ['Long Shift', 'heatPower 1', 'hp 1'] },
+      star('boiler_oc_essence', 'Overclock: essence', 1, 1, 'heatPower 1', ['oc_fury', 'oc_devices', 'oc_cool'], ['Red Gears', 'atkSpeed 1', 'armor 1']),
+      star('boiler_oc_rite', 'Overclock: rite', 2, -1, 'resMax 1', ['oc_quick', 'oc_charge', 'oc_twice'],
+        abil('Quick Throttle', ['cdr 1', 'hp 1'], 'overclock', 'cd', -0.06)),
+      ring('boiler_blowdown', 'The Blowdown', 2, 1,
+        ['ventPower 1', 'hp 1', abil('Wide Blast', ['aoe 0.5'], 'pressure_burst', 'area', 0.08), 'armor 1', 'resMax 1'],
+        { t: 'skill', grants: 'pressure_burst', abil: [{ a: 'pressure_burst', k: 'dmg', v: 0.1 }] },
+        ['ventPower 1', 'hp 1.5'], { kind: 'skill', spokes: [0] }),
+
+      star('boiler_pb_shape', 'Pressure Burst: shape', 3, -2, 'hp 1', ['pb_wide', 'pb_line', 'pb_aim'], ['Wide Blowdown', 'aoe 1', 'hp 1']),
+      ring('boiler_stoke', 'Stoking', 3, -1, ['heatPower 1', 'hp 1', 'resRegen 1', 'resAll 1'],
+        web('pressure_cooker', 'Pressure Cooker', ['resRegen 1.5'], 'While at least one of your devices stands, Pressure vents 50% slower.', { off: 1.02, def: 1 }),
+        ['heatPower 1', 'hp 1.5']),
+      ring('boiler_gasket', 'Blown Gasket', 3, 1, ['atkSpeed 1', 'hp 1', 'resMax 1', 'armor 1'],
+        rule('gasket', 'Blown Gasket', ['atkSpeed 1'], 'When you Overheat you attack 25% faster for 5 s.', { off: 1.03, def: 1 }),
+        ['atkSpeed 1', 'hp 1.5']),
+      star('boiler_pb_essence', 'Pressure Burst: essence', 3, 2, 'ventPower 1', ['pb_fire', 'pb_stun', 'pb_soak'], ['Hot Blast', 'ventPower 1', 'armor 1']),
+
+      ring('boiler_tank', 'Big Tank', 4, -2, ['resMax 1', 'hp 1', 'armor 1', 'resAll 1'], ['Double Boiler', 'resMax 2', 'hp 1'], ['resMax 1', 'hp 1.5']),
+      C.altar('boiler_altar_a', 'Altar of the Furnace', 4, -1, ['hp 1', 'heatPower 1', 'armor 1']),
+      ring('boiler_sink', 'Heat Sink', 4, 1, ['dmgTaken 1@highRes', 'hp 1', 'resAll 1', 'armor 1'], ['Sink Fins', 'dmgTaken 2@highRes', 'hp 1'], ['resAll 1', 'hp 1.5']),
+      star('boiler_pb_rite', 'Pressure Burst: rite', 4, 2, 'hp 1', ['pb_quick', 'pb_cheap', 'pb_ward'], ['Ready Valve', 'cdr 1', 'hp 1']),
+
+      ring('boiler_coal', 'Coal Road', 5, -2, ['hp 1', 'moveSpeed 1', 'resRegen 1', 'resAll 1'], ['Coal Wagon', 'moveSpeed 1.5', 'resRegen 1'], ['moveSpeed 1', 'hp 1.5']),
+      ring('boiler_red', 'Red Gauge', 5, -1, ['heatPower 1', 'hp 1', 'critChance 1', 'armor 1'], ['In the Red', 'heatPower 2', 'critChance 1'], ['heatPower 1', 'hp 1.5']),
+      ring('boiler_firebox', 'Firebox', 5, 1, ['dmgFire 1', 'hp 1', 'ventPower 1', 'resAll 1'], ['Open Firebox', 'dmgFire 2', 'ventPower 1'], ['dmgFire 1', 'hp 1.5']),
+      ring('boiler_regulator', 'Regulator', 5, 2, ['cdr 1', 'hp 1', 'resMax 1', 'armor 1'], ['Governor', 'cdr 2', 'resMax 1'], ['cdr 1', 'hp 1.5']),
+
+      ring('boiler_rest', "Stoker's Rest", 6, -2, ['hp 1', 'hpRegen 1', 'armor 1', 'resAll 1'], ['Coal Dust', 'hpRegen 2', 'hp 1'], ['hpRegen 1', 'hp 1.5']),
+      ring('boiler_grindwell', "Grindwell's Furnace", 6, -1, ['hp 1', C.trophy('Mill Furnace', ['heatPower 1.5', 'resMax 1.5'], 'grindwell'), 'armor 1', 'resAll 1'],
+        ['Grinding Heat', 'heatPower 2', 'hp 1'], ['heatPower 1', 'hp 1.5']),
+      ring('boiler_cult', 'Hellfire', 6, 1, ['hp 1', C.corrupt('Infernal Coal', ['heatPower 2', 'dmgFire 1.5'], 20), 'armor 1', 'resAll 1'],
+        C.corrupt('Furnace of the Hollow', ['dmg*2', 'heatPower 2', 'dmgTrap 2'], 40), ['heatPower 1', 'hp 1.5']),
+      ring('boiler_crown', 'Royal Foundry', 6, 2, ['resAll 1', C.faction('Foundry Seal', ['heatPower 1.5', 'armor 1'], 'crown', 20), 'hp 1', 'armor 1'],
+        C.faction('Master of the Forge', ['heatPower 2', 'dmgTrap 2'], 'crown', 60), ['resAll 1', 'hp 1.5']),
+
+      { id: 'boiler_pacts', name: 'Boiler Bargains', row: 7, lane: -2, shape: 'star', kind: 'special',
+        nodes: ['hp 1',
+          pact('Runaway Boiler', ['heatPower*40', 'resMax*-15']),
+          pact('Thick Walls', ['resMax*20', 'heatPower*-12']),
+          pact('Hot Running', ['atkSpeed*8', 'dmgTaken*6'])],
+        core: ['Stoker Pay', 'heatPower 1', 'hp 1'] },
+      ring('boiler_engine', "Iron Warden's Engine", 7, -1, ['hp 1', 'resMax 1', 'poise 1', C.trophy('Warden Engine', ['resMax 1.5', 'hp 1.5'], 'iron_warden')],
+        ['Iron Heart', 'resMax 2', 'hp 1'], ['resMax 1', 'hp 1.5']),
+      C.altar('boiler_altar_b', 'Altar of Coal', 7, 1, ['hp 1', 'resMax 1', 'heatPower 1']),
+      C.keyArc('boiler_key_redline', 7, 2, ['heatPower 1', 'resMax 1'],
+        key('Redline', [], 'Overheat triggers at 130 Pressure instead of 100. While Pressure is above 100 your devices deal 30% more damage. The Overheat self-stun lasts twice as long.',
+          'web_redline', { off: 1.04, def: 0.97 })),
+
+      ring('boiler_relief', 'Pressure Relief', 8, -3, ['hp 1', 'resAll 1', 'armor 1', 'resMax 1'], ['Pop Valve', 'resAll 2', 'hp 1'], ['resAll 1', 'hp 1.5']),
+      C.keyArc('boiler_key_lungs', 8, -2, ['resMax 1', 'hp 1'],
+        key('Iron Lungs', ['ventPower*-30'], 'Overheating no longer Stuns you, but your vents deal 30% less damage.', 'tree_clockwright_lungs', { off: 1.02, def: 1.04 })),
+      ring('boiler_door', 'Furnace Door', 8, -1, ['heatPower 1', 'hp 1', 'armor 1', 'resAll 1'], ['Banked Coals', 'heatPower 2', 'armor 1'], ['heatPower 1', 'hp 1.5']),
+      ring('boiler_plate', 'Boiler Plate', 8, 1, ['armor 1', 'hp 1', 'resFire 1', 'resAll 1'], ['Rivet Rows', 'armor 2', 'hp 1'], ['armor 1', 'hp 1.5']),
+      C.keyArc('boiler_key_boil', 8, 2, ['heatPower 1', 'armor 1'],
+        key('Full Boil', ['dmg*15@highRes', 'dmgTaken*10@highRes'], 'While your Pressure is high you deal 15% more damage, but take 10% more.', null, { off: 1.04, def: 0.99 })),
+      ring('boiler_night', 'Night Shift', 8, 3, ['hp 1', 'hpRegen 1', 'resAll 1', 'armor 1'], ['Banked Fire', 'hpRegen 2', 'hp 1'], ['hp 1.5', 'armor 1'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['heatPower 2', 'hp 2'] },
+      { at: 35, mods: ['resMax 3', 'armor 2'] },
+      { at: 60, mods: ['heatPower 3', 'atkSpeed 2', 'hp 2'] }
+    ]
+  });
+
+  T.bridge('clockwright', { id: 'boiler_mines_inner', between: ['boiler', 'mines'], ring: 'inner', name: 'Hot Fuses', shape: 'star',
+    nodes: ['heatPower 1', C.mut('sp_pressure'), 'dmgTrap 1', 'hp 1'],
+    core: ['Warm Powder', 'dmgTrap 1.5', 'heatPower 1'], bonus: ['hp 1', 'resAll 1'] });
+  T.bridge('clockwright', { id: 'boiler_mines_mid', between: ['boiler', 'mines'], ring: 'mid', name: 'Boiler Bombs', shape: 'diamond',
+    nodes: ['resMax 1', 'hp 1', 'dmgTrap 1', 'armor 1'],
+    core: ['Kettle Bombs', 'dmgTrap 1.5', 'resMax 1'], bonus: ['hp 1', 'armor 1'] });
+  T.bridge('clockwright', { id: 'boiler_mines_outer', between: ['boiler', 'mines'], ring: 'outer', name: 'Slow Fuse', shape: 'diamond',
+    nodes: ['heatPower 1', 'hp 1', 'deviceDur 1', 'resAll 1'],
+    core: ['Long Burn', 'deviceDur 1.5', 'heatPower 1.5'], bonus: ['hp 1.5', 'resAll 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_clockwright_coil.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, C = KD.data.tree.clock;
+  var rule = C.rule, key = C.key, pact = C.pact, abil = C.abil, ring = C.ring, star = C.star;
+
+  /**
+   * CLOCKWRIGHT, arm 2 of 8: THE COIL YARD (`coil`). Lightning, Shock and Overload. Skills: Tesla Coil (trunk, 4 points) and
+   * the Ultimate Grand Mechanism (core of a row-3 wheel, 13 points). Rules: src/sim/56_tree_clockwright.js. Holds the bridges to vent.
+   */
+  T.arm('clockwright', {
+    id: 'coil', name: 'The Coil Yard', focus: 'Lightning on a leash: coils, Shock, Overloads and the Grand Mechanism', color: '#ffe45c', vein: 'dread',
+
+    trunk: C.pistolTrunk([
+      'dmgShock 1', 'hp 1', { t: 'skill', grants: 'tesla_coil', abil: [{ a: 'tesla_coil', k: 'area', v: 0.05 }] }, 'deviceRange 1', 'resAll 1',  // T1..T5
+      'hp 1', 'statusChance 1', 'dmgTrap 1', ['Copper Road', 'moveSpeed 1', 'dmgShock 0.5'], 'hp 1',                                             // T6..T10
+      'deviceDur 1', 'armor 1', 'hp 1', 'dmgShock 1', 'resAll 1',                                                                                // T11..T15
+      'hp 1', 'deviceSpeed 1', 'resShock 1', 'hp 1', 'cdr 1',                                                                                    // T16..T20
+      'statusDur 1', 'hp 1', 'dmgShock 1', 'resAll 1', 'hp 1'                                                                                    // T21..T25
+    ]),
+
+    clusters: [
+      star('coil_tc_shape', 'Tesla Coil: shape', 1, -1, 'hp 1', ['coil_wide', 'coil_long', 'coil_two'], ['Tall Coil', 'deviceRange 1', 'hp 1']),
+      star('coil_tc_essence', 'Tesla Coil: essence', 1, 1, 'dmgShock 1', ['coil_hot', 'coil_slow', 'coil_hum'], ['Charged Plates', 'dmgShock 1', 'armor 1']),
+      star('coil_tc_rite', 'Tesla Coil: rite', 2, -1, 'cdr 1', ['coil_quick', 'coil_twice', 'coil_pressure'],
+        abil('Fast Winding', ['cdr 1', 'hp 1'], 'tesla_coil', 'cd', -0.06)),
+      ring('coil_yard', 'The Coil Yard', 2, 1,
+        ['dmgShock 1', 'hp 1', abil('Thick Copper', ['deviceRange 0.5'], 'tesla_coil', 'area', 0.08), 'armor 1', 'statusChance 1'],
+        rule('overload', 'Overload Current', ['dmgShock 1'], 'Your Trap Damage hits on Shocked enemies deal 12% more.', { off: 1.03, def: 1 }),
+        ['dmgShock 1', 'hp 1.5']),
+
+      star('coil_gm_rite', 'Grand Mechanism: rite', 3, -2, 'hp 1', ['gm_early', 'gm_twice', 'gm_pact'], ['Night Shift', 'cdr 1', 'hp 1']),
+      ring('coil_static', 'Static', 3, -1, ['statusChance 1', 'hp 1', 'dmgShock 1', 'resAll 1'], ['Static Field', 'statusChance 2', 'resShock 1'], ['statusChance 1', 'hp 1.5']),
+      ring('coil_engine', 'The Great Engine', 3, 1, ['dmgTrap 1', 'hp 1', abil('Spare Cogs', ['resAll 1'], 'grand_mechanism', 'cd', -0.08), 'armor 1'],
+        { t: 'skill', grants: 'grand_mechanism', abil: [{ a: 'grand_mechanism', k: 'area', v: 0.1 }] },
+        ['dmgTrap 1', 'hp 1.5'], { kind: 'skill', spokes: [0] }),
+      star('coil_gm_essence', 'Grand Mechanism: essence', 3, 2, 'dmgShock 1', ['gm_storm', 'gm_pull', 'gm_shield'], ['Humming Core', 'dmgShock 1', 'hp 1']),
+
+      ring('coil_ground', 'Grounding', 4, -2, ['resShock 1', 'hp 1', 'armor 1', 'resAll 1'], ['Grounded Boots', 'resShock 2', 'armor 1'], ['resAll 1', 'hp 1.5']),
+      C.altar('coil_altar_a', 'Altar of Copper', 4, -1, ['hp 1', 'dmgShock 1', 'deviceRange 1']),
+      star('coil_gm_shape', 'Grand Mechanism: shape', 4, 1, 'hp 1', ['gm_wide', 'gm_long', 'gm_far'], ['Great Wheel', 'deviceRange 1', 'hp 1']),
+      ring('coil_caps', 'Capacitors', 4, 2, ['deviceDur 1', 'hp 1', 'resMax 1', 'resAll 1'], ['Stored Charge', 'deviceDur 2', 'resMax 1'], ['deviceDur 1', 'hp 1.5']),
+
+      ring('coil_wire', 'Wire Road', 5, -2, ['hp 1', 'moveSpeed 1', 'deviceRange 1', 'resAll 1'], ['Telegraph Line', 'moveSpeed 1.5', 'deviceRange 1'], ['moveSpeed 1', 'hp 1.5']),
+      ring('coil_arc', 'Arc Light', 5, -1, ['dmgShock 1', 'hp 1', 'critChance 1', 'armor 1'], ['Arc Flash', 'critChance 2', 'dmgShock 1'], ['critChance 1', 'hp 1.5']),
+      ring('coil_front', 'Storm Front', 5, 1, ['dmg 1@crowded', 'hp 1', 'deviceSpeed 1', 'armor 1'], ['Into the Storm', 'dmg 1.5@crowded', 'armor 1'], ['armor 1', 'hp 1.5']),
+      ring('coil_dynamo', 'Dynamo', 5, 2, ['deviceSpeed 1', 'hp 1', 'cdr 1', 'resAll 1'], ['Spinning Dynamo', 'deviceSpeed 2', 'cdr 1'], ['deviceSpeed 1', 'hp 1.5']),
+
+      ring('coil_insulation', 'Insulation', 6, -2, ['hp 1', 'armor 1', 'hpRegen 1', 'resAll 1'], ['Rubber Lining', 'armor 2', 'hp 1'], ['armor 1', 'hp 1.5']),
+      ring('coil_wyrm', "Tide Wyrm's Spark", 6, -1, ['hp 1', C.trophy('Wyrm Spark', ['dmgShock 1.5', 'statusChance 1.5'], 'tide_wyrm'), 'armor 1', 'resAll 1'],
+        ['Sea Lightning', 'dmgShock 2', 'hp 1'], ['dmgShock 1', 'hp 1.5']),
+      ring('coil_cult', 'Wild Current', 6, 1, ['hp 1', C.corrupt('Crackling Veins', ['dmgShock 2', 'deviceSpeed 1.5'], 20), 'armor 1', 'resAll 1'],
+        C.corrupt('Living Lightning', ['dmg*2', 'dmgShock 2', 'statusChance 2'], 40), ['dmgShock 1', 'hp 1.5']),
+      ring('coil_crown', 'Royal Lightning', 6, 2, ['resAll 1', C.faction('Court Spark', ['dmgShock 1.5', 'deviceRange 1'], 'crown', 20), 'hp 1', 'armor 1'],
+        C.faction('Court Electrician', ['dmgShock 2', 'deviceSpeed 2'], 'crown', 60), ['resAll 1', 'hp 1.5']),
+
+      { id: 'coil_pacts', name: 'Copper Bargains', row: 7, lane: -2, shape: 'star', kind: 'special',
+        nodes: ['hp 1',
+          pact('High Voltage', ['dmgShock*12', 'hp*-5']),
+          pact('Long Wire', ['deviceRange*20', 'dmgShock*-6']),
+          pact('Thin Wire', ['deviceSpeed*10', 'deviceDur*-12'])],
+        core: ['Wire Fees', 'dmgShock 1', 'hp 1'] },
+      ring('coil_windlord', "Windlord's Bolt", 7, -1, ['hp 1', 'dmgShock 1', 'poise 1', C.trophy('Captured Bolt', ['dmgShock 1.5', 'hp 1.5'], 'windlord_caul')],
+        ['Bottled Storm', 'dmgShock 2', 'hp 1'], ['dmgShock 1', 'hp 1.5']),
+      C.altar('coil_altar_b', 'Altar of Sparks', 7, 1, ['hp 1', 'statusChance 1', 'dmgShock 1']),
+      C.keyArc('coil_key_rod', 7, 2, ['dmgShock 1', 'deviceRange 1'],
+        key('Lightning Rod', ['deviceDur*-15'], 'Every 4th hit of your devices arcs to another enemy within 5 m for 40% of weapon damage as Shock damage. Your devices last 15% shorter.',
+          'tree_clockwright_rod', { off: 1.04, def: 1 })),
+
+      ring('coil_spares', 'Spare Coils', 8, -3, ['hp 1', 'resAll 1', 'armor 1', 'deviceDur 1'], ['Coil Store', 'resAll 2', 'hp 1'], ['resAll 1', 'hp 1.5']),
+      C.keyArc('coil_key_over', 8, -2, ['dmgShock 1', 'hp 1'],
+        key('Overcharged Coils', ['dmgShock*30', 'deviceDur*-25'], 'You deal 30% more Shock damage, but your devices last 25% shorter.', null, { off: 1.05, def: 1 })),
+      ring('coil_thunder', 'Thunderhead', 8, -1, ['dmgShock 1', 'hp 1', 'armor 1', 'resAll 1'], ['Rolling Thunder', 'dmgShock 2', 'armor 1'], ['dmgShock 1', 'hp 1.5']),
+      ring('coil_conductor', 'Conductor', 8, 1, ['statusDur 1', 'hp 1', 'resAll 1', 'armor 1'], ['Long Shock', 'statusDur 2', 'hp 1'], ['statusDur 1', 'hp 1.5']),
+      C.keyArc('coil_key_season', 8, 2, ['statusChance 1', 'armor 1'],
+        key('Storm Season', ['statusChance*50', 'dmgShock*-10'], 'Your statuses are 50% more likely, but you deal 10% less Shock damage.', null, { off: 1.04, def: 1.01 })),
+      ring('coil_calm', 'Calm After', 8, 3, ['hp 1', 'hpRegen 1', 'resAll 1', 'armor 1'], ['Clear Skies', 'hpRegen 2', 'hp 1'], ['hp 1.5', 'armor 1'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['dmgShock 2', 'hp 2'] },
+      { at: 35, mods: ['statusChance 2', 'deviceRange 2'] },
+      { at: 60, mods: ['dmgShock 3', 'deviceSpeed 2', 'hp 2'] }
+    ]
+  });
+
+  T.bridge('clockwright', { id: 'coil_vent_inner', between: ['coil', 'vent'], ring: 'inner', name: 'Wet Wires', shape: 'star',
+    nodes: ['dmgShock 1', C.mut('sp_shock'), 'ventPower 1', 'hp 1'],
+    core: ['Spark in the Steam', 'ventPower 1.5', 'dmgShock 1'], bonus: ['hp 1', 'resAll 1'] });
+  T.bridge('clockwright', { id: 'coil_vent_mid', between: ['coil', 'vent'], ring: 'mid', name: 'Steam and Spark', shape: 'diamond',
+    nodes: ['statusChance 1', 'hp 1', 'ventPower 1', 'armor 1'],
+    core: ['Wet and Wired', 'statusChance 1.5', 'ventPower 1'], bonus: ['hp 1', 'armor 1'] });
+  T.bridge('clockwright', { id: 'coil_vent_outer', between: ['coil', 'vent'], ring: 'outer', name: 'Boiling Storm', shape: 'diamond',
+    nodes: ['dmgShock 1', 'hp 1', 'dmgFire 1', 'resAll 1'],
+    core: ['Thunder and Steam', 'dmgShock 1.5', 'dmgFire 1.5'], bonus: ['hp 1.5', 'resAll 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_clockwright_golem.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, C = KD.data.tree.clock;
+  var rule = C.rule, web = C.web, key = C.key, pact = C.pact, abil = C.abil, ring = C.ring, star = C.star;
+
+  /**
+   * CLOCKWRIGHT, arm 6 of 8: THE FOUNDRY FLOOR (`golem`). The Brass Golem. Skill: Brass Golem (trunk, 4 points).
+   * Rules: src/sim/56_tree_clockwright.js. Holds the bridges to wrench.
+   */
+  T.arm('clockwright', {
+    id: 'golem', name: 'The Foundry Floor', focus: 'Three hundred weight of brass at your side: a Golem that holds the line', color: '#c9a04a', vein: null,
+
+    trunk: C.pistolTrunk([
+      'minionHp 1', 'hp 1', { t: 'skill', grants: 'brass_golem', abil: [{ a: 'brass_golem', k: 'dur', v: 0.05 }] }, 'dmgMinion 1', 'armor 1',  // T1..T5
+      'hp 1', 'minionDur 1', 'resAll 1', ['Foundry Road', 'moveSpeed 1', 'minionHp 0.5'], 'hp 1',                                                // T6..T10
+      'minionHp 1', 'armor 1', 'hp 1', 'dmgMinion 1', 'resAll 1',                                                                               // T11..T15
+      'hp 1', 'minionSpeed 1', 'armor 1', 'hp 1', 'dmgMinion 1',                                                                                // T16..T20
+      'minionDur 1', 'hp 1', 'minionHp 1', 'resAll 1', 'hp 1'                                                                                   // T21..T25
+    ]),
+
+    clusters: [
+      star('golem_bg_shape', 'Brass Golem: shape', 1, -1, 'hp 1', ['gol_long', 'gol_pair', 'gol_big'], ['Spare Springs', 'minionDur 1', 'hp 1']),
+      star('golem_bg_essence', 'Brass Golem: essence', 1, 1, 'minionHp 1', ['gol_thick', 'gol_fast', 'gol_hot'], ['Brass Casting', 'minionHp 1', 'armor 1']),
+      star('golem_bg_rite', 'Brass Golem: rite', 2, -1, 'armor 1', ['gol_quick', 'gol_pressure', 'gol_ward'],
+        abil('Wound Tight', ['minionDur 1', 'hp 1'], 'brass_golem', 'cd', -0.06)),
+      ring('golem_floor', 'The Casting Floor', 2, 1,
+        ['minionHp 1', 'hp 1', abil('Long Key', ['armor 0.5'], 'brass_golem', 'dur', 0.1), 'armor 1', 'dmgMinion 1'],
+        web('piston_heart', 'Piston Heart', ['dmgMinion 1.5'], 'Heat also drives your Brass Golem: 8% more damage and 8% Attack Speed per Heat level. Its blows build 4 Pressure instead of 2.', { off: 1.03, def: 1 }),
+        ['minionHp 1', 'hp 1.5']),
+
+      ring('golem_plating', 'Shared Plating', 3, -2, ['armor 1', 'hp 1', 'minionHp 1', 'resAll 1'],
+        rule('plating', 'Shared Plating', ['armor 1'], 'While you stand within 6 m of your Brass Golem, you and it take 15% less damage.', { off: 1, def: 1.04 }),
+        ['armor 1', 'hp 1.5']),
+      ring('golem_guard', 'Bodyguard', 3, -1, ['dmgTaken 1@golemUp', 'hp 1', 'armor 1', 'resAll 1'], ['Bodyguard Protocol', 'dmgTaken 2@golemUp', 'minionHp 1.5'], ['armor 1', 'hp 1.5']),
+      ring('golem_arms', 'Hammer Arms', 3, 1, ['dmgMinion 1', 'hp 1', 'minionSpeed 1', 'armor 1'], ['Piston Fists', 'dmgMinion 2', 'minionSpeed 1'], ['dmgMinion 1', 'hp 1.5']),
+      ring('golem_frame', 'Iron Frame', 3, 2, ['minionHp 1', 'hp 1', 'armor 1', 'resAll 1'], ['Reinforced Chassis', 'minionHp 2', 'armor 1'], ['minionHp 1', 'hp 1.5']),
+
+      ring('golem_oil', 'Oil Can', 4, -2, ['minionDur 1', 'hp 1', 'hpRegen 1', 'resAll 1'], ['Well Oiled', 'minionDur 2', 'hpRegen 1'], ['minionDur 1', 'hp 1.5']),
+      C.altar('golem_altar_a', 'Altar of Brass Men', 4, -1, ['hp 1', 'minionHp 1', 'armor 1']),
+      ring('golem_whistle', 'Taunting Whistle', 4, 1, ['minionHp 1', 'hp 1', 'poise 1', 'armor 1'], ['Loud Whistle', 'minionHp 2', 'poise 1'], ['poise 1', 'hp 1.5']),
+      ring('golem_side', 'Side by Side', 4, 2, ['dmg 1@golemUp', 'hp 1', 'armor 1', 'resAll 1'], ['Brass Brother', 'dmg 1.5@golemUp', 'armor 1'], ['armor 1', 'hp 1.5']),
+
+      ring('golem_road', 'Assembly Road', 5, -2, ['hp 1', 'moveSpeed 1', 'minionSpeed 1', 'resAll 1'], ['Marching Gears', 'moveSpeed 1.5', 'minionSpeed 1'], ['moveSpeed 1', 'hp 1.5']),
+      ring('golem_plates', 'Heavy Plates', 5, -1, ['armor 1', 'hp 1', 'minionHp 1', 'resAll 1'], ['Plate on Plate', 'armor 2', 'minionHp 1'], ['armor 1', 'hp 1.5']),
+      ring('golem_slayer', 'Giant Slayer', 5, 1, ['dmgMinion 1', 'hp 1', 'dmgElite 1', 'resAll 1'], ['Big Hands', 'dmgElite 2', 'dmgMinion 1'], ['dmgMinion 1', 'hp 1.5']),
+      ring('golem_spring', 'Mainspring', 5, 2, ['minionDur 1', 'hp 1', 'cdr 1', 'armor 1'], ['Tightly Wound', 'minionDur 2', 'cdr 1'], ['minionDur 1', 'hp 1.5']),
+
+      ring('golem_pit', 'Casting Pit', 6, -2, ['hp 1', 'armor 1', 'hpRegen 1', 'resAll 1'], ['Hot Metal', 'armor 2', 'hp 1'], ['armor 1', 'hp 1.5']),
+      ring('golem_haunted', 'Haunted Plate', 6, -1, ['hp 1', C.trophy('Haunted Gauntlet', ['minionHp 1.5', 'dmgMinion 1.5'], 'haunted_plate'), 'armor 1', 'resAll 1'],
+        ['Ghost in the Gears', 'minionHp 2', 'hp 1'], ['minionHp 1', 'hp 1.5']),
+      ring('golem_cult', 'Iron Hunger', 6, 1, ['hp 1', C.corrupt('Rusted Soul', ['dmgMinion 2', 'minionSpeed 1.5'], 20), 'armor 1', 'resAll 1'],
+        C.corrupt('Golem of the Hollow', ['dmg*2', 'dmgMinion 2', 'minionHp 2'], 40), ['dmgMinion 1', 'hp 1.5']),
+      ring('golem_crown', 'Crown Foundry', 6, 2, ['resAll 1', C.faction('Foundry Warrant', ['minionHp 1.5', 'armor 1'], 'crown', 20), 'hp 1', 'armor 1'],
+        C.faction('Royal Golemwright', ['dmgMinion 2', 'minionHp 2'], 'crown', 60), ['resAll 1', 'hp 1.5']),
+
+      { id: 'golem_pacts', name: 'Casting Bargains', row: 7, lane: -2, shape: 'star', kind: 'special',
+        nodes: ['hp 1',
+          pact('Thin Plate', ['dmgMinion*15', 'minionHp*-15']),
+          pact('Heavy Plate', ['minionHp*25', 'minionSpeed*-10']),
+          pact('Loose Key', ['minionSpeed*12', 'minionDur*-15'])],
+        core: ['Foundry Terms', 'minionHp 1', 'hp 1'] },
+      ring('golem_sentinel', "Sentinel's Core", 7, -1, ['hp 1', 'minionHp 1', 'poise 1', C.trophy('Sentinel Core', ['minionHp 1.5', 'hp 1.5'], 'marble_sentinel')],
+        ['Stone Heart', 'minionHp 2', 'hp 1'], ['minionHp 1', 'hp 1.5']),
+      C.altar('golem_altar_b', 'Altar of the Casting', 7, 1, ['hp 1', 'dmgMinion 1', 'armor 1']),
+      C.keyArc('golem_key_commander', 7, 2, ['dmgMinion 1', 'minionHp 1'],
+        key('Golem Commander', ['minionHp*40', 'dmgMinion*30', 'dmgTrap*-15'], 'Your Brass Golem has 40% more Health and deals 30% more damage, but your Trap Damage is 15% less.', null, { off: 1.03, def: 1.02 })),
+
+      ring('golem_bin', 'Spare Parts Bin', 8, -3, ['hp 1', 'resAll 1', 'armor 1', 'minionDur 1'], ['Bits and Bolts', 'resAll 2', 'hp 1'], ['resAll 1', 'hp 1.5']),
+      C.keyArc('golem_key_heart', 8, -2, ['armor 1', 'hp 1'],
+        key('Brass Heart', ['dmgTaken*-15@golemUp', 'dmg*-8'], 'While your Brass Golem stands you take 15% less damage, but you deal 8% less.', null, { off: 0.99, def: 1.05 })),
+      ring('golem_hall', 'Golem Hall', 8, -1, ['minionHp 1', 'hp 1', 'armor 1', 'resAll 1'], ['Rows of Golems', 'minionHp 2', 'armor 1'], ['minionHp 1', 'hp 1.5']),
+      ring('golem_crushers', 'Crushers', 8, 1, ['dmgMinion 1', 'hp 1', 'armor 1', 'resAll 1'], ['Rolling Crushers', 'dmgMinion 2', 'hp 1'], ['dmgMinion 1', 'hp 1.5']),
+      C.keyArc('golem_key_twin', 8, 2, ['minionHp 1', 'armor 1'],
+        key('Twin Golems', ['minionCount+1', 'minionHp*-25', 'minionDur*-15'], 'A second Brass Golem may stand, and one more turret, coil, mine and trap; but Golems have 25% less Health and every device lasts 15% shorter.', null, { off: 1.04, def: 1.01 })),
+      ring('golem_forge', 'Quiet Forge', 8, 3, ['hp 1', 'hpRegen 1', 'resAll 1', 'armor 1'], ['Cooling Metal', 'hpRegen 2', 'hp 1'], ['hp 1.5', 'armor 1'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['minionHp 2', 'hp 2'] },
+      { at: 35, mods: ['dmgMinion 2', 'armor 2'] },
+      { at: 60, mods: ['minionHp 3', 'dmgMinion 2', 'hp 2'] }
+    ]
+  });
+
+  T.bridge('clockwright', { id: 'golem_wrench_inner', between: ['golem', 'wrench'], ring: 'inner', name: 'Maintenance', shape: 'star',
+    nodes: ['minionHp 1', C.mut('sp_quick'), 'deviceDur 1', 'hp 1'],
+    core: ['Service Hatch', 'deviceDur 1.5', 'minionHp 1'], bonus: ['hp 1', 'resAll 1'] });
+  T.bridge('clockwright', { id: 'golem_wrench_mid', between: ['golem', 'wrench'], ring: 'mid', name: 'Oil Change', shape: 'diamond',
+    nodes: ['minionDur 1', 'hp 1', 'deployWard 1', 'armor 1'],
+    core: ['Fresh Oil', 'minionDur 1.5', 'deployWard 1'], bonus: ['hp 1', 'armor 1'] });
+  T.bridge('clockwright', { id: 'golem_wrench_outer', between: ['golem', 'wrench'], ring: 'outer', name: 'Patch Plates', shape: 'diamond',
+    nodes: ['armor 1', 'hp 1', 'minionHp 1', 'resAll 1'],
+    core: ['Riveted Patches', 'armor 1.5', 'minionHp 1.5'], bonus: ['hp 1.5', 'resAll 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_clockwright_mines.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, C = KD.data.tree.clock;
+  var rule = C.rule, web = C.web, key = C.key, pact = C.pact, abil = C.abil, ring = C.ring, star = C.star;
+
+  /**
+   * CLOCKWRIGHT, arm 5 of 8: THE MINEFIELD (`mines`). Gear Mines and Spring Traps. Skills: Gear Mine (trunk, 4 points), Spring
+   * Trap (core of a row-2 wheel, 10 points). Rules: src/sim/56_tree_clockwright.js. Holds the bridges to golem.
+   */
+  T.arm('clockwright', {
+    id: 'mines', name: 'The Minefield', focus: 'Seed the ground: mines, spring traps, fuses lit by your own bolts', color: '#8a7a5a', vein: 'dread',
+
+    trunk: C.pistolTrunk([
+      'dmgTrap 1', 'hp 1', { t: 'skill', grants: 'gear_mine', abil: [{ a: 'gear_mine', k: 'dmg', v: 0.05 }] }, 'aoe 1', 'evasion 1',  // T1..T5
+      'hp 1', 'deviceDur 1', 'resAll 1', ['Sapper Road', 'moveSpeed 1', 'dmgTrap 0.5'], 'hp 1',                                       // T6..T10
+      'dmgTrap 1', 'armor 1', 'hp 1', 'statusDur 1', 'resAll 1',                                                                      // T11..T15
+      'hp 1', 'aoe 1', 'critChance 1', 'hp 1', 'evasion 1',                                                                           // T16..T20
+      'cdr 1', 'hp 1', 'dmgTrap 1', 'resAll 1', 'hp 1'                                                                                // T21..T25
+    ]),
+
+    clusters: [
+      star('mines_gm_shape', 'Gear Mine: shape', 1, -1, 'hp 1', ['mine_wide', 'mine_four', 'mine_far'], ['Broad Charges', 'aoe 1', 'hp 1']),
+      star('mines_gm_essence', 'Gear Mine: essence', 1, 1, 'dmgTrap 1', ['mine_nails', 'mine_fire', 'mine_stun'], ['Packed Powder', 'dmgTrap 1', 'evasion 1']),
+      star('mines_gm_rite', 'Gear Mine: rite', 2, -1, 'cdr 1', ['mine_quick', 'mine_pressure', 'mine_charges'],
+        abil('Quick Fuse', ['cdr 1', 'hp 1'], 'gear_mine', 'cd', -0.06)),
+      ring('mines_shed', 'The Spring Shed', 2, 1,
+        ['statusDur 1', 'hp 1', abil('Strong Springs', ['dmgTrap 0.5'], 'spring_trap', 'area', 0.08), 'armor 1', 'evasion 1'],
+        { t: 'skill', grants: 'spring_trap', abil: [{ a: 'spring_trap', k: 'dur', v: 0.1 }] },
+        ['statusDur 1', 'hp 1.5'], { kind: 'skill', spokes: [0] }),
+
+      star('mines_st_shape', 'Spring Trap: shape', 3, -2, 'hp 1', ['st_wide', 'st_three', 'st_far'], ['Set Wide', 'aoe 1', 'hp 1']),
+      ring('mines_fuse', 'Fuse Work', 3, -1, ['dmgTrap 1', 'hp 1', 'dmgRanged 1', 'resAll 1'],
+        web('fuse_shot', 'Fuse Shot', ['dmgRanged 1'], 'Gear Mines and Spring Traps set off by your bolts deal 60% more damage (this replaces the Gear Mine bonus of 25%).', { off: 1.03, def: 1 }),
+        ['dmgTrap 1', 'hp 1.5']),
+      ring('mines_shrapnel', 'Shrapnel', 3, 1, ['dmgTrap 1', 'hp 1', 'statusChance 1', 'armor 1'],
+        rule('shrapnel', 'Shrapnel', ['statusChance 1'], 'Your Gear Mine and Spring Trap blasts add 2 stacks of Bleed.', { off: 1.03, def: 1 }),
+        ['statusChance 1', 'hp 1.5']),
+      star('mines_st_essence', 'Spring Trap: essence', 3, 2, 'statusDur 1', ['st_long', 'st_crush', 'st_shock'], ['Coiled Steel', 'statusDur 1', 'armor 1']),
+
+      ring('mines_sapper', 'Sapper', 4, -2, ['aoe 1', 'hp 1', 'armor 1', 'resAll 1'], ['Sapper Kit', 'aoe 2', 'armor 1'], ['aoe 1', 'hp 1.5']),
+      C.altar('mines_altar_a', 'Altar of Powder', 4, -1, ['hp 1', 'dmgTrap 1', 'evasion 1']),
+      ring('mines_wires', 'Tripwires', 4, 1, ['statusDur 1', 'hp 1', 'evasion 1', 'resAll 1'], ['Taut Wire', 'statusDur 2', 'evasion 1'], ['statusDur 1', 'hp 1.5']),
+      star('mines_st_rite', 'Spring Trap: rite', 4, 2, 'hp 1', ['st_quick', 'st_pressure', 'st_twice'], ['Reset Springs', 'cdr 1', 'hp 1']),
+
+      ring('mines_road', "Minelayer's Road", 5, -2, ['hp 1', 'moveSpeed 1', 'evasion 1', 'resAll 1'], ['Light Feet', 'moveSpeed 1.5', 'evasion 1'], ['moveSpeed 1', 'hp 1.5']),
+      ring('mines_pattern', 'Blast Pattern', 5, -1, ['dmgTrap 1', 'hp 1', 'critChance 1', 'armor 1'], ['Shaped Charge', 'critChance 2', 'dmgTrap 1'], ['critChance 1', 'hp 1.5']),
+      ring('mines_bait', 'Bait', 5, 1, ['dmg 1@crowded', 'hp 1', 'armor 1', 'evasion 1'], ['Lure Them In', 'dmg 1.5@crowded', 'evasion 1'], ['evasion 1', 'hp 1.5']),
+      ring('mines_game', 'Big Game', 5, 2, ['dmgElite 1', 'hp 1', 'dmgTrap 1', 'resAll 1'], ['Bear Traps', 'dmgElite 2', 'dmgBoss 1'], ['dmgElite 1', 'hp 1.5']),
+
+      ring('mines_trench', 'Trench', 6, -2, ['hp 1', 'armor 1', 'evasion 1', 'resAll 1'], ['Dug Trench', 'armor 2', 'hp 1'], ['armor 1', 'hp 1.5']),
+      ring('mines_rockjaw', "Rockjaw's Tooth", 6, -1, ['hp 1', C.trophy('Rock Tooth', ['dmgTrap 1.5', 'aoe 1.5'], 'rockjaw'), 'armor 1', 'resAll 1'],
+        ['Quarry Charges', 'dmgTrap 2', 'hp 1'], ['dmgTrap 1', 'hp 1.5']),
+      ring('mines_cult', 'Hungry Earth', 6, 1, ['hp 1', C.corrupt('Grave Powder', ['dmgTrap 2', 'aoe 1.5'], 20), 'armor 1', 'resAll 1'],
+        C.corrupt('The Ground Bites', ['dmg*2', 'dmgTrap 2', 'statusDur 2'], 40), ['dmgTrap 1', 'hp 1.5']),
+      ring('mines_choir', 'Powder Smugglers', 6, 2, ['resAll 1', C.faction('Smuggled Powder', ['dmgTrap 1.5', 'evasion 1'], 'choir', 20), 'hp 1', 'armor 1'],
+        C.faction('Choir Sapper', ['dmgTrap 2', 'aoe 2'], 'choir', 60), ['resAll 1', 'hp 1.5']),
+
+      { id: 'mines_pacts', name: 'Powder Bargains', row: 7, lane: -2, shape: 'star', kind: 'special',
+        nodes: ['hp 1',
+          pact('Short Fuses', ['dmgTrap*10', 'deviceDur*-15']),
+          pact('Wide Charges', ['aoe*20', 'dmgTrap*-6']),
+          pact('Live Powder', ['dmgTrap*12', 'hp*-5'])],
+        core: ['Powder Price', 'dmgTrap 1', 'hp 1'] },
+      ring('mines_silk', "Webmother's Silk", 7, -1, ['hp 1', 'statusDur 1', 'poise 1', C.trophy('Trip Silk', ['statusDur 1.5', 'hp 1.5'], 'webmothers_brood')],
+        ['Silk Lines', 'statusDur 2', 'hp 1'], ['statusDur 1', 'hp 1.5']),
+      C.altar('mines_altar_b', 'Altar of the Fuse', 7, 1, ['hp 1', 'aoe 1', 'dmgTrap 1']),
+      C.keyArc('mines_key_chain', 7, 2, ['dmgTrap 1', 'aoe 1'],
+        key('Chain Reaction', ['deviceDur*-15'], 'Enemies killed by your Trap Damage explode for 40% of weapon damage as Trap Damage within 2.5 m. Your devices last 15% shorter.',
+          'tree_clockwright_chain', { off: 1.04, def: 1 })),
+
+      ring('mines_store', 'Powder Store', 8, -3, ['hp 1', 'resAll 1', 'armor 1', 'evasion 1'], ['Dry Powder', 'resAll 2', 'hp 1'], ['resAll 1', 'hp 1.5']),
+      C.keyArc('mines_key_demo', 8, -2, ['dmgTrap 1', 'hp 1'],
+        key('Demolition Expert', ['dmgTrap*25', 'hp*-8'], 'You deal 25% more Trap Damage, but have 8% less Health.', null, { off: 1.05, def: 0.98 })),
+      ring('mines_craters', 'Craters', 8, -1, ['aoe 1', 'hp 1', 'armor 1', 'resAll 1'], ['Big Holes', 'aoe 2', 'hp 1'], ['aoe 1', 'hp 1.5']),
+      ring('mines_last', 'Last Mine', 8, 1, ['dmgTrap 1', 'hp 1', 'statusDur 1', 'armor 1'], ["Dead Man's Switch", 'dmgTrap 2', 'hp 1'], ['dmgTrap 1', 'hp 1.5']),
+      C.keyArc('mines_key_patient', 8, 2, ['statusDur 1', 'evasion 1'],
+        key('Patient Trapper', ['dmgTrap*20@still', 'moveSpeed*-5'], 'While you stand still you deal 20% more Trap Damage. You move 5% slower.', null, { off: 1.03, def: 1 })),
+      ring('mines_safe', 'Safe Distance', 8, 3, ['hp 1', 'hpRegen 1', 'resAll 1', 'armor 1'], ['Duck Behind', 'hpRegen 2', 'hp 1'], ['hp 1.5', 'armor 1'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['dmgTrap 2', 'hp 2'] },
+      { at: 35, mods: ['aoe 2', 'statusDur 2'] },
+      { at: 60, mods: ['dmgTrap 3', 'evasion 2', 'hp 2'] }
+    ]
+  });
+
+  T.bridge('clockwright', { id: 'mines_golem_inner', between: ['mines', 'golem'], ring: 'inner', name: 'Golem Bait', shape: 'star',
+    nodes: ['dmgTrap 1', C.mut('sp_heavy'), 'minionHp 1', 'hp 1'],
+    core: ['Lure and Stomp', 'minionHp 1.5', 'dmgTrap 1'], bonus: ['hp 1', 'resAll 1'] });
+  T.bridge('clockwright', { id: 'mines_golem_mid', between: ['mines', 'golem'], ring: 'mid', name: 'Stomp and Boom', shape: 'diamond',
+    nodes: ['aoe 1', 'hp 1', 'minionHp 1', 'armor 1'],
+    core: ['Heavy Feet', 'aoe 1.5', 'minionHp 1'], bonus: ['hp 1', 'armor 1'] });
+  T.bridge('clockwright', { id: 'mines_golem_outer', between: ['mines', 'golem'], ring: 'outer', name: 'Brass and Powder', shape: 'diamond',
+    nodes: ['dmgTrap 1', 'hp 1', 'dmgMinion 1', 'resAll 1'],
+    core: ['Powder Golem', 'dmgMinion 1.5', 'dmgTrap 1.5'], bonus: ['hp 1.5', 'resAll 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_clockwright_pistol.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, C = KD.data.tree.clock;
+  var rule = C.rule, key = C.key, pact = C.pact, abil = C.abil, ring = C.ring, star = C.star;
+
+  /**
+   * CLOCKWRIGHT, arm 0 of 8: THE SIDEARM (`pistol`). The Spring Pistol and the grapple. Skill: Grapple Hook (trunk, 4 points).
+   * Design: docs/TREE_CLOCKWRIGHT.md. Rules: src/sim/56_tree_clockwright.js. Holds the bridges to turret.
+   */
+  T.arm('clockwright', {
+    id: 'pistol', name: 'The Sidearm', focus: 'The Spring Pistol and the grapple: quick hands, long shots, a gunner who moves', color: '#d9b26a', vein: 'war',
+
+    trunk: C.pistolTrunk([
+      'dmgRanged 1', 'hp 1', { t: 'skill', grants: 'grapple_hook', abil: [{ a: 'grapple_hook', k: 'cd', v: -0.05 }] }, 'pistolPressure 1', 'evasion 1',  // T1..T5
+      'hp 1', 'atkSpeed 1', 'projSpeed 1', ["Gunner's Road", 'moveSpeed 1', 'dodgeCdr 0.5'], 'hp 1',                                                    // T6..T10
+      'critChance 1', 'resAll 1', 'hp 1', 'dmgRanged 1', 'evasion 1',                                                                                  // T11..T15
+      'hp 1', 'critMult 1', 'pistolPressure 1', 'hp 1', 'dmgPhys 1',                                                                                   // T16..T20
+      'atkSpeed 1', 'hp 1', 'dmgRanged 1', 'resAll 1', 'hp 1'                                                                                          // T21..T25
+    ]),
+
+    clusters: [
+      star('pistol_hook_shape', 'Grapple Hook: shape', 1, -1, 'hp 1', ['hook_long', 'hook_fast'], ['Long Cable', 'projSpeed 1', 'hp 1']),
+      star('pistol_hook_essence', 'Grapple Hook: essence', 1, 1, 'dmgRanged 1', ['hook_shock', 'hook_rend', 'hook_daze'], ['Barbed Hook', 'dmgPhys 1', 'evasion 1']),
+      star('pistol_hook_rite', 'Grapple Hook: rite', 2, -1, 'pistolPressure 1', ['hook_quick', 'hook_twice', 'hook_steam'],
+        abil('Quick Reel', ['dodgeCdr 1', 'hp 1'], 'grapple_hook', 'cd', -0.06)),
+      ring('pistol_bench', "The Gunsmith's Bench", 2, 1,
+        ['dmgRanged 1', 'hp 1', abil('Rifling', ['projSpeed 0.5'], 'spring_pistol', 'dmg', 0.04), 'evasion 1', 'pistolPressure 1'],
+        rule('ricochet', 'Ricochet', ['dmgRanged 1'], 'Your Spring Pistol bolts glance off to the nearest other enemy within 5 m, for 30% of weapon damage.', { off: 1.03, def: 1 }),
+        ['dmgRanged 1', 'hp 1.5']),
+
+      ring('pistol_hands', 'Quick Hands', 3, -2, ['atkSpeed 1', 'hp 1', 'dodgeCdr 1', 'resAll 1'], ['Fan the Spring', 'atkSpeed 2', 'dodgeCdr 1'], ['atkSpeed 1', 'hp 1.5']),
+      ring('pistol_sights', 'Sights', 3, -1, ['critChance 1', 'hp 1', 'evasion 1', 'armor 1'], ['Iron Sights', 'critChance 2', 'critMult 1'], ['critChance 1', 'hp 1.5']),
+      ring('pistol_rounds', 'Pressure Rounds', 3, 1, ['pistolPressure 1', 'hp 1', 'dmgRanged 1', 'resAll 1'], ['Pressurised Bolts', 'pistolPressure 2', 'dmgRanged 1'], ['pistolPressure 1', 'hp 1.5']),
+      ring('pistol_cover', 'Duck and Cover', 3, 2, ['evasion 1', 'hp 1', 'moveSpeed 1', 'armor 1'], ['Behind the Crates', 'evasion 2', 'dmgTaken 1@moving'], ['evasion 1', 'hp 1.5']),
+
+      ring('pistol_cross', 'Brass Crossfire', 4, -2, ['dmgAfflicted 1', 'hp 1', 'dmgRanged 1', 'resAll 1'], ['Crossfire Angles', 'dmgAfflicted 2', 'dmgBack 1'], ['dmgAfflicted 1', 'hp 1.5']),
+      C.altar('pistol_altar_a', 'Altar of the Barrel', 4, -1, ['hp 1', 'dmgRanged 1', 'evasion 1']),
+      ring('pistol_heavy', 'Heavy Bolts', 4, 1, ['breakPower 1', 'hp 1', 'dmgPhys 1', 'armor 1'], ['Lead Core', 'breakPower 2', 'dmgPhys 1'], ['breakPower 1', 'hp 1.5']),
+      ring('pistol_barrel', 'Long Barrel', 4, 2, ['projSpeed 1', 'hp 1', 'critMult 1', 'resAll 1'], ['Marksman', 'critMult 2', 'projSpeed 1'], ['projSpeed 1', 'hp 1.5']),
+
+      ring('pistol_heels', 'Spring Heels', 5, -2, ['moveSpeed 1', 'hp 1', 'dodgeCdr 1', 'resAll 1'], ['Coiled Boots', 'moveSpeed 2', 'dodgeCdr 1'], ['moveSpeed 1', 'hp 1.5']),
+      ring('pistol_blank', 'Point Blank', 5, -1, ['dmg 1@duel', 'hp 1', 'armor 1', 'evasion 1'], ['Close Work', 'dmg 1.5@duel', 'armor 1'], ['armor 1', 'hp 1.5']),
+      ring('pistol_bounty', 'Bounty', 5, 1, ['dmgElite 1', 'hp 1', 'critChance 1', 'resAll 1'], ['Wanted Posters', 'dmgElite 2', 'dmgBoss 1'], ['dmgElite 1', 'hp 1.5']),
+      ring('pistol_holster', 'Holster', 5, 2, ['hp 1', 'evasion 1', 'resRegen 1', 'armor 1'], ['Quick Holster', 'resRegen 2', 'evasion 1'], ['evasion 1', 'hp 1.5']),
+
+      ring('pistol_kick', 'Kickback', 6, -2, ['hp 1', 'poise 1', 'armor 1', 'resAll 1'], ['Braced Stance', 'poise 2', 'armor 1'], ['poise 1', 'hp 1.5']),
+      ring('pistol_redtooth', "Redtooth's Flintlock", 6, -1, ['hp 1', C.trophy('Pirate Flintlock', ['dmgRanged 1.5', 'critChance 1.5'], 'captain_redtooth'), 'evasion 1', 'resAll 1'],
+        ['Sea Legs', 'dmgRanged 2', 'hp 1'], ['dmgRanged 1', 'hp 1.5']),
+      ring('pistol_cult', 'Cursed Iron', 6, 1, ['hp 1', C.corrupt('Black Powder Dreams', ['dmgRanged 2', 'critMult 1.5'], 20), 'evasion 1', 'resAll 1'],
+        C.corrupt('Gun of the Hollow', ['dmg*2', 'dmgRanged 2', 'atkSpeed 2'], 40), ['dmgRanged 1', 'hp 1.5']),
+      ring('pistol_choir', 'Smugglers', 6, 2, ['resAll 1', C.faction('Smuggled Springs', ['atkSpeed 1.5', 'evasion 1'], 'choir', 20), 'hp 1', 'armor 1'],
+        C.faction('Choir Gunhand', ['dmgRanged 2', 'critChance 2'], 'choir', 60), ['resAll 1', 'hp 1.5']),
+
+      { id: 'pistol_pacts', name: 'Gun Bargains', row: 7, lane: -2, shape: 'star', kind: 'special',
+        nodes: ['hp 1',
+          pact('Hair Spring', ['atkSpeed*10', 'dmgRanged*-5']),
+          pact('Overwound', ['dmgRanged*12', 'pistolPressure*-30']),
+          pact('Light Frame', ['moveSpeed*6', 'armor*-15'])],
+        core: ['Gun Fair', 'dmgRanged 1', 'hp 1'] },
+      ring('pistol_admiral', "The Admiral's Pistol", 7, -1, ['hp 1', 'dmgRanged 1', 'poise 1', C.trophy('Admiral Pistol', ['dmgRanged 1.5', 'hp 1.5'], 'smuggler_admiral')],
+        ['Broadside', 'dmgRanged 2', 'hp 1'], ['dmgRanged 1', 'hp 1.5']),
+      C.altar('pistol_altar_b', 'Altar of Brass', 7, 1, ['hp 1', 'critChance 1', 'dmgRanged 1']),
+      C.keyArc('pistol_key_pride', 7, 2, ['dmgRanged 1', 'pistolPressure 1'],
+        key("Gunsmith's Pride", ['dmgTrap*-25'], 'Heat no longer makes your devices faster or stronger. Instead your Spring Pistol deals 12% more damage per Heat level. Your Trap Damage is 25% less.',
+          'web_clockwright_gunsmith', { off: 1.05, def: 1 })),
+
+      ring('pistol_rack', 'Gun Rack', 8, -3, ['hp 1', 'resAll 1', 'armor 1', 'evasion 1'], ['Well Kept', 'resAll 2', 'hp 1'], ['resAll 1', 'hp 1.5']),
+      C.keyArc('pistol_key_deadeye', 8, -2, ['critChance 1', 'hp 1'],
+        key('Deadeye', ['dmgTrap*-10'], 'Your Spring Pistol hits deal up to 30% more damage the farther the enemy is: nothing within 4 m, the full 30% from 12 m. Your Trap Damage is 10% less.',
+          'tree_clockwright_deadeye', { off: 1.04, def: 1 })),
+      ring('pistol_aim', 'Steady Aim', 8, -1, ['critChance 1', 'hp 1', 'armor 1', 'resAll 1'], ['Held Breath', 'critChance 2', 'hp 1'], ['critChance 1', 'hp 1.5']),
+      ring('pistol_tap', 'Double Tap', 8, 1, ['atkSpeed 1', 'hp 1', 'dmgRanged 1', 'armor 1'], ['Two in the Chest', 'atkSpeed 2', 'dmgRanged 1'], ['atkSpeed 1', 'hp 1.5']),
+      C.keyArc('pistol_key_draw', 8, 2, ['atkSpeed 1', 'evasion 1'],
+        key('Quick Draw', ['atkSpeed*15', 'dmgTrap*-15'], 'You attack 15% faster, but your Trap Damage is 15% less.', null, { off: 1.04, def: 1 })),
+      ring('pistol_round', 'Last Round', 8, 3, ['hp 1', 'hpRegen 1', 'resAll 1', 'armor 1'], ['Spare Bolts', 'hpRegen 2', 'hp 1'], ['hp 1.5', 'armor 1'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['dmgRanged 2', 'hp 2'] },
+      { at: 35, mods: ['atkSpeed 2', 'evasion 2'] },
+      { at: 60, mods: ['dmgRanged 3', 'critChance 2', 'hp 2'] }
+    ]
+  });
+
+  T.bridge('clockwright', { id: 'pistol_turret_inner', between: ['pistol', 'turret'], ring: 'inner', name: 'Covering Fire', shape: 'star',
+    nodes: ['dmgRanged 1', C.mut('sp_long'), 'dmgTrap 1', 'hp 1'],
+    core: ['Cover Me', 'dmgTrap 1.5', 'evasion 1'], bonus: ['hp 1', 'resAll 1'] });
+  T.bridge('clockwright', { id: 'pistol_turret_mid', between: ['pistol', 'turret'], ring: 'mid', name: "Spotter's Eye", shape: 'diamond',
+    nodes: ['dmgRanged 1', 'hp 1', 'deviceRange 1', 'armor 1'],
+    core: ['Called Shots', 'deviceRange 1.5', 'dmgRanged 1'], bonus: ['hp 1', 'armor 1'] });
+  T.bridge('clockwright', { id: 'pistol_turret_outer', between: ['pistol', 'turret'], ring: 'outer', name: 'Killing Field', shape: 'diamond',
+    nodes: ['critChance 1', 'hp 1', 'dmgTrap 1', 'resAll 1'],
+    core: ['Open Ground', 'dmgTrap 1.5', 'critChance 1.5'], bonus: ['hp 1.5', 'resAll 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_clockwright_turret.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, C = KD.data.tree.clock;
+  var rule = C.rule, web = C.web, key = C.key, pact = C.pact, abil = C.abil, ring = C.ring, star = C.star;
+
+  /**
+   * CLOCKWRIGHT, arm 1 of 8: THE GUN LINE (`turret`). Spring turrets that never tire. Skill: Deploy Turret (trunk, 4 points).
+   * Rules: src/sim/56_tree_clockwright.js. Holds the bridges to coil.
+   */
+  T.arm('clockwright', {
+    id: 'turret', name: 'The Gun Line', focus: 'Turrets: more of them, faster, longer, and a nest you hold behind them', color: '#b08d3c', vein: 'war',
+
+    trunk: C.pistolTrunk([
+      'dmgTrap 1', 'hp 1', { t: 'skill', grants: 'deploy_turret', abil: [{ a: 'deploy_turret', k: 'dmg', v: 0.05 }] }, 'deviceDur 1', 'armor 1',  // T1..T5
+      'hp 1', 'deviceSpeed 1', 'resAll 1', ['Gun Line Road', 'moveSpeed 1', 'deviceRange 0.5'], 'hp 1',                                           // T6..T10
+      'dmgTrap 1', 'armor 1', 'hp 1', 'deviceRange 1', 'resAll 1',                                                                               // T11..T15
+      'hp 1', 'deviceSpeed 1', 'critChance 1', 'hp 1', 'deployWard 1',                                                                           // T16..T20
+      'deviceDur 1', 'hp 1', 'dmgTrap 1', 'resAll 1', 'hp 1'                                                                                     // T21..T25
+    ]),
+
+    clusters: [
+      star('turret_tur_shape', 'Deploy Turret: shape', 1, -1, 'hp 1', ['tur_long', 'tur_three', 'tur_far'], ['Tripod', 'deviceDur 1', 'hp 1']),
+      star('turret_tur_essence', 'Deploy Turret: essence', 1, 1, 'dmgTrap 1', ['tur_slow', 'tur_cover', 'tur_mark'], ['Loaded Hopper', 'dmgTrap 1', 'armor 1']),
+      star('turret_tur_rite', 'Deploy Turret: rite', 2, -1, 'deviceSpeed 1', ['tur_quick', 'tur_pressure', 'tur_ward'],
+        abil('Quick Assembly', ['deviceSpeed 1', 'hp 1'], 'deploy_turret', 'cd', -0.06)),
+      ring('turret_line', 'The Firing Line', 2, 1,
+        ['dmgTrap 1', 'hp 1', abil('Long Belts', ['deviceDur 0.5'], 'deploy_turret', 'dur', 0.1), 'armor 1', 'deviceRange 1'],
+        web('spotter', 'Turret Spotter', ['critChance 1'], 'Your turrets shoot at the enemy you last hit with your Spring Pistol and deal 25% more damage to it.', { off: 1.03, def: 1 }),
+        ['dmgTrap 1', 'hp 1.5']),
+
+      ring('turret_cross', 'Crossfire', 3, -2, ['dmgTrap 1', 'hp 1', 'dmgRanged 1', 'resAll 1'],
+        rule('crossfire', 'Caught in the Crossfire', ['dmgRanged 1'], 'Your hits on an enemy one of your turrets shot in the last 2 s deal 12% more damage.', { off: 1.03, def: 1 }),
+        ['dmgRanged 1', 'hp 1.5']),
+      ring('turret_sand', 'Sandbags', 3, -1, ['armor 1', 'hp 1', 'dmgTaken 1@devices3', 'resAll 1'], ['Dug In', 'armor 2', 'dmgTaken 1.5@devices3'], ['armor 1', 'hp 1.5']),
+      ring('turret_ammo', 'Ammunition', 3, 1, ['deviceDur 1', 'hp 1', 'dmgTrap 1', 'evasion 1'], ['Full Belts', 'deviceDur 2', 'dmgTrap 1'], ['deviceDur 1', 'hp 1.5']),
+      ring('turret_range', 'Rangefinder', 3, 2, ['deviceRange 1', 'hp 1', 'critChance 1', 'armor 1'], ['Measured Arc', 'deviceRange 2', 'critChance 1'], ['deviceRange 1', 'hp 1.5']),
+
+      ring('turret_scrap', 'Scrapyard', 4, -2, ['deviceDur 1', 'hp 1', 'dmgTrap 1', 'resAll 1'],
+        web('scrap_charge', 'Scrap Charge', ['deviceDur 1'], 'When one of your turrets or coils winds down or is replaced it bursts, dealing 60% of weapon damage as Trap Damage within 3 m.', { off: 1.03, def: 1 }),
+        ['deviceDur 1', 'hp 1.5']),
+      C.altar('turret_altar_a', 'Altar of the Gun Line', 4, -1, ['hp 1', 'dmgTrap 1', 'armor 1']),
+      ring('turret_feed', 'Fast Feed', 4, 1, ['deviceSpeed 1', 'hp 1', 'armor 1', 'resAll 1'], ['Greased Feed', 'deviceSpeed 2', 'hp 1'], ['deviceSpeed 1', 'hp 1.5']),
+      ring('turret_shield', 'Gun Shield', 4, 2, ['deployWard 1', 'hp 1', 'armor 1', 'resAll 1'], ['Plate Mount', 'deployWard 2', 'armor 1'], ['deployWard 1', 'hp 1.5']),
+
+      ring('turret_road', 'Supply Road', 5, -2, ['hp 1', 'moveSpeed 1', 'deviceDur 1', 'resAll 1'], ['Wagon Train', 'moveSpeed 1.5', 'deviceDur 1'], ['moveSpeed 1', 'hp 1.5']),
+      ring('turret_zone', 'Killing Zone', 5, -1, ['dmgTrap 1@devices3', 'hp 1', 'armor 1', 'evasion 1'], ['Overlapping Fields', 'dmgTrap 2@devices3', 'hp 1'], ['armor 1', 'hp 1.5']),
+      ring('turret_calibre', 'Heavy Calibre', 5, 1, ['dmgElite 1', 'hp 1', 'dmgTrap 1', 'resAll 1'], ['Siege Bolts', 'dmgElite 2', 'dmgBoss 1'], ['dmgElite 1', 'hp 1.5']),
+      ring('turret_tower', 'Watchtower', 5, 2, ['deviceRange 1', 'hp 1', 'resAll 1', 'armor 1'], ['High Ground', 'deviceRange 2', 'resAll 1'], ['deviceRange 1', 'hp 1.5']),
+
+      ring('turret_bunker', 'Bunker', 6, -2, ['hp 1', 'armor 1', 'hpRegen 1', 'resAll 1'], ['Reinforced Walls', 'armor 2', 'hp 1'], ['armor 1', 'hp 1.5']),
+      ring('turret_foreman', "Siege Foreman's Plans", 6, -1, ['hp 1', C.trophy('Siege Plans', ['dmgTrap 1.5', 'deviceDur 1.5'], 'siege_foreman'), 'armor 1', 'resAll 1'],
+        ['Engineer of Sieges', 'dmgTrap 2', 'hp 1'], ['dmgTrap 1', 'hp 1.5']),
+      ring('turret_cult', 'Hungry Guns', 6, 1, ['hp 1', C.corrupt('Rusting Barrels', ['dmgTrap 2', 'deviceSpeed 1.5'], 20), 'armor 1', 'resAll 1'],
+        C.corrupt('Guns That Eat', ['dmg*2', 'dmgTrap 2', 'deviceSpeed 2'], 40), ['dmgTrap 1', 'hp 1.5']),
+      ring('turret_crown', 'Crown Armoury', 6, 2, ['resAll 1', C.faction('Armoury Pass', ['dmgTrap 1.5', 'armor 1'], 'crown', 20), 'hp 1', 'armor 1'],
+        C.faction('Master of Ordnance', ['dmgTrap 2', 'deviceRange 2'], 'crown', 60), ['resAll 1', 'hp 1.5']),
+
+      { id: 'turret_pacts', name: 'Gun Line Bargains', row: 7, lane: -2, shape: 'star', kind: 'special',
+        nodes: ['hp 1',
+          pact('Twin Mounts', ['minionCount+1', 'minionHp*-15'], 'Your devices count as minions here: one more turret, coil, mine and trap may stand at a time.'),
+          pact('Light Tripods', ['deviceSpeed*12', 'deviceDur*-15']),
+          pact('Heavy Tripods', ['deviceDur*25', 'deviceSpeed*-10'])],
+        core: ['Fair Trade', 'dmgTrap 1', 'hp 1'] },
+      ring('turret_perch', "Gargoyle's Perch", 7, -1, ['hp 1', 'deviceRange 1', 'poise 1', C.trophy('Stone Perch', ['deviceRange 1.5', 'hp 1.5'], 'gargoyle_pair')],
+        ['Perched', 'deviceRange 2', 'hp 1'], ['deviceRange 1', 'hp 1.5']),
+      C.altar('turret_altar_b', 'Altar of Gears', 7, 1, ['hp 1', 'deviceSpeed 1', 'dmgTrap 1']),
+      C.keyArc('turret_key_battery', 7, 2, ['dmgTrap 1', 'deviceDur 1'],
+        key('Battery', ['minionCount+1', 'dmgTrap*-15'], 'One more turret, coil, mine and trap may stand at a time, but your Trap Damage is 15% less.', null, { off: 1.04, def: 1 })),
+
+      ring('turret_stores', 'Quartermaster', 8, -3, ['hp 1', 'resAll 1', 'armor 1', 'deviceDur 1'], ['Stores Counted', 'resAll 2', 'hp 1'], ['resAll 1', 'hp 1.5']),
+      C.keyArc('turret_key_trigger', 8, -2, ['deviceSpeed 1', 'hp 1'],
+        key('Hair Trigger', ['deviceSpeed*30', 'deviceDur*-30'], 'Your devices act 30% faster, but last 30% shorter.', null, { off: 1.04, def: 1 })),
+      ring('turret_crew', 'Gun Crew', 8, -1, ['dmgTrap 1', 'hp 1', 'armor 1', 'resAll 1'], ['Drilled Crew', 'dmgTrap 2', 'armor 1'], ['dmgTrap 1', 'hp 1.5']),
+      ring('turret_lookouts', 'Lookouts', 8, 1, ['deviceRange 1', 'hp 1', 'evasion 1', 'resAll 1'], ['Eyes Everywhere', 'deviceRange 2', 'evasion 1'], ['evasion 1', 'hp 1.5']),
+      C.keyArc('turret_key_nest', 8, 2, ['armor 1', 'deployWard 1'],
+        key('Fortified Nest', ['dmgTaken*-20@devices3', 'moveSpeed*-6'], 'While 3 or more of your devices stand you take 20% less damage. You move 6% slower.', null, { off: 1, def: 1.06 })),
+      ring('turret_stand', 'Last Stand', 8, 3, ['hp 1', 'hpRegen 1', 'resAll 1', 'armor 1'], ['Hold the Line', 'hpRegen 2', 'hp 1'], ['hp 1.5', 'armor 1'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['dmgTrap 2', 'hp 2'] },
+      { at: 35, mods: ['deviceDur 3', 'armor 2'] },
+      { at: 60, mods: ['dmgTrap 3', 'deviceSpeed 2', 'hp 2'] }
+    ]
+  });
+
+  T.bridge('clockwright', { id: 'turret_coil_inner', between: ['turret', 'coil'], ring: 'inner', name: 'Live Wire', shape: 'star',
+    nodes: ['dmgTrap 1', C.mut('sp_pierce'), 'dmgShock 1', 'hp 1'],
+    core: ['Wired Turrets', 'dmgShock 1.5', 'armor 1'], bonus: ['hp 1', 'resAll 1'] });
+  T.bridge('clockwright', { id: 'turret_coil_mid', between: ['turret', 'coil'], ring: 'mid', name: 'Electric Feed', shape: 'diamond',
+    nodes: ['deviceSpeed 1', 'hp 1', 'dmgShock 1', 'armor 1'],
+    core: ['Powered Feed', 'deviceSpeed 1.5', 'dmgShock 1'], bonus: ['hp 1', 'armor 1'] });
+  T.bridge('clockwright', { id: 'turret_coil_outer', between: ['turret', 'coil'], ring: 'outer', name: 'Powered Mounts', shape: 'diamond',
+    nodes: ['deviceDur 1', 'hp 1', 'dmgTrap 1', 'resAll 1'],
+    core: ['Spinning Mounts', 'deviceDur 1.5', 'dmgTrap 1.5'], bonus: ['hp 1.5', 'resAll 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_clockwright_vent.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, C = KD.data.tree.clock;
+  var rule = C.rule, web = C.web, key = C.key, pact = C.pact, abil = C.abil, ring = C.ring, star = C.star;
+
+  /**
+   * CLOCKWRIGHT, arm 3 of 8: THE STEAM WORKS (`vent`). Steam, Soak and vent damage. Skill: Steam Vent (trunk, 4 points).
+   * Rules: src/sim/56_tree_clockwright.js. Holds the bridges to boiler.
+   */
+  T.arm('clockwright', {
+    id: 'vent', name: 'The Steam Works', focus: 'Let it out on purpose: scalding steam, Soaked enemies, Ward from the valves', color: '#cfd8dc', vein: 'plague',
+
+    trunk: C.pistolTrunk([
+      'ventPower 1', 'hp 1', { t: 'skill', grants: 'steam_vent', abil: [{ a: 'steam_vent', k: 'dmg', v: 0.05 }] }, 'dmgFire 1', 'armor 1',  // T1..T5
+      'hp 1', 'resAll 1', 'aoe 1', ['Steam Pipe Road', 'moveSpeed 1', 'ventPower 0.5'], 'hp 1',                                              // T6..T10
+      'ventPower 1', 'armor 1', 'hp 1', 'statusDur 1', 'resAll 1',                                                                           // T11..T15
+      'hp 1', 'dmgFire 1', 'ward 1', 'hp 1', 'aoe 1',                                                                                        // T16..T20
+      'resMax 1', 'hp 1', 'ventPower 1', 'resAll 1', 'hp 1'                                                                                  // T21..T25
+    ]),
+
+    clusters: [
+      star('vent_sv_shape', 'Steam Vent: shape', 1, -1, 'hp 1', ['vent_wide', 'vent_long', 'vent_ring'], ['Wide Nozzle', 'aoe 1', 'hp 1']),
+      star('vent_sv_essence', 'Steam Vent: essence', 1, 1, 'ventPower 1', ['vent_scald', 'vent_push', 'vent_fog'], ['Superheated', 'dmgFire 1', 'armor 1']),
+      star('vent_sv_rite', 'Steam Vent: rite', 2, -1, 'resRegen 1', ['vent_cheap', 'vent_quick', 'vent_ward'],
+        abil('Loose Valves', ['resRegen 1', 'hp 1'], 'steam_vent', 'cd', -0.06)),
+      ring('vent_valves', 'The Valve Room', 2, 1,
+        ['ventPower 1', 'hp 1', abil('Wide Nozzles', ['aoe 0.5'], 'steam_vent', 'area', 0.08), 'armor 1', 'ward 1'],
+        web('safety_valve', 'Safety Valve', ['hp 0.5'], 'Steam Vent and Pressure Burst give you Ward for 6 s: 1% of your maximum Health for every 10 Pressure they spend.', { off: 1, def: 1.04 }),
+        ['ventPower 1', 'hp 1.5']),
+
+      ring('vent_soaked', 'Soaked Through', 3, -2, ['statusDur 1', 'hp 1', 'ventPower 1', 'resAll 1'],
+        rule('soaked', 'Drenched', ['statusDur 1'], 'Enemies you Soak are also Slowed by 20% for as long.', { off: 1.01, def: 1.03 }),
+        ['statusDur 1', 'hp 1.5']),
+      ring('vent_pipes', 'Pipework', 3, -1, ['armor 1', 'hp 1', 'ward 1', 'resAll 1'], ['Lagged Pipes', 'armor 2', 'ward 1'], ['armor 1', 'hp 1.5']),
+      ring('vent_whistle', 'Whistle', 3, 1, ['ventPower 1', 'hp 1', 'resMax 1', 'armor 1'],
+        web('scalding_whistle', 'Scalding Whistle', ['ventPower 1'], 'Enemies hit by your Overheat blast are Stunned for 2 s.', { off: 1.01, def: 1.03 }),
+        ['ventPower 1', 'hp 1.5']),
+      ring('vent_scald', 'Scald', 3, 2, ['dmgFire 1', 'hp 1', 'statusChance 1', 'resAll 1'], ['Scalding Spray', 'dmgFire 2', 'statusChance 1'], ['dmgFire 1', 'hp 1.5']),
+
+      ring('vent_condense', 'Condensers', 4, -2, ['ward 1', 'hp 1', 'resRegen 1', 'resAll 1'], ['Cold Coils', 'ward 2', 'hp 1'], ['ward 1', 'hp 1.5']),
+      C.altar('vent_altar_a', 'Altar of Steam', 4, -1, ['hp 1', 'ventPower 1', 'armor 1']),
+      ring('vent_fins', 'Cooling Fins', 4, 1, ['dmgTaken 1@lowRes', 'hp 1', 'armor 1', 'resAll 1'], ['Fin Rows', 'dmgTaken 2@lowRes', 'ward 1'], ['armor 1', 'hp 1.5']),
+      ring('vent_billows', 'Billows', 4, 2, ['aoe 1', 'hp 1', 'ventPower 1', 'armor 1'], ['Billowing Clouds', 'aoe 2', 'ventPower 1'], ['aoe 1', 'hp 1.5']),
+
+      ring('vent_road', 'Steam Road', 5, -2, ['hp 1', 'moveSpeed 1', 'dodgeCdr 1', 'resAll 1'], ['Puffing Along', 'moveSpeed 1.5', 'dodgeCdr 1'], ['moveSpeed 1', 'hp 1.5']),
+      ring('vent_suit', 'Boiler Suit', 5, -1, ['hp 1', 'resFire 1', 'armor 1', 'resAll 1'], ['Asbestos Lining', 'resFire 2', 'hp 1'], ['resAll 1', 'hp 1.5']),
+      ring('vent_washer', 'Pressure Washer', 5, 1, ['ventPower 1', 'hp 1', 'dmgElite 1', 'resAll 1'], ['Strip the Paint', 'dmgElite 2', 'ventPower 1'], ['ventPower 1', 'hp 1.5']),
+      ring('vent_wet', 'Wet Ground', 5, 2, ['statusDur 1', 'hp 1', 'armor 1', 'resAll 1'], ['Puddles', 'statusDur 2', 'armor 1'], ['statusDur 1', 'hp 1.5']),
+
+      ring('vent_sauna', 'Sauna', 6, -2, ['hp 1', 'hpRegen 1', 'ward 1', 'resAll 1'], ['Sweat It Out', 'hpRegen 2', 'hp 1'], ['hpRegen 1', 'hp 1.5']),
+      ring('vent_ferry', "Ferryman's Mist", 6, -1, ['hp 1', C.trophy('River Mist', ['ventPower 1.5', 'ward 1.5'], 'drowned_ferryman'), 'armor 1', 'resAll 1'],
+        ['Fog on the Water', 'ventPower 2', 'hp 1'], ['ventPower 1', 'hp 1.5']),
+      ring('vent_cult', 'Black Steam', 6, 1, ['hp 1', C.corrupt('Tar Smoke', ['ventPower 2', 'dmgFire 1.5'], 20), 'armor 1', 'resAll 1'],
+        C.corrupt('Breath of the Pit', ['dmg*2', 'ventPower 2', 'aoe 2'], 40), ['ventPower 1', 'hp 1.5']),
+      ring('vent_choir', 'The Bathhouse', 6, 2, ['resAll 1', C.faction('Bathhouse Deal', ['ward 1.5', 'ventPower 1'], 'choir', 20), 'hp 1', 'armor 1'],
+        C.faction('King of the Bathhouse', ['ventPower 2', 'ward 2'], 'choir', 60), ['resAll 1', 'hp 1.5']),
+
+      { id: 'vent_pacts', name: 'Steam Bargains', row: 7, lane: -2, shape: 'star', kind: 'special',
+        nodes: ['hp 1',
+          pact('Open Valves', ['ventPower*25', 'heatPower*-25']),
+          pact('Thin Pipes', ['aoe*15', 'ventPower*-6']),
+          pact('Hot Hands', ['dmgFire*12', 'hp*-5'])],
+        core: ['Valve Deal', 'ventPower 1', 'hp 1'] },
+      ring('vent_frost', "Ice Warden's Frost", 7, -1, ['hp 1', 'ward 1', 'poise 1', C.trophy('Frost Valve', ['ward 1.5', 'hp 1.5'], 'ice_warden')],
+        ['Cold Steam', 'ward 2', 'hp 1'], ['ward 1', 'hp 1.5']),
+      C.altar('vent_altar_b', 'Altar of Valves', 7, 1, ['hp 1', 'aoe 1', 'ventPower 1']),
+      C.keyArc('vent_key_boil', 7, 2, ['ventPower 1', 'statusDur 1'],
+        key('Boiling Point', ['heatPower*-30'], 'Your Fire hits on Soaked enemies deal 25% more damage. Heat gives your devices 30% less.',
+          'tree_clockwright_boiling', { off: 1.04, def: 1 })),
+
+      ring('vent_spare', 'Spare Valves', 8, -3, ['hp 1', 'resAll 1', 'armor 1', 'ward 1'], ['Valve Box', 'resAll 2', 'hp 1'], ['resAll 1', 'hp 1.5']),
+      C.keyArc('vent_key_blowoff', 8, -2, ['ventPower 1', 'hp 1'],
+        key('Blowoff', ['ventPower*35', 'heatPower*-50'], 'Your vents (Steam Vent, Pressure Burst, the Overheat blast) deal 35% more damage, but Heat gives your devices half as much.', null, { off: 1.04, def: 1 })),
+      ring('vent_cloud', 'Steam Cloud', 8, -1, ['ward 1', 'hp 1', 'armor 1', 'resAll 1'], ['Lost in Steam', 'ward 2', 'armor 1'], ['ward 1', 'hp 1.5']),
+      ring('vent_kettle', 'Kettle', 8, 1, ['dmgFire 1', 'hp 1', 'ventPower 1', 'armor 1'], ['Whistling Kettle', 'dmgFire 2', 'hp 1'], ['dmgFire 1', 'hp 1.5']),
+      C.keyArc('vent_key_cool', 8, 2, ['ward 1', 'armor 1'],
+        key('Cool Head', ['dmgTaken*-15@lowRes', 'ventPower*-15'], 'While your Pressure is low you take 15% less damage, but your vents deal 15% less.', null, { off: 1, def: 1.05 })),
+      ring('vent_bath', 'Hot Bath', 8, 3, ['hp 1', 'hpRegen 1', 'resAll 1', 'armor 1'], ['Long Soak', 'hpRegen 2', 'hp 1'], ['hp 1.5', 'armor 1'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['ventPower 2', 'hp 2'] },
+      { at: 35, mods: ['ward 2', 'aoe 2'] },
+      { at: 60, mods: ['ventPower 3', 'statusDur 2', 'hp 2'] }
+    ]
+  });
+
+  T.bridge('clockwright', { id: 'vent_boiler_inner', between: ['vent', 'boiler'], ring: 'inner', name: 'Shared Pipes', shape: 'star',
+    nodes: ['ventPower 1', C.mut('sp_burn'), 'heatPower 1', 'hp 1'],
+    core: ['One System', 'heatPower 1.5', 'ventPower 1'], bonus: ['hp 1', 'resAll 1'] });
+  T.bridge('clockwright', { id: 'vent_boiler_mid', between: ['vent', 'boiler'], ring: 'mid', name: 'Release Valve', shape: 'diamond',
+    nodes: ['resMax 1', 'hp 1', 'ventPower 1', 'armor 1'],
+    core: ['Let It Out', 'resMax 1.5', 'ventPower 1'], bonus: ['hp 1', 'armor 1'] });
+  T.bridge('clockwright', { id: 'vent_boiler_outer', between: ['vent', 'boiler'], ring: 'outer', name: 'Boiler Room', shape: 'diamond',
+    nodes: ['heatPower 1', 'hp 1', 'ward 1', 'resAll 1'],
+    core: ['Hot Room', 'heatPower 1.5', 'ward 1.5'], bonus: ['hp 1.5', 'resAll 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_clockwright_wrench.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, C = KD.data.tree.clock;
+  var rule = C.rule, key = C.key, pact = C.pact, abil = C.abil, ring = C.ring, star = C.star;
+
+  /**
+   * CLOCKWRIGHT, arm 7 of 8: THE WORKSHOP (`wrench`). Repairs, longer-lived devices, Ward from every deployment. Skill: Repair
+   * Wrench (trunk, 4 points). Rules: src/sim/56_tree_clockwright.js. Holds the bridges to pistol.
+   */
+  T.arm('clockwright', {
+    id: 'wrench', name: 'The Workshop', focus: 'Keep it all running: repairs, devices that last, and Ward every time you build', color: '#8fa3a8', vein: 'order',
+
+    trunk: C.pistolTrunk([
+      'deviceDur 1', 'hp 1', { t: 'skill', grants: 'repair_wrench', abil: [{ a: 'repair_wrench', k: 'cd', v: -0.05 }] }, 'armor 1', 'deployWard 1',  // T1..T5
+      'hp 1', 'resAll 1', 'dmgMelee 1', ['Workshop Road', 'moveSpeed 1', 'deviceDur 0.5'], 'hp 1',                                                  // T6..T10
+      'deviceDur 1', 'armor 1', 'hp 1', 'healTaken 1', 'resAll 1',                                                                                 // T11..T15
+      'hp 1', 'deployWard 1', 'poise 1', 'hp 1', 'cdr 1',                                                                                          // T16..T20
+      'deviceDur 1', 'hp 1', 'armor 1', 'resAll 1', 'hp 1'                                                                                         // T21..T25
+    ]),
+
+    clusters: [
+      star('wrench_rw_shape', 'Repair Wrench: shape', 1, -1, 'hp 1', ['wr_wide', 'wr_reach', 'wr_twice'], ['Long Handle', 'deviceDur 1', 'hp 1']),
+      star('wrench_rw_essence', 'Repair Wrench: essence', 1, 1, 'armor 1', ['wr_shock', 'wr_heal', 'wr_stun'], ['Heavy Wrench', 'dmgMelee 1', 'armor 1']),
+      star('wrench_rw_rite', 'Repair Wrench: rite', 2, -1, 'deployWard 1', ['wr_quick', 'wr_pressure', 'wr_self'],
+        abil('Ready Tools', ['deviceDur 1', 'hp 1'], 'repair_wrench', 'cd', -0.06)),
+      ring('wrench_bench', 'The Workbench', 2, 1,
+        ['deviceDur 1', 'hp 1', abil('Spare Kit', ['armor 0.5'], 'repair_wrench', 'area', 0.08), 'armor 1', 'deployWard 1'],
+        rule('selfrepair', 'Self-Repair', ['deployWard 1'], 'Each device you deploy heals you for 3% of your Health.', { off: 1, def: 1.04 }),
+        ['deviceDur 1', 'hp 1.5']),
+
+      ring('wrench_casings', 'Casings', 3, -2, ['deployWard 1', 'hp 1', 'armor 1', 'resAll 1'], ['Housing', 'deployWard 2', 'armor 1'], ['deployWard 1', 'hp 1.5']),
+      ring('wrench_toolbox', 'Toolbox', 3, -1, ['deviceDur 1', 'hp 1', 'cdr 1', 'resAll 1'], ['Every Tool', 'deviceDur 2', 'cdr 1'], ['deviceDur 1', 'hp 1.5']),
+      ring('wrench_apron', 'Leather Apron', 3, 1, ['armor 1', 'hp 1', 'resFire 1', 'resAll 1'], ['Thick Apron', 'armor 2', 'hp 1'], ['armor 1', 'hp 1.5']),
+      ring('wrench_work', 'Wrench Work', 3, 2, ['dmgMelee 1', 'hp 1', 'poise 1', 'armor 1'], ['Percussive Maintenance', 'dmgMelee 2', 'poise 1'], ['poise 1', 'hp 1.5']),
+
+      ring('wrench_upkeep', 'Upkeep', 4, -2, ['deviceDur 1', 'hp 1', 'deviceSpeed 1', 'resAll 1'], ['Clockwork Care', 'deviceDur 2', 'deviceSpeed 1'], ['deviceDur 1', 'hp 1.5']),
+      C.altar('wrench_altar_a', 'Altar of Tools', 4, -1, ['hp 1', 'deviceDur 1', 'armor 1']),
+      ring('wrench_aid', 'First Aid Kit', 4, 1, ['healTaken 1', 'hp 1', 'potionPower 1', 'resAll 1'], ['Clockwork Remedy', 'potionPower 2', 'healTaken 1'], ['healTaken 1', 'hp 1.5']),
+      ring('wrench_scrap', 'Scrap', 4, 2, ['hp 1', 'pickupRadius 1', 'goldFind 1', 'resAll 1'], ['Scrap Collector', 'pickupRadius 1.5', 'goldFind 1.5'], ['goldFind 1', 'hp 1.5']),
+
+      ring('wrench_road', 'Tinker Road', 5, -2, ['hp 1', 'moveSpeed 1', 'dodgeCdr 1', 'resAll 1'], ['Cart of Tools', 'moveSpeed 1.5', 'dodgeCdr 1'], ['moveSpeed 1', 'hp 1.5']),
+      ring('wrench_coat', 'Riveted Coat', 5, -1, ['armor 1', 'hp 1', 'evasion 1', 'resAll 1'], ['Rivets Everywhere', 'armor 2', 'evasion 1'], ['armor 1', 'hp 1.5']),
+      ring('wrench_built', 'Overbuilt', 5, 1, ['deviceDur 1', 'hp 1', 'minionHp 1', 'armor 1'], ['Built to Last', 'deviceDur 2', 'minionHp 1'], ['deviceDur 1', 'hp 1.5']),
+      ring('wrench_plans', 'Blueprints', 5, 2, ['cdr 1', 'hp 1', 'resMax 1', 'resAll 1'], ['Clean Plans', 'cdr 2', 'resMax 1'], ['cdr 1', 'hp 1.5']),
+
+      ring('wrench_patch', 'Patchwork', 6, -2, ['hp 1', 'hpRegen 1', 'armor 1', 'resAll 1'], ['Patched Up', 'hpRegen 2', 'hp 1'], ['hpRegen 1', 'hp 1.5']),
+      ring('wrench_jailer', "Jailer's Keys", 6, -1, ['hp 1', C.trophy('Ring of Keys', ['deviceDur 1.5', 'armor 1.5'], 'jailer_marrow'), 'armor 1', 'resAll 1'],
+        ['Locksmith', 'deviceDur 2', 'hp 1'], ['deviceDur 1', 'hp 1.5']),
+      ring('wrench_cult', 'Cursed Tools', 6, 1, ['hp 1', C.corrupt('Tools That Bite', ['dmgMelee 2', 'deviceSpeed 1.5'], 20), 'armor 1', 'resAll 1'],
+        C.corrupt('Workshop of the Hollow', ['dmg*2', 'deviceDur 2', 'dmgTrap 2'], 40), ['deviceDur 1', 'hp 1.5']),
+      ring('wrench_crown', 'Crown Workshop', 6, 2, ['resAll 1', C.faction('Workshop Charter', ['deployWard 1.5', 'armor 1'], 'crown', 20), 'hp 1', 'armor 1'],
+        C.faction('Royal Tinker', ['deviceDur 2', 'deployWard 2'], 'crown', 60), ['resAll 1', 'hp 1.5']),
+
+      { id: 'wrench_pacts', name: 'Workshop Bargains', row: 7, lane: -2, shape: 'star', kind: 'special',
+        nodes: ['hp 1',
+          pact('Assembly Line', ['minionCount+1', 'minionDur*-20'], 'Your devices count as minions here: one more turret, coil, mine and trap may stand at a time. All of them wind down sooner.'),
+          pact('Overbuilt Frames', ['deviceDur*25', 'minionHp*25', 'deviceSpeed*-10']),
+          pact('Cheap Parts', ['cdr*8', 'deviceDur*-10'])],
+        core: ['Fair Wage', 'deviceDur 1', 'hp 1'] },
+      ring('wrench_toll', "Toll Warden's Lock", 7, -1, ['hp 1', 'deployWard 1', 'poise 1', C.trophy('Warden Lock', ['deployWard 1.5', 'hp 1.5'], 'toll_warden')],
+        ['Locked Box', 'deployWard 2', 'hp 1'], ['deployWard 1', 'hp 1.5']),
+      C.altar('wrench_altar_b', 'Altar of the Bench', 7, 1, ['hp 1', 'deployWard 1', 'deviceDur 1']),
+      C.keyArc('wrench_key_perpetual', 7, 2, ['deviceDur 1', 'hp 1'],
+        key('Perpetual Motion', [], 'Devices (turrets, coils, mines, golems) never expire. The cap on each device type is reduced by 1 (minimum 1) and Pressure decays twice as fast.',
+          'web_perpetual_motion', { off: 1.05, def: 1 })),
+
+      ring('wrench_shed', 'Tool Shed', 8, -3, ['hp 1', 'resAll 1', 'armor 1', 'deviceDur 1'], ['Hanging Tools', 'resAll 2', 'hp 1'], ['resAll 1', 'hp 1.5']),
+      C.keyArc('wrench_key_plating', 8, -2, ['armor 1', 'hp 1'],
+        key('Brass Plating', ['armor*25', 'ward*15', 'atkSpeed*-8'], 'You have 25% more Armour and 15% more Ward, but attack 8% slower.', null, { off: 0.99, def: 1.05 })),
+      ring('wrench_gauges', 'Gauges', 8, -1, ['deployWard 1', 'hp 1', 'armor 1', 'resAll 1'], ['Read the Dials', 'deployWard 2', 'hp 1'], ['deployWard 1', 'hp 1.5']),
+      ring('wrench_life', 'Long Life', 8, 1, ['deviceDur 1', 'hp 1', 'resAll 1', 'armor 1'], ['Lifetime Warranty', 'deviceDur 2', 'hp 1'], ['deviceDur 1', 'hp 1.5']),
+      C.keyArc('wrench_key_parts', 8, 2, ['deployWard 1', 'armor 1'],
+        key('Spare Parts', ['deployWard+3', 'deviceDur*-15'], 'Each device you deploy gives you Ward worth 3% more of your maximum Health, but your devices last 15% shorter.', null, { off: 1, def: 1.05 })),
+      ring('wrench_close', 'Closing Time', 8, 3, ['hp 1', 'hpRegen 1', 'resAll 1', 'armor 1'], ['Lights Out', 'hpRegen 2', 'hp 1'], ['hp 1.5', 'armor 1'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['deviceDur 2', 'hp 2'] },
+      { at: 35, mods: ['deployWard 2', 'armor 2'] },
+      { at: 60, mods: ['deviceDur 3', 'armor 2', 'hp 2'] }
+    ]
+  });
+
+  T.bridge('clockwright', { id: 'wrench_pistol_inner', between: ['wrench', 'pistol'], ring: 'inner', name: 'Gun Repairs', shape: 'star',
+    nodes: ['deviceDur 1', C.mut('sp_spread'), 'dmgRanged 1', 'hp 1'],
+    core: ['Oiled Action', 'dmgRanged 1.5', 'armor 1'], bonus: ['hp 1', 'resAll 1'] });
+  T.bridge('clockwright', { id: 'wrench_pistol_mid', between: ['wrench', 'pistol'], ring: 'mid', name: 'Armoured Gunner', shape: 'diamond',
+    nodes: ['armor 1', 'hp 1', 'dmgRanged 1', 'resAll 1'],
+    core: ['Plated Holster', 'armor 1.5', 'dmgRanged 1'], bonus: ['hp 1', 'armor 1'] });
+  T.bridge('clockwright', { id: 'wrench_pistol_outer', between: ['wrench', 'pistol'], ring: 'outer', name: 'Field Workshop', shape: 'diamond',
+    nodes: ['deployWard 1', 'hp 1', 'pistolPressure 1', 'resAll 1'],
+    core: ['Mobile Bench', 'deployWard 1.5', 'pistolPressure 1.5'], bonus: ['hp 1.5', 'resAll 1'] });
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -21178,6 +22112,317 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/data/37_mutations_clockwright.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+
+  /**
+   * CLOCKWRIGHT, every mutation of the Clockwright's own tree (docs/TREE_CLOCKWRIGHT.md). One record changes ONE ability in ONE
+   * slot (shape: where and how many; essence: what the hit or the device carries; rite: cost, cooldown, charges, extra
+   * effects), so two mutations of one ability never write the same field: KD.skills.mutationReport() proves it
+   * (tests/mutations.test.js, tests/tree_clockwright.test.js). Format: docs/SKILLS.md section 12. Pure data, no hooks.
+   * Ids all start with 'cw_' (mutation ids are global); the arm files name them without it (KD.data.tree.clock.mut adds it).
+   * The Spring Pistol ones sit in the inner bridges. Texts quote the numbers of the records; change both together.
+   */
+  var M = [];
+  function rec(slot, id, ability, name, text, r) { r.id = 'cw_' + id; r.ability = ability; r.slot = slot; r.name = name; r.text = text; M.push(r); }
+  function shape(id, a, n, t, r) { rec('shape', id, a, n, t, r); }
+  function essence(id, a, n, t, r) { rec('essence', id, a, n, t, r); }
+  function rite(id, a, n, t, r) { rec('rite', id, a, n, t, r); }
+
+  var AOE = { type: 'aoe' }, BANNER = { type: 'banner' }, BUFF = { type: 'buff' }, HEAL = { type: 'heal' }, PROJ = { type: 'projectile' },
+    HOOK = { type: 'hook' }, TRAP = { type: 'trap' }, SUMMON = { type: 'summon' }, MEL = { type: 'melee' }, RES = { type: 'resource' };
+  function pressure(n) { return { type: 'resource', gain: n }; }
+  function ward(pct, dur) { return { type: 'shield', self: true, pct: pct, dur: dur }; }
+
+  // =============================================================================================
+  // SPRING PISTOL (primary). Base: a 63% bolt, 16 m, 3 Pressure per hit. One mutation in each inner bridge.
+  // =============================================================================================
+  shape('sp_long', 'spring_pistol', 'Long Barrel', 'Bolts fly 22 m instead of 16.',
+    { set: { range: 18, aiUse: { use: 'attack', range: 16 } }, fx: [{ find: PROJ, set: { range: 22 } }] });
+  shape('sp_spread', 'spring_pistol', 'Scattergun', 'Three bolts in a fan, each for 50% of the damage.',
+    { power: 0.5, fx: [{ find: PROJ, set: { count: 3, spread: 16 } }] });
+  shape('sp_pierce', 'spring_pistol', 'Piercing Bolts', 'Bolts pass through up to 2 enemies.',
+    { fx: [{ find: PROJ, set: { pierce: 2 } }] });
+
+  essence('sp_shock', 'spring_pistol', 'Charged Bolts', 'Bolts deal Shock damage and have a 15% chance to Shock.',
+    { set: { elem: 'shock' }, fx: [{ find: PROJ, set: { elem: 'shock', status: { id: 'shock', chance: 0.15 } } }] });
+  essence('sp_burn', 'spring_pistol', 'Hot Bolts', 'Bolts have a 20% chance to set enemies Burning.',
+    { fx: [{ find: PROJ, set: { status: { id: 'burn', chance: 0.2 } } }] });
+  essence('sp_heavy', 'spring_pistol', 'Heavy Bolts', 'Bolts break Poise more than twice as hard, but deal 8% less damage.',
+    { fx: [{ find: PROJ, set: { mult: 0.58, poise: 1.5 } }] });
+
+  rite('sp_quick', 'spring_pistol', 'Quick Spring', 'You shoot about a quarter faster: shorter windup and recovery.',
+    { set: { windup: 0.14, recover: 0.3 } });
+  rite('sp_pressure', 'spring_pistol', 'Pressure Rounds', 'Each bolt that lands builds 5 Pressure instead of 3.',
+    { set: { gain: 5 } });
+
+  // =============================================================================================
+  // GRAPPLE HOOK. Base: 9 s; a 90% hook up to 12 m that reels in the first enemy and Stuns it for 0.8 s; 12 Pressure.
+  // =============================================================================================
+  shape('hook_long', 'grapple_hook', 'Extra Cable', 'The hook reaches 18 m instead of 12.',
+    { set: { range: 18, aiUse: { use: 'attack', range: 17, minRange: 5 } }, fx: [{ find: HOOK, set: { range: 18 } }] });
+  shape('hook_fast', 'grapple_hook', 'Fast Reel', 'The hook flies 60% faster.',
+    { fx: [{ find: HOOK, set: { speed: 45 } }] });
+
+  essence('hook_shock', 'grapple_hook', 'Live Cable', 'The hook deals Shock damage and Shocks the enemy.',
+    { set: { elem: 'shock' }, fx: [{ find: HOOK, set: { elem: 'shock', status: [{ id: 'stun', dur: 0.8 }, { id: 'shock', chance: 1 }] } }] });
+  essence('hook_rend', 'grapple_hook', 'Rending Barbs', 'The hook also adds 3 stacks of Bleed.',
+    { fx: [{ find: HOOK, set: { status: [{ id: 'stun', dur: 0.8 }, { id: 'bleed', stacks: 3, power: 0.08 }] } }] });
+  essence('hook_daze', 'grapple_hook', 'Hard Landing', 'The Stun lasts 1.5 s, but the hook deals 60% instead of 90%.',
+    { fx: [{ find: HOOK, set: { mult: 0.6, status: { id: 'stun', dur: 1.5 } } }] });
+
+  rite('hook_quick', 'grapple_hook', 'Rewound', 'Cooldown 6 s instead of 9.',
+    { set: { cooldown: 6 } });
+  rite('hook_twice', 'grapple_hook', 'Spare Grapple', 'Grapple Hook has 2 charges. Each takes 10 s.',
+    { set: { charges: 2, cooldown: 10 } });
+  rite('hook_steam', 'grapple_hook', 'Steam Winch', 'A hook that lands builds 20 Pressure instead of 12.',
+    { set: { gain: 20 } });
+
+  // =============================================================================================
+  // DEPLOY TURRET. Base: 12 s, 2 charges; a turret at the aim (8 m) for 16 s that shoots every 1.5 s; 2 at most; 8 Pressure.
+  // =============================================================================================
+  shape('tur_long', 'deploy_turret', 'Long Belts', 'Turrets stand for 24 s instead of 16.',
+    { fx: [{ find: BANNER, set: { duration: 24 } }] });
+  shape('tur_three', 'deploy_turret', 'Third Tripod', 'Up to 3 turrets may stand instead of 2.',
+    { fx: [{ find: BANNER, set: { cap: 3 } }] });
+  shape('tur_far', 'deploy_turret', 'Thrown Tripod', 'Turrets can be set up to 14 m away instead of 8.',
+    { set: { range: 14 }, fx: [{ find: BANNER, set: { range: 14 } }] });
+
+  essence('tur_slow', 'deploy_turret', 'Suppressing Fire', 'Enemies near a turret are Slowed by 15%.',
+    { fx: [{ find: BANNER, set: { slow: 0.15 } }] });
+  essence('tur_cover', 'deploy_turret', 'Covering Fire', 'Allies near a turret take 10% less damage.',
+    { fx: [{ find: BANNER, set: { buff: { id: 'turret_cover', name: 'Covering Fire', mods: [{ s: 'dmgTaken', t: 'more', v: -0.1 }] } } }] });
+  essence('tur_mark', 'deploy_turret', 'Under Fire', 'Enemies near a turret take 8% more damage.',
+    { fx: [{ find: BANNER, set: { enemyBuff: { id: 'turret_mark', name: 'Under Fire', mods: [{ s: 'dmgTaken', t: 'more', v: 0.08 }] } } }] });
+
+  rite('tur_quick', 'deploy_turret', 'Fast Assembly', 'Cooldown 9 s instead of 12.',
+    { set: { cooldown: 9 } });
+  rite('tur_pressure', 'deploy_turret', 'Wound Tight', 'Deploying a turret builds 16 Pressure instead of 8.',
+    { fx: [{ find: RES, set: { gain: 16 } }] });
+  rite('tur_ward', 'deploy_turret', 'Gun Shield', 'Deploying a turret gives you Ward worth 6% of your Health for 6 s.',
+    { add: [ward(0.06, 6)] });
+
+  // =============================================================================================
+  // TESLA COIL. Base: 16 s; a coil at the aim (8 m) for 12 s: 7.5% Shock to enemies within 4.5 m twice a second, 10% to Shock.
+  // =============================================================================================
+  shape('coil_wide', 'tesla_coil', 'High Coil', 'The coil reaches 6.5 m instead of 4.5.',
+    { fx: [{ find: BANNER, set: { radius: 6.5 } }] });
+  shape('coil_long', 'tesla_coil', 'Deep Battery', 'The coil hums for 18 s instead of 12.',
+    { fx: [{ find: BANNER, set: { duration: 18 } }] });
+  shape('coil_two', 'tesla_coil', 'Twin Coils', 'Up to 2 coils may stand instead of 1.',
+    { fx: [{ find: BANNER, set: { cap: 2 } }] });
+
+  essence('coil_hot', 'tesla_coil', 'Hot Wire', 'The coil deals 10% a tick instead of 7.5%, but Shocks only 5% of the time.',
+    { fx: [{ find: BANNER, set: { mult: 0.1, status: { id: 'shock', chance: 0.05 } } }] });
+  essence('coil_slow', 'tesla_coil', 'Numbing Field', 'Enemies near the coil are Slowed by 25%.',
+    { fx: [{ find: BANNER, set: { slow: 0.25 } }] });
+  essence('coil_hum', 'tesla_coil', 'Teeth on Edge', 'Enemies near the coil deal 12% less damage.',
+    { fx: [{ find: BANNER, set: { enemyBuff: { id: 'coil_hum', name: 'Humming', mods: [{ s: 'dmg', t: 'more', v: -0.12 }] } } }] });
+
+  rite('coil_quick', 'tesla_coil', 'Quick Rewind', 'Cooldown 11 s instead of 16.',
+    { set: { cooldown: 11 } });
+  rite('coil_twice', 'tesla_coil', 'Spare Coil', 'Tesla Coil has 2 charges. Each takes 18 s.',
+    { set: { charges: 2, cooldown: 18 } });
+  rite('coil_pressure', 'tesla_coil', 'Charged Capacitor', 'Planting the coil builds 16 Pressure instead of 8.',
+    { fx: [{ find: RES, set: { gain: 16 } }] });
+
+  // =============================================================================================
+  // GRAND MECHANISM (Ultimate). Base: 90 s; at the aim (9 m) for 10 s, 7 m: drags enemies in, 14% Shock twice a second, 15%
+  // to Shock; your devices are Overclocked and you cannot Overheat while it runs.
+  // =============================================================================================
+  shape('gm_wide', 'grand_mechanism', 'Giant Wheel', 'The Mechanism reaches 10 m instead of 7.',
+    { fx: [{ find: BANNER, set: { radius: 10 } }] });
+  shape('gm_long', 'grand_mechanism', 'Long Shift', 'The Mechanism runs for 14 s instead of 10.',
+    { fx: [{ find: BANNER, set: { duration: 14 } }, { find: BUFF, set: { dur: 14 } }] });
+  shape('gm_far', 'grand_mechanism', 'Far Assembly', 'The Mechanism can be built up to 15 m away instead of 9.',
+    { set: { range: 15, aiUse: { use: 'attack', range: 15, minTargets: 4, orBoss: true } }, fx: [{ find: BANNER, set: { range: 15 } }] });
+
+  essence('gm_storm', 'grand_mechanism', 'Storm Engine', 'The Mechanism deals 20% a tick instead of 14% and Shocks 30% of the time.',
+    { fx: [{ find: BANNER, set: { mult: 0.2, status: { id: 'shock', chance: 0.3 } } }] });
+  essence('gm_pull', 'grand_mechanism', 'Great Magnet', 'The Mechanism drags enemies in more than twice as hard, but deals 12% a tick.',
+    { fx: [{ find: BANNER, set: { mult: 0.12, pull: 1.2 } }] });
+  essence('gm_shield', 'grand_mechanism', 'Iron Shelter', 'While the Mechanism runs you take 25% less damage.',
+    { fx: [{ find: BUFF, set: { mods: [{ s: 'dmgTaken', t: 'more', v: -0.25 }] } }] });
+
+  rite('gm_early', 'grand_mechanism', 'Early Shift', 'Cooldown 70 s instead of 90.',
+    { set: { cooldown: 70 } });
+  rite('gm_twice', 'grand_mechanism', 'Second Mechanism', 'Grand Mechanism has 2 charges. Each takes 100 s.',
+    { set: { charges: 2, cooldown: 100 } });
+  rite('gm_pact', 'grand_mechanism', 'Blood in the Gears', 'Costs 15% of your Health. Cooldown 55 s.',
+    { set: { hpCost: 0.15, cooldown: 55 } });
+
+  // =============================================================================================
+  // STEAM VENT. Base: 6 s, 30 Pressure; three 56% bursts in a 5.5 m cone (70 degrees), knockback, Soaked for 5 s.
+  // =============================================================================================
+  shape('vent_wide', 'steam_vent', 'Flared Nozzle', 'The cone opens to 120 degrees, for 80% of the damage.',
+    { power: 0.8, fx: [{ find: AOE, set: { arc: 120 } }] });
+  shape('vent_long', 'steam_vent', 'Long Nozzle', 'The cone reaches 8 m but is only 45 degrees wide.',
+    { fx: [{ find: AOE, set: { radius: 8, arc: 45 } }] });
+  shape('vent_ring', 'steam_vent', 'Steam Ring', 'The steam bursts all around you, 4 m wide, for 75% of the damage.',
+    { power: 0.75, fx: [{ find: AOE, set: { radius: 4, arc: 360 } }] });
+
+  essence('vent_scald', 'steam_vent', 'Scalding Steam', 'The steam also sets enemies Burning.',
+    { fx: [{ find: AOE, set: { status: [{ id: 'soak', dur: 5 }, { id: 'burn', chance: 1 }] } }] });
+  essence('vent_push', 'steam_vent', 'High Pressure', 'The steam knocks enemies three times as far and breaks Poise twice as hard.',
+    { fx: [{ find: AOE, set: { knockback: 3, poise: 1.2 } }] });
+  essence('vent_fog', 'steam_vent', 'Choking Fog', 'The steam also Weakens enemies for 3 s.',
+    { fx: [{ find: AOE, set: { status: [{ id: 'soak', dur: 5 }, { id: 'weaken', dur: 3 }] } }] });
+
+  rite('vent_cheap', 'steam_vent', 'Small Valve', 'Steam Vent costs 20 Pressure instead of 30.',
+    { set: { cost: 20 } });
+  rite('vent_quick', 'steam_vent', 'Loose Valve', 'Cooldown 4 s instead of 6.',
+    { set: { cooldown: 4 } });
+  rite('vent_ward', 'steam_vent', 'Steam Screen', 'Steam Vent gives you Ward worth 8% of your Health for 4 s.',
+    { add: [ward(0.08, 4)] });
+
+  // =============================================================================================
+  // OVERCLOCK. Base: 24 s; for 8 s devices fire 40% faster, you attack 20% faster, Pressure builds 50% faster and holds; +20 Pressure.
+  // =============================================================================================
+  shape('oc_long', 'overclock', 'Extended Run', 'Overclock lasts 12 s instead of 8.',
+    { fx: [{ find: BUFF, set: { dur: 12 } }] });
+
+  essence('oc_fury', 'overclock', 'Hand Crank', 'You attack 30% faster instead of 20% while it lasts.',
+    { fx: [{ find: BUFF, set: { mods: [{ s: 'atkSpeed', t: 'inc', v: 0.3 }, { s: 'resRegen', t: 'inc', v: 0.5 }] } }] });
+  essence('oc_devices', 'overclock', 'Hot Gears', 'You attack only 10% faster, but deal 15% more Trap Damage while it lasts.',
+    { fx: [{ find: BUFF, set: { mods: [{ s: 'atkSpeed', t: 'inc', v: 0.1 }, { s: 'resRegen', t: 'inc', v: 0.5 }, { s: 'dmgTrap', t: 'more', v: 0.15 }] } }] });
+  essence('oc_cool', 'overclock', 'Cool Running', 'You attack 25% faster, and Pressure builds only 15% faster instead of 50%.',
+    { fx: [{ find: BUFF, set: { mods: [{ s: 'atkSpeed', t: 'inc', v: 0.25 }, { s: 'resRegen', t: 'inc', v: 0.15 }] } }] });
+
+  rite('oc_quick', 'overclock', 'Short Cycle', 'Cooldown 18 s instead of 24.',
+    { set: { cooldown: 18 } });
+  rite('oc_charge', 'overclock', 'Full Throttle', 'Overclock gives 40 Pressure at once instead of 20.',
+    { fx: [{ find: RES, set: { gain: 40 } }] });
+  rite('oc_twice', 'overclock', 'Two Throttles', 'Overclock has 2 charges. Each takes 28 s.',
+    { set: { charges: 2, cooldown: 28 } });
+
+  // =============================================================================================
+  // PRESSURE BURST. Base: 8 s, 40 Pressure and then the rest; a blast 5.5 m around you, knockback, 25% to Burn.
+  // =============================================================================================
+  shape('pb_wide', 'pressure_burst', 'Big Blowdown', 'The blast reaches 8 m instead of 5.5.',
+    { fx: [{ find: AOE, set: { radius: 8 } }] });
+  shape('pb_line', 'pressure_burst', 'Directed Blast', 'The blast shoots forward in a line 9 m long and 2.5 m wide.',
+    { set: { range: 8, aiUse: { use: 'attack', range: 8, minTargets: 1 } }, fx: [{ find: AOE, set: { shape: 'line', length: 9, width: 2.5 } }] });
+  shape('pb_aim', 'pressure_burst', 'Thrown Charge', 'The blast goes off at your aim, up to 8 m away.',
+    { set: { range: 8, aiUse: { use: 'attack', range: 8, minTargets: 1 } }, fx: [{ find: AOE, set: { at: 'aim', range: 8 } }] });
+
+  essence('pb_fire', 'pressure_burst', 'Firebox', 'The blast always sets enemies Burning.',
+    { fx: [{ find: AOE, set: { status: { id: 'burn', chance: 1 } } }] });
+  essence('pb_stun', 'pressure_burst', 'Shock Wave', 'The blast also Stuns for 1 s.',
+    { fx: [{ find: AOE, set: { status: [{ id: 'burn', chance: 0.25 }, { id: 'stun', dur: 1 }] } }] });
+  essence('pb_soak', 'pressure_burst', 'Wet Blast', 'The blast also leaves enemies Soaked for 5 s.',
+    { fx: [{ find: AOE, set: { status: [{ id: 'burn', chance: 0.25 }, { id: 'soak', dur: 5 }] } }] });
+
+  rite('pb_quick', 'pressure_burst', 'Quick Release', 'Cooldown 6 s instead of 8.',
+    { set: { cooldown: 6 } });
+  rite('pb_cheap', 'pressure_burst', 'Low Threshold', 'Pressure Burst costs 30 Pressure instead of 40.',
+    { set: { cost: 30 } });
+  rite('pb_ward', 'pressure_burst', 'Steam Shield', 'Pressure Burst gives you Ward worth 10% of your Health for 5 s.',
+    { add: [ward(0.1, 5)] });
+
+  // =============================================================================================
+  // GEAR MINE. Base: 6 s, 3 charges; a mine up to 9 m (3 at most, 25 s) that bursts 2.6 m for 86%.
+  // =============================================================================================
+  shape('mine_wide', 'gear_mine', 'Big Charges', 'Mines burst 3.6 m wide, for 80% of the damage.',
+    { power: 0.8, fx: [{ find: AOE, set: { radius: 3.6 } }] });
+  shape('mine_four', 'gear_mine', 'Fourth Mine', 'Up to 4 mines may lie at once instead of 3.',
+    { fx: [{ find: TRAP, set: { cap: 4 } }] });
+  shape('mine_far', 'gear_mine', 'Long Toss', 'Mines can be tossed up to 14 m away instead of 9.',
+    { set: { range: 14, aiUse: { use: 'attack', range: 13 } }, fx: [{ find: TRAP, set: { range: 14 } }] });
+
+  essence('mine_nails', 'gear_mine', 'Nail Bombs', 'The burst adds 2 stacks of Bleed.',
+    { fx: [{ find: AOE, set: { status: { id: 'bleed', stacks: 2, power: 0.06 } } }] });
+  essence('mine_fire', 'gear_mine', 'Incendiary', 'The burst deals Fire damage and sets enemies Burning.',
+    { set: { elem: 'fire' }, fx: [{ find: AOE, set: { elem: 'fire', status: { id: 'burn', chance: 1 } } }] });
+  essence('mine_stun', 'gear_mine', 'Flash Mine', 'The burst Stuns for 0.8 s, but deals 75% instead of 86%.',
+    { fx: [{ find: AOE, set: { mult: 0.75, status: { id: 'stun', dur: 0.8 } } }] });
+
+  rite('mine_quick', 'gear_mine', 'Quick Arming', 'Cooldown 4 s instead of 6.',
+    { set: { cooldown: 4 } });
+  rite('mine_pressure', 'gear_mine', 'Pressure Charges', 'Each enemy a mine catches builds 2 Pressure.',
+    { fx: [{ find: AOE, add: { onHit: [pressure(2)] } }] });
+  rite('mine_charges', 'gear_mine', 'Full Satchel', 'Gear Mine has 4 charges. Each takes 7 s.',
+    { set: { charges: 4, cooldown: 7 } });
+
+  // =============================================================================================
+  // SPRING TRAP. Base: 9 s; a trap up to 9 m (2 at most, 20 s) that flings the enemy: 90%, Stun 1.5 s, Vulnerable 4 s.
+  // =============================================================================================
+  shape('st_wide', 'spring_trap', 'Wide Plate', 'The trap catches enemies within 3.5 m instead of 2.2.',
+    { fx: [{ find: AOE, set: { radius: 3.5 } }] });
+  shape('st_three', 'spring_trap', 'Third Trap', 'Up to 3 spring traps may lie at once instead of 2.',
+    { fx: [{ find: TRAP, set: { cap: 3 } }] });
+  shape('st_far', 'spring_trap', 'Far Spring', 'Traps can be set up to 14 m away instead of 9.',
+    { set: { range: 14, aiUse: { use: 'attack', range: 13 } }, fx: [{ find: TRAP, set: { range: 14 } }] });
+
+  essence('st_long', 'spring_trap', 'Strong Spring', 'The Stun lasts 2.5 s instead of 1.5.',
+    { fx: [{ find: AOE, set: { status: [{ id: 'stun', dur: 2.5 }, { id: 'vulnerable', dur: 4 }] } }] });
+  essence('st_crush', 'spring_trap', 'Jaw Trap', 'The trap deals 160% instead of 90%, but Stuns for only 1 s.',
+    { fx: [{ find: AOE, set: { mult: 1.6, status: [{ id: 'stun', dur: 1 }, { id: 'vulnerable', dur: 4 }] } }] });
+  essence('st_shock', 'spring_trap', 'Shock Plate', 'The trap deals Shock damage and Shocks the enemy too.',
+    { set: { elem: 'shock' }, fx: [{ find: AOE, set: { elem: 'shock', status: [{ id: 'stun', dur: 1.5 }, { id: 'vulnerable', dur: 4 }, { id: 'shock', chance: 1 }] } }] });
+
+  rite('st_quick', 'spring_trap', 'Hair Spring', 'Cooldown 6 s instead of 9.',
+    { set: { cooldown: 6 } });
+  rite('st_pressure', 'spring_trap', 'Spring Pressure', 'Each enemy a trap catches builds 4 Pressure.',
+    { fx: [{ find: AOE, add: { onHit: [pressure(4)] } }] });
+  rite('st_twice', 'spring_trap', 'Spare Springs', 'Spring Trap has 2 charges. Each takes 10 s.',
+    { set: { charges: 2, cooldown: 10 } });
+
+  // =============================================================================================
+  // BRASS GOLEM. Base: 45 s; a Golem for 30 s (1 at most) that taunts and hits hard; 15 Pressure.
+  // =============================================================================================
+  shape('gol_long', 'brass_golem', 'Big Key', 'The Golem stays wound for 45 s instead of 30.',
+    { fx: [{ find: SUMMON, set: { duration: 45 } }] });
+  shape('gol_pair', 'brass_golem', 'Pair of Golems', 'Two smaller Golems instead of one: each has 60% of the Health and damage.',
+    { fx: [{ find: SUMMON, set: { count: 2, cap: 2, hpMult: 0.6, dmgMult: 0.6 } }] });
+  shape('gol_big', 'brass_golem', 'Great Golem', 'A bigger Golem with 50% more Health and 25% more damage, but it runs down in 22 s.',
+    { fx: [{ find: SUMMON, set: { hpMult: 1.5, dmgMult: 1.25, duration: 22 } }] });
+
+  essence('gol_thick', 'brass_golem', 'Thick Plating', 'The Golem has 80 more Armour.',
+    { fx: [{ find: SUMMON, set: { mods: [{ s: 'armor', t: 'add', v: 80 }] } }] });
+  essence('gol_fast', 'brass_golem', 'Greased Joints', 'The Golem moves 30% faster and attacks 20% faster.',
+    { fx: [{ find: SUMMON, set: { mods: [{ s: 'moveSpeed', t: 'inc', v: 0.3 }, { s: 'atkSpeed', t: 'inc', v: 0.2 }] } }] });
+  essence('gol_hot', 'brass_golem', 'Hot Core', 'The Golem deals 25% more damage but has 15% less Health.',
+    { fx: [{ find: SUMMON, set: { mods: [{ s: 'dmg', t: 'more', v: 0.25 }, { s: 'hp', t: 'more', v: -0.15 }] } }] });
+
+  rite('gol_quick', 'brass_golem', 'Spare Key', 'Cooldown 32 s instead of 45.',
+    { set: { cooldown: 32 } });
+  rite('gol_pressure', 'brass_golem', 'Boiler Heart', 'Winding the Golem builds 30 Pressure instead of 15.',
+    { fx: [{ find: RES, set: { gain: 30 } }] });
+  rite('gol_ward', 'brass_golem', 'Shared Rivets', 'Winding the Golem gives you Ward worth 12% of your Health for 6 s.',
+    { add: [ward(0.12, 6)] });
+
+  // =============================================================================================
+  // REPAIR WRENCH. Base: 10 s; a 120% wrench blow (knockback), devices within 14 m run 8 s longer, the Golem and allies
+  // within 12 m heal 40%; 15 Pressure.
+  // =============================================================================================
+  shape('wr_wide', 'repair_wrench', 'Wide Swing', 'The wrench blow sweeps 300 degrees.',
+    { fx: [{ find: MEL, set: { arc: 300 } }] });
+  shape('wr_reach', 'repair_wrench', 'Long Arm', 'The repair heals allies within 20 m instead of 12.',
+    { fx: [{ find: HEAL, set: { radius: 20 } }] });
+  shape('wr_twice', 'repair_wrench', 'Two Taps', 'Two wrench blows, each for 60% of the damage.',
+    { power: 0.6, fx: [{ find: MEL, set: { hits: 2, interval: 0.2 } }] });
+
+  essence('wr_shock', 'repair_wrench', 'Live Wrench', 'The blow deals Shock damage and Shocks the enemy.',
+    { set: { elem: 'shock' }, fx: [{ find: MEL, set: { elem: 'shock', status: { id: 'shock', chance: 1 } } }] });
+  essence('wr_heal', 'repair_wrench', 'Good as New', 'The repair heals 60% of Health instead of 40%.',
+    { fx: [{ find: HEAL, set: { pct: 0.6 } }] });
+  essence('wr_stun', 'repair_wrench', 'Spanner in the Works', 'The blow Stuns for 1 s, but deals 100% instead of 120%.',
+    { fx: [{ find: MEL, set: { mult: 1.0, status: { id: 'stun', dur: 1 } } }] });
+
+  rite('wr_quick', 'repair_wrench', 'Quick Fixes', 'Cooldown 7 s instead of 10.',
+    { set: { cooldown: 7 } });
+  rite('wr_pressure', 'repair_wrench', 'Wind Everything', 'Repair Wrench builds 30 Pressure instead of 15.',
+    { fx: [{ find: RES, set: { gain: 30 } }] });
+  rite('wr_self', 'repair_wrench', 'Self Service', 'Repair Wrench also heals you for 15% of your Health.',
+    { add: [{ type: 'heal', self: true, pct: 0.15 }] });
+
+  KD.register('mutations', M);
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/data/37_mutations_emberscribe.js
 (function (root) {
   'use strict';
@@ -24161,6 +25406,131 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     { set: { hpCost: 0.15, cooldown: 50 } });
 
   KD.register('mutations', M);
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/38_tree_builds_clockwright.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+
+  /**
+   * RECOMMENDED BUILDS of the Clockwright's tree (docs/TREE_CLOCKWRIGHT.md section 4). Pure data; the registry and the format
+   * are in src/data/38_tree_builds_gravecaller.js (KD.data.treeBuilds.add), the logic in src/meta/35_tree_builds.js, the screen
+   * is the Builds tab of the tree page. Goals: 'skill:<abilityId>', 'mut:<mutationId>', 'cluster:<clusterId>' or a node's name.
+   * Every build starts from a different skill and fits KD.treeBuilds.BUDGET (152) points (tests/tree_clockwright.test.js).
+   * Each has a clear purpose: damage, survival or a mix.
+   */
+  var R = KD.data = KD.data || {};
+  var TBD = R.treeBuilds = R.treeBuilds || { byClass: {} };
+  TBD.add = TBD.add || function (classId, rec) {
+    if (!rec || typeof rec.id !== 'string') throw new Error('KD.data.treeBuilds.add(' + classId + '): a record with an id is needed');
+    rec.cls = classId;
+    (TBD.byClass[classId] = TBD.byClass[classId] || []).push(rec);
+    return rec;
+  };
+  function add(rec) { return TBD.add('clockwright', rec); }
+
+  add({ id: 'gun_line', name: 'The Gun Line', design: '4.1', difficulty: 1, start: 'deploy_turret', arms: ['turret', 'pistol'],
+    pitch: 'Three turrets that never tire, all firing at whatever your pistol points at. Hold the line behind them.',
+    tags: ['Damage', 'Turrets', 'Ranged'],
+    stages: [
+      { to: 10, goals: ['mut:cw_tur_long', 'mut:cw_tur_quick', 'cluster:turret_line'] },
+      { to: 25, goals: ['cluster:turret_cross', 'cluster:turret_ammo', 'cluster:turret_feed', 'skill:grapple_hook', 'mut:cw_tur_mark'] },
+      { to: 40, goals: ['Battery', 'cluster:turret_zone', 'cluster:turret_calibre', 'cluster:pistol_turret_mid', 'cluster:turret_range'] },
+      { to: 60, goals: ['Hair Trigger', 'cluster:turret_crew', 'cluster:turret_tower', 'cluster:turret_scrap', 'cluster:turret_lookouts'] }
+    ] });
+
+  add({ id: 'storm_engineer', name: 'Storm Engineer', design: '4.2', difficulty: 2, start: 'tesla_coil', arms: ['coil', 'vent'],
+    pitch: 'Plant coils, Soak the crowd with steam, and let the lightning jump from one to the next.',
+    tags: ['Damage', 'Shock', 'Area'],
+    stages: [
+      { to: 10, goals: ['mut:cw_coil_two', 'mut:cw_coil_quick', 'cluster:coil_yard'] },
+      { to: 25, goals: ['cluster:coil_static', 'skill:grand_mechanism', 'mut:cw_gm_storm', 'skill:steam_vent', 'mut:cw_coil_hot'] },
+      { to: 40, goals: ['Lightning Rod', 'cluster:coil_arc', 'cluster:coil_dynamo', 'cluster:coil_vent_mid', 'cluster:coil_caps'] },
+      { to: 60, goals: ['Overcharged Coils', 'cluster:coil_thunder', 'cluster:coil_front', 'cluster:coil_conductor', 'cluster:coil_wire'] }
+    ] });
+
+  add({ id: 'sapper', name: 'The Sapper', design: '4.3', difficulty: 2, start: 'gear_mine', arms: ['mines', 'boiler'],
+    pitch: 'A field of mines, nails in every one, and enemies that go up in a chain when the first one falls.',
+    tags: ['Damage', 'Traps', 'Area'],
+    stages: [
+      { to: 10, goals: ['mut:cw_mine_nails', 'mut:cw_mine_charges', 'cluster:mines_fuse'] },
+      { to: 25, goals: ['cluster:mines_shrapnel', 'cluster:mines_pattern', 'skill:spring_trap', 'mut:cw_st_crush', 'mut:cw_mine_four'] },
+      { to: 40, goals: ['Chain Reaction', 'cluster:mines_sapper', 'cluster:mines_game', 'cluster:boiler_mines_mid', 'cluster:mines_bait'] },
+      { to: 60, goals: ['Demolition Expert', 'cluster:mines_craters', 'cluster:mines_last', 'cluster:mines_road', 'cluster:mines_wires'] }
+    ] });
+
+  add({ id: 'steamfitter', name: 'Steamfitter', design: '4.4', difficulty: 2, start: 'steam_vent', arms: ['vent', 'coil'],
+    pitch: 'Scald, Soak and push them back, and turn every bit of spent Pressure into Ward.',
+    tags: ['Mixed', 'Steam', 'Ward'],
+    stages: [
+      { to: 10, goals: ['mut:cw_vent_wide', 'mut:cw_vent_ward', 'cluster:vent_valves'] },
+      { to: 25, goals: ['cluster:vent_soaked', 'cluster:vent_pipes', 'cluster:vent_scald', 'skill:tesla_coil', 'mut:cw_coil_slow'] },
+      { to: 40, goals: ['Boiling Point', 'cluster:vent_whistle', 'cluster:vent_condense', 'cluster:vent_fins', 'mut:cw_vent_scald'] },
+      { to: 60, goals: ['Cool Head', 'cluster:vent_cloud', 'cluster:vent_kettle', 'cluster:vent_washer', 'cluster:vent_wet'] }
+    ] });
+
+  add({ id: 'bounty_hunter', name: 'Bounty Hunter', design: '4.5', difficulty: 2, start: 'grapple_hook', arms: ['pistol', 'wrench'],
+    pitch: 'Forget the workshop: reel them in, then the Spring Pistol does the talking, hotter with every Heat level.',
+    tags: ['Damage', 'Ranged', 'Pistol'],
+    stages: [
+      { to: 10, goals: ['mut:cw_hook_quick', 'mut:cw_hook_rend', 'cluster:pistol_bench'] },
+      { to: 25, goals: ['cluster:pistol_sights', 'cluster:pistol_rounds', 'cluster:pistol_hands', 'cluster:pistol_heavy'] },
+      { to: 40, goals: ["Gunsmith's Pride", 'cluster:pistol_barrel', 'cluster:pistol_bounty', 'cluster:pistol_cross', 'cluster:wrench_pistol_mid'] },
+      { to: 60, goals: ['Deadeye', 'cluster:pistol_aim', 'cluster:pistol_tap', 'cluster:pistol_heels', 'cluster:pistol_blank'] }
+    ] });
+
+  add({ id: 'tinker', name: 'The Tinker', design: '4.6', difficulty: 1, start: 'repair_wrench', arms: ['wrench', 'golem'],
+    pitch: 'Keep everything running: Ward every time you build, repairs that heal, and plating on everything.',
+    tags: ['Survival', 'Ward', 'Repairs'],
+    stages: [
+      { to: 10, goals: ['mut:cw_wr_heal', 'mut:cw_wr_self', 'cluster:wrench_bench'] },
+      { to: 25, goals: ['cluster:wrench_casings', 'cluster:wrench_apron', 'cluster:wrench_toolbox', 'skill:brass_golem', 'mut:cw_gol_thick'] },
+      { to: 40, goals: ['Brass Plating', 'cluster:wrench_coat', 'cluster:wrench_built', 'cluster:golem_wrench_mid', 'cluster:wrench_upkeep'] },
+      { to: 60, goals: ['Spare Parts', 'cluster:wrench_gauges', 'cluster:wrench_life', 'cluster:wrench_shed', 'cluster:wrench_patch'] }
+    ] });
+
+  add({ id: 'redliner', name: 'Redliner', design: '4.7', difficulty: 3, start: 'overclock', arms: ['boiler', 'vent'],
+    pitch: 'Run the gauge past 100 and keep it there: everything faster, everything hotter, until it blows.',
+    tags: ['Damage', 'Pressure', 'Overclock'],
+    stages: [
+      { to: 10, goals: ['mut:cw_oc_devices', 'mut:cw_oc_charge', 'cluster:boiler_stoke'] },
+      { to: 25, goals: ['skill:pressure_burst', 'mut:cw_pb_fire', 'cluster:boiler_gasket', 'cluster:boiler_red', 'mut:cw_oc_long'] },
+      { to: 40, goals: ['Redline', 'cluster:boiler_tank', 'cluster:boiler_firebox', 'cluster:vent_boiler_mid', 'cluster:boiler_regulator'] },
+      { to: 60, goals: ['Full Boil', 'cluster:boiler_door', 'cluster:boiler_relief', 'cluster:boiler_sink', 'cluster:boiler_coal'] }
+    ] });
+
+  add({ id: 'trapper', name: 'Trap Master', design: '4.8', difficulty: 2, start: 'spring_trap', arms: ['mines', 'golem'],
+    pitch: 'Fling them into the air, keep them Stunned and Vulnerable, and let the mines finish the job.',
+    tags: ['Mixed', 'Control', 'Traps'],
+    stages: [
+      { to: 10, goals: ['mut:cw_st_long', 'mut:cw_st_twice', 'cluster:mines_shed'] },
+      { to: 25, goals: ['mut:cw_st_wide', 'cluster:mines_wires', 'skill:gear_mine', 'mut:cw_mine_stun', 'cluster:mines_fuse'] },
+      { to: 40, goals: ['Patient Trapper', 'cluster:mines_trench', 'cluster:mines_golem_mid', 'cluster:mines_bait', 'cluster:mines_sapper'] },
+      { to: 60, goals: ['cluster:mines_store', 'cluster:mines_road', 'cluster:mines_pattern', 'cluster:mines_safe', 'cluster:mines_game'] }
+    ] });
+
+  add({ id: 'boilermaker', name: 'Boilermaker', design: '4.9', difficulty: 3, start: 'pressure_burst', arms: ['boiler', 'vent'],
+    pitch: 'Overheat on purpose, shrug it off with iron lungs, and blow the tank in their faces again and again.',
+    tags: ['Mixed', 'Overheat', 'Pressure'],
+    stages: [
+      { to: 10, goals: ['mut:cw_pb_cheap', 'mut:cw_pb_stun', 'cluster:boiler_blowdown'] },
+      { to: 25, goals: ['mut:cw_pb_wide', 'cluster:boiler_gasket', 'cluster:boiler_stoke', 'skill:overclock', 'mut:cw_oc_charge'] },
+      { to: 40, goals: ['Iron Lungs', 'cluster:boiler_sink', 'cluster:boiler_tank', 'cluster:boiler_firebox'] },
+      { to: 60, goals: ['cluster:boiler_plate', 'cluster:boiler_relief', 'cluster:boiler_door', 'cluster:boiler_night', 'cluster:vent_whistle'] }
+    ] });
+
+  add({ id: 'golem_master', name: 'Golem Master', design: '4.10', difficulty: 1, start: 'brass_golem', arms: ['golem', 'wrench'],
+    pitch: 'A great brass Golem holds the line while you stand close behind its plating.',
+    tags: ['Survival', 'Golem', 'Minions'],
+    stages: [
+      { to: 10, goals: ['mut:cw_gol_thick', 'mut:cw_gol_quick', 'cluster:golem_floor'] },
+      { to: 25, goals: ['cluster:golem_plating', 'cluster:golem_guard', 'cluster:golem_frame', 'cluster:golem_arms', 'mut:cw_gol_long'] },
+      { to: 40, goals: ['Golem Commander', 'cluster:golem_plates', 'cluster:golem_side', 'cluster:golem_wrench_mid', 'cluster:golem_whistle'] },
+      { to: 60, goals: ['Brass Heart', 'cluster:golem_hall', 'cluster:golem_crushers', 'cluster:golem_spring', 'cluster:golem_slayer'] }
+    ] });
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -33203,6 +34573,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.84', date: '2026-10-16', title: 'Clockwright talent tree', notes: [
+      'The Clockwright has its own talent tree: The Great Works, 1,500 nodes in eight arms',
+      'Pistol, turrets, coils, steam, the boiler, mines, the Brass Golem and the workshop: every device now comes from the tree',
+      'Over 100 mutations, 24 keystones and 10 recommended builds, from the Gun Line to the Boilermaker'
+    ] },
     { version: '0.7.83', date: '2026-10-16', title: 'Lanternbearer talent tree', notes: [
       'The Lanternbearer has its own talent tree: The Long Vigil, 1,500 nodes in eight arms',
       'Glow, Ward, mace, sun, light, purging, healing and the flock: every skill now comes from the tree',
@@ -53995,6 +55370,226 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       'Bear: 20% increased Health, 15% less damage taken, 30% increased Poise damage, 10% slower attacks.',
       'Raven: Claw Rake becomes a ranged feather, ' + Math.round(T.ravenEvade * 100) + '% of attacks miss you, a further 15% increased ranged damage, 10% faster movement.',
       'Apex Form: every skill does its part for all three masks: the one you wear at full power, the others at ' + Math.round(T.apexOff * 100) + '% (all three at ' + Math.round(T.apexBare * 100) + '% with no mask on).']
+  });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/sim/56_tree_clockwright.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var U = KD.util;
+  var S = KD.sim = KD.sim || {};
+  var K = KD.skills = KD.skills || {};
+  if (!K.registerHook) return;
+
+  /**
+   * CLOCKWRIGHT, the rules of the class tree (docs/TREE_CLOCKWRIGHT.md): the `effect` keys `tree_clockwright_<id>` of the rule
+   * notables and keystones in src/data/36_tree_clockwright_<arm>.js. The tree also reuses the Foundry's rules of the Crownweb
+   * (`web_clockwright_*`, src/sim/55_class_clockwright.js) and the web keystones Redline and Perpetual Motion
+   * (src/sim/32_webfx.js); the mutations are pure data. Every hook acts on the owner's own hits, devices and Golem, uses
+   * world.rng / world.time only, and guards re-entry. Every number is in T; the node texts quote them (tests/tree_clockwright.test.js).
+   */
+  var T = {
+    deadMore: 0.3, deadNear: 4, deadFull: 12,           // Deadeye: Spring Pistol hits by distance
+    ricoMult: 0.3, ricoRange: 5,                        // Ricochet: a bolt glances to the nearest other enemy
+    crossMore: 1.12, crossWindow: 2,                    // Caught in the Crossfire: enemies a turret shot lately
+    rodEvery: 4, rodMult: 0.4, rodRange: 5,             // Lightning Rod: every 4th device hit arcs
+    overloadMore: 1.12,                                 // Overload Current: Trap Damage on Shocked enemies
+    boilMore: 1.25,                                     // Boiling Point: Fire hits on Soaked enemies
+    soakSlow: 0.2,                                      // Drenched: Soaked enemies are Slowed
+    gasketSpeed: 0.25, gasketDur: 5,                    // Blown Gasket: attack speed after an Overheat
+    chainMult: 0.4, chainRadius: 2.5,                   // Chain Reaction: enemies killed by Trap Damage explode
+    shrapStacks: 2, shrapPower: 0.06,                   // Shrapnel: Bleed from mine and trap blasts
+    platingRange: 6, platingLess: 0.15,                 // Shared Plating: you and the Golem near each other
+    repairHeal: 0.03                                    // Self-Repair: Health per device deployed
+  };
+  S.treeClock = { T: T };
+  var Q = [], PISTOL = 'spring_pistol', GOLEM = 'clock_brass_golem';
+  var RICO = { id: 'ricochet', name: 'Ricochet' };
+
+  function enemy(e) { return !!e && e.kind === 'enemy' && !e.dead && !e.removed; }
+  function fighting(o) { return enemy(o) && !o.hidden && !(o.ai && o.ai.state === 'sleep'); }
+  function vented(spec) { return !!(spec && spec.tags && spec.tags.indexOf('vent') >= 0); }
+  /** Trap Damage from a device or a trap (turret bolts, coils, mines, spring traps, the Mechanism), not a vent. */
+  function deviceHit(spec) { return !!spec && spec.delivery === 'trap' && !spec.proc && !vented(spec); }
+  function trapAbility(id) {
+    if (!id) return false;
+    var d = KD.data.abilities && KD.data.abilities[id];
+    return d ? d.delivery === 'trap' : (id === 'overheat' || id === 'scrap_charge');
+  }
+  /** The nearest fighting enemy within r of (x, z) other than `skip`. */
+  function nearestOther(world, p, x, z, r, skip) {
+    var n = S.qCircle(world, x, z, r, Q), best = null, bd = 0;
+    for (var i = 0; i < n; i++) {
+      var o = Q[i];
+      if (o === skip || !fighting(o) || !S.hostile(p, o)) continue;
+      var d = U.dist2(x, z, o.x, o.z);
+      if (!best || d < bd - 1e-9) { best = o; bd = d; }
+    }
+    return best;
+  }
+  function golemsOf(p) { var out = [], m = p.minions || []; for (var i = 0; i < m.length; i++) if (!m[i].dead && !m[i].removed && m[i].defId === GOLEM) out.push(m[i]); return out; }
+  /** A skill that plants a device (turret, coil, mine, trap, the Mechanism) or winds up the Golem. */
+  function deploys(def) {
+    if (!def || !def.effects || !def.tags || def.tags.indexOf('device') < 0) return false;
+    for (var i = 0; i < def.effects.length; i++) {
+      var fx = def.effects[i];
+      if (fx && ((fx.type === 'banner' && fx.device) || fx.type === 'trap' || fx.type === 'summon')) return true;
+    }
+    return false;
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // The Sidearm (pistol)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_clockwright_deadeye', {
+    onBeforeHit: function (c) {
+      var sp = c.spec, p = c.self, t = c.target;
+      if (!sp || sp.ability !== PISTOL || sp.proc || !enemy(t)) return;
+      var d = Math.sqrt(U.dist2(p.x, p.z, t.x, t.z)), k = (d - T.deadNear) / (T.deadFull - T.deadNear);
+      if (k > 0) c.mult *= 1 + T.deadMore * Math.min(1, k);
+    }
+  });
+  K.registerHook('tree_clockwright_ricochet', {
+    onHit: function (c, eff, st) {
+      var sp = c.spec, t = c.target;
+      if (st.busy || !sp || sp.ability !== PISTOL || sp.proc || sp.dot || !t) return;
+      var o = nearestOther(c.world, c.self, t.x, t.z, T.ricoRange, t);
+      if (!o) return;
+      st.busy = true;
+      try { S.damage(c.world, c.self, o, { mult: T.ricoMult, elem: c.info && c.info.elem || 'phys', delivery: 'ranged', proc: true, ability: RICO.id }); } finally { st.busy = false; }
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Gun Line (turret)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_clockwright_crossfire', {
+    onHit: function (c) {
+      var sp = c.spec, t = c.target;
+      if (!sp || sp.ability !== 'deploy_turret' || !enemy(t)) return;
+      (t.cwCross || (t.cwCross = {}))[c.self.id] = c.world.time;
+    },
+    onBeforeHit: function (c) {
+      var t = c.target, sp = c.spec;
+      if (!enemy(t) || !t.cwCross || (sp && sp.ability === 'deploy_turret')) return;
+      var at = t.cwCross[c.self.id];
+      if (at !== undefined && c.world.time - at <= T.crossWindow + 1e-9) c.mult *= T.crossMore;
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Coil Yard (coil)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_clockwright_rod', {
+    onHit: function (c, eff, st) {
+      var t = c.target;
+      if (st.busy || !deviceHit(c.spec) || c.spec.ability === 'lightning_rod' || !t) return;
+      st.n = (st.n || 0) + 1;
+      if (st.n < T.rodEvery) return;
+      st.n = 0;
+      var o = nearestOther(c.world, c.self, t.x, t.z, T.rodRange, t);
+      if (!o) return;
+      st.busy = true;
+      try {
+        S.damage(c.world, c.self, o, { mult: T.rodMult, elem: 'shock', delivery: 'trap', proc: true, ability: 'lightning_rod' });
+        c.world.events.emit('fx', { name: 'chain', x: t.x, y: 1, z: t.z, points: [{ x: t.x, z: t.z }, { x: o.x, z: o.z }], elem: 'shock', src: c.self });
+      } finally { st.busy = false; }
+    }
+  });
+  K.registerHook('tree_clockwright_overload', {
+    onBeforeHit: function (c) { var sp = c.spec; if (sp && sp.delivery === 'trap' && enemy(c.target) && S.hasStatus(c.target, 'shock')) c.mult *= T.overloadMore; }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Steam Works (vent)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_clockwright_boiling', {
+    onBeforeHit: function (c) {
+      var elem = c.info ? c.info.elem : c.spec && c.spec.elem;
+      if (elem === 'fire' && enemy(c.target) && S.hasStatus(c.target, 'soak')) c.mult *= T.boilMore;
+    }
+  });
+  K.registerHook('tree_clockwright_soaked', {
+    onStatusApplied: function (c, eff, st) {
+      if (c.id !== 'soak' || st.busy || !enemy(c.target)) return;
+      var dur = c.status && c.status.dur > 0 ? c.status.dur : 5;
+      st.busy = true;
+      try { S.applyStatus(c.world, c.target, 'slow', { src: c.self, dur: dur, power: T.soakSlow }); } finally { st.busy = false; }
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Boiler (boiler)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_clockwright_gasket', {
+    onOverheat: function (c) {
+      var b = S.addBuff(c.world, c.self, { id: 'cw_gasket', name: 'Blown Gasket', dur: T.gasketDur, src: c.self, icon: 'steam', color: '#e8c070',
+        mods: [{ s: 'atkSpeed', t: 'inc', v: T.gasketSpeed }] });
+      if (b && !b.def.desc) b.def.desc = Math.round(T.gasketSpeed * 100) + '% more Attack Speed after an Overheat.';
+    }
+  });
+  K.registerHook('tree_clockwright_lungs', {
+    onOverheat: function (c) { var p = c.self; if (!p.dead && S.hasStatus(p, 'stun')) S.removeStatus(c.world, p, 'stun', 'lungs'); }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Minefield (mines)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_clockwright_chain', {
+    onKill: function (c, eff, st) {
+      var t = c.target, info = c.info;
+      if (st.busy || !t || t.kind !== 'enemy' || !info || info.proc || !trapAbility(info.ability)) return;
+      st.busy = true;
+      try {
+        var n = S.qCircle(c.world, t.x, t.z, T.chainRadius, Q), list = Q.slice(0, n);
+        for (var i = 0; i < list.length; i++) {
+          var o = list[i];
+          if (o === t || !fighting(o) || !S.hostile(c.self, o)) continue;
+          S.damage(c.world, c.self, o, { mult: T.chainMult, elem: 'phys', delivery: 'trap', proc: true, ability: 'chain_reaction' });
+        }
+        c.world.events.emit('fx', { name: 'mine', x: t.x, y: 0.3, z: t.z, r: T.chainRadius, src: c.self });
+      } finally { st.busy = false; }
+    }
+  });
+  K.registerHook('tree_clockwright_shrapnel', {
+    onHit: function (c) {
+      var sp = c.spec;
+      if (!sp || sp.proc || sp.dot || (sp.ability !== 'gear_mine' && sp.ability !== 'spring_trap') || !enemy(c.target)) return;
+      S.applyStatus(c.world, c.target, 'bleed', { src: c.self, stacks: T.shrapStacks, power: T.shrapPower, delivery: 'trap' });
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Foundry Floor (golem)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_clockwright_plating', {
+    onTick: function (c, eff, st) {
+      var p = c.self, w = c.world;
+      st.t = (st.t || 0) + c.dt;
+      if (p.dead || st.t < 0.25 - 1e-9) return;
+      st.t = 0;
+      var gs = golemsOf(p), r2 = T.platingRange * T.platingRange, near = false;
+      for (var i = 0; i < gs.length; i++) {
+        if (U.dist2(p.x, p.z, gs[i].x, gs[i].z) > r2) continue;
+        near = true;
+        S.addBuff(w, gs[i], { id: 'cw_plating', name: 'Shared Plating', dur: 0.4, src: p, quiet: true, icon: 'shield', color: '#e8c070', mods: [{ s: 'dmgTaken', t: 'more', v: -T.platingLess }] });
+      }
+      if (near) S.addBuff(w, p, { id: 'cw_plating', name: 'Shared Plating', dur: 0.4, src: p, quiet: true, icon: 'shield', color: '#e8c070', mods: [{ s: 'dmgTaken', t: 'more', v: -T.platingLess }] });
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Workshop (wrench)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_clockwright_selfrepair', {
+    onFire: function (c) {
+      var p = c.self;
+      if (p.dead || !deploys(c.ability)) return;
+      S.heal(c.world, p, p.hpMax * T.repairHeal, p, { noScale: true });
+    }
   });
 })(typeof window !== 'undefined' ? window : globalThis);
 
