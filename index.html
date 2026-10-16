@@ -3872,7 +3872,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.81';
+  KD.VERSION = '0.7.82';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -3899,6 +3899,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   if (KD.config.trees === undefined) KD.config.trees = { gravecaller: true, gloamblade: true }; // [w8 gloamblade tree] owner turned it on
   if (KD.config.trees && KD.config.trees.lanternbearer === undefined) KD.config.trees.lanternbearer = true; // [w8 lanternbearer tree] The Long Vigil, docs/TREE_LANTERNBEARER.md
   if (KD.config.trees && KD.config.trees.thornwarden === undefined) KD.config.trees.thornwarden = true; // [w8 thornwarden tree] The Old Wood, docs/TREE_THORNWARDEN.md
+  if (KD.config.trees && KD.config.trees.wildmask === undefined) KD.config.trees.wildmask = true; // [w8 wildmask tree] The Moon Grove, docs/TREE_WILDMASK.md
   // The online service (accounts, friends, invites, co-op rooms: the kd-online repository on Cloudflare Workers).
   // Fill in its address once it is deployed, e.g. 'https://kd-online.<your-subdomain>.workers.dev'. Empty = the game
   // says "Online play is not set up yet." (?online=<url> in the page address overrides it for testing.) docs/ONLINE.md.
@@ -12012,6 +12013,112 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/data/35_tree_wildmask.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree;
+
+  /**
+   * The Wildmask's own talent tree, THE MOON GROVE: the class-wide record (arm order, hub, tuning) and the small helpers the
+   * eight arm files use. The arms live in src/data/36_tree_wildmask_<armId>.js, the mutations in src/data/37_mutations_wildmask.js,
+   * the recommended builds in src/data/38_tree_builds_wildmask.js and the rules (rule notables, keystones) in
+   * src/sim/56_tree_wildmask.js. Design: docs/TREE_WILDMASK.md. Format and grid: docs/TREE.md.
+   * Switch: KD.config.trees.wildmask (src/core/00_base.js). Off = the Wildmask uses the Crownweb (the Wilds) as before.
+   *
+   * Arms, clockwise from the top; neighbours mix (the cross-border links of the generator join neighbours only):
+   *   wolf    the Wolf: speed, crits, Bleed (Wolf Mask, Rend)               fang    the berserker: kills, crowds, Life Steal (Pounce)
+   *   bear    the Bear: Health, Ward, Stuns (Bear Mask, Thorn Hide)         quake   leaps, quakes, Poise breaking (Feral Leap)
+   *   raven   the Raven: feathers, evasion, distance (Raven Mask)           moon    dashes, moonlight crits, moving (Moonlit Dash)
+   *   shift   Shifting, Instinct, the change of mask (Shed Skin, Apex Form) howl    the voice of the pack: shouts, allies (Howl)
+   * Melee arms (wolf, fang, quake) carry Melee Attack Speed (docs/TREE.md section 14); the pact Quick Claws trades damage for it.
+   */
+  var WM = T.wild = {
+    mut: function (id) { return { t: 'mutation', mut: id }; },
+    /** A rule notable whose rule is a hook of src/sim/56_tree_wildmask.js (`tree_wildmask_<id>`). */
+    rule: function (id, name, mods, spec, est) { return { t: 'notable', name: name, mods: mods, effect: 'tree_wildmask_' + id, spec: spec, est: est || { off: 1.02, def: 1 } }; },
+    /** A rule notable whose rule is one of the Crownweb's Wilds hooks (src/sim/55_class_wildmask.js, `web_wildmask_<key>`). */
+    web: function (key, name, mods, spec, est) { return { t: 'notable', name: name, mods: mods, effect: 'web_wildmask_' + key, spec: spec, est: est || { off: 1.02, def: 1 } }; },
+    key: function (name, mods, spec, effect, est, extra) {
+      var k = { t: 'keystone', name: name, mods: mods, spec: spec, est: est || { off: 1.05, def: 1 } };
+      if (effect) k.effect = effect;
+      if (extra) for (var f in extra) k[f] = extra[f];
+      return k;
+    },
+    pact: function (name, mods) { return { name: name, mods: mods, pact: true }; },
+    abil: function (name, mods, a, k, v) { return { name: name, mods: mods || [], abil: [{ a: a, k: k, v: v }] }; },
+    /** Every fifth trunk node (T5 .. T25) also gives TRUNK_RAKE more Claw Rake damage (the primary grows with the points). */
+    TRUNK_RAKE: 0.03, HUB_RAKE: 0.03,
+    rakeTrunk: function (tr) {
+      if (!(WM.TRUNK_RAKE > 0)) return tr;
+      [4, 9, 14, 19, 24].forEach(function (i) {
+        var n = tr[i];
+        if (typeof n === 'string') n = { mods: [n] };
+        else if (Array.isArray(n)) n = { name: n[0], mods: n.slice(1) };
+        else { var c = {}; for (var k in n) c[k] = n[k]; n = c; }
+        n.abil = (n.abil || []).concat([{ a: 'claw_rake', k: 'dmg', v: WM.TRUNK_RAKE }]);
+        tr[i] = n;
+      });
+      return tr;
+    }
+  };
+
+  // What the estimator cannot see in stats (KD.data.tree.EST; never touches gameplay).
+  (function () {
+    var E = T.EST, P = E.parts, S = E.skills;
+    var MEL = ['dmg', 'dmgPhys', 'dmgMelee'];
+    P.claw_rake = { w: 1, keys: MEL, speed: 'atkSpeed' };
+    P.wolf_mask = { w: 0.3, keys: MEL.concat(['dmgDot']) };
+    P.bear_mask = { w: 0.25, keys: MEL };
+    P.raven_mask = { w: 0.2, keys: ['dmg', 'dmgPhys', 'dmgRanged'] };
+    P.pounce = { w: 0.3, keys: MEL };
+    P.howl = { w: 0.15, keys: MEL };
+    P.rend = { w: 0.35, keys: MEL.concat(['dmgDot']) };
+    P.feral_leap = { w: 0.25, keys: MEL };
+    P.thorn_hide = { w: 0.1, keys: MEL };
+    P.moonlit_dash = { w: 0.2, keys: MEL };
+    P.shed_skin = { w: 0.05, keys: MEL };
+    P.apex_form = { w: 0.2, keys: MEL };
+    S.wolf_mask = { off: 0.09, def: 0.02 };
+    S.bear_mask = { off: 0.05, def: 0.1 };
+    S.raven_mask = { off: 0.05, def: 0.06 };
+    S.pounce = { off: 0.07, def: 0.02 };
+    S.howl = { off: 0.05, def: 0.05 };
+    S.rend = { off: 0.08, def: 0.01 };
+    S.feral_leap = { off: 0.06, def: 0.04 };
+    S.thorn_hide = { off: 0.02, def: 0.1 };
+    S.moonlit_dash = { off: 0.05, def: 0.05 };
+    S.shed_skin = { off: 0.02, def: 0.1 };
+    S.apex_form = { off: 0.07, def: 0.04 };
+  })();
+
+  /** A hub node: a named minor with two half-size mods and HUB_RAKE more Claw Rake damage. */
+  function rake(name, a, b) { var n = { name: name, mods: [a, b] }; if (WM.HUB_RAKE > 0) n.abil = [{ a: 'claw_rake', k: 'dmg', v: WM.HUB_RAKE }]; return n; }
+  // Version 1: the first tree (docs/TREE_WILDMASK.md).
+  T.define('wildmask', {
+    version: 1, name: 'The Moon Grove',
+    arms: ['wolf', 'fang', 'bear', 'quake', 'raven', 'moon', 'shift', 'howl'],
+    hub: [
+      rake('Wolf Scent', 'wolfBleed 0.75', 'hp 0.75'),          // wolf
+      rake('Hunger', 'lifesteal 0.75', 'hp 0.75'),              // fang
+      rake('Bear Fat', 'hp 0.75', 'armor 0.75'),                // bear
+      rake('Heavy Step', 'breakPower 0.75', 'hp 0.75'),         // quake
+      rake('Raven Eye', 'evasion 0.75', 'hp 0.75'),             // raven
+      rake('Moon Glint', 'moveSpeed 0.75', 'dodgeCdr 0.75'),    // moon
+      rake('Loose Skin', 'shiftDur 0.375', 'hp 0.75'),           // shift
+      rake('First Howl', 'maskBurst 0.375', 'resAll 0.75')       // howl
+    ],
+    hubBonus: ['moveSpeed 1.5', 'resAll 1'],
+    startBonus: { skills: 2, mods: ['dmg*30', 'hp*15'], text: 'While you know two skills or fewer besides Claw Rake, you deal 30% more damage and have 15% more Health.' },
+    // Balance (docs/TREE_WILDMASK.md section 5).
+    tune: { off: 0.55, def: 0.7 },
+    road: ['hp 1', 'moveSpeed 1', 'resAll 1'],
+    links: { bypass: false, rows: false, road: ['moveSpeed 1'] }
+  });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/data/36_tree_emberscribe_alchemy.js
 (function (root) {
   'use strict';
@@ -18849,6 +18956,1194 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/data/36_tree_wildmask_bear.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, W = T.wild;
+  var mut = W.mut, rule = W.rule, web = W.web, key = W.key, pact = W.pact, abil = W.abil;
+
+  /**
+   * WILDMASK, arm 2 of 8: THE BEAR'S DEN (`bear`). The Bear: Health, Ward and Stuns, the Wildmask's defence. Skills: Bear Mask
+   * (trunk, 4 points), Thorn Hide (row 2). Design: docs/TREE_WILDMASK.md section 2. Rules: src/sim/56_tree_wildmask.js.
+   * Holds the bridges to the quake arm.
+   */
+  T.arm('wildmask', {
+    id: 'bear', name: "The Bear's Den", focus: 'The Bear: a wall of fur and Ward that Stuns what hits it', color: '#8c6a46', vein: 'order',
+
+    trunk: W.rakeTrunk([
+      'hp 1', 'armor 1', { t: 'skill', grants: 'bear_mask', abil: [{ a: 'bear_mask', k: 'cd', v: -0.05 }] }, 'bearWard 1', 'resAll 1',   // T1..T5
+      'hp 1', 'armor 1', 'poise 1', ['Den Path', 'moveSpeed 1', 'hp 0.5'], 'hp 1',                                                     // T6..T10
+      'bearWard 1', 'resAll 1', 'hp 1', 'dmgTaken 1@maskBear', 'armor 1',                                                            // T11..T15
+      'hp 1', 'bearWard 1', 'resAll 1', 'hp 1', 'armor 1',                                                                           // T16..T20
+      'hpRegen 1', 'hp 1', 'poise 1', 'resAll 1', 'hp 1'                                                                             // T21..T25
+    ]),
+
+    clusters: [
+      { id: 'bear_mask_shape', name: 'Bear Mask: shape', row: 1, lane: -1, shape: 'star', kind: 'mutation',
+        nodes: ['hp 1', mut('bearm_wide'), mut('bearm_tight'), mut('bearm_front')],
+        core: ['Broad Paws', 'hp 1', 'armor 1'] },
+      { id: 'bear_mask_essence', name: 'Bear Mask: essence', row: 1, lane: 1, shape: 'star', kind: 'mutation',
+        nodes: ['armor 1', mut('bearm_stun'), mut('bearm_weak'), mut('bearm_crush')],
+        core: ['Brown Coat', 'bearWard 1', 'armor 1'] },
+
+      { id: 'bear_mask_rite', name: 'Bear Mask: rite', row: 2, lane: -1, shape: 'star', kind: 'mutation',
+        nodes: ['bearWard 1', mut('bearm_quick'), mut('bearm_rest'), mut('bearm_charges')],
+        core: abil('Slow to Anger', ['hp 1', 'resAll 1'], 'bear_mask', 'cd', -0.06) },
+      { id: 'bear_hide', name: 'The Thick Hide', row: 2, lane: 1, shape: 'ring', kind: 'skill', spokes: [0],
+        nodes: ['armor 1', 'hp 1', abil('Tough Bristles', ['resAll 0.5'], 'thorn_hide', 'cd', -0.08), 'resAll 1'],
+        core: { t: 'skill', grants: 'thorn_hide', abil: [{ a: 'thorn_hide', k: 'dur', v: 0.1 }] },
+        bonus: ['armor 1.5', 'hp 1'] },
+
+      { id: 'bear_hide_shape', name: 'Thorn Hide: shape', row: 3, lane: -2, shape: 'star', kind: 'mutation',
+        nodes: ['hp 1', mut('hide_long'), mut('hide_wide'), mut('hide_close')],
+        core: ['Burr Coat', 'armor 1', 'hp 1'] },
+      { id: 'bear_bowl', name: 'Bowl Them Over', row: 3, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['bearWard 1', 'hp 1', 'poise 1', 'resAll 1'],
+        core: web('bowl_over', 'Bowl Them Over', ['bearWard 1'], 'While you wear the Bear Mask, every enemy you Stun gives you Ward worth 3% of your Health for 6 s.', { off: 1, def: 1.04 }),
+        bonus: ['bearWard 1.5', 'hp 1'] },
+      { id: 'bear_den', name: 'Den Warmth', row: 3, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['ward 1', 'hp 1', 'armor 1', 'resAll 1'],
+        core: rule('den', 'Snug in the Den', ['bearWard 1'], 'While you have Ward, you take 10% less damage.', { off: 1, def: 1.04 }),
+        bonus: ['ward 1.5', 'hp 1'] },
+      { id: 'bear_hide_essence', name: 'Thorn Hide: essence', row: 3, lane: 2, shape: 'star', kind: 'mutation',
+        nodes: ['armor 1', mut('hide_iron'), mut('hide_barb'), mut('hide_venom')],
+        core: ['Prickly', 'thorns 1', 'armor 1'] },
+
+      { id: 'bear_grizzly', name: 'Grizzly', row: 4, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['poise 1', 'hp 1', 'resAll 1', 'armor 1'],
+        core: rule('grizzly', 'Grizzly', ['breakPower 1'], 'Your Stuns last 30% longer.', { off: 1.02, def: 1.02 }),
+        bonus: ['poise 1.5', 'hp 1'] },
+      { id: 'bear_altar_a', name: 'Altar of the Brown Bear', row: 4, lane: -1, shape: 'ring', kind: 'altar',
+        nodes: ['hp 1', 'bearWard 1', 'armor 1'], core: { t: 'altar', name: 'Altar of the Brown Bear' }, bonus: ['sigilPower 1.5'] },
+      { id: 'bear_hide_rite', name: 'Thorn Hide: rite', row: 4, lane: 1, shape: 'star', kind: 'mutation',
+        nodes: ['hp 1', mut('hide_quick'), mut('hide_mend'), mut('hide_charges')],
+        core: ['Moulting Season', 'armor 1', 'hp 1'] },
+      { id: 'bear_bulk', name: "Bear's Bulk", row: 4, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'dmgTaken 1@maskBear', 'resAll 1', 'armor 1'],
+        core: ['Great Bulk', 'hp 2', 'dmgTaken 1.5@maskBear'], bonus: ['hp 1.5', 'armor 1'] },
+
+      { id: 'bear_honey', name: 'Honey Tree', row: 5, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['hpRegen 1', 'hp 1', 'moveSpeed 1', 'resAll 1'],
+        core: ['Sweet Tooth', 'hpRegen 2', 'hp 1.5'], bonus: ['hpRegen 1.5', 'hp 1'] },
+      { id: 'bear_fat', name: 'Winter Fat', row: 5, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'bearWard 1', 'armor 1', 'resCold 1'],
+        core: ['Layered Fat', 'hp 2', 'bearWard 1.5'], bonus: ['bearWard 1.5', 'hp 1'] },
+      { id: 'bear_shoulder', name: 'Shoulder Charge', row: 5, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['breakPower 1', 'hp 1', 'armor 1', 'resAll 1'],
+        core: ['Bowling Shoulder', 'breakPower 2', 'armor 1.5'], bonus: ['breakPower 1.5', 'hp 1'] },
+      { id: 'bear_cave', name: 'The Cave', row: 5, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['resAll 1', 'hp 1', 'armor 1', 'evasion 1'],
+        core: ['Cave Mouth', 'resAll 2', 'hp 1.5'], bonus: ['resAll 1.5', 'hp 1'] },
+
+      { id: 'bear_maul', name: 'Maul the Fallen', row: 6, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'dmgBack 1', 'resAll 1', 'armor 1'],
+        core: ['Down and Out', 'dmgBack 2', 'armor 1.5'], bonus: ['armor 1.5', 'hp 1'] },
+      { id: 'bear_cult', name: 'The Pale Bear', row: 6, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', { t: 'corrupted', name: 'Ghost Fur', mods: ['bearWard 2', 'hp 1'], req: { corruption: 20 } }, 'resAll 1', 'armor 1'],
+        core: { t: 'corrupted', name: 'Bear of the Hollow', mods: ['dmg*2', 'hp 2', 'bearWard 2'], req: { corruption: 40 } },
+        bonus: ['bearWard 1', 'hp 1.5'] },
+      { id: 'bear_lantern', name: 'Lantern Shrine', row: 6, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['evasion 1', { t: 'faction', name: 'Blessed Pelt', mods: ['resAll 1.5', 'hp 1'], req: { faction: { id: 'lantern', rep: 20 } } }, 'hp 1', 'armor 1'],
+        core: { t: 'faction', name: 'Shrine Bear', mods: ['hp 2', 'ward 2'], req: { faction: { id: 'lantern', rep: 60 } } },
+        bonus: ['resAll 1', 'hp 1.5'] },
+      { id: 'bear_treant', name: 'Hollow Oak', row: 6, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'armor 1', 'resAll 1', { t: 'trophy', name: "Hollow Treant's Bark", mods: ['armor 1.5', 'hp 1.5'], req: { boss: 'hollow_treant' } }],
+        core: ['Bark-Skinned', 'armor 2', 'hp 1.5'], bonus: ['armor 1', 'hp 1.5'] },
+
+      { id: 'bear_pacts', name: "Bear's Bargains", row: 7, lane: -2, shape: 'star', kind: 'special',
+        nodes: ['hp 1',
+          pact('Heavy Coat', ['bearWard*30', 'moveSpeed*-8']),
+          pact('Thick Skull', ['poise*30', 'meleeSpeed*-6']),
+          pact('Long Sleep', ['hp*6', 'dodgeCdr*-20'])],
+        core: ["Bear's Terms", 'hp 1', 'armor 1'] },
+      { id: 'bear_iron', name: 'Iron Paws', row: 7, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'armor 1', 'resAll 1', { t: 'trophy', name: "Iron Warden's Gauntlet", mods: ['armor 1.5', 'poise 1.5'], req: { boss: 'iron_warden' } }],
+        core: ['Ironbound Paws', 'armor 2', 'hp 1.5'], bonus: ['armor 1.5', 'hp 1'] },
+      { id: 'bear_altar_b', name: 'Altar of the Cave Bear', row: 7, lane: 1, shape: 'ring', kind: 'altar',
+        nodes: ['hp 1', 'resAll 1', 'poise 1'], core: { t: 'altar', name: 'Altar of the Cave Bear' }, bonus: ['sigilPower 1.5'] },
+      { id: 'bear_key_winter', name: "Bear's Winter", row: 7, lane: 2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['bearWard 1', 'hp 1'],
+        core: key("Bear's Winter", ['hp*6', 'bearWard*30', 'moveSpeed*-8', 'dodgeCdr*-20'], 'You have 6% more Health and 30% more Ward from Bear skills, but move 8% slower and your dodge roll recovers 20% slower.', null, { off: 0.98, def: 1.06 }) },
+
+      { id: 'bear_lair', name: 'Deep Lair', row: 8, lane: -3, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'resAll 1', 'armor 1', 'hpRegen 1'],
+        core: ['Lair Bones', 'hp 2', 'resAll 1.5'], bonus: ['hp 1.5', 'armor 1'] },
+      { id: 'bear_key_hibernate', name: 'Hibernate', row: 8, lane: -2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['hp 1', 'bearWard 1'],
+        core: key('Hibernate', ['dmg*-6'], 'When a hit leaves you below 30% Health you gain Ward worth 25% of your Health, once every 30 s. You deal 6% less damage.', 'tree_wildmask_hibernate', { off: 0.98, def: 1.06 }) },
+      { id: 'bear_wall', name: 'Wall of Fur', row: 8, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'bearWard 1', 'armor 1', 'resAll 1'],
+        core: ['Shaggy', 'bearWard 2', 'hp 1.5'], bonus: ['bearWard 1.5', 'hp 1'] },
+      { id: 'bear_rockjaw', name: 'Rockjaw Den', row: 8, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['poise 1', 'hp 1', 'resAll 1', { t: 'trophy', name: "Rockjaw's Molar", mods: ['poise 1.5', 'hp 1.5'], req: { boss: 'rockjaw' } }],
+        core: ['Stone Jaw', 'poise 2', 'armor 1.5'], bonus: ['poise 1.5', 'hp 1'] },
+      { id: 'bear_key_mountain', name: 'The Mountain', row: 8, lane: 2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['hp 1', 'poise 1'],
+        core: key('The Mountain', ['hp*12', 'poise*30', 'meleeSpeed*-12', 'moveSpeed*-6'], 'You have 12% more Health and 30% more Poise, but attack 12% slower in melee and move 6% slower.', null, { off: 0.95, def: 1.08 }) },
+      { id: 'bear_spring', name: 'Spring Thaw', row: 8, lane: 3, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'hpRegen 1', 'resAll 1', 'armor 1'],
+        core: ['Waking', 'hpRegen 2', 'hp 1.5'], bonus: ['hpRegen 1', 'hp 1.5'] }
+    ],
+
+    devotion: [
+      { at: 15, mods: ['hp 2', 'armor 2'] },
+      { at: 35, mods: ['bearWard 3', 'resAll 2'] },
+      { at: 60, mods: ['hp 3', 'bearWard 3', 'armor 2'] }
+    ]
+  });
+
+  T.bridge('wildmask', { id: 'bear_quake_inner', between: ['bear', 'quake'], ring: 'inner', name: 'Heavy Ground', shape: 'star',
+    nodes: ['hp 1', mut('rake_wide'), 'breakPower 1', 'armor 1'],
+    core: ['Paws Like Anvils', 'breakPower 1.5', 'hp 1'], bonus: ['hp 1', 'armor 1'] });
+  T.bridge('wildmask', { id: 'bear_quake_mid', between: ['bear', 'quake'], ring: 'mid', name: 'Rockslide', shape: 'diamond',
+    nodes: ['poise 1', 'hp 1', 'breakPower 1', 'resAll 1'],
+    core: ['Landslide', 'poise 2', 'breakPower 1.5'], bonus: ['poise 1.5', 'hp 1'] });
+  T.bridge('wildmask', { id: 'bear_quake_outer', between: ['bear', 'quake'], ring: 'outer', name: 'Rumbling Den', shape: 'diamond',
+    nodes: ['hp 1', 'armor 1', 'breakPower 1', 'resAll 1'],
+    core: ['Ground Shaker', 'hp 2', 'breakPower 1.5'], bonus: ['breakPower 1.5', 'hp 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_wildmask_fang.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, W = T.wild;
+  var mut = W.mut, rule = W.rule, web = W.web, key = W.key, pact = W.pact, abil = W.abil;
+
+  /**
+   * WILDMASK, arm 1 of 8: THE FEEDING GROUND (`fang`). The berserker: kills, crowds, Life Steal and low Health. Skill: Pounce
+   * (trunk, 4 points). Design: docs/TREE_WILDMASK.md section 2. Rules: src/sim/56_tree_wildmask.js. Holds the bridges to the bear arm.
+   */
+  T.arm('wildmask', {
+    id: 'fang', name: 'The Feeding Ground', focus: 'The berserker: leap in, kill, feed, and fight harder the closer you are to death', color: '#c0504a', vein: 'war',
+
+    trunk: W.rakeTrunk([
+      'lifesteal 1', 'hp 1', { t: 'skill', grants: 'pounce', abil: [{ a: 'pounce', k: 'cd', v: -0.05 }] }, 'meleeSpeed 1', 'armor 1',   // T1..T5
+      'hp 1', 'dmg 1@afterKill', 'lifesteal 1', ['Blood Path', 'moveSpeed 1', 'lifesteal 0.5'], 'hp 1',                                // T6..T10
+      'meleeSpeed 1', 'resAll 1', 'hp 1', 'dmgExecute 1', 'armor 1',                                                                 // T11..T15
+      'hp 1', 'dmg 1@crowded', 'lifesteal 1', 'hp 1', 'meleeSpeed 1',                                                                // T16..T20
+      'resAll 1', 'hp 1', 'dmgElite 1', 'armor 1', 'hp 1'                                                                            // T21..T25
+    ]),
+
+    clusters: [
+      { id: 'fang_pounce_shape', name: 'Pounce: shape', row: 1, lane: -1, shape: 'star', kind: 'mutation',
+        nodes: ['hp 1', mut('pounce_far'), mut('pounce_wide'), mut('pounce_twice')],
+        core: ['Spring-Loaded', 'moveSpeed 1', 'hp 1'] },
+      { id: 'fang_pounce_essence', name: 'Pounce: essence', row: 1, lane: 1, shape: 'star', kind: 'mutation',
+        nodes: ['armor 1', mut('pounce_stun'), mut('pounce_crit'), mut('pounce_open')],
+        core: ['Bared Teeth', 'critChance 1', 'armor 1'] },
+
+      { id: 'fang_pounce_rite', name: 'Pounce: rite', row: 2, lane: -1, shape: 'star', kind: 'mutation',
+        nodes: ['meleeSpeed 1', mut('pounce_quick'), mut('pounce_charges'), mut('pounce_instinct')],
+        core: abil('Coiled Legs', ['hp 1', 'armor 1'], 'pounce', 'cd', -0.06) },
+      { id: 'fang_drunk', name: 'Kill-Drunk', row: 2, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['dmg 1@afterKill', 'hp 1', 'meleeSpeed 1', 'armor 1', 'moveSpeed 1'],
+        core: web('kill_drunk', 'Kill-Drunk', ['meleeSpeed 1'], 'Each kill gives you 4% increased Attack and Cast Speed for 4 s, stacking up to 5 times.', { off: 1.03, def: 1 }),
+        bonus: ['meleeSpeed 1.5', 'hp 1'] },
+
+      { id: 'fang_gorge', name: 'Gorge', row: 3, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['lifesteal 1', 'hp 1', 'resAll 1', 'armor 1'],
+        core: rule('gorge', 'Gorging', ['hp 1.5'], 'Each kill restores 3% of your maximum Health.', { off: 1, def: 1.04 }),
+        bonus: ['lifesteal 1.5', 'hp 1'] },
+      { id: 'fang_hackles', name: 'Hackles Up', row: 3, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['dmg 1@crowded', 'hp 1', 'armor 1', 'resAll 1'],
+        core: ['Bristling', 'dmg 2@crowded', 'dmgTaken 1@crowded'], bonus: ['armor 1.5', 'hp 1'] },
+      { id: 'fang_cornered', name: 'Cornered Beast', row: 3, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['dmg 1@lowLife', 'hp 1', 'lifesteal 1', 'resAll 1'],
+        core: web('cornered', 'Cornered', ['dmg 1.5@lowLife'], 'While below 35% Health your Life Steal is doubled.', { off: 1, def: 1.03 }),
+        bonus: ['hp 1.5', 'lifesteal 1'] },
+      { id: 'fang_marrow', name: 'Marrow', row: 3, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'hpRegen 1', 'armor 1', 'resAll 1'],
+        core: ['Cracked Bones', 'hpRegen 2', 'hp 1.5'], bonus: ['hpRegen 1.5', 'hp 1'] },
+
+      { id: 'fang_predator', name: 'Predator', row: 4, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['dmgExecute 1', 'hp 1', 'evasion 1', 'resAll 1'],
+        core: ['Finish It', 'dmgExecute 2', 'hp 1.5'], bonus: ['dmgExecute 1.5', 'hp 1'] },
+      { id: 'fang_altar_a', name: 'Altar of the Kill', row: 4, lane: -1, shape: 'ring', kind: 'altar',
+        nodes: ['hp 1', 'lifesteal 1', 'meleeSpeed 1'], core: { t: 'altar', name: 'Altar of the Kill' }, bonus: ['sigilPower 1.5'] },
+      { id: 'fang_frenzy', name: 'Red Frenzy', row: 4, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['meleeSpeed 1', 'hp 1', 'armor 1', 'evasion 1'],
+        core: ['Seeing Red', 'meleeSpeed 2', 'armor 1.5'], bonus: ['meleeSpeed 1.5', 'hp 1'] },
+      { id: 'fang_leap', name: 'Leaping Hunter', row: 4, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['moveSpeed 1', 'hp 1', abil('Long Spring', ['resAll 0.5'], 'pounce', 'range', 0.15), 'resAll 1'],
+        core: ['Springing', 'moveSpeed 2', 'hp 1.5'], bonus: ['moveSpeed 1.5', 'hp 1'] },
+
+      { id: 'fang_blood', name: 'Hot Blood', row: 5, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['lifesteal 1', 'hp 1', 'moveSpeed 1', 'resAll 1'],
+        core: ['Blood Warm', 'lifesteal 2', 'moveSpeed 1.5'], bonus: ['lifesteal 1.5', 'hp 1'] },
+      { id: 'fang_rage', name: 'Rage', row: 5, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['dmg 1@lowLife', 'hp 1', 'armor 1', 'evasion 1'],
+        core: ['Rage of the Beast', 'dmg 2@lowLife', 'hp 1.5'], bonus: ['hp 1.5', 'armor 1'] },
+      { id: 'fang_pack', name: 'Into the Pack', row: 5, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['dmgTaken 1@crowded', 'hp 1', 'resAll 1', 'meleeSpeed 1'],
+        core: ['Among Them', 'dmgTaken 2@crowded', 'hp 1.5'], bonus: ['resAll 1.5', 'hp 1'] },
+      { id: 'fang_elite', name: 'Big Prey', row: 5, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['dmgElite 1', 'hp 1', 'armor 1', 'resAll 1'],
+        core: ['Bring Down the Big One', 'dmgElite 2', 'armor 1.5'], bonus: ['dmgElite 1.5', 'hp 1'] },
+
+      { id: 'fang_bones', name: 'Bone Yard', row: 6, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'armor 1', 'resAll 1', 'lifesteal 1'],
+        core: ['Gnawed Clean', 'armor 2', 'hp 1.5'], bonus: ['armor 1.5', 'hp 1'] },
+      { id: 'fang_cult', name: 'The Red Altar', row: 6, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', { t: 'corrupted', name: 'Blood Thirst', mods: ['lifesteal 2', 'meleeSpeed 1'], req: { corruption: 20 } }, 'resAll 1', 'armor 1'],
+        core: { t: 'corrupted', name: 'Maw of the Hollow', mods: ['dmg*2', 'lifesteal 2', 'dmg 2@lowLife'], req: { corruption: 40 } },
+        bonus: ['lifesteal 1', 'hp 1.5'] },
+      { id: 'fang_cult_b', name: 'The Flesh Pit', row: 6, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['evasion 1', { t: 'faction', name: 'Pit Fighter', mods: ['dmg 1.5@crowded', 'hp 1'], req: { faction: { id: 'cult', rep: 20 } } }, 'hp 1', 'armor 1'],
+        core: { t: 'faction', name: 'Pit Champion', mods: ['lifesteal 2', 'meleeSpeed 2'], req: { faction: { id: 'cult', rep: 60 } } },
+        bonus: ['meleeSpeed 1', 'evasion 1.5'] },
+      { id: 'fang_drog', name: "The Warlord's Table", row: 6, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'dmgExecute 1', 'resAll 1', { t: 'trophy', name: "Drog's Cleaver", mods: ['dmgExecute 1.5', 'hp 1.5'], req: { boss: 'warlord_drog' } }],
+        core: ['Warlord\'s Share', 'dmgExecute 2', 'hp 1.5'], bonus: ['dmgExecute 1', 'hp 1.5'] },
+
+      { id: 'fang_pacts', name: "Berserker's Bargains", row: 7, lane: -2, shape: 'star', kind: 'special',
+        nodes: ['hp 1',
+          pact('Red Hunger', ['meleeSpeed*12', 'dmgTaken*6']),
+          pact('Glutton', ['lifesteal*30', 'hp*-8']),
+          pact('No Retreat', ['dmg*12@crowded', 'dodgeCdr*-20'])],
+        core: ["Berserker's Terms", 'lifesteal 1', 'hp 1'] },
+      { id: 'fang_leech', name: 'Leech Pool', row: 7, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'lifesteal 1', 'resAll 1', { t: 'trophy', name: "Leech Queen's Mouth", mods: ['lifesteal 1.5', 'hp 1.5'], req: { boss: 'leech_queen' } }],
+        core: ['Never Full', 'lifesteal 2', 'hp 1.5'], bonus: ['lifesteal 1.5', 'hp 1'] },
+      { id: 'fang_altar_b', name: 'Altar of the Feast', row: 7, lane: 1, shape: 'ring', kind: 'altar',
+        nodes: ['hp 1', 'dmgExecute 1', 'armor 1'], core: { t: 'altar', name: 'Altar of the Feast' }, bonus: ['sigilPower 1.5'] },
+      { id: 'fang_key_frenzy', name: 'Blood Frenzy', row: 7, lane: 2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['meleeSpeed 1', 'lifesteal 1'],
+        core: key('Blood Frenzy', ['meleeSpeed*15', 'dmgTaken*10'], 'You attack 15% faster in melee, but take 10% more damage.', null, { off: 1.05, def: 0.97 }) },
+
+      { id: 'fang_carcass', name: 'The Carcass', row: 8, lane: -3, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'lifesteal 1', 'resAll 1', 'armor 1'],
+        core: ['Picked Bones', 'hp 2', 'lifesteal 1.5'], bonus: ['lifesteal 1.5', 'hp 1'] },
+      { id: 'fang_key_berserk', name: 'Berserker', row: 8, lane: -2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['dmg 1@lowLife', 'hp 1'],
+        core: key('Berserker', ['dmg*30@lowLife', 'hp*-10'], 'You deal 30% more damage while below 35% Health, but have 10% less Health.', null, { off: 1.04, def: 0.97 }) },
+      { id: 'fang_scent', name: 'Scent of Fear', row: 8, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'dmgExecute 1', 'moveSpeed 1', 'resAll 1'],
+        core: ['Smell the Fear', 'dmgExecute 2', 'moveSpeed 1.5'], bonus: ['moveSpeed 1.5', 'hp 1'] },
+      { id: 'fang_maw', name: 'The Deep Maw', row: 8, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['lifesteal 1', 'hp 1', 'resAll 1', { t: 'trophy', name: "Maw of the Deep's Tooth", mods: ['lifesteal 1.5', 'armor 1.5'], req: { boss: 'maw_of_the_deep' } }],
+        core: ['Endless Gullet', 'lifesteal 2', 'armor 1.5'], bonus: ['armor 1.5', 'hp 1'] },
+      { id: 'fang_key_apex', name: 'Apex Predator', row: 8, lane: 2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['dmgExecute 1', 'dmgElite 1'],
+        core: key('Apex Predator', ['dmgExecute*45', 'dmg*-8'], 'You deal 45% more damage to enemies below 30% Health, but 8% less otherwise.', null, { off: 1.04, def: 1 }) },
+      { id: 'fang_feast', name: 'Last Feast', row: 8, lane: 3, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'lifesteal 1', 'hpRegen 1', 'resAll 1'],
+        core: ['Full Belly', 'hpRegen 2', 'hp 1.5'], bonus: ['lifesteal 1', 'hp 1.5'] }
+    ],
+
+    devotion: [
+      { at: 15, mods: ['lifesteal 2', 'hp 2'] },
+      { at: 35, mods: ['meleeSpeed 3', 'dmgExecute 2'] },
+      { at: 60, mods: ['lifesteal 3', 'dmg 3@lowLife', 'hp 2'] }
+    ]
+  });
+
+  T.bridge('wildmask', { id: 'fang_bear_inner', between: ['fang', 'bear'], ring: 'inner', name: 'Shared Kill', shape: 'star',
+    nodes: ['lifesteal 1', mut('rake_heavy'), 'hp 1', 'armor 1'],
+    core: ['Heavy Feeder', 'hp 1.5', 'lifesteal 1'], bonus: ['hp 1', 'armor 1'] });
+  T.bridge('wildmask', { id: 'fang_bear_mid', between: ['fang', 'bear'], ring: 'mid', name: 'Bear and Wolf', shape: 'diamond',
+    nodes: ['lifesteal 1', 'hp 1', 'bearWard 1', 'armor 1'],
+    core: ['Thick and Hungry', 'hp 2', 'lifesteal 1.5'], bonus: ['hp 1.5', 'armor 1'] });
+  T.bridge('wildmask', { id: 'fang_bear_outer', between: ['fang', 'bear'], ring: 'outer', name: 'Old Kill', shape: 'diamond',
+    nodes: ['dmgExecute 1', 'hp 1', 'bearWard 1', 'resAll 1'],
+    core: ['Stand Over the Kill', 'armor 2', 'dmgExecute 1.5'], bonus: ['armor 1.5', 'hp 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_wildmask_howl.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, W = T.wild;
+  var mut = W.mut, rule = W.rule, key = W.key, pact = W.pact, abil = W.abil;
+
+  /**
+   * WILDMASK, arm 7 of 8: THE HOWLING HILL (`howl`). The voice of the pack: shouts, Instinct, fear and allies. Skill: Howl
+   * (trunk, 4 points). Design: docs/TREE_WILDMASK.md section 2. Rules: src/sim/56_tree_wildmask.js. Holds the bridges to the wolf arm.
+   */
+  T.arm('wildmask', {
+    id: 'howl', name: 'The Howling Hill', focus: 'The voice of the pack: howl, and everything near you answers', color: '#7a9a6a', vein: 'order',
+
+    trunk: W.rakeTrunk([
+      'maskBurst 0.5', 'hp 1', { t: 'skill', grants: 'howl', abil: [{ a: 'howl', k: 'area', v: 0.08 }] }, 'aoe 1', 'resAll 1',   // T1..T5
+      'hp 1', 'cdr 1', 'statusDur 1', ['Hill Path', 'moveSpeed 1', 'aoe 0.5'], 'hp 1',                                       // T6..T10
+      'maskBurst 0.5', 'resAll 1', 'hp 1', 'cdr 1', 'armor 1',                                                                 // T11..T15
+      'hp 1', 'aoe 1', 'statusDur 1', 'hp 1', 'resAll 1',                                                                    // T16..T20
+      'cdr 1', 'hp 1', 'maskBurst 0.5', 'armor 1', 'hp 1'                                                                      // T21..T25
+    ]),
+
+    clusters: [
+      { id: 'howl_howl_shape', name: 'Howl: shape', row: 1, lane: -1, shape: 'star', kind: 'mutation',
+        nodes: ['hp 1', mut('howl_wide'), mut('howl_close'), mut('howl_long')],
+        core: ['Deep Lungs', 'aoe 1', 'hp 1'] },
+      { id: 'howl_howl_essence', name: 'Howl: essence', row: 1, lane: 1, shape: 'star', kind: 'mutation',
+        nodes: ['resAll 1', mut('howl_fear'), mut('howl_weak'), mut('howl_bleed')],
+        core: ['Wild Voice', 'statusDur 1', 'resAll 1'] },
+
+      { id: 'howl_howl_rite', name: 'Howl: rite', row: 2, lane: -1, shape: 'star', kind: 'mutation',
+        nodes: ['cdr 1', mut('howl_quick'), mut('howl_instinct'), mut('howl_mend')],
+        core: abil('Second Breath', ['hp 1', 'resAll 1'], 'howl', 'cd', -0.06) },
+      { id: 'howl_dread', name: 'Dread Chorus', row: 2, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['statusDur 1', 'hp 1', 'aoe 1', 'resAll 1', 'armor 1'],
+        core: rule('dread', 'Dread Chorus', ['statusDur 1'], 'Enemies you have Weakened, Feared or Taunted take 10% more damage from you.', { off: 1.03, def: 1 }),
+        bonus: ['statusDur 1.5', 'hp 1'] },
+
+      { id: 'howl_leader', name: 'Leader of the Pack', row: 3, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'aoe 1', 'resAll 1', 'armor 1'],
+        core: rule('leader', 'Pack Leader', ['hp 1'], 'Allies within 10 m of you deal 10% more damage.', { off: 1.01, def: 1 }),
+        bonus: ['hp 1.5', 'resAll 1'] },
+      { id: 'howl_echo', name: 'Echoing Hills', row: 3, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['cdr 1', 'hp 1', 'evasion 1', 'resAll 1'],
+        core: ['Echo', 'cdr 2', 'hp 1.5'], bonus: ['cdr 1.5', 'hp 1'] },
+      { id: 'howl_call', name: 'Call to Blood', row: 3, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['maskBurst 0.5', 'hp 1', 'armor 1', 'resAll 1'],
+        core: rule('call', 'Call to Blood', ['maskBurst 0.5'], 'Howl makes you deal 15% more damage for 6 s.', { off: 1.03, def: 1 }),
+        bonus: ['maskBurst 0.75', 'hp 1'] },
+      { id: 'howl_ears', name: 'Pricked Ears', row: 3, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['evasion 1', 'hp 1', 'moveSpeed 1', 'resAll 1'],
+        core: ['Alert', 'evasion 2', 'moveSpeed 1.5'], bonus: ['evasion 1.5', 'hp 1'] },
+
+      { id: 'howl_war', name: 'War Cry', row: 4, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['aoe 1', 'hp 1', 'armor 1', 'resAll 1'],
+        core: ['Battle Howl', 'aoe 2', 'armor 1.5'], bonus: ['aoe 1.5', 'hp 1'] },
+      { id: 'howl_altar_a', name: 'Altar of the Howl', row: 4, lane: -1, shape: 'ring', kind: 'altar',
+        nodes: ['hp 1', 'maskBurst 0.5', 'aoe 1'], core: { t: 'altar', name: 'Altar of the Howl' }, bonus: ['sigilPower 1.5'] },
+      { id: 'howl_long_voice', name: 'Long Voice', row: 4, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['statusDur 1', 'hp 1', abil('Carrying Voice', ['resAll 0.5'], 'howl', 'area', 0.15), 'armor 1'],
+        core: ['Over the Hills', 'statusDur 2', 'hp 1.5'], bonus: ['statusDur 1.5', 'hp 1'] },
+      { id: 'howl_warm', name: 'Warm Breath', row: 4, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['hpRegen 1', 'hp 1', 'resAll 1', 'evasion 1'],
+        core: ['Steam', 'hpRegen 2', 'hp 1.5'], bonus: ['hpRegen 1.5', 'hp 1'] },
+
+      { id: 'howl_ridge', name: 'Ridge Line', row: 5, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['moveSpeed 1', 'hp 1', 'resAll 1', 'dodgeCdr 1'],
+        core: ['Along the Ridge', 'moveSpeed 2', 'hp 1.5'], bonus: ['moveSpeed 1.5', 'hp 1'] },
+      { id: 'howl_terror', name: 'Terror', row: 5, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['statusChance 1', 'hp 1', 'armor 1', 'resAll 1'],
+        core: ['Night Terror', 'statusChance 2', 'hp 1.5'], bonus: ['statusChance 1.5', 'hp 1'] },
+      { id: 'howl_heart', name: 'Wild Heart', row: 5, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['maskBurst 0.5', 'hp 1', 'resAll 1', 'evasion 1'],
+        core: ['Wildheart', 'maskBurst 1', 'hp 1.5'], bonus: ['maskBurst 0.75', 'hp 1'] },
+      { id: 'howl_stones', name: 'Standing Stones', row: 5, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['armor 1', 'hp 1', 'resAll 1', 'cdr 1'],
+        core: ['Old Stones', 'armor 2', 'hp 1.5'], bonus: ['armor 1.5', 'hp 1'] },
+
+      { id: 'howl_storm', name: 'Storm Howl', row: 6, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'aoe 1', 'resShock 1', 'resAll 1'],
+        core: ['Thunder Voice', 'aoe 2', 'hp 1.5'], bonus: ['aoe 1.5', 'hp 1'] },
+      { id: 'howl_cult', name: 'The Hollow Choir', row: 6, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', { t: 'corrupted', name: 'Hollow Throat', mods: ['statusDur 2', 'aoe 1'], req: { corruption: 20 } }, 'resAll 1', 'armor 1'],
+        core: { t: 'corrupted', name: 'Voice of the Hollow', mods: ['dmg*2', 'maskBurst 1.5', 'aoe 2'], req: { corruption: 40 } },
+        bonus: ['statusDur 1', 'hp 1.5'] },
+      { id: 'howl_choir', name: 'Hill Choir', row: 6, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['evasion 1', { t: 'faction', name: 'Choir Howler', mods: ['aoe 1.5', 'hp 1'], req: { faction: { id: 'choir', rep: 20 } } }, 'hp 1', 'armor 1'],
+        core: { t: 'faction', name: 'Choir of the Hills', mods: ['cdr 2', 'statusDur 2'], req: { faction: { id: 'choir', rep: 60 } } },
+        bonus: ['cdr 1', 'evasion 1.5'] },
+      { id: 'howl_barker', name: "The Barker's Yard", row: 6, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'statusChance 1', 'resAll 1', { t: 'trophy', name: "The Barker's Bell", mods: ['statusChance 1.5', 'hp 1.5'], req: { boss: 'the_barker' } }],
+        core: ['Loud Mouth', 'statusChance 2', 'hp 1.5'], bonus: ['statusChance 1', 'hp 1.5'] },
+
+      { id: 'howl_pacts', name: "Howler's Bargains", row: 7, lane: -2, shape: 'star', kind: 'special',
+        nodes: ['hp 1',
+          pact('Hoarse Voice', ['cdr*15', 'aoe*-10']),
+          pact('Loud Voice', ['aoe*20', 'hp*-6']),
+          pact('Bold Voice', ['maskBurst*20', 'armor*-15'])],
+        core: ["Howler's Terms", 'aoe 1', 'hp 1'] },
+      { id: 'howl_orsk', name: 'The Baying', row: 7, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'aoe 1', 'resAll 1', { t: 'trophy', name: "Houndmaster's Horn", mods: ['aoe 1.5', 'hp 1.5'], req: { boss: 'houndmaster_orsk' } }],
+        core: ['Hound Song', 'aoe 2', 'hp 1.5'], bonus: ['aoe 1.5', 'hp 1'] },
+      { id: 'howl_altar_b', name: 'Altar of the Moon Song', row: 7, lane: 1, shape: 'ring', kind: 'altar',
+        nodes: ['hp 1', 'cdr 1', 'resAll 1'], core: { t: 'altar', name: 'Altar of the Moon Song' }, bonus: ['sigilPower 1.5'] },
+      { id: 'howl_key_endless', name: 'Endless Howl', row: 7, lane: 2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['cdr 1', 'statusDur 1'],
+        core: key('Endless Howl', ['dmgMelee*-8'], 'Howl waits 40% less between calls, but your melee hits deal 8% less damage.', null, { off: 1.03, def: 1.02 },
+          { abil: [{ a: 'howl', k: 'cd', v: -0.4 }] }) },
+
+      { id: 'howl_summit', name: 'Summit', row: 8, lane: -3, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'aoe 1', 'resAll 1', 'hpRegen 1'],
+        core: ['Top of the Hill', 'hpRegen 2', 'aoe 1.5'], bonus: ['aoe 1.5', 'hp 1'] },
+      { id: 'howl_key_roar', name: 'Primal Roar', row: 8, lane: -2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['maskBurst 0.5', 'hp 1'],
+        core: key('Primal Roar', ['maskBurst*30', 'maskHaste*-20'], 'Your Mask bursts deal 30% more damage, but the masks wait 20% longer.', null, { off: 1.04, def: 1 }) },
+      { id: 'howl_cairn', name: 'Cairn', row: 8, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'armor 1', 'cdr 1', 'resAll 1'],
+        core: ['Piled Stones', 'armor 2', 'hp 1.5'], bonus: ['cdr 1.5', 'hp 1'] },
+      { id: 'howl_crown', name: "The King's Hunt Horn", row: 8, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['maskBurst 0.5', 'hp 1', 'resAll 1', { t: 'trophy', name: "Valdric's Horn", mods: ['maskBurst 0.75', 'resAll 1.5'], req: { boss: 'captain_valdric' } }],
+        core: ['Royal Call', 'maskBurst 1', 'resAll 1.5'], bonus: ['resAll 1.5', 'hp 1'] },
+      { id: 'howl_key_alpha', name: 'Alpha Voice', row: 8, lane: 2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['aoe 1', 'statusDur 1'],
+        core: key('Alpha Voice', ['aoe*20', 'statusDur*20', 'hp*-8'], 'Your areas are 20% larger and your statuses last 20% longer, but you have 8% less Health.', null, { off: 1.03, def: 1 }) },
+      { id: 'howl_dusk', name: 'Dusk Song', row: 8, lane: 3, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'cdr 1', 'hpRegen 1', 'resAll 1'],
+        core: ['Evening Howl', 'hpRegen 2', 'cdr 1.5'], bonus: ['cdr 1', 'hp 1.5'] }
+    ],
+
+    devotion: [
+      { at: 15, mods: ['maskBurst 1', 'hp 2'] },
+      { at: 35, mods: ['aoe 3', 'cdr 2'] },
+      { at: 60, mods: ['maskBurst 1.5', 'statusDur 3', 'hp 2'] }
+    ]
+  });
+
+  T.bridge('wildmask', { id: 'howl_wolf_inner', between: ['howl', 'wolf'], ring: 'inner', name: 'Pack Song', shape: 'star',
+    nodes: ['aoe 1', mut('rake_hunger'), 'wolfBleed 1', 'hp 1'],
+    core: ['Howl of the Pack', 'maskBurst 0.75', 'wolfBleed 1'], bonus: ['hp 1', 'evasion 1'] });
+  T.bridge('wildmask', { id: 'howl_wolf_mid', between: ['howl', 'wolf'], ring: 'mid', name: 'Running Song', shape: 'diamond',
+    nodes: ['meleeSpeed 1', 'hp 1', 'aoe 1', 'resAll 1'],
+    core: ['Hunting Song', 'meleeSpeed 2', 'aoe 1.5'], bonus: ['meleeSpeed 1.5', 'hp 1'] });
+  T.bridge('wildmask', { id: 'howl_wolf_outer', between: ['howl', 'wolf'], ring: 'outer', name: 'Moon Song', shape: 'diamond',
+    nodes: ['critChance 1', 'hp 1', 'maskBurst 0.5', 'resAll 1'],
+    core: ['Song to the Moon', 'critChance 2', 'maskBurst 0.75'], bonus: ['maskBurst 0.75', 'hp 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_wildmask_moon.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, W = T.wild;
+  var mut = W.mut, rule = W.rule, key = W.key, pact = W.pact, abil = W.abil;
+
+  /**
+   * WILDMASK, arm 5 of 8: THE MOON PATH (`moon`). Dashes, moonlit critical hits and moving. Skill: Moonlit Dash (trunk,
+   * 4 points). Design: docs/TREE_WILDMASK.md section 2. Rules: src/sim/56_tree_wildmask.js. Holds the bridges to the shift arm.
+   */
+  T.arm('wildmask', {
+    id: 'moon', name: 'The Moon Path', focus: 'A pale line where something was: dash through, strike, be gone', color: '#a9b8d0', vein: null,
+
+    trunk: W.rakeTrunk([
+      'moveSpeed 1', 'hp 1', { t: 'skill', grants: 'moonlit_dash', abil: [{ a: 'moonlit_dash', k: 'cd', v: -0.05 }] }, 'dodgeCdr 1', 'evasion 1',   // T1..T5
+      'hp 1', 'critChance 1', 'moveSpeed 1', ['Moon Road', 'moveSpeed 1', 'dodgeCdr 0.5'], 'hp 1',                                               // T6..T10
+      'dodgeCdr 1', 'resAll 1', 'hp 1', 'critMult 1', 'evasion 1',                                                                              // T11..T15
+      'hp 1', 'dmg 1@moving', 'dodgeCdr 1', 'hp 1', 'evasion 1',                                                                                // T16..T20
+      'resAll 1', 'hp 1', 'moveSpeed 1', 'evasion 1', 'hp 1'                                                                                    // T21..T25
+    ]),
+
+    clusters: [
+      { id: 'moon_dash_shape', name: 'Moonlit Dash: shape', row: 1, lane: -1, shape: 'star', kind: 'mutation',
+        nodes: ['hp 1', mut('dash_far'), mut('dash_wide'), mut('dash_short')],
+        core: ['Long Shadow', 'moveSpeed 1', 'hp 1'] },
+      { id: 'moon_dash_essence', name: 'Moonlit Dash: essence', row: 1, lane: 1, shape: 'star', kind: 'mutation',
+        nodes: ['evasion 1', mut('dash_bleed'), mut('dash_slow'), mut('dash_crit')],
+        core: ['Pale Edge', 'critChance 1', 'evasion 1'] },
+
+      { id: 'moon_dash_rite', name: 'Moonlit Dash: rite', row: 2, lane: -1, shape: 'star', kind: 'mutation',
+        nodes: ['dodgeCdr 1', mut('dash_three'), mut('dash_quick'), mut('dash_instinct')],
+        core: abil('Moonrise', ['hp 1', 'evasion 1'], 'moonlit_dash', 'cd', -0.06) },
+      { id: 'moon_glint', name: 'Moon Glint', row: 2, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['critChance 1', 'hp 1', 'moveSpeed 1', 'evasion 1', 'resAll 1'],
+        core: rule('glint', 'Glint of the Moon', ['critChance 1'], 'For 2 s after a Moonlit Dash you deal 20% more damage.', { off: 1.03, def: 1 }),
+        bonus: ['critChance 1.5', 'hp 1'] },
+
+      { id: 'moon_silver', name: 'Quicksilver', row: 3, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['dodgeCdr 1', 'hp 1', 'resAll 1', 'evasion 1'],
+        core: rule('quicksilver', 'Quicksilver', ['dodgeCdr 1'], 'Your dodge roll gives you 10 Instinct.', { off: 1.02, def: 1.01 }),
+        bonus: ['dodgeCdr 1.5', 'hp 1'] },
+      { id: 'moon_fangs', name: 'Moonlit Fangs', row: 3, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['critMult 1', 'hp 1', 'armor 1', 'resAll 1'],
+        core: ['Silver Teeth', 'critMult 2', 'hp 1.5'], bonus: ['critMult 1.5', 'hp 1'] },
+      { id: 'moon_tide', name: 'Night Tide', row: 3, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['moveSpeed 1', 'hp 1', 'dmg 1@moving', 'resAll 1'],
+        core: ['Running Tide', 'moveSpeed 2', 'dmg 1.5@moving'], bonus: ['moveSpeed 1.5', 'hp 1'] },
+      { id: 'moon_veil', name: 'Moon Veil', row: 3, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['evasion 1', 'hp 1', 'resAll 1', 'hpRegen 1'],
+        core: ['Silver Mist', 'evasion 2', 'hpRegen 1.5'], bonus: ['evasion 1.5', 'hp 1'] },
+
+      { id: 'moon_crescent', name: 'Crescent', row: 4, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['critChance 1', 'hp 1', 'evasion 1', 'resAll 1'],
+        core: ['Horned Moon', 'critChance 2', 'evasion 1.5'], bonus: ['critChance 1.5', 'hp 1'] },
+      { id: 'moon_altar_a', name: 'Altar of the Crescent', row: 4, lane: -1, shape: 'ring', kind: 'altar',
+        nodes: ['hp 1', 'moveSpeed 1', 'critChance 1'], core: { t: 'altar', name: 'Altar of the Crescent' }, bonus: ['sigilPower 1.5'] },
+      { id: 'moon_path', name: 'Lunar Path', row: 4, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['moveSpeed 1', 'hp 1', abil('Long Light', ['resAll 0.5'], 'moonlit_dash', 'range', 0.15), 'armor 1'],
+        core: ['Silver Road', 'moveSpeed 2', 'hp 1.5'], bonus: ['moveSpeed 1.5', 'hp 1'] },
+      { id: 'moon_dew', name: 'Night Dew', row: 4, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['hpRegen 1', 'hp 1', 'resAll 1', 'evasion 1'],
+        core: ['Cool Grass', 'hpRegen 2', 'resAll 1.5'], bonus: ['hpRegen 1.5', 'hp 1'] },
+
+      { id: 'moon_hare', name: 'Moon Hare', row: 5, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['moveSpeed 1', 'hp 1', 'dodgeCdr 1', 'resAll 1'],
+        core: ['Leaping Hare', 'moveSpeed 2', 'dodgeCdr 1.5'], bonus: ['moveSpeed 1.5', 'hp 1'] },
+      { id: 'moon_blade', name: 'Moonblade', row: 5, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['critMult 1', 'hp 1', 'evasion 1', 'armor 1'],
+        core: ['Silvered Claw', 'critMult 2', 'evasion 1.5'], bonus: ['critMult 1.5', 'hp 1'] },
+      { id: 'moon_shadowed', name: 'Shadowed Glade', row: 5, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['evasion 1', 'hp 1', 'resAll 1', 'dodgeCdr 1'],
+        core: ['Hidden Glade', 'evasion 2', 'hp 1.5'], bonus: ['evasion 1.5', 'hp 1'] },
+      { id: 'moon_wane', name: 'Waning', row: 5, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['dmg 1@moving', 'hp 1', 'resAll 1', 'armor 1'],
+        core: ['Last Quarter', 'dmg 2@moving', 'hp 1.5'], bonus: ['hp 1.5', 'armor 1'] },
+
+      { id: 'moon_lake', name: 'Moon Lake', row: 6, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'resAll 1', 'hpRegen 1', 'evasion 1'],
+        core: ['Still Water', 'resAll 2', 'hp 1.5'], bonus: ['resAll 1.5', 'hp 1'] },
+      { id: 'moon_cult', name: 'The Black Moon', row: 6, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', { t: 'corrupted', name: 'Dark Crescent', mods: ['critChance 2', 'moveSpeed 1'], req: { corruption: 20 } }, 'resAll 1', 'evasion 1'],
+        core: { t: 'corrupted', name: 'Moon of the Hollow', mods: ['dmg*2', 'critMult 3', 'dodgeCdr 2'], req: { corruption: 40 } },
+        bonus: ['critChance 1', 'hp 1.5'] },
+      { id: 'moon_lantern', name: 'Lantern Moths', row: 6, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['evasion 1', { t: 'faction', name: 'Moth Wings', mods: ['evasion 1.5', 'moveSpeed 1'], req: { faction: { id: 'lantern', rep: 20 } } }, 'hp 1', 'resAll 1'],
+        core: { t: 'faction', name: 'Moon Lantern', mods: ['dodgeCdr 2', 'hp 2'], req: { faction: { id: 'lantern', rep: 60 } } },
+        bonus: ['dodgeCdr 1', 'evasion 1.5'] },
+      { id: 'moon_rider', name: 'The Pale Ride', row: 6, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'moveSpeed 1', 'resAll 1', { t: 'trophy', name: "Pale Rider's Lantern", mods: ['moveSpeed 1.5', 'critChance 1.5'], req: { boss: 'pale_rider' } }],
+        core: ['Ghost Horse', 'moveSpeed 2', 'hp 1.5'], bonus: ['moveSpeed 1', 'hp 1.5'] },
+
+      { id: 'moon_pacts', name: "Moon's Bargains", row: 7, lane: -2, shape: 'star', kind: 'special',
+        nodes: ['hp 1',
+          pact('Silver Price', ['critChance*20', 'hp*-8']),
+          pact('Fleet Feet', ['moveSpeed*15', 'armor*-15']),
+          pact('Short Night', ['dodgeCdr*25', 'dmg*-5'])],
+        core: ["Moon's Terms", 'moveSpeed 1', 'hp 1'] },
+      { id: 'moon_shade', name: "The Miller's Moon", row: 7, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'evasion 1', 'resAll 1', { t: 'trophy', name: "Miller's Shade Lamp", mods: ['evasion 1.5', 'hp 1.5'], req: { boss: 'millers_shade' } }],
+        core: ['Mill by Moonlight', 'evasion 2', 'hp 1.5'], bonus: ['evasion 1.5', 'hp 1'] },
+      { id: 'moon_altar_b', name: 'Altar of the Full Moon', row: 7, lane: 1, shape: 'ring', kind: 'altar',
+        nodes: ['hp 1', 'critMult 1', 'evasion 1'], core: { t: 'altar', name: 'Altar of the Full Moon' }, bonus: ['sigilPower 1.5'] },
+      { id: 'moon_key_runner', name: 'Night Runner', row: 7, lane: 2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['moveSpeed 1', 'evasion 1@moving'],
+        core: key('Night Runner', ['dmg*18@moving', 'dmg*-12@still'], 'You deal 18% more damage while moving, but 12% less while standing still.', null, { off: 1.04, def: 1 }) },
+
+      { id: 'moon_mist', name: 'Midnight Mist', row: 8, lane: -3, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'evasion 1', 'resAll 1', 'dodgeCdr 1'],
+        core: ['Fog Bank', 'evasion 2', 'hp 1.5'], bonus: ['evasion 1.5', 'hp 1'] },
+      { id: 'moon_key_caught', name: 'Never Caught', row: 8, lane: -2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['moveSpeed 1', 'dodgeCdr 1'],
+        core: key('Never Caught', ['moveSpeed*20', 'dodgeCdr*20', 'hp*-10'], 'You move 20% faster and your dodge roll recovers 20% faster, but you have 10% less Health.', null, { off: 1.02, def: 1.04 }) },
+      { id: 'moon_bright', name: 'Bright Night', row: 8, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'critChance 1', 'armor 1', 'resAll 1'],
+        core: ['Moonlight', 'critChance 2', 'hp 1.5'], bonus: ['critChance 1.5', 'hp 1'] },
+      { id: 'moon_tide_b', name: 'High Tide', row: 8, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['moveSpeed 1', 'hp 1', 'resAll 1', { t: 'trophy', name: "Tide Wyrm's Scale", mods: ['resAll 1.5', 'hp 1.5'], req: { boss: 'tide_wyrm' } }],
+        core: ['Spring Tide', 'moveSpeed 2', 'resAll 1.5'], bonus: ['resAll 1.5', 'hp 1'] },
+      { id: 'moon_key_blade', name: 'Silver Claws', row: 8, lane: 2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['critChance 1', 'evasion 1'],
+        core: key('Silver Claws', ['critChance*30', 'hp*-8'], 'You have 30% more Critical Chance, but 8% less Health.', null, { off: 1.05, def: 0.98 }) },
+      { id: 'moon_full', name: 'Full Moon', row: 8, lane: 3, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'moveSpeed 1', 'hpRegen 1', 'resAll 1'],
+        core: ['Moon Song', 'hpRegen 2', 'moveSpeed 1.5'], bonus: ['moveSpeed 1', 'hp 1.5'] }
+    ],
+
+    devotion: [
+      { at: 15, mods: ['moveSpeed 2', 'hp 2'] },
+      { at: 35, mods: ['dodgeCdr 3', 'critChance 2'] },
+      { at: 60, mods: ['evasion 3', 'critMult 3', 'hp 2'] }
+    ]
+  });
+
+  T.bridge('wildmask', { id: 'moon_shift_inner', between: ['moon', 'shift'], ring: 'inner', name: 'Changing Moon', shape: 'star',
+    nodes: ['moveSpeed 1', mut('rake_flurry'), 'shiftDur 0.5', 'hp 1'],
+    core: ['Phases', 'shiftDur 0.75', 'moveSpeed 1'], bonus: ['hp 1', 'evasion 1'] });
+  T.bridge('wildmask', { id: 'moon_shift_mid', between: ['moon', 'shift'], ring: 'mid', name: 'Moon Changeling', shape: 'diamond',
+    nodes: ['shiftPower 0.5', 'hp 1', 'moveSpeed 1', 'resAll 1'],
+    core: ['Turning Light', 'shiftPower 1', 'moveSpeed 1.5'], bonus: ['shiftPower 0.75', 'hp 1'] });
+  T.bridge('wildmask', { id: 'moon_shift_outer', between: ['moon', 'shift'], ring: 'outer', name: 'New Moon', shape: 'diamond',
+    nodes: ['maskHaste 0.5', 'hp 1', 'dodgeCdr 1', 'resAll 1'],
+    core: ['Dark of the Moon', 'maskHaste 1', 'dodgeCdr 1.5'], bonus: ['maskHaste 0.75', 'hp 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_wildmask_quake.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, W = T.wild;
+  var mut = W.mut, rule = W.rule, key = W.key, pact = W.pact, abil = W.abil;
+
+  /**
+   * WILDMASK, arm 3 of 8: THE BROKEN HILLS (`quake`). Leaps, quakes and Poise breaking. Skill: Feral Leap (trunk, 4 points).
+   * Design: docs/TREE_WILDMASK.md section 2. Rules: src/sim/56_tree_wildmask.js. Holds the bridges to the raven arm.
+   */
+  T.arm('wildmask', {
+    id: 'quake', name: 'The Broken Hills', focus: 'Leap high, land hard: quakes, Stuns and broken guards', color: '#a08a5c', vein: 'war',
+
+    trunk: W.rakeTrunk([
+      'breakPower 1', 'hp 1', { t: 'skill', grants: 'feral_leap', abil: [{ a: 'feral_leap', k: 'area', v: 0.08 }] }, 'aoe 1', 'armor 1',   // T1..T5
+      'hp 1', 'meleeSpeed 1', 'breakPower 1', ['Rockfall Path', 'moveSpeed 1', 'aoe 0.5'], 'hp 1',                                        // T6..T10
+      'dmgBroken 1', 'resAll 1', 'hp 1', 'aoe 1', 'armor 1',                                                                             // T11..T15
+      'hp 1', 'breakPower 1', 'meleeSpeed 1', 'hp 1', 'poise 1',                                                                         // T16..T20
+      'resAll 1', 'hp 1', 'dmgBroken 1', 'armor 1', 'hp 1'                                                                               // T21..T25
+    ]),
+
+    clusters: [
+      { id: 'quake_leap_shape', name: 'Feral Leap: shape', row: 1, lane: -1, shape: 'star', kind: 'mutation',
+        nodes: ['hp 1', mut('leapf_far'), mut('leapf_wide'), mut('leapf_tight')],
+        core: ['Strong Haunches', 'aoe 1', 'hp 1'] },
+      { id: 'quake_leap_essence', name: 'Feral Leap: essence', row: 1, lane: 1, shape: 'star', kind: 'mutation',
+        nodes: ['armor 1', mut('leapf_stun'), mut('leapf_slow'), mut('leapf_crush')],
+        core: ['Heavy Landing', 'breakPower 1', 'armor 1'] },
+
+      { id: 'quake_leap_rite', name: 'Feral Leap: rite', row: 2, lane: -1, shape: 'star', kind: 'mutation',
+        nodes: ['aoe 1', mut('leapf_quick'), mut('leapf_charges'), mut('leapf_instinct')],
+        core: abil('Light Bones', ['hp 1', 'armor 1'], 'feral_leap', 'cd', -0.06) },
+      { id: 'quake_shock', name: 'Aftershock', row: 2, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['aoe 1', 'hp 1', 'breakPower 1', 'armor 1', 'resAll 1'],
+        core: rule('aftershock', 'Aftershock', ['aoe 1'], 'When you Stun an enemy, a 2.5 m shockwave around it deals 30% weapon damage (once every 2 s).', { off: 1.03, def: 1 }),
+        bonus: ['aoe 1.5', 'hp 1'] },
+
+      { id: 'quake_break', name: 'Shattered Guard', row: 3, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['dmgBroken 1', 'hp 1', 'resAll 1', 'armor 1'],
+        core: rule('broken', 'Open Guard', ['breakPower 1'], 'Your hits on Stunned or broken enemies deal 15% more damage.', { off: 1.03, def: 1 }),
+        bonus: ['dmgBroken 1.5', 'hp 1'] },
+      { id: 'quake_stone', name: 'Stone Fists', row: 3, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['breakPower 1', 'hp 1', 'armor 1', 'resAll 1'],
+        core: ['Granite', 'breakPower 2', 'armor 1.5'], bonus: ['breakPower 1.5', 'hp 1'] },
+      { id: 'quake_dust', name: 'Dust Cloud', row: 3, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['evasion 1', 'hp 1', 'aoe 1', 'resAll 1'],
+        core: ['Kicked Up', 'evasion 2', 'aoe 1.5'], bonus: ['evasion 1.5', 'hp 1'] },
+      { id: 'quake_spring', name: 'Hill Spring', row: 3, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['moveSpeed 1', 'hp 1', abil('Higher Leap', ['resAll 0.5'], 'feral_leap', 'range', 0.15), 'armor 1'],
+        core: ['Bounding', 'moveSpeed 2', 'hp 1.5'], bonus: ['moveSpeed 1.5', 'hp 1'] },
+
+      { id: 'quake_tremor', name: 'Tremor', row: 4, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['aoe 1', 'hp 1', 'poise 1', 'resAll 1'],
+        core: ['Trembling Earth', 'aoe 2', 'poise 1.5'], bonus: ['aoe 1.5', 'hp 1'] },
+      { id: 'quake_altar_a', name: 'Altar of the Hill', row: 4, lane: -1, shape: 'ring', kind: 'altar',
+        nodes: ['hp 1', 'breakPower 1', 'aoe 1'], core: { t: 'altar', name: 'Altar of the Hill' }, bonus: ['sigilPower 1.5'] },
+      { id: 'quake_maul', name: 'Mauling Paws', row: 4, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['meleeSpeed 1', 'hp 1', 'armor 1', 'evasion 1'],
+        core: ['Pounding', 'meleeSpeed 2', 'hp 1.5'], bonus: ['meleeSpeed 1.5', 'hp 1'] },
+      { id: 'quake_footing', name: 'Sure Footing', row: 4, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['poise 1', 'hp 1', 'resAll 1', 'armor 1'],
+        core: ['Rooted Feet', 'poise 2', 'hp 1.5'], bonus: ['poise 1.5', 'hp 1'] },
+
+      { id: 'quake_scree', name: 'Scree Slope', row: 5, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['moveSpeed 1', 'hp 1', 'resAll 1', 'dodgeCdr 1'],
+        core: ['Sliding Stones', 'moveSpeed 2', 'dodgeCdr 1.5'], bonus: ['moveSpeed 1.5', 'hp 1'] },
+      { id: 'quake_crater', name: 'Crater', row: 5, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['aoe 1', 'hp 1', 'armor 1', 'evasion 1'],
+        core: ['Impact', 'aoe 2', 'armor 1.5'], bonus: ['aoe 1.5', 'hp 1'] },
+      { id: 'quake_crack', name: 'Cracked Armour', row: 5, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['dmgBroken 1', 'hp 1', 'resAll 1', 'meleeSpeed 1'],
+        core: ['Through the Gap', 'dmgBroken 2', 'hp 1.5'], bonus: ['dmgBroken 1.5', 'hp 1'] },
+      { id: 'quake_boulder', name: 'Boulder', row: 5, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'armor 1', 'resAll 1', 'poise 1'],
+        core: ['Unmoved', 'hp 2', 'armor 1.5'], bonus: ['hp 1.5', 'armor 1'] },
+
+      { id: 'quake_gorge', name: 'The Gorge', row: 6, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'aoe 1', 'resAll 1', 'armor 1'],
+        core: ['Echoing Walls', 'aoe 2', 'hp 1.5'], bonus: ['aoe 1.5', 'hp 1'] },
+      { id: 'quake_cult', name: 'The Sunken Stones', row: 6, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', { t: 'corrupted', name: 'Hollow Stone', mods: ['breakPower 2', 'aoe 1'], req: { corruption: 20 } }, 'resAll 1', 'armor 1'],
+        core: { t: 'corrupted', name: 'Earth of the Hollow', mods: ['dmg*2', 'dmgBroken 3', 'aoe 2'], req: { corruption: 40 } },
+        bonus: ['breakPower 1', 'hp 1.5'] },
+      { id: 'quake_choir', name: 'Stone Choir', row: 6, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['evasion 1', { t: 'faction', name: 'Bell of Stone', mods: ['poise 1.5', 'hp 1'], req: { faction: { id: 'choir', rep: 20 } } }, 'hp 1', 'armor 1'],
+        core: { t: 'faction', name: 'Choir of Quakes', mods: ['aoe 2', 'breakPower 2'], req: { faction: { id: 'choir', rep: 60 } } },
+        bonus: ['aoe 1', 'evasion 1.5'] },
+      { id: 'quake_gate', name: 'Broken Gate', row: 6, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'breakPower 1', 'resAll 1', { t: 'trophy', name: "Siege Foreman's Ram", mods: ['breakPower 1.5', 'hp 1.5'], req: { boss: 'siege_foreman' } }],
+        core: ['Battering', 'breakPower 2', 'hp 1.5'], bonus: ['breakPower 1', 'hp 1.5'] },
+
+      { id: 'quake_pacts', name: "Hillman's Bargains", row: 7, lane: -2, shape: 'star', kind: 'special',
+        nodes: ['hp 1',
+          pact('Heavy Bones', ['breakPower*30', 'meleeSpeed*-6']),
+          pact('Wide Fall', ['aoe*20', 'dmg*-5']),
+          pact('Thin Shell', ['dmgBroken*25', 'armor*-15'])],
+        core: ["Hillman's Terms", 'aoe 1', 'hp 1'] },
+      { id: 'quake_stag', name: 'Rockjaw Pass', row: 7, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'poise 1', 'armor 1', { t: 'trophy', name: "Rockjaw's Stone Tooth", mods: ['poise 1.5', 'breakPower 1.5'], req: { boss: 'rockjaw' } }],
+        core: ['Jaw of Stone', 'poise 2', 'hp 1.5'], bonus: ['poise 1.5', 'hp 1'] },
+      { id: 'quake_altar_b', name: 'Altar of the Fault', row: 7, lane: 1, shape: 'ring', kind: 'altar',
+        nodes: ['hp 1', 'dmgBroken 1', 'armor 1'], core: { t: 'altar', name: 'Altar of the Fault' }, bonus: ['sigilPower 1.5'] },
+      { id: 'quake_key_shaker', name: 'Earthshaker', row: 7, lane: 2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['aoe 1', 'breakPower 1'],
+        core: key('Earthshaker', ['aoe*25', 'meleeSpeed*-10'], 'Your areas are 25% larger, but you attack 10% slower in melee.', null, { off: 1.04, def: 1 }) },
+
+      { id: 'quake_peak', name: 'High Peak', row: 8, lane: -3, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'aoe 1', 'resAll 1', 'evasion 1'],
+        core: ['Summit', 'aoe 2', 'hp 1.5'], bonus: ['aoe 1.5', 'hp 1'] },
+      { id: 'quake_key_titan', name: "Titan's Leap", row: 8, lane: -2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['aoe 1', 'hp 1'],
+        core: key("Titan's Leap", ['breakPower*20'], 'Feral Leap lands 50% harder, but waits 50% longer.', null, { off: 1.04, def: 1 },
+          { abil: [{ a: 'feral_leap', k: 'dmg', v: 0.5 }, { a: 'feral_leap', k: 'cd', v: 0.5 }] }) },
+      { id: 'quake_slide', name: 'Mudslide', row: 8, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'breakPower 1', 'armor 1', 'resAll 1'],
+        core: ['Swept Away', 'breakPower 2', 'hp 1.5'], bonus: ['breakPower 1.5', 'hp 1'] },
+      { id: 'quake_iron', name: 'Iron Hills', row: 8, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['armor 1', 'hp 1', 'resAll 1', { t: 'trophy', name: "Royal Guard's Gauntlet", mods: ['armor 1.5', 'dmgBroken 1.5'], req: { boss: 'royal_guard_gauntlet' } }],
+        core: ['Iron Ore', 'armor 2', 'dmgBroken 1.5'], bonus: ['armor 1.5', 'hp 1'] },
+      { id: 'quake_key_unstoppable', name: 'Unstoppable', row: 8, lane: 2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['poise 1', 'breakPower 1'],
+        core: key('Unstoppable', ['poise*50', 'breakPower*25', 'moveSpeed*-8'], 'You have 50% more Poise and break enemies 25% harder, but move 8% slower.', null, { off: 1.03, def: 1.03 }) },
+      { id: 'quake_dawn', name: 'Dawn on the Hills', row: 8, lane: 3, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'aoe 1', 'hpRegen 1', 'resAll 1'],
+        core: ['Morning Rock', 'hpRegen 2', 'aoe 1.5'], bonus: ['aoe 1', 'hp 1.5'] }
+    ],
+
+    devotion: [
+      { at: 15, mods: ['breakPower 2', 'hp 2'] },
+      { at: 35, mods: ['aoe 3', 'poise 2'] },
+      { at: 60, mods: ['dmgBroken 4', 'aoe 2', 'hp 2'] }
+    ]
+  });
+
+  T.bridge('wildmask', { id: 'quake_raven_inner', between: ['quake', 'raven'], ring: 'inner', name: 'Cliff Nest', shape: 'star',
+    nodes: ['aoe 1', mut('rake_reach'), 'evasion 1', 'hp 1'],
+    core: ['High Perch', 'evasion 1.5', 'aoe 1'], bonus: ['hp 1', 'evasion 1'] });
+  T.bridge('wildmask', { id: 'quake_raven_mid', between: ['quake', 'raven'], ring: 'mid', name: 'Falling Feathers', shape: 'diamond',
+    nodes: ['aoe 1', 'hp 1', 'featherPierce+1', 'evasion 1'],
+    core: ['Plummet', 'aoe 2', 'evasion 1.5'], bonus: ['evasion 1.5', 'hp 1'] });
+  T.bridge('wildmask', { id: 'quake_raven_outer', between: ['quake', 'raven'], ring: 'outer', name: 'Crag Roost', shape: 'diamond',
+    nodes: ['breakPower 1', 'hp 1', 'evasion 1', 'resAll 1'],
+    core: ['Eyrie', 'evasion 2', 'breakPower 1.5'], bonus: ['breakPower 1.5', 'hp 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_wildmask_raven.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, W = T.wild;
+  var mut = W.mut, rule = W.rule, web = W.web, key = W.key, pact = W.pact, abil = W.abil;
+
+  /**
+   * WILDMASK, arm 4 of 8: THE RAVEN ROOST (`raven`). The Raven: feathers, evasion and distance. Skill: Raven Mask (trunk,
+   * 4 points). Design: docs/TREE_WILDMASK.md section 2. Rules: src/sim/56_tree_wildmask.js. Holds the bridges to the moon arm.
+   */
+  T.arm('wildmask', {
+    id: 'raven', name: 'The Raven Roost', focus: 'The Raven: feathers from afar, and never where the blow falls', color: '#5d6a8a', vein: 'dread',
+
+    trunk: W.rakeTrunk([
+      'evasion 1', 'hp 1', { t: 'skill', grants: 'raven_mask', abil: [{ a: 'raven_mask', k: 'cd', v: -0.05 }] }, 'dmgRanged 1', 'resAll 1',   // T1..T5
+      'hp 1', 'evasion 1', 'projSpeed 1', ['Flight Path', 'moveSpeed 1', 'evasion 0.5'], 'hp 1',                                             // T6..T10
+      'dmgRanged 1', 'resAll 1', 'hp 1', 'evasion 1', 'dodgeCdr 1',                                                                         // T11..T15
+      'hp 1', 'dmgRanged 1', 'evasion 1', 'hp 1', 'resAll 1',                                                                               // T16..T20
+      'moveSpeed 1', 'hp 1', 'dmgRanged 1', 'evasion 1', 'hp 1'                                                                             // T21..T25
+    ]),
+
+    clusters: [
+      { id: 'raven_mask_shape', name: 'Raven Mask: shape', row: 1, lane: -1, shape: 'star', kind: 'mutation',
+        nodes: ['hp 1', mut('ravenm_wide'), mut('ravenm_tight'), mut('ravenm_far')],
+        core: ['Black Wings', 'evasion 1', 'hp 1'] },
+      { id: 'raven_mask_essence', name: 'Raven Mask: essence', row: 1, lane: 1, shape: 'star', kind: 'mutation',
+        nodes: ['resAll 1', mut('ravenm_venom'), mut('ravenm_pin'), mut('ravenm_mark')],
+        core: ['Oiled Quills', 'dmgRanged 1', 'evasion 1'] },
+
+      { id: 'raven_mask_rite', name: 'Raven Mask: rite', row: 2, lane: -1, shape: 'star', kind: 'mutation',
+        nodes: ['maskHaste 0.5', mut('ravenm_quick'), mut('ravenm_vanish'), mut('ravenm_charges')],
+        core: abil('Restless Wings', ['hp 1', 'evasion 1'], 'raven_mask', 'cd', -0.06) },
+      { id: 'raven_riposte', name: 'Feathered Riposte', row: 2, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['evasion 1', 'hp 1', 'dmgRanged 1', 'resAll 1', 'moveSpeed 1'],
+        core: web('riposte', 'Feathered Riposte', ['evasion 1'], 'While you wear the Raven Mask, every attack you evade throws a feather back at the attacker for 40% of weapon damage.', { off: 1.03, def: 1 }),
+        bonus: ['evasion 1.5', 'hp 1'] },
+
+      { id: 'raven_sly', name: 'Sly Bird', row: 3, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['evasion 1', 'hp 1', 'resAll 1', 'dodgeCdr 1'],
+        core: rule('sly', 'Sly Bird', ['evasion 1'], 'Every attack you evade gives you 5 Instinct.', { off: 1.02, def: 1.01 }),
+        bonus: ['evasion 1.5', 'hp 1'] },
+      { id: 'raven_quills', name: 'Barbed Quills', row: 3, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['dmgRanged 1', 'hp 1', 'projSpeed 1', 'resAll 1'],
+        core: ['Barbed Quills', 'featherPierce+1', 'dmgRanged 1.5'], bonus: ['dmgRanged 1.5', 'hp 1'] },
+      { id: 'raven_flight', name: "Raven's Flight", row: 3, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['evasion 1@maskRaven', 'hp 1', 'moveSpeed 1', 'resAll 1'],
+        core: ['Wingbeat', 'evasion 2@maskRaven', 'moveSpeed 1.5'], bonus: ['moveSpeed 1.5', 'hp 1'] },
+      { id: 'raven_carrion', name: 'Carrion Crow', row: 3, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['dmgAfflicted 1', 'hp 1', 'armor 1', 'evasion 1'],
+        core: ['Pecking Order', 'dmgAfflicted 2', 'hp 1.5'], bonus: ['dmgAfflicted 1.5', 'hp 1'] },
+
+      { id: 'raven_wind', name: 'High Wind', row: 4, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['projSpeed 1', 'hp 1', 'evasion 1', 'resAll 1'],
+        core: ['Tailwind', 'projSpeed 2', 'evasion 1.5'], bonus: ['projSpeed 1.5', 'hp 1'] },
+      { id: 'raven_altar_a', name: 'Altar of the Black Feather', row: 4, lane: -1, shape: 'ring', kind: 'altar',
+        nodes: ['hp 1', 'evasion 1', 'dmgRanged 1'], core: { t: 'altar', name: 'Altar of the Black Feather' }, bonus: ['sigilPower 1.5'] },
+      { id: 'raven_eye', name: 'Raven Eye', row: 4, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['critChance 1', 'hp 1', 'resAll 1', 'evasion 1'],
+        core: ['Glinting Eye', 'critChance 2', 'hp 1.5'], bonus: ['critChance 1.5', 'hp 1'] },
+      { id: 'raven_far', name: 'Far Sight', row: 4, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['dmgRanged 1', 'hp 1', 'moveSpeed 1', 'armor 1'],
+        core: ['From the Treetops', 'dmgRanged 2', 'hp 1.5'], bonus: ['dmgRanged 1.5', 'hp 1'] },
+
+      { id: 'raven_murder', name: 'A Murder of Crows', row: 5, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['dmgRanged 1', 'hp 1', 'moveSpeed 1', 'resAll 1'],
+        core: ['Black Cloud', 'dmgRanged 2', 'moveSpeed 1.5'], bonus: ['moveSpeed 1.5', 'hp 1'] },
+      { id: 'raven_dodge', name: 'Sidestep', row: 5, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['dodgeCdr 1', 'hp 1', 'evasion 1', 'armor 1'],
+        core: ['Flit', 'dodgeCdr 2', 'evasion 1.5'], bonus: ['dodgeCdr 1.5', 'hp 1'] },
+      { id: 'raven_storm', name: 'Storm of Feathers', row: 5, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['projSpeed 1', 'hp 1', 'resAll 1', 'dmgRanged 1'],
+        core: ['Feather Gale', 'dmgRanged 2', 'projSpeed 1.5'], bonus: ['dmgRanged 1.5', 'hp 1'] },
+      { id: 'raven_shadow', name: 'Wing Shadow', row: 5, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['evasion 1', 'hp 1', 'resShadow 1', 'resAll 1'],
+        core: ['Overcast Wings', 'evasion 2', 'resAll 1.5'], bonus: ['evasion 1.5', 'hp 1'] },
+
+      { id: 'raven_gale', name: 'The Gale', row: 6, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'moveSpeed 1', 'resAll 1', { t: 'trophy', name: "Gale Matriarch's Plume", mods: ['moveSpeed 1.5', 'evasion 1.5'], req: { boss: 'gale_matriarch' } }],
+        core: ['Storm Rider', 'moveSpeed 2', 'hp 1.5'], bonus: ['moveSpeed 1.5', 'hp 1'] },
+      { id: 'raven_cult', name: 'The Hollow Roost', row: 6, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', { t: 'corrupted', name: 'Dead Feathers', mods: ['dmgRanged 2', 'evasion 1'], req: { corruption: 20 } }, 'resAll 1', 'armor 1'],
+        core: { t: 'corrupted', name: 'Raven of the Hollow', mods: ['dmg*2', 'dmgRanged 3', 'evasion 2'], req: { corruption: 40 } },
+        bonus: ['dmgRanged 1', 'hp 1.5'] },
+      { id: 'raven_choir', name: 'Bell Tower', row: 6, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['evasion 1', { t: 'faction', name: 'Tower Crow', mods: ['evasion 1.5', 'hp 1'], req: { faction: { id: 'choir', rep: 20 } } }, 'hp 1', 'armor 1'],
+        core: { t: 'faction', name: 'Choir Raven', mods: ['dmgRanged 2', 'dodgeCdr 2'], req: { faction: { id: 'choir', rep: 60 } } },
+        bonus: ['dodgeCdr 1', 'evasion 1.5'] },
+      { id: 'raven_wind_lord', name: 'Wind Throne', row: 6, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'projSpeed 1', 'resAll 1', { t: 'trophy', name: "Windlord's Crown Feather", mods: ['dmgRanged 1.5', 'projSpeed 1.5'], req: { boss: 'windlord_caul' } }],
+        core: ['Lord of Winds', 'projSpeed 2', 'hp 1.5'], bonus: ['projSpeed 1', 'hp 1.5'] },
+
+      { id: 'raven_pacts', name: "Raven's Bargains", row: 7, lane: -2, shape: 'star', kind: 'special',
+        nodes: ['hp 1',
+          pact('Hollow Bones', ['evasion*25', 'hp*-8']),
+          pact('Sharp Quills', ['dmgRanged*15', 'dmgMelee*-10']),
+          pact('Light Wings', ['moveSpeed*12', 'armor*-15'])],
+        core: ["Raven's Terms", 'evasion 1', 'hp 1'] },
+      { id: 'raven_bell', name: 'The Silent Bell', row: 7, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'evasion 1', 'resAll 1', { t: 'trophy', name: "Bell Ringer's Rope", mods: ['evasion 1.5', 'hp 1.5'], req: { boss: 'bell_ringer' } }],
+        core: ['Belfry', 'evasion 2', 'hp 1.5'], bonus: ['evasion 1.5', 'hp 1'] },
+      { id: 'raven_altar_b', name: 'Altar of the Crow', row: 7, lane: 1, shape: 'ring', kind: 'altar',
+        nodes: ['hp 1', 'projSpeed 1', 'resAll 1'], core: { t: 'altar', name: 'Altar of the Crow' }, bonus: ['sigilPower 1.5'] },
+      { id: 'raven_key_murder', name: 'Murder of Crows', row: 7, lane: 2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['dmgRanged 1', 'evasion 1'],
+        core: key('Murder of Crows', ['dmgRanged*25@maskRaven', 'dmgMelee*-15'], 'In the Raven Mask your ranged hits deal 25% more damage, but your melee hits deal 15% less.', null, { off: 1.04, def: 1 }) },
+
+      { id: 'raven_nest', name: 'Old Nest', row: 8, lane: -3, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'evasion 1', 'resAll 1', 'hpRegen 1'],
+        core: ['Twigs and Bones', 'hpRegen 2', 'evasion 1.5'], bonus: ['evasion 1.5', 'hp 1'] },
+      { id: 'raven_key_quills', name: 'Quill Storm', row: 8, lane: -2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['projSpeed 1', 'dmgRanged 1'],
+        core: key('Quill Storm', ['featherPierce+2', 'dmgRanged*-10'], 'Your feathers pass through 2 more enemies, but deal 10% less damage.', null, { off: 1.04, def: 1 }) },
+      { id: 'raven_dark', name: 'Dark Wings', row: 8, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'evasion 1', 'dodgeCdr 1', 'armor 1'],
+        core: ['Night Flyer', 'evasion 2', 'hp 1.5'], bonus: ['dodgeCdr 1.5', 'hp 1'] },
+      { id: 'raven_ombre', name: "The Priest's Crows", row: 8, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['dmgRanged 1', 'hp 1', 'resAll 1', { t: 'trophy', name: "Ombre's Raven", mods: ['dmgRanged 1.5', 'resShadow 1.5'], req: { boss: 'high_priest_ombre' } }],
+        core: ['Omen', 'dmgRanged 2', 'resAll 1.5'], bonus: ['resAll 1.5', 'hp 1'] },
+      { id: 'raven_key_carrion', name: 'Carrion Bird', row: 8, lane: 2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['dmgAfflicted 1', 'evasion 1'],
+        core: key('Carrion Bird', ['dmgAfflicted*30', 'hp*-10'], 'You deal 30% more damage to enemies suffering from a status, but have 10% less Health.', null, { off: 1.05, def: 0.97 }) },
+      { id: 'raven_dawn', name: 'Dawn Chorus', row: 8, lane: 3, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'moveSpeed 1', 'hpRegen 1', 'resAll 1'],
+        core: ['First Light', 'hpRegen 2', 'moveSpeed 1.5'], bonus: ['moveSpeed 1', 'hp 1.5'] }
+    ],
+
+    devotion: [
+      { at: 15, mods: ['evasion 2', 'hp 2'] },
+      { at: 35, mods: ['dmgRanged 3', 'dodgeCdr 2'] },
+      { at: 60, mods: ['evasion 4', 'dmgRanged 2', 'hp 2'] }
+    ]
+  });
+
+  T.bridge('wildmask', { id: 'raven_moon_inner', between: ['raven', 'moon'], ring: 'inner', name: 'Night Flight', shape: 'star',
+    nodes: ['evasion 1', mut('rake_maim'), 'moveSpeed 1', 'hp 1'],
+    core: ['Moon Wings', 'moveSpeed 1.5', 'evasion 1'], bonus: ['hp 1', 'evasion 1'] });
+  T.bridge('wildmask', { id: 'raven_moon_mid', between: ['raven', 'moon'], ring: 'mid', name: 'Silver Feathers', shape: 'diamond',
+    nodes: ['dodgeCdr 1', 'hp 1', 'evasion 1', 'resAll 1'],
+    core: ['Moonlit Plumage', 'evasion 2', 'dodgeCdr 1.5'], bonus: ['dodgeCdr 1.5', 'hp 1'] });
+  T.bridge('wildmask', { id: 'raven_moon_outer', between: ['raven', 'moon'], ring: 'outer', name: 'Moon Roost', shape: 'diamond',
+    nodes: ['dmgRanged 1', 'hp 1', 'moveSpeed 1', 'resAll 1'],
+    core: ['Owl Light', 'dmgRanged 2', 'moveSpeed 1.5'], bonus: ['moveSpeed 1.5', 'hp 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_wildmask_shift.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, W = T.wild;
+  var mut = W.mut, rule = W.rule, web = W.web, key = W.key, pact = W.pact, abil = W.abil;
+
+  /**
+   * WILDMASK, arm 6 of 8: THE CHANGING SKIN (`shift`). Shifting, Instinct and the change of mask: the dancer, and the one who
+   * never changes. Skills: Shed Skin (trunk, 4 points), Apex Form (the Ultimate, row 3). Design: docs/TREE_WILDMASK.md section 2.
+   * Rules: src/sim/56_tree_wildmask.js. Holds the bridges to the howl arm.
+   */
+  T.arm('wildmask', {
+    id: 'shift', name: 'The Changing Skin', focus: 'Mask after mask: every change a burst, every burst a new beast', color: '#d08a50', vein: 'dread',
+
+    trunk: W.rakeTrunk([
+      'shiftPower 0.5', 'hp 1', { t: 'skill', grants: 'shed_skin', abil: [{ a: 'shed_skin', k: 'cd', v: -0.05 }] }, 'maskBurst 0.5', 'resAll 1',   // T1..T5
+      'hp 1', 'shiftDur 0.5', 'maskHaste 0.5', ['Changing Path', 'moveSpeed 1', 'shiftDur 0.25'], 'hp 1',                                        // T6..T10
+      'instinctKeep 0.5', 'resAll 1', 'hp 1', 'shiftPower 0.5', 'armor 1',                                                                     // T11..T15
+      'hp 1', 'maskBurst 0.5', 'shiftDur 0.5', 'hp 1', 'maskHaste 0.5',                                                                          // T16..T20
+      'resAll 1', 'hp 1', 'instinctKeep 0.5', 'evasion 1', 'hp 1'                                                                            // T21..T25
+    ]),
+
+    clusters: [
+      { id: 'shift_shed_shape', name: 'Shed Skin: shape', row: 1, lane: -1, shape: 'star', kind: 'mutation',
+        nodes: ['hp 1', mut('shed_wide'), mut('shed_close')],
+        core: ['Loose Husk', 'hp 1', 'resAll 1'] },
+      { id: 'shift_shed_essence', name: 'Shed Skin: essence', row: 1, lane: 1, shape: 'star', kind: 'mutation',
+        nodes: ['resAll 1', mut('shed_heal'), mut('shed_stun'), mut('shed_fear')],
+        core: ['Fresh Pelt', 'hpRegen 1', 'resAll 1'] },
+
+      { id: 'shift_shed_rite', name: 'Shed Skin: rite', row: 2, lane: -1, shape: 'star', kind: 'mutation',
+        nodes: ['maskHaste 0.5', mut('shed_quick'), mut('shed_instinct'), mut('shed_charges')],
+        core: abil('Thin Skin', ['hp 1', 'resAll 1'], 'shed_skin', 'cd', -0.06) },
+      { id: 'shift_faces', name: 'Face After Face', row: 2, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['maskHaste 0.5', 'hp 1', 'shiftPower 0.5', 'resAll 1', 'evasion 1'],
+        core: web('face_after_face', 'Face After Face', ['maskHaste 0.5'], 'Changing to a different mask takes 0.5 s off the cooldown of every skill that is not a Mask skill.', { off: 1.03, def: 1 }),
+        bonus: ['maskHaste 0.75', 'hp 1'] },
+
+      { id: 'shift_apex_rite', name: 'Apex Form: rite', row: 3, lane: -2, shape: 'star', kind: 'mutation',
+        nodes: ['hp 1', mut('apex_early'), mut('apex_twice'), mut('apex_pact')],
+        core: ['Waiting Beast', 'cdr 1', 'hp 1'] },
+      { id: 'shift_fresh', name: 'Fresh Skin', row: 3, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['shiftDur 0.5', 'hp 1', 'resAll 1', 'hpRegen 1'],
+        core: web('fresh_skin', 'Fresh Skin', ['shiftDur 0.5'], 'Changing to a different mask heals you for 2% of your maximum Health.', { off: 1, def: 1.03 }),
+        bonus: ['shiftDur 0.75', 'hp 1'] },
+      { id: 'shift_apex', name: 'The Apex', row: 3, lane: 1, shape: 'ring', kind: 'skill', spokes: [0],
+        nodes: ['maskBurst 0.5', 'hp 1', abil('Ever Ready', ['resAll 1'], 'apex_form', 'cd', -0.08), 'armor 1'],
+        core: { t: 'skill', grants: 'apex_form', abil: [{ a: 'apex_form', k: 'dur', v: 0.1 }] },
+        bonus: ['maskBurst 0.75', 'hp 1'] },
+      { id: 'shift_apex_essence', name: 'Apex Form: essence', row: 3, lane: 2, shape: 'star', kind: 'mutation',
+        nodes: ['armor 1', mut('apex_fury'), mut('apex_iron'), mut('apex_terror')],
+        core: ['Primal Core', 'shiftPower 0.5', 'armor 1'] },
+
+      { id: 'shift_restless', name: 'Restless Skin', row: 4, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['atkSpeed 1@shifting', 'hp 1', 'moveSpeed 1', 'resAll 1'],
+        core: rule('restless', 'Restless', ['moveSpeed 1'], 'Changing to a different mask makes you move 20% faster for 3 s.', { off: 1.01, def: 1.02 }),
+        bonus: ['moveSpeed 1.5', 'hp 1'] },
+      { id: 'shift_altar_a', name: 'Altar of Masks', row: 4, lane: -1, shape: 'ring', kind: 'altar',
+        nodes: ['hp 1', 'shiftPower 0.5', 'maskBurst 0.5'], core: { t: 'altar', name: 'Altar of Masks' }, bonus: ['sigilPower 1.5'] },
+      { id: 'shift_apex_shape', name: 'Apex Form: shape', row: 4, lane: 1, shape: 'star', kind: 'mutation',
+        nodes: ['hp 1', mut('apex_long'), mut('apex_wide'), mut('apex_close')],
+        core: ['All Beasts at Once', 'maskBurst 0.5', 'hp 1'] },
+      { id: 'shift_hoard', name: 'Instinct Hoard', row: 4, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['instinctKeep 0.5', 'hp 1', 'resAll 1', 'armor 1'],
+        core: ['Kept Fire', 'instinctKeep 1', 'hp 1.5'], bonus: ['instinctKeep 0.75', 'hp 1'] },
+
+      { id: 'shift_echo', name: 'Afterglow', row: 5, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['shiftDur 0.5', 'hp 1', 'moveSpeed 1', 'resAll 1'],
+        core: ['Long Echo', 'shiftDur 1', 'moveSpeed 1.5'], bonus: ['shiftDur 0.75', 'hp 1'] },
+      { id: 'shift_turning', name: 'Turning', row: 5, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['shiftPower 0.5', 'hp 1', 'armor 1', 'evasion 1'],
+        core: ['Turn and Turn', 'shiftPower 1', 'hp 1.5'], bonus: ['shiftPower 0.75', 'hp 1'] },
+      { id: 'shift_outburst', name: 'Outburst', row: 5, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['maskBurst 0.5', 'hp 1', 'resAll 1', 'armor 1'],
+        core: ['Snarling Change', 'maskBurst 1', 'hp 1.5'], bonus: ['maskBurst 0.75', 'hp 1'] },
+      { id: 'shift_swap', name: 'Swift Swap', row: 5, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['maskHaste 0.5', 'hp 1', 'resAll 1', 'evasion 1'],
+        core: ['Quick Faces', 'maskHaste 1', 'hp 1.5'], bonus: ['maskHaste 0.75', 'hp 1'] },
+
+      { id: 'shift_skins', name: 'Many Skins', row: 6, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'shiftDur 0.5', 'resAll 1', 'armor 1'],
+        core: ['Coat Rack', 'hp 2', 'shiftDur 0.75'], bonus: ['hp 1.5', 'armor 1'] },
+      { id: 'shift_cult', name: 'The Faceless', row: 6, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', { t: 'corrupted', name: 'No Face', mods: ['shiftPower 1', 'maskBurst 0.5'], req: { corruption: 20 } }, 'resAll 1', 'evasion 1'],
+        core: { t: 'corrupted', name: 'Mask of the Hollow', mods: ['dmg*2', 'maskBurst 1.5', 'shiftDur 1'], req: { corruption: 40 } },
+        bonus: ['shiftPower 0.5', 'hp 1.5'] },
+      { id: 'shift_cult_b', name: 'Masque', row: 6, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['evasion 1', { t: 'faction', name: 'Masked Dancer', mods: ['maskHaste 0.75', 'hp 1'], req: { faction: { id: 'cult', rep: 20 } } }, 'hp 1', 'armor 1'],
+        core: { t: 'faction', name: 'Master of Masks', mods: ['shiftPower 1', 'instinctKeep 1'], req: { faction: { id: 'cult', rep: 60 } } },
+        bonus: ['maskHaste 0.5', 'evasion 1.5'] },
+      { id: 'shift_auction', name: 'The Mask Sale', row: 6, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'maskBurst 0.5', 'resAll 1', { t: 'trophy', name: "Auctioneer's Masque", mods: ['maskBurst 0.75', 'hp 1.5'], req: { boss: 'auctioneer' } }],
+        core: ['Sold', 'maskBurst 1', 'hp 1.5'], bonus: ['maskBurst 0.5', 'hp 1.5'] },
+
+      { id: 'shift_pacts', name: "Dancer's Bargains", row: 7, lane: -2, shape: 'star', kind: 'special',
+        nodes: ['hp 1',
+          pact('Thin Masks', ['maskHaste*30', 'maskBurst*-15']),
+          pact('Heavy Mask', ['maskBurst*30', 'maskHaste*-15']),
+          pact('Loose Faces', ['shiftDur*30', 'hp*-6'])],
+        core: ["Dancer's Terms", 'shiftPower 0.5', 'hp 1'] },
+      { id: 'shift_silverhand', name: 'Silver Masks', row: 7, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'shiftPower 0.5', 'resAll 1', { t: 'trophy', name: "Silverhand's Mask", mods: ['shiftPower 0.75', 'evasion 1.5'], req: { boss: 'madam_silverhand' } }],
+        core: ['Silver Smile', 'shiftPower 1', 'hp 1.5'], bonus: ['shiftPower 0.75', 'hp 1'] },
+      { id: 'shift_altar_b', name: 'Altar of the Apex', row: 7, lane: 1, shape: 'ring', kind: 'altar',
+        nodes: ['hp 1', 'maskHaste 0.5', 'resAll 1'], core: { t: 'altar', name: 'Altar of the Apex' }, bonus: ['sigilPower 1.5'] },
+      { id: 'shift_key_three', name: 'Three Faces', row: 7, lane: 2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['maskHaste 0.5', 'shiftPower 0.5'],
+        core: key('Three Faces', [], 'Switching masks costs no Instinct and its cooldown is halved. The switch burst deals 50% less damage and the stat bonuses of every mask are 25% weaker.', 'web_three_faces', { off: 1.04, def: 1.03 }) },
+
+      { id: 'shift_old', name: 'The Old Face', row: 8, lane: -3, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'maskBurst 0.5', 'resAll 1', 'armor 1'],
+        core: ['Worn Smooth', 'dmg 2@highRes', 'hp 1.5'], bonus: ['maskBurst 0.75', 'hp 1'] },
+      { id: 'shift_key_true', name: 'One True Face', row: 8, lane: -2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['maskBurst 0.5', 'hp 1'],
+        core: key('One True Face', [], 'The stat changes of the mask you wear are 30% stronger and calling on it needs no Instinct. The other masks wait 12 s instead of 4 s, changing masks grants no Shifting, and Apex Form no longer lends you the masks you do not wear.', 'web_wildmask_true_face', { off: 1.04, def: 1.04 }) },
+      { id: 'shift_beneath', name: 'The Face Beneath', row: 8, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'atkSpeed 1@maskWolf', 'dmgTaken 1@maskBear', 'dmgRanged 1@maskRaven'],
+        core: ['Under the Mask', 'hp 2', 'resAll 1.5'], bonus: ['hp 1.5', 'resAll 1'] },
+      { id: 'shift_hoard_b', name: 'Deep Instinct', row: 8, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['instinctKeep 0.5', 'hp 1', 'resAll 1', { t: 'trophy', name: "Hollow King's Mask Shard", mods: ['instinctKeep 0.75', 'maskBurst 0.75'], req: { boss: 'hollow_king' } }],
+        core: ['Banked Fire', 'instinctKeep 1', 'hp 1.5'], bonus: ['instinctKeep 0.75', 'hp 1'] },
+      { id: 'shift_key_two', name: 'Two Skins', row: 8, lane: 2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['shiftDur 0.5', 'maskHaste 0.5'],
+        core: key('Two Skins', ['shiftPower*-40'], 'For 3 s after you change to a different mask, your skills also do the part of the mask you left, at 20% power. Shifting is 40% weaker.', 'web_wildmask_two_skins', { off: 1.05, def: 1 }) },
+      { id: 'shift_moult', name: 'Moulting Ground', row: 8, lane: 3, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'shiftDur 0.5', 'hpRegen 1', 'resAll 1'],
+        core: ['Shed Fur', 'hpRegen 2', 'shiftDur 0.75'], bonus: ['shiftDur 0.5', 'hp 1.5'] }
+    ],
+
+    devotion: [
+      { at: 15, mods: ['shiftPower 1', 'hp 2'] },
+      { at: 35, mods: ['maskBurst 1.5', 'shiftDur 1'] },
+      { at: 60, mods: ['maskHaste 1.5', 'shiftPower 1.5', 'hp 2'] }
+    ]
+  });
+
+  T.bridge('wildmask', { id: 'shift_howl_inner', between: ['shift', 'howl'], ring: 'inner', name: 'Change and Call', shape: 'star',
+    nodes: ['shiftDur 0.5', mut('rake_quick'), 'maskBurst 0.5', 'hp 1'],
+    core: ['Wild Voice', 'maskBurst 0.75', 'hp 1'], bonus: ['hp 1', 'resAll 1'] });
+  T.bridge('wildmask', { id: 'shift_howl_mid', between: ['shift', 'howl'], ring: 'mid', name: 'Changing Song', shape: 'diamond',
+    nodes: ['shiftPower 0.5', 'hp 1', 'maskBurst 0.5', 'resAll 1'],
+    core: ['Many Voices', 'shiftPower 1', 'maskBurst 0.75'], bonus: ['shiftPower 0.75', 'hp 1'] });
+  T.bridge('wildmask', { id: 'shift_howl_outer', between: ['shift', 'howl'], ring: 'outer', name: 'Last Mask', shape: 'diamond',
+    nodes: ['maskHaste 0.5', 'hp 1', 'instinctKeep 0.5', 'resAll 1'],
+    core: ['Final Face', 'maskHaste 1', 'instinctKeep 0.75'], bonus: ['instinctKeep 0.75', 'hp 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_wildmask_wolf.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, W = T.wild;
+  var mut = W.mut, rule = W.rule, web = W.web, key = W.key, pact = W.pact, abil = W.abil;
+
+  /**
+   * WILDMASK, arm 0 of 8: THE WOLF RUN (`wolf`). The Wolf: speed, critical hits and Bleed. Skills: Wolf Mask (trunk, 4 points),
+   * Rend (row 2). Design: docs/TREE_WILDMASK.md section 2. Rules: src/sim/56_tree_wildmask.js. Holds the bridges to the fang arm.
+   */
+  T.arm('wildmask', {
+    id: 'wolf', name: 'The Wolf Run', focus: 'The Wolf: fast claws, critical hits and wounds that never close', color: '#b8a690', vein: 'war',
+
+    trunk: W.rakeTrunk([
+      'wolfBleed 1', 'hp 1', { t: 'skill', grants: 'wolf_mask', abil: [{ a: 'wolf_mask', k: 'cd', v: -0.05 }] }, 'meleeSpeed 1', 'evasion 1',   // T1..T5
+      'hp 1', 'critChance 1', 'dmgDot 1', ['Wolf Trail', 'moveSpeed 1', 'wolfBleed 0.5'], 'hp 1',                                            // T6..T10
+      'meleeSpeed 1', 'resAll 1', 'hp 1', 'critMult 1', 'armor 1',                                                                          // T11..T15
+      'hp 1', 'wolfBleed 1', 'meleeSpeed 1', 'hp 1', 'critChance 1',                                                                        // T16..T20
+      'resAll 1', 'hp 1', 'dmgAfflicted 1', 'evasion 1', 'hp 1'                                                                             // T21..T25
+    ]),
+
+    clusters: [
+      { id: 'wolf_mask_shape', name: 'Wolf Mask: shape', row: 1, lane: -1, shape: 'star', kind: 'mutation',
+        nodes: ['hp 1', mut('wolfm_wide'), mut('wolfm_reach'), mut('wolfm_twice')],
+        core: ['Grey Coat', 'maskBurst 0.5', 'hp 1'] },
+      { id: 'wolf_mask_essence', name: 'Wolf Mask: essence', row: 1, lane: 1, shape: 'star', kind: 'mutation',
+        nodes: ['evasion 1', mut('wolfm_throat'), mut('wolfm_hamstring'), mut('wolfm_venom')],
+        core: ['Yellow Eyes', 'critChance 1', 'evasion 1'] },
+
+      { id: 'wolf_mask_rite', name: 'Wolf Mask: rite', row: 2, lane: -1, shape: 'star', kind: 'mutation',
+        nodes: ['maskHaste 0.5', mut('wolfm_quick'), mut('wolfm_feed'), mut('wolfm_howl')],
+        core: abil('Quick to Change', ['hp 1', 'evasion 1'], 'wolf_mask', 'cd', -0.06) },
+      { id: 'wolf_rend', name: 'The Torn Hide', row: 2, lane: 1, shape: 'ring', kind: 'skill', spokes: [0],
+        nodes: ['dmgDot 1', 'hp 1', abil('Deep Teeth', ['resAll 0.5'], 'rend', 'cd', -0.08), 'armor 1'],
+        core: { t: 'skill', grants: 'rend', abil: [{ a: 'rend', k: 'dmg', v: 0.08 }] },
+        bonus: ['dmgDot 1.5', 'hp 1'] },
+
+      { id: 'wolf_rend_shape', name: 'Rend: shape', row: 3, lane: -2, shape: 'star', kind: 'mutation',
+        nodes: ['hp 1', mut('rend_wide'), mut('rend_reach'), mut('rend_twice')],
+        core: ['Long Jaw', 'meleeSpeed 1', 'hp 1'] },
+      { id: 'wolf_red', name: 'Red in Tooth', row: 3, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['wolfBleed 1', 'hp 1', 'dmgDot 1', 'resAll 1'],
+        core: web('red_in_tooth', 'Red in Tooth', ['dmgDot 1.5'], 'Your Bleeds stack up to 5 times instead of 3.', { off: 1.03, def: 1 }),
+        bonus: ['wolfBleed 1.5', 'hp 1'] },
+      { id: 'wolf_water', name: 'Blood in the Water', row: 3, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['dmgAfflicted 1', 'hp 1', 'evasion 1', 'resAll 1'],
+        core: rule('blood', 'Blood in the Water', ['dmgAfflicted 1'], 'Your hits on a Bleeding enemy deal 10% more damage.', { off: 1.04, def: 1 }),
+        bonus: ['dmgAfflicted 1.5', 'hp 1'] },
+      { id: 'wolf_rend_essence', name: 'Rend: essence', row: 3, lane: 2, shape: 'star', kind: 'mutation',
+        nodes: ['armor 1', mut('rend_open'), mut('rend_stun'), mut('rend_heavy')],
+        core: ['Torn Flesh', 'dmgDot 1', 'armor 1'] },
+
+      { id: 'wolf_throat', name: 'Go for the Throat', row: 4, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['critChance 1', 'hp 1', 'resAll 1', 'evasion 1'],
+        core: rule('savage', 'Savage Bite', ['critChance 1'], 'Your critical melee hits in the Wolf Mask add a stack of Bleed.', { off: 1.03, def: 1 }),
+        bonus: ['critChance 1.5', 'hp 1'] },
+      { id: 'wolf_altar_a', name: 'Altar of the Grey Wolf', row: 4, lane: -1, shape: 'ring', kind: 'altar',
+        nodes: ['hp 1', 'wolfBleed 1', 'meleeSpeed 1'], core: { t: 'altar', name: 'Altar of the Grey Wolf' }, bonus: ['sigilPower 1.5'] },
+      { id: 'wolf_rend_rite', name: 'Rend: rite', row: 4, lane: 1, shape: 'star', kind: 'mutation',
+        nodes: ['hp 1', mut('rend_quick'), mut('rend_charges'), mut('rend_feed')],
+        core: ['Gnawing', 'meleeSpeed 1', 'hp 1'] },
+      { id: 'wolf_running', name: 'Running Wolf', row: 4, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['moveSpeed 1', 'hp 1', 'atkSpeed 1@maskWolf', 'resAll 1'],
+        core: ['Tireless', 'atkSpeed 2@maskWolf', 'moveSpeed 1.5'], bonus: ['moveSpeed 1.5', 'hp 1'] },
+
+      { id: 'wolf_lope', name: 'The Long Lope', row: 5, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['moveSpeed 1', 'hp 1', 'dodgeCdr 1', 'resAll 1'],
+        core: ['Loping', 'moveSpeed 2', 'dodgeCdr 1.5'], bonus: ['moveSpeed 1.5', 'hp 1'] },
+      { id: 'wolf_claws', name: 'Sharp Claws', row: 5, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['meleeSpeed 1', 'hp 1', 'armor 1', 'evasion 1'],
+        core: ['Whetted', 'meleeSpeed 2', 'hp 1.5'], bonus: ['meleeSpeed 1.5', 'hp 1'] },
+      { id: 'wolf_gash', name: 'Gash', row: 5, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['wolfBleed 1', 'hp 1', 'resAll 1', 'dmgDot 1'],
+        core: ['Open Gash', 'wolfBleed 2', 'hp 1.5'], bonus: ['wolfBleed 1.5', 'hp 1'] },
+      { id: 'wolf_fangs', name: 'Long Fangs', row: 5, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['critMult 1', 'hp 1', 'armor 1', 'resAll 1'],
+        core: ['Eyeteeth', 'critMult 2', 'armor 1.5'], bonus: ['critMult 1.5', 'hp 1'] },
+
+      { id: 'wolf_winter', name: 'Winter Pack', row: 6, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'resCold 1', 'resAll 1', 'meleeSpeed 1'],
+        core: ['Frost Ruff', 'resAll 2', 'hp 1.5'], bonus: ['resAll 1.5', 'hp 1'] },
+      { id: 'wolf_cult', name: 'The Black Wolf', row: 6, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', { t: 'corrupted', name: 'Hollow Fang', mods: ['wolfBleed 2', 'critChance 1'], req: { corruption: 20 } }, 'resAll 1', 'evasion 1'],
+        core: { t: 'corrupted', name: 'Wolf of the Hollow', mods: ['dmg*2', 'dmgDot 3', 'critMult 2'], req: { corruption: 40 } },
+        bonus: ['dmgDot 1', 'hp 1.5'] },
+      { id: 'wolf_crown', name: "King's Wolfhounds", row: 6, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['evasion 1', { t: 'faction', name: 'Kennel Brand', mods: ['meleeSpeed 1.5', 'hp 1'], req: { faction: { id: 'crown', rep: 20 } } }, 'hp 1', 'armor 1'],
+        core: { t: 'faction', name: 'Royal Hunt', mods: ['critChance 2', 'moveSpeed 2'], req: { faction: { id: 'crown', rep: 60 } } },
+        bonus: ['moveSpeed 1', 'evasion 1.5'] },
+      { id: 'wolf_greymaw', name: "Greymaw's Run", row: 6, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'wolfBleed 1', 'resAll 1', { t: 'trophy', name: "Greymaw's Fang", mods: ['wolfBleed 1.5', 'critMult 1.5'], req: { boss: 'greymaw' } }],
+        core: ['Pack Leader\'s Scar', 'critMult 2', 'hp 1.5'], bonus: ['critMult 1', 'hp 1.5'] },
+
+      { id: 'wolf_pacts', name: "Wolf's Bargains", row: 7, lane: -2, shape: 'star', kind: 'special',
+        nodes: ['hp 1',
+          pact('Quick Claws', ['meleeSpeed*15', 'dmgMelee*-9']),
+          pact('Bare Throat', ['critChance*20', 'hp*-8']),
+          pact('Deep Wounds', ['dmgDot*20', 'meleeSpeed*-6'])],
+        core: ["Wolf's Terms", 'wolfBleed 1', 'hp 1'] },
+      { id: 'wolf_stag', name: 'Run the Stag', row: 7, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'moveSpeed 1', 'critChance 1', { t: 'trophy', name: "Crowned Stag's Hide", mods: ['moveSpeed 1.5', 'hp 1.5'], req: { boss: 'crowned_stag' } }],
+        core: ['Brought Down', 'critChance 2', 'hp 1.5'], bonus: ['critChance 1.5', 'hp 1'] },
+      { id: 'wolf_altar_b', name: 'Altar of the Moon Wolf', row: 7, lane: 1, shape: 'ring', kind: 'altar',
+        nodes: ['hp 1', 'critMult 1', 'evasion 1'], core: { t: 'altar', name: 'Altar of the Moon Wolf' }, bonus: ['sigilPower 1.5'] },
+      { id: 'wolf_key_one', name: 'Pack of One', row: 7, lane: 2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['meleeSpeed 1', 'hp 1'],
+        core: key('Pack of One', ['dmg*22@maskWolf', 'dmgTaken*12@maskBear', 'dmgTaken*12@maskRaven'], 'You deal 22% more damage in the Wolf Mask, but take 12% more damage in the Bear and the Raven.', null, { off: 1.05, def: 1 }) },
+
+      { id: 'wolf_den', name: 'Wolf Den', row: 8, lane: -3, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'meleeSpeed 1', 'resAll 1', 'evasion 1'],
+        core: ['Warm Den', 'hp 2', 'meleeSpeed 1.5'], bonus: ['meleeSpeed 1.5', 'hp 1'] },
+      { id: 'wolf_key_hound', name: 'Bloodhound', row: 8, lane: -2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['dmgDot 1', 'wolfBleed 1'],
+        core: key('Bloodhound', ['dmgDot*40', 'dmgMelee*-12'], 'Your damage over time is 40% stronger, but your melee hits deal 12% less damage.', null, { off: 1.04, def: 1 }) },
+      { id: 'wolf_scar', name: 'Old Scars', row: 8, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'armor 1', 'wolfBleed 1', 'resAll 1'],
+        core: ['Scarred Muzzle', 'armor 2', 'hp 1.5'], bonus: ['armor 1.5', 'hp 1'] },
+      { id: 'wolf_carrion', name: 'Carrion Feast', row: 8, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['armor 1', 'hp 1', 'resAll 1', { t: 'trophy', name: "Carrion Knight's Spur", mods: ['dmgDot 1.5', 'hp 1.5'], req: { boss: 'carrion_knight' } }],
+        core: ['Picked Clean', 'dmgDot 2', 'resAll 1.5'], bonus: ['dmgDot 1.5', 'hp 1'] },
+      { id: 'wolf_key_frenzy', name: 'Frenzied', row: 8, lane: 2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['meleeSpeed 1', 'evasion 1'],
+        core: key('Frenzied', ['hp*-6'], 'Every melee hit you land makes you attack 3% faster for 4 s, up to 6 times; a hit you take ends it. You have 6% less Health.', 'tree_wildmask_frenzy', { off: 1.05, def: 0.99 }) },
+      { id: 'wolf_howling', name: 'Howling Hill', row: 8, lane: 3, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'critChance 1', 'hpRegen 1', 'resAll 1'],
+        core: ['Moon Song', 'hpRegen 2', 'critChance 1.5'], bonus: ['critChance 1', 'hp 1.5'] }
+    ],
+
+    devotion: [
+      { at: 15, mods: ['wolfBleed 2', 'hp 2'] },
+      { at: 35, mods: ['meleeSpeed 3', 'critChance 2'] },
+      { at: 60, mods: ['dmgAfflicted 4', 'critMult 3', 'hp 2'] }
+    ]
+  });
+
+  T.bridge('wildmask', { id: 'wolf_fang_inner', between: ['wolf', 'fang'], ring: 'inner', name: 'Hunting Ground', shape: 'star',
+    nodes: ['meleeSpeed 1', mut('rake_rip'), 'lifesteal 1', 'hp 1'],
+    core: ['Hot Blood', 'wolfBleed 1.5', 'hp 1'], bonus: ['hp 1', 'evasion 1'] });
+  T.bridge('wildmask', { id: 'wolf_fang_mid', between: ['wolf', 'fang'], ring: 'mid', name: 'The Kill Site', shape: 'diamond',
+    nodes: ['dmgDot 1', 'hp 1', 'lifesteal 1', 'evasion 1'],
+    core: ['Feeding Frenzy', 'lifesteal 2', 'dmgDot 1.5'], bonus: ['lifesteal 1.5', 'hp 1'] });
+  T.bridge('wildmask', { id: 'wolf_fang_outer', between: ['wolf', 'fang'], ring: 'outer', name: 'Red Snow', shape: 'diamond',
+    nodes: ['critChance 1', 'hp 1', 'meleeSpeed 1', 'resAll 1'],
+    core: ['Blood on the Snow', 'critChance 2', 'meleeSpeed 1.5'], bonus: ['meleeSpeed 1.5', 'hp 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/data/37_mutations_emberscribe.js
 (function (root) {
   'use strict';
@@ -21189,6 +22484,332 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/data/37_mutations_wildmask.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+
+  /**
+   * WILDMASK, every mutation of the Wildmask's own tree (docs/TREE_WILDMASK.md section 4). One record changes ONE ability in ONE
+   * slot (shape: where and how many; essence: what the hit carries; rite: cost, cooldown, charges, extra effects), so two
+   * mutations of one ability never write the same field: KD.skills.mutationReport() proves it (tests/mutations.test.js,
+   * tests/tree_wildmask.test.js). Format: docs/SKILLS.md section 12. Pure data, no hooks.
+   * Most Wildmask skills have a part per mask (`wild_form`): a `find` that names the part's numbers (mult) changes that part
+   * only; a find by type alone changes every part of that type. Claw Rake's numbers are the slower paced ones of Oct 15
+   * (src/data/56_attack_pace.js); these records were written against them and are not in KD.attackPace.MUT.
+   * The tree nodes that hold these ids: src/data/36_tree_wildmask_<arm>.js (Claw Rake's sit in the inner bridges).
+   * Texts quote the numbers of the records; change both together.
+   */
+  var M = [];
+  function shape(id, ability, name, text, rec) { rec.id = id; rec.ability = ability; rec.slot = 'shape'; rec.name = name; rec.text = text; M.push(rec); }
+  function essence(id, ability, name, text, rec) { rec.id = id; rec.ability = ability; rec.slot = 'essence'; rec.name = name; rec.text = text; M.push(rec); }
+  function rite(id, ability, name, text, rec) { rec.id = id; rec.ability = ability; rec.slot = 'rite'; rec.name = name; rec.text = text; M.push(rec); }
+
+  var MEL = { type: 'melee' }, AOE = { type: 'aoe' }, PROJ = { type: 'projectile' }, DASH = { type: 'dash' }, BUFF = { type: 'buff' },
+    RES = { type: 'resource' }, HEAL = { type: 'heal' };
+  function instinct(n) { return { type: 'resource', gain: n }; }
+  var BURST = 'at 0 to 100 Instinct: x0.5 to x1.5';
+
+  // =============================================================================================
+  // CLAW RAKE (primary). Base (paced): no mask a 47% swipe; Wolf two 19.5% slashes; Bear a 56.5% slam 2.4 m in front;
+  // Raven a 47% feather (16 m, through 1). One mutation in each inner bridge.
+  // =============================================================================================
+  shape('rake_wide', 'claw_rake', 'Sweeping Claws', 'The claws sweep 170 degrees and hit up to 4 enemies, and the Bear slam covers 3.2 m, for 80% of the damage.',
+    { power: 0.8, fx: [{ find: MEL, set: { arc: 170, max: 4 } }, { find: AOE, set: { radius: 3.2 } }] });
+  shape('rake_reach', 'claw_rake', 'Long Claws', 'The claws reach 3 m instead of 2.2.',
+    { set: { range: 2.8, aiUse: { use: 'attack', range: 2.8 } }, fx: [{ find: MEL, set: { range: 3 } }] });
+  shape('rake_flurry', 'claw_rake', 'Flurry of Claws', 'Every swipe strikes three times, each for 40% of the damage.',
+    { power: 0.4, fx: [{ find: MEL, set: { hits: 3, interval: 0.1 } }] });
+
+  essence('rake_rip', 'claw_rake', 'Ripping Claws', 'Every form of the rake has a 25% chance to cause Bleed.',
+    { fx: [{ find: MEL, set: { status: { id: 'bleed', chance: 0.25 } } }, { find: AOE, set: { status: { id: 'bleed', chance: 0.25 } } }, { find: PROJ, set: { status: { id: 'bleed', chance: 0.25 } } }] });
+  essence('rake_maim', 'claw_rake', 'Maiming Claws', 'Every form of the rake Slows by 25% for 1.5 s.',
+    { fx: [{ find: MEL, set: { status: { id: 'slow', dur: 1.5, power: 0.25 } } }, { find: AOE, set: { status: { id: 'slow', dur: 1.5, power: 0.25 } } }, { find: PROJ, set: { status: { id: 'slow', dur: 1.5, power: 0.25 } } }] });
+  essence('rake_heavy', 'claw_rake', 'Heavy Paws', 'The rake breaks Poise half again as hard in every form.',
+    { fx: [{ find: { type: 'melee', mult: 0.47 }, set: { poise: 1.23 } }, { find: { type: 'melee', mult: 0.195 }, set: { poise: 0.62 } },
+      { find: AOE, set: { poise: 2.5 } }, { find: PROJ, set: { poise: 0.9 } }] });
+
+  rite('rake_quick', 'claw_rake', 'Quick Claws', 'You rake about a fifth faster: shorter windup and recovery.',
+    { set: { windup: 0.19, recover: 0.34 } });
+  rite('rake_hunger', 'claw_rake', 'Hungry Claws', 'Every enemy the rake hits gives 2 more Instinct.',
+    { fx: [{ find: MEL, add: { onHit: [instinct(2)] } }, { find: AOE, add: { onHit: [instinct(2)] } }, { find: PROJ, add: { onHit: [instinct(2)] } }] });
+
+  // =============================================================================================
+  // WOLF MASK. Base: 10 s; a burst of claws (3 m, 130 degrees, up to 3) for 66% (x0.5 to x1.5 by Instinct) that Bleeds twice.
+  // =============================================================================================
+  shape('wolfm_wide', 'wolf_mask', 'Circling Wolf', 'The burst sweeps all around you and hits up to 6 enemies, for 75% of the damage.',
+    { power: 0.75, fx: [{ find: MEL, set: { arc: 330, max: 6 } }] });
+  shape('wolfm_reach', 'wolf_mask', 'Lunging Wolf', 'The burst reaches 4.5 m instead of 3.',
+    { set: { range: 4.2, aiUse: { use: 'attack', range: 4.2 } }, fx: [{ find: MEL, set: { range: 4.5 } }] });
+  shape('wolfm_twice', 'wolf_mask', 'Snap and Snap', 'The burst strikes twice, each for 60% of the damage.',
+    { power: 0.6, fx: [{ find: MEL, set: { hits: 2, interval: 0.2 } }] });
+
+  essence('wolfm_throat', 'wolf_mask', 'For the Throat', 'The burst has +30% Critical Chance.',
+    { fx: [{ find: MEL, set: { critAdd: 0.3 } }] });
+  essence('wolfm_hamstring', 'wolf_mask', 'Hock Bite', 'The burst also Slows by 40% for 3 s.',
+    { fx: [{ find: MEL, set: { status: { id: 'slow', dur: 3, power: 0.4 } } }] });
+  essence('wolfm_venom', 'wolf_mask', 'Foul Bite', 'The burst deals Poison damage and adds 3 stacks of Poison, for 55% instead of 66%.',
+    { set: { elem: 'poison', dmgLines: [{ label: BURST, mult: 0.55 }] }, fx: [{ find: MEL, set: { elem: 'poison', mult: 0.55, status: { id: 'poison', stacks: 3 } } }] });
+
+  rite('wolfm_quick', 'wolf_mask', 'Restless Wolf', 'Cooldown 7 s instead of 10.',
+    { set: { cooldown: 7 } });
+  rite('wolfm_feed', 'wolf_mask', 'First Feed', 'Putting on the Wolf restores 5% of your maximum Health.',
+    { add: [{ type: 'heal', self: true, pct: 0.05 }] });
+  rite('wolfm_howl', 'wolf_mask', 'Wolf Call', 'Putting on the Wolf makes you attack 15% faster for 5 s. Cooldown 12 s.',
+    { set: { cooldown: 12 }, add: [{ type: 'buff', id: 'wolf_call', name: 'Wolf Call', dur: 5, mods: [{ s: 'atkSpeed', t: 'inc', v: 0.15 }] }] });
+
+  // =============================================================================================
+  // BEAR MASK. Base: 10 s; a 4.2 m slam for 56% (x0.5 to x1.5 by Instinct) that Stuns for 0.6 s, Ward worth 12% of Health.
+  // =============================================================================================
+  shape('bearm_wide', 'bear_mask', 'Earthshaker', 'The slam covers 6 m instead of 4.2, for 75% of the damage.',
+    { power: 0.75, fx: [{ find: AOE, set: { radius: 6 } }] });
+  shape('bearm_tight', 'bear_mask', 'Close Maul', 'The slam covers only 2.8 m, but deals 40% more.',
+    { power: 1.4, fx: [{ find: AOE, set: { radius: 2.8 } }] });
+  shape('bearm_front', 'bear_mask', 'Forward Slam', 'The slam lands 2.5 m in front of you, 3.4 m wide.',
+    { set: { range: 5, aiUse: { use: 'attack', range: 5 } }, fx: [{ find: AOE, set: { at: 'front', dist: 2.5, radius: 3.4 } }] });
+
+  essence('bearm_stun', 'bear_mask', 'Dazing Slam', 'The slam Stuns for 1.4 s instead of 0.6, but deals 42% instead of 56%.',
+    { set: { dmgLines: [{ label: BURST, mult: 0.42 }] }, fx: [{ find: AOE, set: { mult: 0.42, status: { id: 'stun', dur: 1.4 } } }] });
+  essence('bearm_weak', 'bear_mask', 'Cowing Roar', 'The slam also Weakens for 5 s.',
+    { fx: [{ find: AOE, set: { status: [{ id: 'stun', dur: 0.6 }, { id: 'weaken', dur: 5 }] } }] });
+  essence('bearm_crush', 'bear_mask', 'Crushing Slam', 'The slam is a heavy hit that breaks Poise much harder, but Stuns no one.',
+    { fx: [{ find: AOE, set: { heavy: true, poise: 5, status: { id: 'slow', dur: 1, power: 0.2 } } }] });
+
+  rite('bearm_quick', 'bear_mask', 'Restless Bear', 'Cooldown 7 s instead of 10.',
+    { set: { cooldown: 7 } });
+  rite('bearm_rest', 'bear_mask', 'Hibernation', 'Putting on the Bear also restores 6% of your maximum Health. Cooldown 12 s.',
+    { set: { cooldown: 12 }, add: [{ type: 'heal', self: true, pct: 0.06 }] });
+  rite('bearm_charges', 'bear_mask', 'Two Bears', 'Bear Mask has 2 charges. Each takes 13 s.',
+    { set: { charges: 2, cooldown: 13 } });
+
+  // =============================================================================================
+  // RAVEN MASK. Base: 10 s; a fan of 5 feathers (60 degrees) for 28% each (x0.5 to x1.5 by Instinct) and a 4 m hop back.
+  // =============================================================================================
+  shape('ravenm_wide', 'raven_mask', 'Spread Wings', 'Seven feathers in a 100 degree fan, each for 75% of the damage.',
+    { power: 0.75, fx: [{ find: PROJ, set: { count: 7, spread: 100 } }] });
+  shape('ravenm_tight', 'raven_mask', 'Dart of Feathers', 'The feathers fly in a narrow 18 degree dart, for 80% of the damage: most of them find one mark.',
+    { power: 0.8, fx: [{ find: PROJ, set: { spread: 18 } }] });
+  shape('ravenm_far', 'raven_mask', 'Long Hop', 'You hop 7 m back instead of 4.',
+    { fx: [{ find: DASH, set: { dist: 7 } }] });
+
+  essence('ravenm_venom', 'raven_mask', 'Tainted Quills', 'The feathers deal Poison damage and add a stack of Poison, for 24% each instead of 28%.',
+    { set: { elem: 'poison', dmgLines: [{ label: BURST, mult: 0.24, hits: 5 }] }, fx: [{ find: PROJ, set: { elem: 'poison', mult: 0.24, status: { id: 'poison', stacks: 1 } } }] });
+  essence('ravenm_pin', 'raven_mask', 'Pinning Quills', 'The feathers Slow by 40% for 2 s.',
+    { fx: [{ find: PROJ, set: { status: { id: 'slow', dur: 2, power: 0.4 } } }] });
+  essence('ravenm_mark', 'raven_mask', "Raven's Mark", 'The feathers leave their targets Vulnerable for 3 s.',
+    { fx: [{ find: PROJ, set: { status: { id: 'vulnerable', dur: 3 } } }] });
+
+  rite('ravenm_quick', 'raven_mask', 'Restless Raven', 'Cooldown 7 s instead of 10.',
+    { set: { cooldown: 7 } });
+  rite('ravenm_vanish', 'raven_mask', 'Into the Dusk', 'Putting on the Raven hides you in Stealth for 1.5 s. Cooldown 12 s.',
+    { set: { cooldown: 12 }, add: [{ type: 'stealth', dur: 1.5 }] });
+  rite('ravenm_charges', 'raven_mask', 'Two Ravens', 'Raven Mask has 2 charges. Each takes 13 s.',
+    { set: { charges: 2, cooldown: 13 } });
+
+  // =============================================================================================
+  // POUNCE. Base: 7 s; leap up to 9 m onto the target: no mask 96%; Wolf 112% +30% Critical Chance and Bleed; Bear a 3 m crash
+  // (96%, knockback, Stun 0.5 s); Raven 80% and Vulnerable.
+  // =============================================================================================
+  shape('pounce_far', 'pounce', 'Great Leap', 'You leap up to 14 m instead of 9.',
+    { set: { range: 14, aiUse: { use: 'gapclose', range: 14, minRange: 2.5 } }, fx: [{ find: DASH, set: { dist: 14 } }] });
+  shape('pounce_wide', 'pounce', 'Crashing Down', 'The landing strike sweeps 220 degrees and hits up to 4 enemies, and the Bear crash covers 4.5 m, for 75% of the damage.',
+    { power: 0.75, fx: [{ find: MEL, set: { arc: 220, max: 4 } }, { find: AOE, set: { radius: 4.5 } }] });
+  shape('pounce_twice', 'pounce', 'Worrying Bite', 'The landing strike hits twice, each for 60% of the damage.',
+    { power: 0.6, fx: [{ find: MEL, set: { hits: 2, interval: 0.2 } }] });
+
+  essence('pounce_stun', 'pounce', 'Bowled Down', 'Every form of the landing Stuns for 0.8 s.',
+    { fx: [{ find: MEL, set: { status: { id: 'stun', dur: 0.8 } } }, { find: AOE, set: { status: { id: 'stun', dur: 0.8 } } }] });
+  essence('pounce_crit', 'pounce', 'Killing Leap', 'Every form of the landing has +25% Critical Chance.',
+    { fx: [{ find: MEL, set: { critAdd: 0.25 } }, { find: AOE, set: { critAdd: 0.25 } }] });
+  essence('pounce_open', 'pounce', 'Open Throat', 'Every form of the landing leaves the target Vulnerable for 4 s.',
+    { fx: [{ find: MEL, set: { status: { id: 'vulnerable', dur: 4 } } }, { find: AOE, set: { status: [{ id: 'stun', dur: 0.5 }, { id: 'vulnerable', dur: 4 }] } }] });
+
+  rite('pounce_quick', 'pounce', 'Coiled', 'Cooldown 5 s instead of 7.',
+    { set: { cooldown: 5 } });
+  rite('pounce_charges', 'pounce', 'Second Spring', 'Pounce has 2 charges. Each takes 9 s.',
+    { set: { charges: 2, cooldown: 9 } });
+  rite('pounce_instinct', 'pounce', 'Blood Scent', 'Pounce gives 15 Instinct. Cooldown 8 s.',
+    { set: { cooldown: 8 }, add: [instinct(15)] });
+
+  // =============================================================================================
+  // HOWL. Base: 14 s; 48% within 7 m, 25 Instinct; Wolf: allies attack 20% faster for 6 s; Bear: Taunt 4 s and 25% less damage
+  // taken for 6 s; Raven: Weaken and Slow 40% for 4 s.
+  // =============================================================================================
+  shape('howl_wide', 'howl', 'Carrying Howl', 'The howl hurts everything within 10 m instead of 7, for 75% of the damage.',
+    { power: 0.75, fx: [{ find: { type: 'aoe', mult: 0.48 }, set: { radius: 10 } }] });
+  shape('howl_close', 'howl', 'Snarl', 'The howl hurts only within 4 m, but deals 60% more.',
+    { power: 1.6, fx: [{ find: { type: 'aoe', mult: 0.48 }, set: { radius: 4 } }] });
+  shape('howl_long', 'howl', 'Long Howl', 'The mask parts of the howl last 50% longer.',
+    { fx: [{ find: BUFF, scale: { dur: 1.5 } }, { find: { type: 'taunt' }, set: { dur: 6 } }] });
+
+  essence('howl_fear', 'howl', 'Terrible Howl', 'The howl Fears enemies for 1.5 s, but deals 30% instead of 48%.',
+    { fx: [{ find: { type: 'aoe', mult: 0.48 }, set: { mult: 0.3, status: { id: 'fear', dur: 1.5 } } }] });
+  essence('howl_weak', 'howl', 'Cowing Howl', 'The howl Weakens enemies for 4 s.',
+    { fx: [{ find: { type: 'aoe', mult: 0.48 }, set: { status: { id: 'weaken', dur: 4 } } }] });
+  essence('howl_bleed', 'howl', 'Bloodcurdling', 'The howl opens 2 stacks of Bleed on everything it hurts.',
+    { fx: [{ find: { type: 'aoe', mult: 0.48 }, set: { status: { id: 'bleed', stacks: 2, power: 0.08 } } }] });
+
+  rite('howl_quick', 'howl', 'Short Breath', 'Cooldown 10 s instead of 14.',
+    { set: { cooldown: 10 } });
+  rite('howl_instinct', 'howl', 'Rising Blood', 'The howl gives 50 Instinct instead of 25. Cooldown 18 s.',
+    { set: { cooldown: 18 }, fx: [{ find: RES, set: { gain: 50 } }] });
+  rite('howl_mend', 'howl', 'Licking Wounds', 'The howl also restores 8% of your maximum Health. Cooldown 16 s.',
+    { set: { cooldown: 16 }, add: [{ type: 'heal', self: true, pct: 0.08 }] });
+
+  // =============================================================================================
+  // REND. Base: 6 s; no mask 64% and Bleed; Wolf 53% and 3 Bleeds; Bear an 80% heavy maul (2.6 m in front); Raven 3 feathers of
+  // 27% that Root for 1.5 s.
+  // =============================================================================================
+  shape('rend_wide', 'rend', 'Tearing Arc', 'The cut sweeps 180 degrees and hits up to 3 enemies, and the Bear maul covers 3.6 m, for 75% of the damage.',
+    { power: 0.75, fx: [{ find: MEL, set: { arc: 180, max: 3 } }, { find: AOE, set: { radius: 3.6 } }] });
+  shape('rend_reach', 'rend', 'Reaching Rend', 'The cut reaches 3.6 m instead of 2.5.',
+    { set: { range: 3.4, aiUse: { use: 'attack', range: 3.4 } }, fx: [{ find: MEL, set: { range: 3.6 } }] });
+  shape('rend_twice', 'rend', 'Rip and Tear', 'Two cuts, each for 60% of the damage.',
+    { power: 0.6, fx: [{ find: MEL, set: { hits: 2, interval: 0.2 } }, { find: AOE, set: { hits: 2, interval: 0.25 } }] });
+
+  essence('rend_open', 'rend', 'Open Wound', 'Every form of Rend leaves the target Vulnerable for 4 s.',
+    { fx: [{ find: MEL, set: { status: { id: 'vulnerable', dur: 4 } } }, { find: AOE, set: { status: { id: 'vulnerable', dur: 4 } } }, { find: PROJ, set: { status: [{ id: 'root', dur: 1.5 }, { id: 'vulnerable', dur: 4 }] } }] });
+  essence('rend_stun', 'rend', 'Skull Cuff', 'Every form of Rend Stuns for 0.6 s.',
+    { fx: [{ find: MEL, set: { status: { id: 'stun', dur: 0.6 } } }, { find: AOE, set: { status: { id: 'stun', dur: 0.6 } } }, { find: PROJ, set: { status: { id: 'stun', dur: 0.6 } } }] });
+  essence('rend_heavy', 'rend', 'Mauling', 'Every form of Rend is a heavy hit that breaks Poise much harder.',
+    { fx: [{ find: MEL, set: { heavy: true, poise: 2.4 } }, { find: PROJ, set: { heavy: true, poise: 1.2 } }] });
+
+  rite('rend_quick', 'rend', 'Quick Teeth', 'Cooldown 4 s instead of 6.',
+    { set: { cooldown: 4 } });
+  rite('rend_charges', 'rend', 'Two Bites', 'Rend has 2 charges. Each takes 8 s.',
+    { set: { charges: 2, cooldown: 8 } });
+  rite('rend_feed', 'rend', 'Feeding', 'Every enemy Rend hits restores 2% of your maximum Health. Cooldown 7 s.',
+    { set: { cooldown: 7 }, fx: [{ find: MEL, add: { onHit: [{ type: 'heal', self: true, pct: 0.02 }] } }, { find: AOE, add: { onHit: [{ type: 'heal', self: true, pct: 0.02 }] } }, { find: PROJ, add: { onHit: [{ type: 'heal', self: true, pct: 0.02 }] } }] });
+
+  // =============================================================================================
+  // FERAL LEAP. Base: 12 s; jump up to 9 m to the aim; land on 3.2 m (88%); Wolf 20% faster attacks for 4 s; Bear a 4.5 m quake
+  // (128%, Stun 1 s); Raven a ring of 6 feathers.
+  // =============================================================================================
+  shape('leapf_far', 'feral_leap', 'Long Leap of the Wild', 'You jump up to 14 m instead of 9.',
+    { set: { range: 13, aiUse: { use: 'attack', range: 13, minTargets: 3, orBoss: true } }, fx: [{ find: DASH, set: { dist: 14 } }] });
+  shape('leapf_wide', 'feral_leap', 'Shockwave Landing', 'Every landing area is 40% wider, for 75% of the damage.',
+    { power: 0.75, fx: [{ find: AOE, scale: { radius: 1.4 } }] });
+  shape('leapf_tight', 'feral_leap', 'Pinpoint Landing', 'Every landing area is 30% smaller, but deals 40% more.',
+    { power: 1.4, fx: [{ find: AOE, scale: { radius: 0.7 } }] });
+
+  essence('leapf_stun', 'feral_leap', 'Stunning Landing', 'Every landing Stuns for 0.8 s.',
+    { fx: [{ find: AOE, set: { status: { id: 'stun', dur: 0.8 } } }] });
+  essence('leapf_slow', 'feral_leap', 'Churned Earth', 'Every landing Slows by 50% for 3 s.',
+    { fx: [{ find: AOE, set: { status: { id: 'slow', dur: 3, power: 0.5 } } }] });
+  essence('leapf_crush', 'feral_leap', 'Crushing Landing', 'Every landing is a heavy hit that breaks Poise much harder.',
+    { fx: [{ find: AOE, set: { heavy: true, poise: 3.5 } }] });
+
+  rite('leapf_quick', 'feral_leap', 'Light Bones', 'Cooldown 8 s instead of 12.',
+    { set: { cooldown: 8 } });
+  rite('leapf_charges', 'feral_leap', 'Two Leaps', 'Feral Leap has 2 charges. Each takes 14 s.',
+    { set: { charges: 2, cooldown: 14 } });
+  rite('leapf_instinct', 'feral_leap', 'Thrill of the Leap', 'Feral Leap gives 20 Instinct. Cooldown 13 s.',
+    { set: { cooldown: 13 }, add: [instinct(20)] });
+
+  // =============================================================================================
+  // THORN HIDE. Base: 16 s; for 6 s 20% less damage taken, every hit taken lashes 3 m for 32%. Mask parts: Life Steal, Ward,
+  // speed. The tooltip is hand-written (dmgLines): an essence that changes the multiplier rewrites it.
+  // =============================================================================================
+  shape('hide_long', 'thorn_hide', 'Winter Coat', 'Thorn Hide lasts 9 s instead of 6.',
+    { fx: [{ find: { type: 'buff', id: 'thorn_hide' }, set: { dur: 9 } }] });
+  shape('hide_wide', 'thorn_hide', 'Bristling Hide', 'The lash reaches 5 m instead of 3, for 70% of the damage.',
+    { power: 0.7, fx: [{ find: AOE, set: { radius: 5 } }] });
+  shape('hide_close', 'thorn_hide', 'Close Quills', 'The lash reaches only 2 m, but deals 50% more.',
+    { power: 1.5, fx: [{ find: AOE, set: { radius: 2 } }] });
+
+  essence('hide_iron', 'thorn_hide', 'Ironhide', 'You take 35% less damage instead of 20%, but the lash deals 20% instead of 32%.',
+    { set: { dmgLines: [{ label: 'each time you are hit', mult: 0.2 }] },
+      fx: [{ find: { type: 'buff', id: 'thorn_hide' }, set: { mods: [{ s: 'dmgTaken', t: 'more', v: -0.35 }] } }, { find: AOE, set: { mult: 0.2 } }] });
+  essence('hide_barb', 'thorn_hide', 'Porcupine', 'The lash deals 55% instead of 32% and makes enemies Bleed, but you take only 10% less damage.',
+    { set: { dmgLines: [{ label: 'each time you are hit', mult: 0.55 }] },
+      fx: [{ find: { type: 'buff', id: 'thorn_hide' }, set: { mods: [{ s: 'dmgTaken', t: 'more', v: -0.1 }] } }, { find: AOE, set: { mult: 0.55, status: { id: 'bleed' } } }] });
+  essence('hide_venom', 'thorn_hide', 'Toad Skin', 'The lash deals Poison damage and adds 2 stacks of Poison.',
+    { set: { elem: 'poison' }, fx: [{ find: AOE, set: { elem: 'poison', status: { id: 'poison', stacks: 2 } } }] });
+
+  rite('hide_quick', 'thorn_hide', 'Quick Bristle', 'Cooldown 11 s instead of 16.',
+    { set: { cooldown: 11 } });
+  rite('hide_mend', 'thorn_hide', 'Healing Hide', 'Thorn Hide also restores 8% of your maximum Health. Cooldown 18 s.',
+    { set: { cooldown: 18 }, add: [{ type: 'heal', self: true, pct: 0.08 }] });
+  rite('hide_charges', 'thorn_hide', 'Second Hide', 'Thorn Hide has 2 charges. Each takes 18 s.',
+    { set: { charges: 2, cooldown: 18 } });
+
+  // =============================================================================================
+  // MOONLIT DASH. Base: 7 s, 2 charges; dash 6.5 m (2.4 m wide) for 56%; Wolf +30% Critical Chance; Bear a 3 m bowl; Raven a
+  // feather cloud that Slows.
+  // =============================================================================================
+  shape('dash_far', 'moonlit_dash', 'Long Moonlight', 'The dash runs 10 m instead of 6.5.',
+    { set: { range: 10, aiUse: { use: 'gapclose', range: 10, minRange: 3.5 } }, fx: [{ find: DASH, set: { dist: 10 } }] });
+  shape('dash_wide', 'moonlit_dash', 'Broad Path', 'The dash cuts a path 4 m wide instead of 2.4, for 80% of the damage.',
+    { power: 0.8, fx: [{ find: DASH, set: { width: 4 } }] });
+  shape('dash_short', 'moonlit_dash', 'Quick Glint', 'The dash runs only 4 m, but deals 40% more.',
+    { power: 1.4, set: { range: 4.5, aiUse: { use: 'gapclose', range: 4.5, minRange: 2 } }, fx: [{ find: DASH, set: { dist: 4 } }] });
+
+  essence('dash_bleed', 'moonlit_dash', 'Red Moon', 'The dash adds 2 stacks of Bleed to everything it cuts.',
+    { fx: [{ find: DASH, set: { status: { id: 'bleed', stacks: 2, power: 0.08 } } }] });
+  essence('dash_slow', 'moonlit_dash', 'Cold Moon', 'The dash Slows everything it cuts by 40% for 2 s.',
+    { fx: [{ find: DASH, set: { status: { id: 'slow', dur: 2, power: 0.4 } } }] });
+  essence('dash_crit', 'moonlit_dash', 'Bright Moon', 'The dash has +30% Critical Chance.',
+    { fx: [{ find: DASH, set: { critAdd: 0.3 } }] });
+
+  rite('dash_three', 'moonlit_dash', 'Three Moons', 'Moonlit Dash has 3 charges. Each takes 9 s.',
+    { set: { charges: 3, cooldown: 9 } });
+  rite('dash_quick', 'moonlit_dash', 'Moonrise', 'Each charge takes 5 s instead of 7.',
+    { set: { cooldown: 5 } });
+  rite('dash_instinct', 'moonlit_dash', 'Night Run', 'Every dash gives 10 Instinct. Each charge takes 8 s.',
+    { set: { cooldown: 8 }, add: [instinct(10)] });
+
+  // =============================================================================================
+  // SHED SKIN. Base: 20 s; cleanse, heal 12%, a 3 m burst (40%, knockback), 30 Instinct, every Mask ready.
+  // =============================================================================================
+  shape('shed_wide', 'shed_skin', 'Bursting Husk', 'The husk bursts 6 m wide instead of 3.',
+    { fx: [{ find: AOE, set: { radius: 6 } }] });
+  shape('shed_close', 'shed_skin', 'Tight Husk', 'The husk bursts only 2 m wide, but twice as hard.',
+    { power: 2, fx: [{ find: AOE, set: { radius: 2 } }] });
+
+  essence('shed_heal', 'shed_skin', 'New Skin', 'You heal 20% of your Health instead of 12%.',
+    { fx: [{ find: { type: 'heal', pct: 0.12 }, set: { pct: 0.2 } }] });
+  essence('shed_stun', 'shed_skin', 'Startling Husk', 'The husk Stuns for 1 s instead of pushing back.',
+    { fx: [{ find: AOE, set: { knockback: 0, status: { id: 'stun', dur: 1 } } }] });
+  essence('shed_fear', 'shed_skin', 'Hollow Husk', 'The husk Fears enemies for 1.5 s.',
+    { fx: [{ find: AOE, set: { status: { id: 'fear', dur: 1.5 } } }] });
+
+  rite('shed_quick', 'shed_skin', 'Quick Molt', 'Cooldown 14 s instead of 20.',
+    { set: { cooldown: 14 } });
+  rite('shed_instinct', 'shed_skin', 'Rebirth', 'Shed Skin gives 60 Instinct instead of 30. Cooldown 24 s.',
+    { set: { cooldown: 24 }, fx: [{ find: RES, set: { gain: 60 } }] });
+  rite('shed_charges', 'shed_skin', 'Two Skins Shed', 'Shed Skin has 2 charges. Each takes 24 s.',
+    { set: { charges: 2, cooldown: 24 } });
+
+  // =============================================================================================
+  // APEX FORM (Ultimate). Base: 85 s; a 7 m roar (160%, Stun 1 s), full Instinct, all three masks for 10 s, 10% faster attacks and
+  // movement, 15% less damage taken.
+  // =============================================================================================
+  shape('apex_long', 'apex_form', 'Long Apex', 'Apex Form lasts 15 s instead of 10.',
+    { fx: [{ find: BUFF, set: { dur: 15 } }] });
+  shape('apex_wide', 'apex_form', 'Earth-Splitting Roar', 'The roar reaches 10 m instead of 7, for 80% of the damage.',
+    { power: 0.8, fx: [{ find: AOE, set: { radius: 10 } }] });
+  shape('apex_close', 'apex_form', 'Jaws of the Apex', 'The roar reaches only 4 m, but deals 50% more.',
+    { power: 1.5, fx: [{ find: AOE, set: { radius: 4 } }] });
+
+  essence('apex_fury', 'apex_form', 'Apex Fury', 'In Apex Form you attack 25% faster instead of 10%, but take only 5% less damage.',
+    { fx: [{ find: BUFF, set: { mods: [{ s: 'atkSpeed', t: 'inc', v: 0.25 }, { s: 'moveSpeed', t: 'inc', v: 0.1 }, { s: 'dmgTaken', t: 'more', v: -0.05 }] } }] });
+  essence('apex_iron', 'apex_form', 'Apex Hide', 'In Apex Form you take 30% less damage instead of 15%, but attack no faster.',
+    { fx: [{ find: BUFF, set: { mods: [{ s: 'moveSpeed', t: 'inc', v: 0.1 }, { s: 'dmgTaken', t: 'more', v: -0.3 }] } }] });
+  essence('apex_terror', 'apex_form', 'Apex Terror', 'The roar also Weakens for 6 s.',
+    { fx: [{ find: AOE, set: { status: [{ id: 'stun', dur: 1 }, { id: 'weaken', dur: 6 }] } }] });
+
+  rite('apex_early', 'apex_form', 'Early Apex', 'Cooldown 65 s instead of 85.',
+    { set: { cooldown: 65 } });
+  rite('apex_twice', 'apex_form', 'Second Apex', 'Apex Form has 2 charges. Each takes 100 s.',
+    { set: { charges: 2, cooldown: 100 } });
+  rite('apex_pact', 'apex_form', 'Blood Apex', 'Costs 15% of your Health. Cooldown 50 s.',
+    { set: { hpCost: 0.15, cooldown: 50 } });
+
+  KD.register('mutations', M);
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/data/38_tree_builds_emberscribe.js
 (function (root) {
   'use strict';
@@ -22002,6 +23623,130 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       { to: 25, goals: ['cluster:bow_downpour', 'skill:barbed_volley', 'mut:volley_wide', 'cluster:bow_breath', 'cluster:bow_close'] },
       { to: 40, goals: ['Quickdraw', 'cluster:bow_string', 'cluster:bow_flight', 'cluster:stride_bow_mid', 'cluster:bow_gut'] },
       { to: 60, goals: ['Rooted Stance', 'cluster:bow_heartwood', 'cluster:bow_treetop', 'cluster:bow_steady', 'cluster:bow_last', 'cluster:stride_bow_outer'] }
+    ] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/38_tree_builds_wildmask.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+
+  /**
+   * RECOMMENDED BUILDS of the Wildmask's tree (docs/TREE_WILDMASK.md section 4). Pure data; the registry and the format are in
+   * src/data/38_tree_builds_gravecaller.js (KD.data.treeBuilds.add), the logic in src/meta/35_tree_builds.js, the screen is the
+   * Builds tab of the tree page. Every build starts from a different skill and fits KD.treeBuilds.BUDGET (152) points
+   * (tests/tree_wildmask.test.js).
+   */
+  var R = KD.data = KD.data || {};
+  var TBD = R.treeBuilds = R.treeBuilds || { byClass: {} };
+  TBD.add = TBD.add || function (classId, rec) {
+    if (!rec || typeof rec.id !== 'string') throw new Error('KD.data.treeBuilds.add(' + classId + '): a record with an id is needed');
+    rec.cls = classId;
+    (TBD.byClass[classId] = TBD.byClass[classId] || []).push(rec);
+    return rec;
+  };
+  function add(rec) { return TBD.add('wildmask', rec); }
+
+  add({ id: 'grey_wolf', name: 'Grey Wolf', design: '4.1', difficulty: 1, start: 'wolf_mask', arms: ['wolf', 'fang'],
+    pitch: 'Wear the Wolf and never take it off: fast claws, critical bites and Bleeds that never close.',
+    tags: ['Wolf', 'Bleed', 'Melee speed'],
+    stages: [
+      { to: 10, goals: ['mut:wolfm_twice', 'mut:wolfm_throat', 'mut:wolfm_quick'] },
+      { to: 25, goals: ['cluster:wolf_red', 'cluster:wolf_water', 'skill:rend', 'mut:rend_twice', 'cluster:wolf_throat'] },
+      { to: 40, goals: ['Pack of One', 'cluster:wolf_claws', 'cluster:wolf_gash', 'cluster:wolf_fang_mid', 'cluster:wolf_fangs'] },
+      { to: 60, goals: ['Frenzied', 'cluster:wolf_den', 'cluster:wolf_lope', 'cluster:wolf_scar', 'cluster:wolf_running'] }
+    ] });
+
+  add({ id: 'berserker', name: 'Berserker', design: '4.2', difficulty: 2, start: 'pounce', arms: ['fang', 'wolf'],
+    pitch: 'Leap into the thick of it and feed: every kill heals, and the lower you sink the harder you bite.',
+    tags: ['Berserker', 'Life Steal', 'Crowds'],
+    stages: [
+      { to: 10, goals: ['mut:pounce_wide', 'mut:pounce_crit', 'mut:pounce_charges', 'cluster:fang_drunk'] },
+      { to: 25, goals: ['cluster:fang_gorge', 'cluster:fang_cornered', 'cluster:fang_hackles', 'skill:wolf_mask', 'mut:wolfm_wide'] },
+      { to: 40, goals: ['Blood Frenzy', 'cluster:fang_frenzy', 'cluster:fang_rage', 'cluster:fang_blood', 'cluster:wolf_fang_mid'] },
+      { to: 60, goals: ['Berserker', 'cluster:fang_carcass', 'cluster:fang_bones', 'cluster:fang_pack', 'cluster:fang_feast'] }
+    ] });
+
+  add({ id: 'great_bear', name: 'Great Bear', design: '4.3', difficulty: 1, start: 'bear_mask', arms: ['bear', 'quake'],
+    pitch: 'A wall of fur and Ward: stand in the middle, Stun everything, and let nothing through.',
+    tags: ['Bear', 'Tanky', 'Ward'],
+    stages: [
+      { to: 10, goals: ['mut:bearm_wide', 'mut:bearm_stun', 'mut:bearm_rest'] },
+      { to: 25, goals: ['cluster:bear_bowl', 'cluster:bear_den', 'skill:thorn_hide', 'mut:hide_iron', 'cluster:bear_grizzly'] },
+      { to: 40, goals: ["Bear's Winter", 'cluster:bear_bulk', 'cluster:bear_fat', 'cluster:bear_cave', 'cluster:bear_quake_mid'] },
+      { to: 60, goals: ['Hibernate', 'cluster:bear_wall', 'cluster:bear_lair', 'cluster:bear_honey', 'cluster:bear_shoulder'] }
+    ] });
+
+  add({ id: 'thornback', name: 'Thornback', design: '4.4', difficulty: 2, start: 'thorn_hide', arms: ['bear', 'fang'],
+    pitch: 'Bristle and bleed them: every blow that lands on you lashes back, and every kill feeds you.',
+    tags: ['Thorns', 'Survival', 'Close range'],
+    stages: [
+      { to: 10, goals: ['mut:hide_long', 'mut:hide_barb', 'mut:hide_mend', 'cluster:bear_hide'] },
+      { to: 25, goals: ['cluster:bear_den', 'cluster:bear_bowl', 'skill:bear_mask', 'mut:bearm_weak', 'cluster:fang_bear_mid'] },
+      { to: 40, goals: ['The Mountain', 'cluster:bear_bulk', 'cluster:bear_cave', 'cluster:fang_gorge', 'cluster:fang_cornered'] },
+      { to: 60, goals: ['cluster:bear_wall', 'cluster:bear_fat', 'cluster:bear_honey', 'cluster:fang_marrow', 'cluster:bear_spring'] }
+    ] });
+
+  add({ id: 'earthshaker', name: 'Earthshaker', design: '4.5', difficulty: 2, start: 'feral_leap', arms: ['quake', 'bear'],
+    pitch: 'Jump, land, and the ground answers: Stuns in a ring, shockwaves from every Stun, guards that break.',
+    tags: ['Stuns', 'Area', 'Poise'],
+    stages: [
+      { to: 10, goals: ['mut:leapf_wide', 'mut:leapf_stun', 'mut:leapf_charges', 'cluster:quake_shock'] },
+      { to: 25, goals: ['cluster:quake_break', 'cluster:quake_stone', 'cluster:quake_tremor', 'skill:bear_mask', 'mut:bearm_stun'] },
+      { to: 40, goals: ['Earthshaker@quake', 'cluster:quake_crater', 'cluster:quake_crack', 'cluster:bear_grizzly', 'cluster:bear_quake_mid'] },
+      { to: 60, goals: ["Titan's Leap", 'cluster:quake_gorge', 'cluster:quake_peak', 'cluster:quake_slide', 'cluster:quake_boulder'] }
+    ] });
+
+  add({ id: 'black_raven', name: 'Black Raven', design: '4.6', difficulty: 2, start: 'raven_mask', arms: ['raven', 'moon'],
+    pitch: 'Feathers from afar and never there when they swing: every miss throws one back.',
+    tags: ['Raven', 'Ranged', 'Evasion'],
+    stages: [
+      { to: 10, goals: ['mut:ravenm_tight', 'mut:ravenm_mark', 'mut:ravenm_quick', 'cluster:raven_riposte'] },
+      { to: 25, goals: ['cluster:raven_sly', 'cluster:raven_quills', 'cluster:raven_flight', 'skill:moonlit_dash', 'mut:dash_far'] },
+      { to: 40, goals: ['Murder of Crows', 'cluster:raven_far', 'cluster:raven_murder', 'cluster:raven_storm', 'cluster:raven_moon_mid'] },
+      { to: 60, goals: ['Quill Storm', 'cluster:raven_dodge', 'cluster:raven_shadow', 'cluster:raven_nest', 'cluster:raven_dark'] }
+    ] });
+
+  add({ id: 'moonrunner', name: 'Moonrunner', design: '4.7', difficulty: 3, start: 'moonlit_dash', arms: ['moon', 'raven'],
+    pitch: 'Three dashes, each a pale line of cuts, and a glint of moonlight that makes the next blow count.',
+    tags: ['Mobility', 'Critical hits', 'Dashes'],
+    stages: [
+      { to: 10, goals: ['mut:dash_wide', 'mut:dash_crit', 'mut:dash_three', 'cluster:moon_glint'] },
+      { to: 25, goals: ['cluster:moon_silver', 'cluster:moon_fangs', 'cluster:moon_tide', 'skill:raven_mask', 'mut:ravenm_far'] },
+      { to: 40, goals: ['Night Runner', 'cluster:moon_crescent', 'cluster:moon_blade', 'cluster:moon_hare', 'cluster:raven_moon_mid'] },
+      { to: 60, goals: ['Silver Claws', 'cluster:moon_bright', 'cluster:moon_wane', 'cluster:moon_shadowed', 'cluster:moon_mist'] }
+    ] });
+
+  add({ id: 'skin_dancer', name: 'Skin Dancer', design: '4.8', difficulty: 3, start: 'shed_skin', arms: ['shift', 'howl'],
+    pitch: 'Mask after mask: shed your skin to change again at once, and every change hits harder than the last.',
+    tags: ['Shifting', 'Instinct', 'Masks'],
+    stages: [
+      { to: 10, goals: ['mut:shed_wide', 'mut:shed_heal', 'mut:shed_instinct', 'cluster:shift_faces'] },
+      { to: 25, goals: ['cluster:shift_fresh', 'skill:apex_form', 'mut:apex_fury', 'cluster:shift_restless', 'cluster:shift_hoard'] },
+      { to: 40, goals: ['Two Skins', 'cluster:shift_turning', 'cluster:shift_outburst', 'cluster:shift_echo', 'cluster:shift_howl_mid'] },
+      { to: 60, goals: ['Three Faces', 'cluster:shift_swap', 'cluster:shift_skins', 'cluster:shift_moult', 'mut:apex_early'] }
+    ] });
+
+  add({ id: 'pack_voice', name: 'Pack Voice', design: '4.9', difficulty: 1, start: 'howl', arms: ['howl', 'wolf'],
+    pitch: 'Howl often and loud: you and your allies hit harder, and everything that hears you is afraid.',
+    tags: ['Shouts', 'Co-op', 'Control'],
+    stages: [
+      { to: 10, goals: ['mut:howl_wide', 'mut:howl_weak', 'mut:howl_quick', 'cluster:howl_dread'] },
+      { to: 25, goals: ['cluster:howl_call', 'cluster:howl_leader', 'cluster:howl_echo', 'skill:wolf_mask', 'mut:wolfm_howl'] },
+      { to: 40, goals: ['Endless Howl', 'cluster:howl_war', 'cluster:howl_heart', 'cluster:howl_terror', 'cluster:howl_wolf_mid'] },
+      { to: 60, goals: ['Alpha Voice', 'cluster:howl_storm', 'cluster:howl_stones', 'cluster:howl_ridge', 'cluster:howl_summit'] }
+    ] });
+
+  add({ id: 'red_rend', name: 'Red Rend', design: '4.10', difficulty: 2, start: 'rend', arms: ['wolf', 'howl'],
+    pitch: 'Two bites of Rend in every fight and wounds that stack to five: let the Bleed do the killing.',
+    tags: ['Bleed', 'Damage over time', 'Single target'],
+    stages: [
+      { to: 10, goals: ['mut:rend_reach', 'mut:rend_open', 'mut:rend_charges', 'cluster:wolf_rend'] },
+      { to: 25, goals: ['cluster:wolf_red', 'cluster:wolf_water', 'skill:howl', 'mut:howl_bleed', 'cluster:wolf_throat'] },
+      { to: 40, goals: ['Bloodhound', 'cluster:wolf_gash', 'cluster:wolf_fangs', 'cluster:howl_wolf_mid', 'cluster:howl_dread'] },
+      { to: 60, goals: ['cluster:wolf_claws', 'cluster:wolf_scar', 'cluster:wolf_den', 'cluster:howl_call', 'cluster:wolf_winter'] }
     ] });
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -29968,6 +31713,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.82', date: '2026-10-16', title: 'The Wildmask\'s Moon Grove', notes: [
+      'The Wildmask has its own skill tree now: The Moon Grove, eight arms from the Wolf Run to the Howling Hill',
+      'Start with one skill, any skill, and grow the rest of your beast in the tree',
+      'Shape every mask and skill with three mutations, and build for melee speed, Ward, feathers or Shifting',
+      'Ten recommended builds: Grey Wolf, Berserker, Great Bear, Black Raven, Skin Dancer and more'
+    ] },
     { version: '0.7.81', date: '2026-10-16', title: 'The Thornwarden\'s Old Wood', notes: [
       'The Thornwarden has her own skill tree now: The Old Wood, eight arms from the Longbow to the Deer Path',
       'Pick one skill to start, find the rest in the tree, and shape each with three mutations',
@@ -52255,6 +54006,176 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     },
     onBeforeHit: function (c, eff, st) { if (st.inst && c.spec && c.spec.inst === st.inst && enemy(c.target) && arrow(c)) c.mult *= T.rollMore; }
   });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/sim/56_tree_wildmask.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var U = KD.util;
+  var S = KD.sim = KD.sim || {};
+  var K = KD.skills = KD.skills || {};
+  if (!K.registerHook) return;
+
+  /**
+   * WILDMASK, the rules of the class tree (docs/TREE_WILDMASK.md section 3): the `effect` keys `tree_wildmask_<id>` of the rule
+   * notables and keystones in src/data/36_tree_wildmask_<arm>.js. The tree also reuses the Wilds rules of the Crownweb
+   * (`web_wildmask_*`, src/sim/55_class_wildmask.js) and Three Faces (src/sim/32_webfx.js); the mutations are pure data. Every
+   * hook acts on the owner's own hits, statuses and casts, uses world.rng / world.time only, and guards re-entry. Every number
+   * is in the T table; the node texts quote them (tests/tree_wildmask.test.js compares).
+   */
+  var T = {
+    bloodMore: 1.1,                        // Blood in the Water: hits on Bleeding enemies
+    frenzyPer: 0.03, frenzyMax: 6, frenzyDur: 4,   // Frenzied (keystone): Melee Attack Speed per melee hit, stacks, seconds
+    gorgeHeal: 0.03,                       // Gorging: Health per kill
+    denLess: 0.9,                          // Snug in the Den: damage taken while you have Ward
+    grizzlyStun: 1.3,                      // Grizzly: Stun duration
+    hibAt: 0.3, hibWard: 0.25, hibDur: 8, hibIcd: 30,   // Hibernate (keystone)
+    shockRadius: 2.5, shockMult: 0.3, shockIcd: 2,      // Aftershock
+    brokenMore: 1.15,                      // Open Guard: hits on Stunned or broken enemies
+    slyInstinct: 5,                        // Sly Bird: Instinct per evaded attack
+    glintDur: 2, glintMore: 0.2,           // Glint of the Moon: damage after a Moonlit Dash
+    silverInstinct: 10,                    // Quicksilver: Instinct per dodge roll
+    restlessSpeed: 0.2, restlessDur: 3,    // Restless: Movement Speed after a change of mask
+    dreadMore: 1.1,                        // Dread Chorus: hits on enemies you Weakened, Feared or Taunted
+    leaderRange: 10, leaderMore: 0.1,      // Pack Leader: allies' damage
+    callMore: 0.15, callDur: 6             // Call to Blood: damage after Howl
+  };
+  S.treeWildmask = { T: T };
+
+  function WMC() { return KD.classB && KD.classB.wildmask; }
+  function enemy(e) { return !!e && e.kind === 'enemy' && !e.dead && !e.removed; }
+  function mine(st, p) { return !!(st && (st.src === p || st.src === p.id)); }
+  function direct(c) { return !!(c.spec && !c.spec.dot && !c.spec.proc); }
+  function buff(world, p, id, name, dur, mods, desc, icon) {
+    var b = S.addBuff(world, p, { id: id, name: name, dur: dur, src: p, icon: icon || 'mask', color: '#f0a060', mods: mods });
+    if (b && desc && !b.def.desc) b.def.desc = desc;
+    return b;
+  }
+  function pc(v) { return Math.round(v * 100) + '%'; }
+
+  // The Wolf Run (wolf)
+  K.registerHook('tree_wildmask_blood', {
+    onBeforeHit: function (c) { if (enemy(c.target) && S.hasStatus(c.target, 'bleed')) c.mult *= T.bloodMore; }
+  });
+  K.registerHook('tree_wildmask_savage', {
+    onCrit: function (c) {
+      var g = WMC();
+      if (!g || !enemy(c.target) || !direct(c) || c.spec.delivery !== 'melee' || g.mask(c.self) !== 'wolf') return;
+      S.applyStatus(c.world, c.target, 'bleed', { src: c.self, stacks: 1, hit: S.unitDamage(c.world, c.self, 'phys', 'melee') * g.TUNE.bleedHit, delivery: 'melee' });
+    }
+  });
+  K.registerHook('tree_wildmask_frenzy', {
+    onHit: function (c, eff, st) {
+      if (!enemy(c.target) || !direct(c) || c.spec.delivery !== 'melee') return;
+      var inst = c.spec.inst;
+      if (inst && st.inst === inst) return;                      // once per swing
+      st.inst = inst || null;
+      st.n = Math.min(T.frenzyMax, (S.hasStatus(c.self, 'wm_frenzy') ? st.n || 0 : 0) + 1);
+      var b = S.addBuff(c.world, c.self, { id: 'wm_frenzy', name: 'Frenzied', dur: T.frenzyDur, src: c.self, icon: 'claw', color: '#e05040', mods: [{ s: 'meleeSpeed', t: 'inc', v: T.frenzyPer * st.n }] });
+      if (b) { b.mods = [{ s: 'meleeSpeed', t: 'inc', v: T.frenzyPer * st.n }]; b.stacks = st.n; b.def.desc = pc(T.frenzyPer * st.n) + ' more Melee Attack Speed until you are hit.'; }
+    },
+    onDamaged: function (c, eff, st) { if (c.attacker && c.attacker !== c.self && c.amount > 0 && S.hasStatus(c.self, 'wm_frenzy')) { S.removeStatus(c.world, c.self, 'wm_frenzy', 'hit'); st.n = 0; } }
+  });
+
+  // The Feeding Ground (fang)
+  K.registerHook('tree_wildmask_gorge', {
+    onKill: function (c) { var p = c.self; if (!p.dead) S.heal(c.world, p, p.hpMax * T.gorgeHeal, p, { noScale: true, silent: true }); }
+  });
+
+  // The Bear's Den (bear)
+  K.registerHook('tree_wildmask_den', {
+    onBeforeDamaged: function (c) { if (c.amount > 0 && c.self.ward > 0) c.amount *= T.denLess; }
+  });
+  K.registerHook('tree_wildmask_grizzly', {
+    setup: function (p) {
+      var m = {}, cur = p.knobs.statusDur || {}, k;
+      for (k in cur) m[k] = cur[k];
+      m.stun = (m.stun || 1) * T.grizzlyStun;
+      p.knobs.statusDur = m;
+    }
+  });
+  K.registerHook('tree_wildmask_hibernate', {
+    onDamaged: function (c, eff, st) {
+      var p = c.self, w = c.world;
+      if (p.dead || !(c.amount > 0) || p.hp > p.hpMax * T.hibAt || (st.ready || 0) > w.time) return;
+      st.ready = w.time + T.hibIcd;
+      S.addWard(w, p, p.hpMax * T.hibWard, T.hibDur);
+      w.events.emit('fx', { name: 'shield', x: p.x, y: 0.1, z: p.z, r: 0, src: p });
+    }
+  });
+
+  // The Broken Hills (quake)
+  K.registerHook('tree_wildmask_aftershock', {
+    onStatusApplied: function (c, eff, st) {
+      var t = c.target, p = c.self, w = c.world;
+      if (c.id !== 'stun' || st.busy || !enemy(t) || p.dead) return;
+      var m = t.wmShock || (t.wmShock = {}), k = 'shock:' + p.id;
+      if ((m[k] || 0) > w.time) return;
+      m[k] = w.time + T.shockIcd;
+      st.busy = true;
+      try { K.runEffects(K.makeCtx(w, p, null, { x: t.x, z: t.z, delivery: 'melee' }), [{ type: 'aoe', at: 'ctx', radius: T.shockRadius, mult: T.shockMult, poise: 1, fx: 'quake' }]); } finally { st.busy = false; }
+    }
+  });
+  K.registerHook('tree_wildmask_broken', {
+    onBeforeHit: function (c) { var t = c.target; if (enemy(t) && (t.stunned || t.broken > 0)) c.mult *= T.brokenMore; }
+  });
+
+  // The Raven Roost (raven)
+  K.registerHook('tree_wildmask_sly', {
+    onEvade: function (c) { if (!c.self.dead) S.player.gainRes(c.world, c.self, T.slyInstinct, 'tree'); }
+  });
+
+  // The Moon Path (moon)
+  K.registerHook('tree_wildmask_glint', {
+    onCast: function (c) {
+      if (!c.ability || c.ability.id !== 'moonlit_dash') return;
+      buff(c.world, c.self, 'wm_glint', 'Moon Glint', T.glintDur, [{ s: 'dmg', t: 'inc', v: T.glintMore }], pc(T.glintMore) + ' more damage after a Moonlit Dash.', 'moon');
+    }
+  });
+  K.registerHook('tree_wildmask_quicksilver', {
+    onDodge: function (c) { if (!c.self.dead) S.player.gainRes(c.world, c.self, T.silverInstinct, 'tree'); }
+  });
+
+  // The Changing Skin (shift)
+  K.registerHook('tree_wildmask_restless', {
+    onStance: function (c) {
+      if (!c.on || !c.changed || String(c.id).indexOf('mask_') !== 0) return;
+      buff(c.world, c.self, 'wm_restless', 'Restless', T.restlessDur, [{ s: 'moveSpeed', t: 'inc', v: T.restlessSpeed }], pc(T.restlessSpeed) + ' more Movement Speed after a change of mask.', 'dash');
+    }
+  });
+
+  // The Howling Hill (howl)
+  K.registerHook('tree_wildmask_dread', {
+    onBeforeHit: function (c) {
+      var t = c.target, p = c.self;
+      if (!enemy(t)) return;
+      if (mine(S.hasStatus(t, 'weaken'), p) || mine(S.hasStatus(t, 'fear'), p) || mine(S.hasStatus(t, 'taunted'), p)) c.mult *= T.dreadMore;
+    }
+  });
+  K.registerHook('tree_wildmask_call', {
+    onCast: function (c) {
+      if (!c.ability || c.ability.id !== 'howl') return;
+      buff(c.world, c.self, 'wm_call', 'Call to Blood', T.callDur, [{ s: 'dmg', t: 'inc', v: T.callMore }], pc(T.callMore) + ' more damage after Howl.', 'horn');
+    }
+  });
+  K.registerHook('tree_wildmask_leader', {
+    onTick: function (c, eff, st) {
+      var p = c.self, w = c.world;
+      st.acc = (st.acc || 0) + c.dt;
+      if (st.acc < 0.5 || p.dead) return;
+      st.acc = 0;
+      var list = w.queryCircle(p.x, p.z, T.leaderRange);
+      for (var i = 0; i < list.length; i++) {
+        var o = list[i];
+        if (o === p || o.dead || o.removed || (o.kind !== 'player' && o.kind !== 'ally') || S.hostile(p, o)) continue;
+        S.addBuff(w, o, { id: 'wm_leader', name: 'Pack Leader', dur: 0.8, src: p, quiet: true, mods: [{ s: 'dmg', t: 'inc', v: T.leaderMore }] });
+      }
+    }
+  });
+  void U;
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
