@@ -3872,7 +3872,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.80';
+  KD.VERSION = '0.7.81';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -11895,6 +11895,123 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/data/35_tree_thornwarden.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree;
+
+  /**
+   * The Thornwarden's own talent tree, THE OLD WOOD: the class-wide record (arm order, hub, tuning) and the small helpers
+   * the eight arm files use. The arms live in src/data/36_tree_thornwarden_<armId>.js, the mutations in
+   * src/data/37_mutations_thornwarden.js, the recommended builds in src/data/38_tree_builds_thornwarden.js and the rules
+   * (rule notables, keystones) in src/sim/56_tree_thornwarden.js. Design: docs/TREE_THORNWARDEN.md. Format and grid: docs/TREE.md.
+   * Switch: KD.config.trees.thornwarden (src/core/00_base.js). Off = the Thornwarden uses the Crownweb (the Greenwood) as before.
+   *
+   * Arms, clockwise from the top; every arm's neighbours are the ones its play mixes with best (the cross-border links of
+   * the generator join neighbours only):
+   *   bow      arrows, Steady Aim, critical hits (Barbed Volley, Rain of Thorns)    hunt    the quarry, bosses (Hunter's Mark, The Wild Hunt)
+   *   pack     the Thornhound (Beast Call)                                          briar   thorns, close guard, holding ground (Bramble Armor, Vine Wall)
+   *   spores   Oil, Weaken, Slows, clouds (Spore Cloud)                             venom   Poison and its spread (Poison Bloom)
+   *   snares   traps and detonations (Snare Trap)                                   stride  kiting, rolling, shooting on the move (Leap Shot)
+   */
+
+  /** Helpers of the arm files (data only). */
+  var TW = T.thorn = {
+    mut: function (id) { return { t: 'mutation', mut: id }; },
+    /** A rule notable whose rule is a hook of src/sim/56_tree_thornwarden.js (`tree_thornwarden_<id>`). */
+    rule: function (id, name, mods, spec, est) { return { t: 'notable', name: name, mods: mods, effect: 'tree_thornwarden_' + id, spec: spec, est: est || { off: 1.02, def: 1 } }; },
+    /** A rule notable whose rule is one of the Crownweb's Greenwood hooks (src/sim/51_class_thornwarden.js, `web_thornwarden_<key>`). */
+    web: function (key, name, mods, spec, est) { return { t: 'notable', name: name, mods: mods, effect: 'web_thornwarden_' + key, spec: spec, est: est || { off: 1.02, def: 1 } }; },
+    /** A keystone (cost 2). `effect` optional (a hook key), `extra` merged in (abil, flags, pact). */
+    key: function (name, mods, spec, effect, est, extra) {
+      var k = { t: 'keystone', name: name, mods: mods, spec: spec, est: est || { off: 1.05, def: 1 } };
+      if (effect) k.effect = effect;
+      if (extra) for (var f in extra) k[f] = extra[f];
+      return k;
+    },
+    pact: function (name, mods) { return { name: name, mods: mods, pact: true }; },
+    abil: function (name, mods, a, k, v) { return { name: name, mods: mods || [], abil: [{ a: a, k: k, v: v }] }; },
+    /** Every fifth trunk node (T5, T10 .. T25) also gives TRUNK_ARROW more Thorn Arrow damage: the primary grows with the points
+     *  like the class's other damage (much of the tree's damage wants a trap, a beast, a status or standing still). */
+    TRUNK_ARROW: 0.035, HUB_ARROW: 0,
+    arrowTrunk: function (tr) {
+      if (!(TW.TRUNK_ARROW > 0)) return tr;
+      [4, 9, 14, 19, 24].forEach(function (i) {
+        var n = tr[i];
+        if (typeof n === 'string') n = { mods: [n] };
+        else if (Array.isArray(n)) n = { name: n[0], mods: n.slice(1) };
+        else { var c = {}; for (var k in n) c[k] = n[k]; n = c; }
+        n.abil = (n.abil || []).concat([{ a: 'thorn_arrow', k: 'dmg', v: TW.TRUNK_ARROW }]);
+        tr[i] = n;
+      });
+      return tr;
+    }
+  };
+
+  // ---------------------------------------------------------------------------------------------
+  // What the estimator cannot see in stats (KD.data.tree.EST; never touches gameplay). Damage parts: the share of each
+  // slotted ability in a fight and the stat keys its hits use (Thorn Arrow is the primary, w 1). Skill worths start at
+  // the class's measured kit (docs/CLASSES.md) and are refined by tools/tree_real.js --class thornwarden.
+  // ---------------------------------------------------------------------------------------------
+  (function () {
+    var E = T.EST, P = E.parts, S = E.skills;
+    var BOW = ['dmg', 'dmgPhys', 'dmgRanged'];
+    P.thorn_arrow = { w: 1, keys: BOW, speed: 'atkSpeed' };
+    P.barbed_volley = { w: 0.45, keys: BOW.concat(['dmgDot']) };
+    P.rain_of_thorns = { w: 0.4, keys: BOW.concat(['dmgDot']) };
+    P.hunters_mark = { w: 0.15, keys: BOW };
+    P.leap_shot = { w: 0.3, keys: BOW };
+    P.snare_trap = { w: 0.4, keys: ['dmg', 'dmgPhys', 'dmgTrap'] };
+    P.vine_wall = { w: 0.15, keys: ['dmg', 'dmgPoison', 'dmgTrap', 'dmgDot'] };
+    P.spore_cloud = { w: 0.15, keys: ['dmg', 'dmgPoison', 'dmgTrap', 'dmgDot'] };
+    P.poison_bloom = { w: 0.45, keys: ['dmg', 'dmgPoison', 'dmgRanged', 'dmgDot'] };
+    P.bramble_armor = { w: 0.1, keys: ['dmg', 'dmgPhys', 'dmgTrap'] };
+    P.beast_call = { w: 0.3, minion: true };
+    P.the_wild_hunt = { w: 0.3, keys: BOW };
+    S.barbed_volley = { off: 0.09, def: 0.01 };
+    S.rain_of_thorns = { off: 0.08, def: 0.03 };
+    S.hunters_mark = { off: 0.06, def: 0.01 };
+    S.leap_shot = { off: 0.05, def: 0.06 };
+    S.snare_trap = { off: 0.08, def: 0.04 };
+    S.vine_wall = { off: 0.03, def: 0.1 };
+    S.spore_cloud = { off: 0.05, def: 0.07 };
+    S.poison_bloom = { off: 0.09, def: 0 };
+    S.bramble_armor = { off: 0.03, def: 0.11 };
+    S.beast_call = { off: 0.07, def: 0.05 };
+    S.the_wild_hunt = { off: 0.07, def: 0.03 };
+  })();
+
+  /** A hub node: a named minor with two half-size mods and HUB_ARROW more Thorn Arrow damage (the primary keeps its share). */
+  function arrow(name, a, b) { var n = { name: name, mods: [a, b] }; if (TW.HUB_ARROW > 0) n.abil = [{ a: 'thorn_arrow', k: 'dmg', v: TW.HUB_ARROW }]; return n; }
+  // Version 1: the first tree (docs/TREE_THORNWARDEN.md).
+  T.define('thornwarden', {
+    version: 1, name: 'The Old Wood',
+    arms: ['bow', 'hunt', 'pack', 'briar', 'spores', 'venom', 'snares', 'stride'],
+    hub: [
+      arrow('Fletching', 'dmgRanged 0.75', 'hp 0.75'),            // bow
+      arrow('Tracker', 'huntMark 0.375', 'hp 0.75'),              // hunt
+      arrow('Whistle', 'dmgMinion 0.75', 'minionHp 0.75'),       // pack
+      arrow('Bark', 'armor 0.75', 'hp 0.75'),                    // briar
+      arrow('Toadstool', 'statusDur 0.75', 'hp 0.75'),           // spores
+      arrow('Nettle', 'dmgPoison 0.75', 'hp 0.75'),              // venom
+      arrow('Snarewire', 'dmgTrap 0.75', 'evasion 0.75'),        // snares
+      arrow('Deer Track', 'moveSpeed 0.75', 'dodgeCdr 0.75')     // stride
+    ],
+    hubBonus: ['moveSpeed 1.5', 'resAll 1'],
+    // A new tree Thornwarden knows Thorn Arrow and ONE skill where the Crownweb hero starts with two: until its second skill
+    // node it hits harder and is a little tougher (the Gravecaller's and Gloamblade's rule, docs/TREE_BALANCE.md).
+    startBonus: { skills: 2, mods: ['dmg*30', 'hp*15'], text: 'While you know two skills or fewer besides Thorn Arrow, you deal 30% more damage and have 15% more Health.' },
+    // Balance (docs/TREE_THORNWARDEN.md section 5).
+    tune: { off: 0.65, def: 0.72 },
+    road: ['hp 1', 'moveSpeed 1', 'resAll 1'],
+    // the owner's rule for class trees: links across the borders to the neighbouring arms only, no diagonals inside an arm
+    links: { bypass: false, rows: false, road: ['moveSpeed 1'] }
+  });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/data/36_tree_emberscribe_alchemy.js
 (function (root) {
   'use strict';
@@ -17460,6 +17577,1278 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/data/36_tree_thornwarden_bow.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, W = T.thorn;
+  var mut = W.mut, rule = W.rule, web = W.web, key = W.key, pact = W.pact, abil = W.abil;
+
+  /**
+   * THORNWARDEN, arm 0 of 8: THE LONGBOW (`bow`). Arrows, Steady Aim and critical hits. Skills: Barbed Volley (trunk, 4 points),
+   * Rain of Thorns (row 2). Design: docs/TREE_THORNWARDEN.md section 2. Rules: src/sim/56_tree_thornwarden.js.
+   * Holds the three bridges on its clockwise side (bow and hunt).
+   */
+  T.arm('thornwarden', {
+    id: 'bow', name: 'The Longbow', focus: 'Arrows, Steady Aim and critical hits: plant your feet and loose', color: '#c9a35a', vein: 'war',
+
+    trunk: W.arrowTrunk([
+      'dmgRanged 1', 'hp 1', { t: 'skill', grants: 'barbed_volley', abil: [{ a: 'barbed_volley', k: 'cd', v: -0.05 }] }, 'steadyAim 0.5', 'evasion 1',   // T1..T5
+      'hp 1', 'critChance 1', 'projSpeed 1', ["Archer's Road", 'moveSpeed 1', 'dmgRanged 0.5'], 'hp 1',                                                  // T6..T10
+      'critMult 1', 'resAll 1', 'hp 1', 'steadyAim 0.5', 'evasion 1',                                                                                     // T11..T15
+      'hp 1', 'dmgRanged 1', 'atkSpeed 1', 'hp 1', 'critChance 1',                                                                                      // T16..T20
+      'resMax 1', 'hp 1', 'critMult 1', 'resAll 1', 'hp 1'                                                                                               // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Barbed Volley, shape and essence
+      { id: 'bow_volley_shape', name: 'Barbed Volley: shape', row: 1, lane: -1, shape: 'star', kind: 'mutation',
+        nodes: ['hp 1', mut('volley_wide'), mut('volley_tight'), mut('volley_pierce')],
+        core: ['Full Quiver', 'dmgRanged 1', 'hp 1'] },
+      { id: 'bow_volley_essence', name: 'Barbed Volley: essence', row: 1, lane: 1, shape: 'star', kind: 'mutation',
+        nodes: ['evasion 1', mut('volley_venom'), mut('volley_cripple'), mut('volley_broad')],
+        core: ['Barbsmith', 'dmgPhys 1', 'evasion 1'] },
+
+      // ---- Row 2: Barbed Volley, rite; Rain of Thorns
+      { id: 'bow_volley_rite', name: 'Barbed Volley: rite', row: 2, lane: -1, shape: 'star', kind: 'mutation',
+        nodes: ['steadyAim 0.5', mut('volley_quick'), mut('volley_charges'), mut('volley_focus')],
+        core: abil('Nocked and Ready', ['hp 1', 'evasion 1'], 'barbed_volley', 'cd', -0.06) },
+      { id: 'bow_rain', name: 'The Grey Sky', row: 2, lane: 1, shape: 'ring', kind: 'skill', spokes: [0],
+        nodes: ['aoe 1', 'hp 1', abil('Long Clouds', ['resAll 0.5'], 'rain_of_thorns', 'cd', -0.08), 'evasion 1'],
+        core: { t: 'skill', grants: 'rain_of_thorns', abil: [{ a: 'rain_of_thorns', k: 'area', v: 0.08 }] },
+        bonus: ['aoe 1.5', 'hp 1'] },
+
+      // ---- Row 3: Rain of Thorns, shape and essence; the first bow wheels
+      { id: 'bow_rain_shape', name: 'Rain of Thorns: shape', row: 3, lane: -2, shape: 'star', kind: 'mutation',
+        nodes: ['hp 1', mut('rain_wide'), mut('rain_long'), mut('rain_hail')],
+        core: ['Overcast', 'aoe 1', 'hp 1'] },
+      { id: 'bow_breath', name: 'Held Breath', row: 3, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['steadyAim 0.5', 'hp 1', 'dmgRanged 1@still', 'resAll 1'],
+        core: web('held_breath', 'Breath Held', ['dmgRanged 1'], 'While Steady Aim holds, your arrows deal 10% more damage (more with Steady Aim Effect).', { off: 1.03, def: 1 }),
+        bonus: ['steadyAim 0.75', 'hp 1'] },
+      { id: 'bow_close', name: 'Point Blank', row: 3, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['dmgRanged 1', 'hp 1', 'armor 1', 'evasion 1'],
+        core: rule('pointblank', 'Point Blank', ['dmgPhys 1'], 'Barbed Volley arrows deal 20% more damage to enemies within 5 m.', { off: 1.03, def: 1 }),
+        bonus: ['dmgRanged 1.5', 'hp 1'] },
+      { id: 'bow_rain_essence', name: 'Rain of Thorns: essence', row: 3, lane: 2, shape: 'star', kind: 'mutation',
+        nodes: ['evasion 1', mut('rain_venom'), mut('rain_pin'), mut('rain_pitch')],
+        core: ['Wet Fletching', 'dmgDot 1', 'evasion 1'] },
+
+      // ---- Row 4
+      { id: 'bow_hawk', name: "Hawk's Eye", row: 4, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['critChance 1', 'hp 1', 'resAll 1', 'evasion 1'],
+        core: rule('eagle', 'Eagle Eye', ['critChance 1'], 'Your critical strikes with arrows give 3 Focus.', { off: 1.03, def: 1 }),
+        bonus: ['critChance 1.5', 'hp 1'] },
+      { id: 'bow_altar_a', name: 'Altar of the Yew', row: 4, lane: -1, shape: 'ring', kind: 'altar',
+        nodes: ['hp 1', 'dmgRanged 1', 'steadyAim 0.5'], core: { t: 'altar', name: 'Altar of the Yew' }, bonus: ['sigilPower 1.5'] },
+      { id: 'bow_rain_rite', name: 'Rain of Thorns: rite', row: 4, lane: 1, shape: 'star', kind: 'mutation',
+        nodes: ['hp 1', mut('rain_quick'), mut('rain_charges'), mut('rain_burst')],
+        core: ['Storm Season', 'aoe 1', 'hp 1'] },
+      { id: 'bow_downpour', name: 'Downpour', row: 4, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['aoe 1', 'hp 1', 'resAll 1', 'dmgDot 1'],
+        core: rule('downpour', 'Under the Rain', ['aoe 1'], 'Enemies standing in your Rain of Thorns take 10% more damage from your arrows.', { off: 1.03, def: 1 }),
+        bonus: ['aoe 1.5', 'hp 1'] },
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      { id: 'bow_string', name: 'Waxed String', row: 5, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['atkSpeed 1', 'hp 1', 'moveSpeed 1', 'resAll 1'],
+        core: ['Taut', 'atkSpeed 2', 'hp 1.5'], bonus: ['atkSpeed 1.5', 'hp 1'] },
+      { id: 'bow_patience', name: 'Patient Draw', row: 5, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['steadyAim 0.5', 'hp 1', 'dmgTaken 1@still', 'evasion 1'],
+        core: ['Planted Feet', 'steadyAim 1', 'dmgTaken 1.5@still'], bonus: ['steadyAim 0.75', 'hp 1'] },
+      { id: 'bow_flight', name: 'True Flight', row: 5, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['projSpeed 1', 'hp 1', 'dmgRanged 1', 'resAll 1'],
+        core: ['Straight Shaft', 'projSpeed 2', 'dmgRanged 1.5'], bonus: ['projSpeed 1.5', 'hp 1'] },
+      { id: 'bow_gut', name: 'Gutstring', row: 5, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['critMult 1', 'hp 1', 'armor 1', 'evasion 1'],
+        core: ['Deep Wound', 'critMult 2', 'armor 1.5'], bonus: ['critMult 1.5', 'hp 1'] },
+
+      // ---- Row 6
+      { id: 'bow_heartwood', name: 'Heartwood', row: 6, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['dmgRanged 1', 'hp 1', 'resMax 1', 'resAll 1'],
+        core: ['Yew Heart', 'dmgRanged 2', 'resMax 1.5'], bonus: ['resMax 1.5', 'hp 1'] },
+      { id: 'bow_cult', name: 'The Black Feather', row: 6, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', { t: 'corrupted', name: 'Crow Fletching', mods: ['dmgRanged 2', 'critChance 1'], req: { corruption: 20 } }, 'resAll 1', 'evasion 1'],
+        core: { t: 'corrupted', name: 'Hollow Quiver', mods: ['dmg*2', 'dmgRanged 3', 'critMult 2'], req: { corruption: 40 } },
+        bonus: ['dmgRanged 1', 'hp 1.5'] },
+      { id: 'bow_crown', name: "King's Bowmen", row: 6, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['evasion 1', { t: 'faction', name: 'Muster Roll', mods: ['dmgRanged 1.5', 'hp 1'], req: { faction: { id: 'crown', rep: 20 } } }, 'hp 1', 'armor 1'],
+        core: { t: 'faction', name: 'Royal Longbow', mods: ['critChance 2', 'projSpeed 2'], req: { faction: { id: 'crown', rep: 60 } } },
+        bonus: ['projSpeed 1', 'evasion 1.5'] },
+      { id: 'bow_wyvern', name: 'Wyvern Shot', row: 6, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'critChance 1', 'resAll 1', { t: 'trophy', name: "Wyvern Rider's Lance", mods: ['dmgRanged 1.5', 'critChance 1.5'], req: { boss: 'wyvern_rider' } }],
+        core: ['Sky Hunter', 'critChance 2', 'evasion 1.5'], bonus: ['critChance 1', 'hp 1.5'] },
+
+      // ---- Row 7
+      { id: 'bow_pacts', name: "Bowyer's Bargains", row: 7, lane: -2, shape: 'star', kind: 'special',
+        nodes: ['hp 1',
+          pact('Heavy Draw', ['dmgRanged*15', 'atkSpeed*-8']),
+          pact('Light Draw', ['atkSpeed*15', 'dmgRanged*-8']),
+          pact('Bare Fletching', ['critChance*20', 'hp*-8'])],
+        core: ["Bowyer's Terms", 'dmgRanged 1', 'hp 1'] },
+      { id: 'bow_gale', name: 'Riding the Gale', row: 7, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'projSpeed 1', 'moveSpeed 1', { t: 'trophy', name: "Gale Matriarch's Plume", mods: ['projSpeed 1.5', 'moveSpeed 1.5'], req: { boss: 'gale_matriarch' } }],
+        core: ['Windborne', 'projSpeed 2', 'evasion 1.5'], bonus: ['moveSpeed 1.5', 'hp 1'] },
+      { id: 'bow_altar_b', name: 'Altar of the Ash Bow', row: 7, lane: 1, shape: 'ring', kind: 'altar',
+        nodes: ['hp 1', 'critMult 1', 'evasion 1'], core: { t: 'altar', name: 'Altar of the Ash Bow' }, bonus: ['sigilPower 1.5'] },
+      { id: 'bow_key_rooted', name: 'Rooted Stance', row: 7, lane: 2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['steadyAim 0.5', 'dmgTaken 1@still'],
+        core: key('Rooted Stance', ['dmgTaken*-10@still', 'dmgRanged*12@still', 'moveSpeed*-10'], 'While you stand still you take 10% less damage and your arrows deal 12% more, but you move 10% slower.', null, { off: 1.05, def: 1.04 }) },
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      { id: 'bow_treetop', name: 'The Treetop Perch', row: 8, lane: -3, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'dmgRanged 1', 'resAll 1', 'evasion 1'],
+        core: ['High Branch', 'dmgRanged 2', 'evasion 1.5'], bonus: ['dmgRanged 1.5', 'hp 1'] },
+      { id: 'bow_key_dead', name: 'Deadeye', row: 8, lane: -2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['projSpeed 1', 'critChance 1'],
+        core: key('Deadeye', ['projSpeed*20'], 'Your arrows deal 30% more damage to enemies farther than 8 m, and 20% less to closer ones.', 'tree_thornwarden_deadeye', { off: 1.06, def: 0.98 }) },
+      { id: 'bow_steady', name: 'Steady Hands', row: 8, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'steadyAim 0.5', 'critMult 1', 'armor 1'],
+        core: ['Unshaken', 'steadyAim 1', 'hp 2'], bonus: ['steadyAim 0.75', 'hp 1'] },
+      { id: 'bow_treant', name: 'Living Bow', row: 8, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['dmgRanged 1', 'hp 1', 'resAll 1', { t: 'trophy', name: "Hollow Treant's Bough", mods: ['dmgRanged 1.5', 'hp 1.5'], req: { boss: 'hollow_treant' } }],
+        core: ['Greenwood Stave', 'dmgRanged 2', 'resAll 1.5'], bonus: ['dmgRanged 1.5', 'hp 1'] },
+      { id: 'bow_key_quick', name: 'Quickdraw', row: 8, lane: 2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['atkSpeed 1', 'evasion 1'],
+        core: key('Quickdraw', ['atkSpeed*20', 'critChance*-30'], 'You attack 20% faster, but have 30% less Critical Chance.', null, { off: 1.05, def: 1 }) },
+      { id: 'bow_last', name: 'Last Arrow', row: 8, lane: 3, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'critChance 1', 'dmgBoss 1', 'resAll 1'],
+        core: ['The Final Shaft', 'critMult 2', 'hp 1.5'], bonus: ['critMult 1', 'hp 1.5'] }
+    ],
+
+    devotion: [
+      { at: 15, mods: ['dmgRanged 2', 'hp 2'] },
+      { at: 35, mods: ['steadyAim 1.5', 'critChance 2'] },
+      { at: 60, mods: ['dmgRanged 4', 'critMult 3', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Longbow and the Quarry.
+  T.bridge('thornwarden', { id: 'bow_hunt_inner', between: ['bow', 'hunt'], ring: 'inner', name: 'Spotter\'s Rise', shape: 'star',
+    nodes: ['dmgRanged 1', mut('arrow_seek'), 'huntMark 0.5', 'hp 1'],
+    core: ['Marked Lanes', 'huntMark 0.75', 'dmgRanged 1'], bonus: ['hp 1', 'evasion 1'] });
+  T.bridge('thornwarden', { id: 'bow_hunt_mid', between: ['bow', 'hunt'], ring: 'mid', name: 'Focused Fire', shape: 'diamond',
+    nodes: ['dmgRanged 1', 'hp 1', 'huntMark 0.5', 'evasion 1'],
+    core: rule('focusfire', 'Focused Fire', ['huntMark 0.5'], 'Your arrows deal 10% more damage to your quarry.', { off: 1.03, def: 1 }),
+    bonus: ['huntMark 0.75', 'hp 1'] });
+  T.bridge('thornwarden', { id: 'bow_hunt_outer', between: ['bow', 'hunt'], ring: 'outer', name: 'Long Watch', shape: 'diamond',
+    nodes: ['critChance 1', 'hp 1', 'dmgBoss 1', 'resAll 1'],
+    core: ['Watcher in the Wood', 'critChance 2', 'dmgBoss 1.5'], bonus: ['dmgBoss 1.5', 'hp 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_thornwarden_briar.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, W = T.thorn;
+  var mut = W.mut, rule = W.rule, key = W.key, pact = W.pact, abil = W.abil;
+
+  /**
+   * THORNWARDEN, arm 3 of 8: THE BRIAR (`briar`). Thorns, close guard and holding the ground: the Thornwarden's defence.
+   * Skills: Bramble Armor (trunk, 4 points), Vine Wall (row 2). Design: docs/TREE_THORNWARDEN.md section 2.
+   * Rules: src/sim/56_tree_thornwarden.js. Holds the bridges to the spores arm.
+   */
+  T.arm('thornwarden', {
+    id: 'briar', name: 'The Briar', focus: 'Thorns, bark and hedges: let them come, and let them bleed for it', color: '#6a8f3c', vein: 'order',
+
+    trunk: W.arrowTrunk([
+      'armor 1', 'hp 1', { t: 'skill', grants: 'bramble_armor', abil: [{ a: 'bramble_armor', k: 'dur', v: 0.08 }] }, 'closeGuard 1', 'resAll 1',   // T1..T5
+      'hp 1', 'thorns 1', 'armor 1', ['Hedge Path', 'moveSpeed 1', 'armor 0.5'], 'hp 1',                                                            // T6..T10
+      'closeGuard 1', 'resAll 1', 'hp 1', 'block 1', 'armor 1',                                                                                    // T11..T15
+      'hp 1', 'thorns 1', 'resAll 1', 'hp 1', 'closeGuard 1',                                                                                      // T16..T20
+      'armor 1', 'hp 1', 'hpRegen 1', 'resAll 1', 'hp 1'                                                                                            // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Bramble Armor, shape and essence
+      { id: 'briar_bram_shape', name: 'Bramble Armor: shape', row: 1, lane: -1, shape: 'star', kind: 'mutation',
+        nodes: ['hp 1', mut('bram_long'), mut('bram_wide'), mut('bram_close')],
+        core: ['Overgrown', 'thorns 1', 'hp 1'] },
+      { id: 'briar_bram_essence', name: 'Bramble Armor: essence', row: 1, lane: 1, shape: 'star', kind: 'mutation',
+        nodes: ['armor 1', mut('bram_iron'), mut('bram_venom'), mut('bram_barbs')],
+        core: ['Hard Bark', 'armor 1', 'resAll 1'] },
+
+      // ---- Row 2: Bramble Armor, rite; Vine Wall
+      { id: 'briar_bram_rite', name: 'Bramble Armor: rite', row: 2, lane: -1, shape: 'star', kind: 'mutation',
+        nodes: ['closeGuard 1', mut('bram_quick'), mut('bram_sap'), mut('bram_charges')],
+        core: abil('Quick Briars', ['hp 1', 'armor 1'], 'bramble_armor', 'cd', -0.06) },
+      { id: 'briar_wall', name: 'The Green Wall', row: 2, lane: 1, shape: 'ring', kind: 'skill', spokes: [0],
+        nodes: ['dmgTrap 1', 'hp 1', abil('Deep Roots', ['resAll 0.5'], 'vine_wall', 'cd', -0.08), 'armor 1'],
+        core: { t: 'skill', grants: 'vine_wall', abil: [{ a: 'vine_wall', k: 'dur', v: 0.1 }] },
+        bonus: ['armor 1.5', 'hp 1'] },
+
+      // ---- Row 3: Vine Wall, shape and essence
+      { id: 'briar_wall_shape', name: 'Vine Wall: shape', row: 3, lane: -2, shape: 'star', kind: 'mutation',
+        nodes: ['hp 1', mut('wall_long'), mut('wall_old'), mut('wall_thick')],
+        core: ['Hedgerow', 'armor 1', 'hp 1'] },
+      { id: 'briar_sap', name: 'Rising Sap', row: 3, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hpRegen 1', 'hp 1', 'armor 1', 'resAll 1'],
+        core: rule('sap', 'Sap Mend', ['hpRegen 1'], 'While Bramble Armor lasts you regain 1.5% of your maximum Health each second.', { off: 1, def: 1.05 }),
+        bonus: ['hpRegen 1.5', 'hp 1'] },
+      { id: 'briar_patch', name: 'Briar Patch', row: 3, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['thorns 1', 'hp 1', 'closeGuard 1', 'evasion 1'],
+        core: rule('patch', 'Catching Thorns', ['thorns 1'], 'Enemies that hit you in melee are Slowed by 30% for 2 s.', { off: 1, def: 1.04 }),
+        bonus: ['thorns 1.5', 'hp 1'] },
+      { id: 'briar_wall_essence', name: 'Vine Wall: essence', row: 3, lane: 2, shape: 'star', kind: 'mutation',
+        nodes: ['armor 1', mut('wall_venom'), mut('wall_grasp'), mut('wall_briar')],
+        core: ['Wild Rose', 'dmgTrap 1', 'armor 1'] },
+
+      // ---- Row 4
+      { id: 'briar_bark', name: 'Oak Bark', row: 4, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['armor 1', 'hp 1', 'resAll 1', 'block 1'],
+        core: ['Ironwood', 'armor 2', 'hp 1.5'], bonus: ['armor 1.5', 'hp 1'] },
+      { id: 'briar_altar_a', name: 'Altar of the Thorn', row: 4, lane: -1, shape: 'ring', kind: 'altar',
+        nodes: ['hp 1', 'thorns 1', 'armor 1'], core: { t: 'altar', name: 'Altar of the Thorn' }, bonus: ['sigilPower 1.5'] },
+      { id: 'briar_wall_rite', name: 'Vine Wall: rite', row: 4, lane: 1, shape: 'star', kind: 'mutation',
+        nodes: ['hp 1', mut('wall_quick'), mut('wall_charges'), mut('wall_shelter')],
+        core: ['Green Shoots', 'armor 1', 'hp 1'] },
+      { id: 'briar_hedge', name: 'Behind the Hedge', row: 4, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['closeGuard 1', 'hp 1', 'resAll 1', 'armor 1'],
+        core: rule('shelter', 'Sheltered', ['armor 1'], 'While you stand within 3 m of your Vine Wall, you take 20% less damage.', { off: 1, def: 1.05 }),
+        bonus: ['closeGuard 1.5', 'hp 1'] },
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      { id: 'briar_moss', name: 'Moss Cushion', row: 5, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'hpRegen 1', 'resAll 1', 'evasion 1'],
+        core: ['Soft Ground', 'hpRegen 2', 'resAll 1.5'], bonus: ['hpRegen 1.5', 'hp 1'] },
+      { id: 'briar_hold', name: 'Hold the Line', row: 5, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['block 1', 'hp 1', 'armor 1', 'dmgTaken 1@still'],
+        core: ['Planted', 'block 2', 'dmgTaken 1.5@still'], bonus: ['block 1.5', 'hp 1'] },
+      { id: 'briar_spines', name: 'Spines', row: 5, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['thorns 1', 'hp 1', 'armor 1', 'resAll 1'],
+        core: ['Needle Bark', 'thorns 2', 'armor 1.5'], bonus: ['thorns 1.5', 'hp 1'] },
+      { id: 'briar_close', name: 'Arm\'s Length', row: 5, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['closeGuard 1', 'hp 1', 'evasion 1', 'resAll 1'],
+        core: ['Keep Off', 'closeGuard 2', 'hp 1.5'], bonus: ['closeGuard 1.5', 'hp 1'] },
+
+      // ---- Row 6
+      { id: 'briar_root', name: 'Deep Roots', row: 6, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'armor 1', 'poise 1', 'resAll 1'],
+        core: ['Taproot', 'hp 2', 'poise 1.5'], bonus: ['hp 1.5', 'armor 1'] },
+      { id: 'briar_cult', name: 'The Black Briar', row: 6, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', { t: 'corrupted', name: 'Nightthorn', mods: ['thorns 2', 'armor 1'], req: { corruption: 20 } }, 'resAll 1', 'evasion 1'],
+        core: { t: 'corrupted', name: 'Heart of Briars', mods: ['dmg*2', 'thorns 3', 'armor 2'], req: { corruption: 40 } },
+        bonus: ['thorns 1', 'hp 1.5'] },
+      { id: 'briar_lantern', name: 'Lantern Hedges', row: 6, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['evasion 1', { t: 'faction', name: 'Lamplit Bark', mods: ['resAll 1.5', 'armor 1'], req: { faction: { id: 'lantern', rep: 20 } } }, 'hp 1', 'armor 1'],
+        core: { t: 'faction', name: 'Warden of the Lanes', mods: ['hp 2', 'block 2'], req: { faction: { id: 'lantern', rep: 60 } } },
+        bonus: ['resAll 1', 'evasion 1.5'] },
+      { id: 'briar_witch', name: "The Witch's Hedge", row: 6, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'thorns 1', 'resAll 1', { t: 'trophy', name: "Blackbriar Witch's Thorn", mods: ['thorns 1.5', 'resAll 1.5'], req: { boss: 'blackbriar_witch' } }],
+        core: ['Witch Bramble', 'thorns 2', 'resAll 1.5'], bonus: ['resAll 1.5', 'hp 1'] },
+
+      // ---- Row 7
+      { id: 'briar_pacts', name: "Hedger's Bargains", row: 7, lane: -2, shape: 'star', kind: 'special',
+        nodes: ['hp 1',
+          pact('Thick Skin', ['armor*20', 'moveSpeed*-8']),
+          pact('Sharp Skin', ['thorns*40', 'armor*-15']),
+          pact('Old Oak', ['hp*8', 'atkSpeed*-8'])],
+        core: ["Hedger's Terms", 'armor 1', 'hp 1'] },
+      { id: 'briar_treant', name: 'Treant Bark', row: 7, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'armor 1', 'hpRegen 1', { t: 'trophy', name: "Hollow Treant's Heartwood", mods: ['hp 1.5', 'armor 1.5'], req: { boss: 'hollow_treant' } }],
+        core: ['Ringed Trunk', 'hp 2', 'armor 1.5'], bonus: ['armor 1.5', 'hp 1'] },
+      { id: 'briar_altar_b', name: 'Altar of the Hedge', row: 7, lane: 1, shape: 'ring', kind: 'altar',
+        nodes: ['hp 1', 'closeGuard 1', 'resAll 1'], core: { t: 'altar', name: 'Altar of the Hedge' }, bonus: ['sigilPower 1.5'] },
+      { id: 'briar_key_mantle', name: 'Mantle of Thorns', row: 7, lane: 2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['thorns 1', 'armor 1'],
+        core: key('Mantle of Thorns', ['thorns*100', 'dmg*-12'], 'Your Thorns deal twice the damage, but you deal 12% less damage.', null, { off: 1.02, def: 1.03 }) },
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      { id: 'briar_thicket', name: 'The Thicket', row: 8, lane: -3, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'thorns 1', 'resAll 1', 'evasion 1'],
+        core: ['Tangle', 'thorns 2', 'hp 1.5'], bonus: ['thorns 1.5', 'hp 1'] },
+      { id: 'briar_key_oak', name: 'Heart of Oak', row: 8, lane: -2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['hp 1', 'armor 1'],
+        core: key('Heart of Oak', ['hp*15', 'armor*15', 'moveSpeed*-12', 'atkSpeed*-10'], 'You have 15% more Health and 15% more Armour, but move 12% slower and attack 10% slower.', null, { off: 0.96, def: 1.08 }) },
+      { id: 'briar_bloodbark', name: 'Bloodbark', row: 8, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'lifesteal 1', 'armor 1', 'resAll 1'],
+        core: ['Red Sap', 'lifesteal 1.5', 'hp 1.5'], bonus: ['lifesteal 1', 'hp 1.5'] },
+      { id: 'briar_bog', name: 'Bog Hedge', row: 8, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['resPoison 1', 'hp 1', 'armor 1', { t: 'trophy', name: "Bog Mother's Reeds", mods: ['resAll 1.5', 'hp 1.5'], req: { boss: 'bog_mother' } }],
+        core: ['Reed Wall', 'resAll 2', 'armor 1.5'], bonus: ['resAll 1.5', 'hp 1'] },
+      { id: 'briar_key_skin', name: 'Thornskin', row: 8, lane: 2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['thorns 1', 'resAll 1'],
+        core: key('Thornskin', ['dmgRanged*-10'], 'Your Thorns also strike enemies that hit you from afar, with arrows or spells. Your arrows deal 10% less damage.', 'tree_thornwarden_thornskin', { off: 1.02, def: 1.03 }) },
+      { id: 'briar_wild_rose', name: 'Wild Rose', row: 8, lane: 3, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'thorns 1', 'hpRegen 1', 'resAll 1'],
+        core: ['Rose Hips', 'hpRegen 2', 'thorns 1.5'], bonus: ['hpRegen 1', 'hp 1.5'] }
+    ],
+
+    devotion: [
+      { at: 15, mods: ['armor 2', 'hp 2'] },
+      { at: 35, mods: ['thorns 3', 'closeGuard 2'] },
+      { at: 60, mods: ['hp 3', 'armor 3', 'thorns 2'] }
+    ]
+  });
+
+  // The three bridges between the Briar and the Mushroom Ring.
+  T.bridge('thornwarden', { id: 'briar_spores_inner', between: ['briar', 'spores'], ring: 'inner', name: 'Mossy Bank', shape: 'star',
+    nodes: ['armor 1', mut('arrow_pierce'), 'statusDur 1', 'hp 1'],
+    core: ['Damp Shade', 'resAll 1.5', 'statusDur 1'], bonus: ['hp 1', 'armor 1'] });
+  T.bridge('thornwarden', { id: 'briar_spores_mid', between: ['briar', 'spores'], ring: 'mid', name: 'Rotting Hedge', shape: 'diamond',
+    nodes: ['thorns 1', 'hp 1', 'statusChance 1', 'resAll 1'],
+    core: ['Fungal Thorns', 'thorns 2', 'statusChance 1.5'], bonus: ['statusChance 1.5', 'hp 1'] });
+  T.bridge('thornwarden', { id: 'briar_spores_outer', between: ['briar', 'spores'], ring: 'outer', name: 'Toadstool Hedge', shape: 'diamond',
+    nodes: ['armor 1', 'hp 1', 'statusDur 1', 'resPoison 1'],
+    core: ['Spore Bark', 'armor 2', 'statusDur 1.5'], bonus: ['armor 1.5', 'hp 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_thornwarden_hunt.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, W = T.thorn;
+  var mut = W.mut, rule = W.rule, web = W.web, key = W.key, pact = W.pact, abil = W.abil;
+
+  /**
+   * THORNWARDEN, arm 1 of 8: THE QUARRY (`hunt`). One quarry at a time: Hunter's Mark, elites and bosses. Skills: Hunter's Mark
+   * (trunk, 4 points), The Wild Hunt (the Ultimate, row 3). Design: docs/TREE_THORNWARDEN.md section 2.
+   * Rules: src/sim/56_tree_thornwarden.js. Holds the three bridges on its clockwise side (hunt and pack).
+   */
+  T.arm('thornwarden', {
+    id: 'hunt', name: 'The Quarry', focus: 'One quarry at a time: Mark it, follow it, bring it down', color: '#c4553a', vein: 'dread',
+
+    trunk: W.arrowTrunk([
+      'huntMark 0.5', 'hp 1', { t: 'skill', grants: 'hunters_mark', abil: [{ a: 'hunters_mark', k: 'cd', v: -0.05 }] }, 'dmgElite 1', 'evasion 1',     // T1..T5
+      'hp 1', 'dmgBoss 1', 'huntMark 0.5', ['Game Trail', 'moveSpeed 1', 'huntMark 0.25'], 'hp 1',                                                    // T6..T10
+      'critChance 1', 'resAll 1', 'hp 1', 'dmgFull 1', 'evasion 1',                                                                               // T11..T15
+      'hp 1', 'huntMark 0.5', 'dmgBoss 1', 'hp 1', 'dmgElite 1',                                                                                    // T16..T20
+      'resAll 1', 'hp 1', 'critMult 1', 'moveSpeed 1', 'hp 1'                                                                                      // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Hunter's Mark, shape and essence
+      { id: 'hunt_mark_shape', name: "Hunter's Mark: shape", row: 1, lane: -1, shape: 'star', kind: 'mutation',
+        nodes: ['hp 1', mut('mark_far'), mut('mark_pierce'), mut('mark_two')],
+        core: ['Keen Sight', 'huntMark 0.5', 'hp 1'] },
+      { id: 'hunt_mark_essence', name: "Hunter's Mark: essence", row: 1, lane: 1, shape: 'star', kind: 'mutation',
+        nodes: ['evasion 1', mut('mark_bleed'), mut('mark_slow'), mut('mark_heart')],
+        core: ['Red Spoor', 'dmgElite 1', 'evasion 1'] },
+
+      // ---- Row 2
+      { id: 'hunt_mark_rite', name: "Hunter's Mark: rite", row: 2, lane: -1, shape: 'star', kind: 'mutation',
+        nodes: ['huntMark 0.5', mut('mark_quick'), mut('mark_free'), mut('mark_charges')],
+        core: abil('Notched Shaft', ['hp 1', 'evasion 1'], 'hunters_mark', 'cd', -0.06) },
+      { id: 'hunt_spoor', name: 'The Spoor', row: 2, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['huntMark 0.5', 'hp 1', 'statusDur 1', 'evasion 1', 'moveSpeed 1'],
+        core: web('unbroken_spoor', 'Unbroken Spoor', ['huntMark 0.5'], "Your Hunter's Mark does not run out: it stays until the quarry dies.", { off: 1.03, def: 1 }),
+        bonus: ['huntMark 0.75', 'hp 1'] },
+
+      // ---- Row 3: the Ultimate
+      { id: 'hunt_wild_rite', name: 'The Wild Hunt: rite', row: 3, lane: -2, shape: 'star', kind: 'mutation',
+        nodes: ['hp 1', mut('hunt_early'), mut('hunt_twice'), mut('hunt_pact')],
+        core: ['Horn Ready', 'cdr 1', 'hp 1'] },
+      { id: 'hunt_trail', name: 'Blood Trail', row: 3, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['dmgAfflicted 1', 'hp 1', 'huntMark 0.5', 'resAll 1'],
+        core: rule('trail', 'Blood on the Leaves', ['dmgAfflicted 1'], 'Your hits on your quarry make it Bleed, once every 2 s.', { off: 1.03, def: 1 }),
+        bonus: ['dmgAfflicted 1.5', 'hp 1'] },
+      { id: 'hunt_wild', name: 'The Old Horn', row: 3, lane: 1, shape: 'ring', kind: 'skill', spokes: [0],
+        nodes: ['dmgRanged 1', 'hp 1', abil('Long Echo', ['resAll 1'], 'the_wild_hunt', 'cd', -0.08), 'evasion 1'],
+        core: { t: 'skill', grants: 'the_wild_hunt', abil: [{ a: 'the_wild_hunt', k: 'area', v: 0.1 }] },
+        bonus: ['dmgRanged 1.5', 'hp 1'] },
+      { id: 'hunt_wild_essence', name: 'The Wild Hunt: essence', row: 3, lane: 2, shape: 'star', kind: 'mutation',
+        nodes: ['dmgMinion 1', mut('hunt_blood'), mut('hunt_fury'), mut('hunt_iron')],
+        core: ['Moonlit Chase', 'atkSpeed 1', 'evasion 1'] },
+
+      // ---- Row 4
+      { id: 'hunt_stalk', name: 'Stalker', row: 4, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['moveSpeed 1', 'hp 1', 'evasion 1', 'resAll 1'],
+        core: rule('stalk', 'On Its Heels', ['moveSpeed 1'], 'While your quarry lives you move 15% faster.', { off: 1.01, def: 1.02 }),
+        bonus: ['moveSpeed 1.5', 'hp 1'] },
+      { id: 'hunt_altar_a', name: 'Altar of the Antler', row: 4, lane: -1, shape: 'ring', kind: 'altar',
+        nodes: ['hp 1', 'huntMark 0.5', 'dmgElite 1'], core: { t: 'altar', name: 'Altar of the Antler' }, bonus: ['sigilPower 1.5'] },
+      { id: 'hunt_wild_shape', name: 'The Wild Hunt: shape', row: 4, lane: 1, shape: 'star', kind: 'mutation',
+        nodes: ['hp 1', mut('hunt_wide'), mut('hunt_pack'), mut('hunt_long')],
+        core: rule('horncall', 'Call of the Horn', ['cdr 1'], "The Wild Hunt makes Hunter's Mark ready at once.", { off: 1.02, def: 1 }) },
+      { id: 'hunt_trophy', name: 'Trophy Wall', row: 4, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['dmgBoss 1', 'hp 1', 'armor 1', 'resAll 1'],
+        core: ['Mounted Heads', 'dmgBoss 2', 'armor 1.5'], bonus: ['dmgBoss 1.5', 'hp 1'] },
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      { id: 'hunt_horn', name: 'Horn of the Old Wood', row: 5, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['minionDur 1', 'hp 1', 'dmgMinion 1', 'resAll 1'],
+        core: web('old_wood_horn', 'Horn of the Old Wood', ['minionDur 1.5'], "Hunter's Mark calls a Hound of the Hunt to your side for 8 s (once every 30 s). Minion Duration lengthens its stay and the Frenzy of Beast Call.", { off: 1.03, def: 1 }),
+        bonus: ['minionDur 1.5', 'hp 1'] },
+      { id: 'hunt_patience', name: 'The First Shot', row: 5, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['dmgFull 1', 'hp 1', 'evasion 1', 'resAll 1'],
+        core: ['Clean Kill', 'dmgFull 2', 'hp 1.5'], bonus: ['dmgFull 1.5', 'hp 1'] },
+      { id: 'hunt_elite', name: 'Big Game', row: 5, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['dmgElite 1', 'hp 1', 'armor 1', 'evasion 1'],
+        core: ['Prize Buck', 'dmgElite 2', 'armor 1.5'], bonus: ['dmgElite 1.5', 'hp 1'] },
+      { id: 'hunt_skin', name: 'Tanned Hide', row: 5, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['armor 1', 'hp 1', 'resAll 1', 'huntMark 0.5'],
+        core: ['Hunter\'s Leathers', 'armor 2', 'hp 2'], bonus: ['armor 1.5', 'hp 1'] },
+
+      // ---- Row 6
+      { id: 'hunt_scent', name: 'On the Scent', row: 6, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['huntMark 0.5', 'hp 1', 'statusDur 1', 'resAll 1'],
+        core: ['Nose to the Ground', 'huntMark 1', 'statusDur 1.5'], bonus: ['huntMark 0.75', 'hp 1'] },
+      { id: 'hunt_cult', name: 'The Red Stag', row: 6, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', { t: 'corrupted', name: 'Blood Antler', mods: ['huntMark 1', 'dmgBoss 1'], req: { corruption: 20 } }, 'resAll 1', 'evasion 1'],
+        core: { t: 'corrupted', name: 'Hollow Hunt', mods: ['dmg*2', 'huntMark 1.5', 'dmgElite 2'], req: { corruption: 40 } },
+        bonus: ['huntMark 0.5', 'hp 1.5'] },
+      { id: 'hunt_crown', name: "King's Forest", row: 6, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['evasion 1', { t: 'faction', name: "Verderer's Badge", mods: ['dmgElite 1.5', 'moveSpeed 1'], req: { faction: { id: 'crown', rep: 20 } } }, 'hp 1', 'armor 1'],
+        core: { t: 'faction', name: 'Royal Warrant', mods: ['dmgBoss 2', 'huntMark 1'], req: { faction: { id: 'crown', rep: 60 } } },
+        bonus: ['dmgBoss 1', 'evasion 1.5'] },
+      { id: 'hunt_stag', name: 'The Crowned Stag', row: 6, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'moveSpeed 1', 'resAll 1', { t: 'trophy', name: "Crowned Stag's Antler", mods: ['dmgBoss 1.5', 'hp 1.5'], req: { boss: 'crowned_stag' } }],
+        core: ['Stag Crown', 'dmgBoss 2', 'moveSpeed 1.5'], bonus: ['moveSpeed 1.5', 'hp 1'] },
+
+      // ---- Row 7
+      { id: 'hunt_pacts', name: "Hunter's Bargains", row: 7, lane: -2, shape: 'star', kind: 'special',
+        nodes: ['hp 1',
+          pact('One Quarry', ['huntMark*60', 'aoe*-10']),
+          pact('No Quarter', ['dmgBoss*20', 'hp*-8']),
+          pact('Wide Hunt', ['aoe*15', 'huntMark*-25'])],
+        core: ['Hunting Terms', 'huntMark 0.5', 'hp 1'] },
+      { id: 'hunt_hollow', name: 'The Hollow Hunter', row: 7, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'critChance 1', 'huntMark 0.5', { t: 'trophy', name: "Hollow Hunter's Horn", mods: ['huntMark 0.75', 'critChance 1.5'], req: { boss: 'hollow_hunter' } }],
+        core: ['Nemesis', 'critChance 2', 'hp 1.5'], bonus: ['critChance 1.5', 'hp 1'] },
+      { id: 'hunt_altar_b', name: 'Altar of the Long Chase', row: 7, lane: 1, shape: 'ring', kind: 'altar',
+        nodes: ['hp 1', 'dmgBoss 1', 'evasion 1'], core: { t: 'altar', name: 'Altar of the Long Chase' }, bonus: ['sigilPower 1.5'] },
+      { id: 'hunt_key_long', name: 'The Long Hunt', row: 7, lane: 2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['huntMark 0.5', 'moveSpeed 1'],
+        core: key('The Long Hunt', ['huntMark*-20'], "When your quarry dies, your Hunter's Mark jumps to the nearest enemy within 10 m, but it is 20% weaker.", 'tree_thornwarden_longhunt', { off: 1.05, def: 1 }) },
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      { id: 'hunt_lodge', name: 'Hunting Lodge', row: 8, lane: -3, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'dmgElite 1', 'resAll 1', 'hpRegen 1'],
+        core: ['Fireside', 'hpRegen 2', 'dmgElite 1.5'], bonus: ['hpRegen 1.5', 'hp 1'] },
+      { id: 'hunt_key_trophy', name: 'Trophy Hunter', row: 8, lane: -2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['dmgBoss 1', 'dmgElite 1'],
+        core: key('Trophy Hunter', ['dmgBoss*25', 'dmgElite*20', 'dmg*-10'], 'You deal 25% more damage to bosses and 20% more to elites, but 10% less to everything else.', null, { off: 1.05, def: 1 }) },
+      { id: 'hunt_orsk', name: "The Houndmaster's Whip", row: 8, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'minionHp 1', 'armor 1', { t: 'trophy', name: "Orsk's Whip", mods: ['dmgMinion 1.5', 'huntMark 0.75'], req: { boss: 'houndmaster_orsk' } }],
+        core: ['Crack of the Whip', 'dmgMinion 2', 'huntMark 0.75'], bonus: ['dmgMinion 1.5', 'hp 1'] },
+      { id: 'hunt_kill', name: 'The Kill', row: 8, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['dmgExecute 1', 'hp 1', 'critMult 1', 'resAll 1'],
+        core: ['Mercy Stroke', 'dmgExecute 2', 'hp 1.5'], bonus: ['dmgExecute 1.5', 'hp 1'] },
+      { id: 'hunt_key_first', name: 'First Blood', row: 8, lane: 2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['dmgFull 1', 'critChance 1'],
+        core: key('First Blood', ['dmgFull*45', 'dmg*-8'], 'You deal 45% more damage to enemies at full Health, but 8% less otherwise.', null, { off: 1.04, def: 1 }) },
+      { id: 'hunt_moon', name: "Hunter's Moon", row: 8, lane: 3, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'huntMark 0.5', 'evasion 1', 'resAll 1'],
+        core: ['Full Moon', 'huntMark 1', 'evasion 1.5'], bonus: ['huntMark 0.5', 'hp 1.5'] }
+    ],
+
+    devotion: [
+      { at: 15, mods: ['huntMark 1', 'hp 2'] },
+      { at: 35, mods: ['dmgElite 3', 'dmgBoss 2'] },
+      { at: 60, mods: ['huntMark 2', 'dmgBoss 3', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Quarry and the Kennel.
+  T.bridge('thornwarden', { id: 'hunt_pack_inner', between: ['hunt', 'pack'], ring: 'inner', name: 'Hound and Hunter', shape: 'star',
+    nodes: ['huntMark 0.5', mut('arrow_heavy'), 'dmgMinion 1', 'hp 1'],
+    core: ['Same Quarry', 'beastMarked 1.5', 'huntMark 0.5'], bonus: ['hp 1', 'evasion 1'] });
+  T.bridge('thornwarden', { id: 'hunt_pack_mid', between: ['hunt', 'pack'], ring: 'mid', name: 'Run It Down', shape: 'diamond',
+    nodes: ['beastMarked 1', 'hp 1', 'minionSpeed 1', 'evasion 1'],
+    core: ['Coursing Hounds', 'beastMarked 2', 'minionSpeed 1.5'], bonus: ['beastMarked 1.5', 'hp 1'] });
+  T.bridge('thornwarden', { id: 'hunt_pack_outer', between: ['hunt', 'pack'], ring: 'outer', name: 'The Baying', shape: 'diamond',
+    nodes: ['dmgMinion 1', 'hp 1', 'huntMark 0.5', 'resAll 1'],
+    core: ['Bay of the Pack', 'dmgMinion 2', 'huntMark 0.75'], bonus: ['dmgMinion 1.5', 'hp 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_thornwarden_pack.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, W = T.thorn;
+  var mut = W.mut, rule = W.rule, web = W.web, key = W.key, pact = W.pact, abil = W.abil;
+
+  /**
+   * THORNWARDEN, arm 2 of 8: THE KENNEL (`pack`). The Thornhound and its litter. Skill: Beast Call (trunk, 4 points).
+   * Design: docs/TREE_THORNWARDEN.md section 2. Rules: src/sim/56_tree_thornwarden.js. Holds the bridges to the briar arm.
+   */
+  T.arm('thornwarden', {
+    id: 'pack', name: 'The Kennel', focus: 'The Thornhound and its litter: a beast at your side that grows with you', color: '#9a7448', vein: 'war',
+
+    trunk: W.arrowTrunk([
+      'dmgMinion 1', 'minionHp 1', { t: 'skill', grants: 'beast_call', abil: [{ a: 'beast_call', k: 'cd', v: -0.05 }] }, 'beastMarked 1', 'hp 1',   // T1..T5
+      'minionHp 1', 'dmgMinion 1', 'armor 1', ['Kennel Run', 'moveSpeed 1', 'minionSpeed 0.5'], 'hp 1',                                            // T6..T10
+      'minionSpeed 1', 'resAll 1', 'hp 1', 'beastMarked 1', 'minionHp 1',                                                                         // T11..T15
+      'hp 1', 'dmgMinion 1', 'minionDur 1', 'hp 1', 'minionHp 1',                                                                                 // T16..T20
+      'resAll 1', 'hp 1', 'dmgMinion 1', 'armor 1', 'hp 1'                                                                                         // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Beast Call, shape and essence
+      { id: 'pack_call_shape', name: 'Beast Call: shape', row: 1, lane: -1, shape: 'star', kind: 'mutation',
+        nodes: ['minionHp 1', mut('beast_two'), mut('beast_great'), mut('beast_long')],
+        core: ['Good Breeding', 'minionHp 1', 'hp 1'] },
+      { id: 'pack_call_essence', name: 'Beast Call: essence', row: 1, lane: 1, shape: 'star', kind: 'mutation',
+        nodes: ['hp 1', mut('beast_savage'), mut('beast_swift'), mut('beast_hide')],
+        core: ['Raw Meat', 'dmgMinion 1', 'armor 1'] },
+
+      // ---- Row 2
+      { id: 'pack_call_rite', name: 'Beast Call: rite', row: 2, lane: -1, shape: 'star', kind: 'mutation',
+        nodes: ['minionSpeed 1', mut('beast_quick'), mut('beast_blood'), mut('beast_cheap')],
+        core: abil('Two Fingers', ['hp 1', 'minionHp 1'], 'beast_call', 'cd', -0.06) },
+      { id: 'pack_litter', name: 'The Litter', row: 2, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['minionHp 1', 'hp 1', 'dmgMinion 1', 'armor 1', 'minionSpeed 1'],
+        core: web('next_of_litter', 'Next of the Litter', ['minionHp 2'], 'When one of your Thornhounds dies, Beast Call is ready again at once.', { off: 1.01, def: 1.02 }),
+        bonus: ['minionHp 1.5', 'hp 1'] },
+
+      // ---- Row 3
+      { id: 'pack_mend', name: 'Licked Wounds', row: 3, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['hpRegen 1', 'hp 1', 'minionHp 1', 'resAll 1'],
+        core: rule('packmend', 'Pack Mend', ['hpRegen 1'], 'When your beasts hit, you regain 0.5% of your maximum Health (once every 0.5 s).', { off: 1, def: 1.04 }),
+        bonus: ['hpRegen 1.5', 'hp 1'] },
+      { id: 'pack_teeth', name: 'Teeth', row: 3, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['dmgMinion 1', 'hp 1', 'beastMarked 1', 'armor 1'],
+        core: ['Wolf Teeth', 'dmgMinion 2', 'minionHp 1'], bonus: ['dmgMinion 1.5', 'hp 1'] },
+      { id: 'pack_howl', name: 'Rallying Howl', row: 3, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['atkSpeed 1', 'hp 1', 'minionSpeed 1', 'resAll 1'],
+        core: rule('howl', 'Answering Howl', ['minionSpeed 1'], 'Beast Call makes you attack 15% faster for 8 s.', { off: 1.03, def: 1 }),
+        bonus: ['atkSpeed 1.5', 'hp 1'] },
+      { id: 'pack_fur', name: 'Thick Fur', row: 3, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['minionHp 1', 'hp 1', 'resAll 1', 'armor 1'],
+        core: ['Winter Coat', 'minionHp 2', 'resAll 1.5'], bonus: ['minionHp 1.5', 'hp 1'] },
+
+      // ---- Row 4
+      { id: 'pack_guard', name: 'Good Dog', row: 4, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['armor 1', 'hp 1', 'minionHp 1', 'evasion 1'],
+        core: ['Loyal to the Last', 'armor 2', 'minionHp 1.5'], bonus: ['armor 1.5', 'hp 1'] },
+      { id: 'pack_altar_a', name: 'Altar of the Den', row: 4, lane: -1, shape: 'ring', kind: 'altar',
+        nodes: ['hp 1', 'dmgMinion 1', 'minionHp 1'], core: { t: 'altar', name: 'Altar of the Den' }, bonus: ['sigilPower 1.5'] },
+      { id: 'pack_frenzy', name: 'Blood Frenzy', row: 4, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['minionDur 1', 'hp 1', 'dmgMinion 1', 'resAll 1'],
+        core: ['Worked Up', 'minionDur 2', 'dmgMinion 1.5'], bonus: ['minionDur 1.5', 'hp 1'] },
+      { id: 'pack_marked', name: 'Fetch', row: 4, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['beastMarked 1', 'hp 1', 'huntMark 0.5', 'evasion 1'],
+        core: ['Go For It', 'beastMarked 2', 'huntMark 0.75'], bonus: ['beastMarked 1.5', 'hp 1'] },
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      { id: 'pack_run', name: 'Running Pack', row: 5, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['minionSpeed 1', 'hp 1', 'moveSpeed 1', 'resAll 1'],
+        core: ['Coursing', 'minionSpeed 2', 'moveSpeed 1.5'], bonus: ['moveSpeed 1.5', 'hp 1'] },
+      { id: 'pack_bones', name: 'Bone Pile', row: 5, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['minionHp 1', 'hp 1', 'dmgMinion 1', 'evasion 1'],
+        core: ['Well Fed', 'minionHp 2', 'hp 1.5'], bonus: ['minionHp 1.5', 'hp 1'] },
+      { id: 'pack_hackles', name: 'Raised Hackles', row: 5, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['dmgMinion 1', 'hp 1', 'armor 1', 'resAll 1'],
+        core: ['Snarl', 'dmgMinion 2', 'armor 1.5'], bonus: ['dmgMinion 1.5', 'hp 1'] },
+      { id: 'pack_den', name: 'Den Mother', row: 5, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'minionHp 1', 'hpRegen 1', 'evasion 1'],
+        core: ['Warm Den', 'minionHp 1.5', 'hpRegen 1.5'], bonus: ['hpRegen 1.5', 'hp 1'] },
+
+      // ---- Row 6
+      { id: 'pack_wolfsbane', name: 'Wolfsbane', row: 6, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['dmgMinion 1', 'hp 1', 'minionHp 1', 'resAll 1'],
+        core: ['Bitter Fang', 'dmgMinion 2', 'resAll 1.5'], bonus: ['dmgMinion 1.5', 'hp 1'] },
+      { id: 'pack_cult', name: 'The Black Kennel', row: 6, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', { t: 'corrupted', name: 'Hellhound Blood', mods: ['dmgMinion 2', 'minionSpeed 1'], req: { corruption: 20 } }, 'resAll 1', 'armor 1'],
+        core: { t: 'corrupted', name: 'Hound of the Hollow', mods: ['dmg*2', 'dmgMinion 3', 'minionHp 2'], req: { corruption: 40 } },
+        bonus: ['dmgMinion 1', 'hp 1.5'] },
+      { id: 'pack_cult_b', name: 'Cult Kennels', row: 6, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['evasion 1', { t: 'faction', name: 'Chained Mastiff', mods: ['minionHp 1.5', 'dmgMinion 1'], req: { faction: { id: 'cult', rep: 20 } } }, 'hp 1', 'armor 1'],
+        core: { t: 'faction', name: 'Cult Beastmaster', mods: ['minionCount+1', 'minionHp*-10'], req: { faction: { id: 'cult', rep: 60 } } },
+        bonus: ['minionHp 1', 'evasion 1.5'] },
+      { id: 'pack_greymaw', name: "Greymaw's Den", row: 6, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'dmgMinion 1', 'resAll 1', { t: 'trophy', name: "Greymaw's Pelt", mods: ['minionHp 1.5', 'dmgMinion 1.5'], req: { boss: 'greymaw' } }],
+        core: ['Grey Pelt', 'minionHp 2', 'armor 1.5'], bonus: ['minionHp 1.5', 'hp 1'] },
+
+      // ---- Row 7
+      { id: 'pack_pacts', name: "Kennelmaster's Bargains", row: 7, lane: -2, shape: 'star', kind: 'special',
+        nodes: ['hp 1',
+          pact('Second Whistle', ['minionCount+1', 'dmgMinion*-25']),
+          pact('Hungry Hounds', ['dmgMinion*15', 'minionHp*-25']),
+          pact('Short Leash', ['minionHp*25', 'minionSpeed*-15'])],
+        core: ["Kennel Terms", 'dmgMinion 1', 'hp 1'] },
+      { id: 'pack_whelps', name: 'Whelping Box', row: 7, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'minionHp 1', 'minionSpeed 1', { t: 'trophy', name: "Brood Mother's Silk", mods: ['minionHp 1.5', 'minionSpeed 1.5'], req: { boss: 'webmothers_brood' } }],
+        core: ['Many Mouths', 'minionHp 2', 'minionSpeed 1.5'], bonus: ['minionSpeed 1.5', 'hp 1'] },
+      { id: 'pack_altar_b', name: 'Altar of the Pack', row: 7, lane: 1, shape: 'ring', kind: 'altar',
+        nodes: ['hp 1', 'beastMarked 1', 'evasion 1'], core: { t: 'altar', name: 'Altar of the Pack' }, bonus: ['sigilPower 1.5'] },
+      { id: 'pack_key_master', name: 'Master of Hounds', row: 7, lane: 2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['dmgMinion 1', 'beastMarked 1'],
+        core: key('Master of Hounds', ['minionCount+1', 'dmgRanged*-25', 'dmgTrap*-25'], "One more Thornhound. While an enemy carries your Hunter's Mark, your beasts hunt it and stay in the Frenzy of Beast Call. Your arrows and traps deal 25% less damage.", 'web_thornwarden_master_of_hounds', { off: 1.04, def: 1.02 }) },
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      { id: 'pack_alpha', name: 'The Alpha', row: 8, lane: -3, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'dmgMinion 1', 'resAll 1', 'armor 1'],
+        core: ['Leader of the Pack', 'dmgMinion 2', 'hp 1.5'], bonus: ['dmgMinion 1.5', 'hp 1'] },
+      { id: 'pack_key_bond', name: 'Bonded', row: 8, lane: -2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['minionHp 1', 'hp 1'],
+        core: key('Bonded', ['minionHp*40'], 'Your Thornhound has 40% more Health and takes 20% of the damage you would take while it lives.', 'tree_thornwarden_bond', { off: 1, def: 1.06 }) },
+      { id: 'pack_leash', name: 'Iron Leash', row: 8, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'minionHp 1', 'armor 1', 'evasion 1'],
+        core: ['Short Chain', 'minionHp 2', 'armor 1.5'], bonus: ['minionHp 1.5', 'hp 1'] },
+      { id: 'pack_moon', name: 'Baying at the Moon', row: 8, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['minionDur 1', 'hp 1', 'resAll 1', { t: 'trophy', name: "Pale Rider's Hound", mods: ['dmgMinion 1.5', 'minionDur 1.5'], req: { boss: 'pale_rider' } }],
+        core: ['Moon Howl', 'minionDur 2', 'dmgMinion 1.5'], bonus: ['minionDur 1.5', 'hp 1'] },
+      { id: 'pack_key_lone', name: 'Lone Wolf', row: 8, lane: 2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['atkSpeed 1', 'hp 1'],
+        core: key('Lone Wolf', ['dmg*22@noMinions', 'dmgMinion*-50'], 'You deal 22% more damage while you have no minions, but your beasts deal 50% less.', null, { off: 1.05, def: 1 }) },
+      { id: 'pack_scraps', name: 'Table Scraps', row: 8, lane: 3, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'minionHp 1', 'hpRegen 1', 'resAll 1'],
+        core: ['Fed by Hand', 'hpRegen 2', 'minionHp 1.5'], bonus: ['minionHp 1', 'hp 1.5'] }
+    ],
+
+    devotion: [
+      { at: 15, mods: ['minionHp 2', 'hp 2'] },
+      { at: 35, mods: ['dmgMinion 3', 'beastMarked 2'] },
+      { at: 60, mods: ['dmgMinion 4', 'minionHp 3', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Kennel and the Briar.
+  T.bridge('thornwarden', { id: 'pack_briar_inner', between: ['pack', 'briar'], ring: 'inner', name: 'Thorn Collar', shape: 'star',
+    nodes: ['minionHp 1', mut('arrow_barb'), 'armor 1', 'hp 1'],
+    core: ['Spiked Collar', 'minionHp 1.5', 'thorns 1'], bonus: ['hp 1', 'armor 1'] });
+  T.bridge('thornwarden', { id: 'pack_briar_mid', between: ['pack', 'briar'], ring: 'mid', name: 'Guard Dog', shape: 'diamond',
+    nodes: ['minionHp 1', 'hp 1', 'armor 1', 'closeGuard 1'],
+    core: rule('guarddog', 'Guard Dog', ['minionHp 1'], 'While a Thornhound of yours is within 5 m, you take 10% less damage.', { off: 1, def: 1.04 }),
+    bonus: ['armor 1.5', 'hp 1'] });
+  T.bridge('thornwarden', { id: 'pack_briar_outer', between: ['pack', 'briar'], ring: 'outer', name: 'Hedge Hounds', shape: 'diamond',
+    nodes: ['minionHp 1', 'hp 1', 'thorns 1', 'resAll 1'],
+    core: ['Bramble Coats', 'minionHp 2', 'thorns 1.5'], bonus: ['thorns 1.5', 'hp 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_thornwarden_snares.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, W = T.thorn;
+  var mut = W.mut, rule = W.rule, web = W.web, key = W.key, pact = W.pact, abil = W.abil;
+
+  /**
+   * THORNWARDEN, arm 6 of 8: THE SNARE LINE (`snares`). Traps, the arrows that set them off and the Focus they pay back.
+   * Skill: Snare Trap (trunk, 4 points). Design: docs/TREE_THORNWARDEN.md section 2. Rules: src/sim/56_tree_thornwarden.js.
+   * Holds the bridges to the stride arm.
+   */
+  T.arm('thornwarden', {
+    id: 'snares', name: 'The Snare Line', focus: 'Traps, detonations and Focus: lay the line, then shoot it', color: '#b0823c', vein: null,
+
+    trunk: W.arrowTrunk([
+      'dmgTrap 1', 'hp 1', { t: 'skill', grants: 'snare_trap', abil: [{ a: 'snare_trap', k: 'area', v: 0.08 }] }, 'focusRefund 1', 'evasion 1',   // T1..T5
+      'hp 1', 'detonatePower 1', 'dmgTrap 1', ["Trapper's Path", 'moveSpeed 1', 'dmgTrap 0.5'], 'hp 1',                                        // T6..T10
+      'statusDur 1', 'resAll 1', 'hp 1', 'focusRefund 1', 'evasion 1',                                                                        // T11..T15
+      'hp 1', 'dmgTrap 1', 'detonatePower 1', 'hp 1', 'aoe 1',                                                                                // T16..T20
+      'resAll 1', 'hp 1', 'dmgTrap 1', 'armor 1', 'hp 1'                                                                                       // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Snare Trap, shape and essence
+      { id: 'snares_trap_shape', name: 'Snare Trap: shape', row: 1, lane: -1, shape: 'star', kind: 'mutation',
+        nodes: ['hp 1', mut('snare_wide'), mut('snare_far'), mut('snare_many')],
+        core: ['Wire Coil', 'aoe 1', 'hp 1'] },
+      { id: 'snares_trap_essence', name: 'Snare Trap: essence', row: 1, lane: 1, shape: 'star', kind: 'mutation',
+        nodes: ['evasion 1', mut('snare_venom'), mut('snare_bleed'), mut('snare_stun')],
+        core: ['Sharp Teeth', 'dmgTrap 1', 'evasion 1'] },
+
+      // ---- Row 2
+      { id: 'snares_trap_rite', name: 'Snare Trap: rite', row: 2, lane: -1, shape: 'star', kind: 'mutation',
+        nodes: ['focusRefund 1', mut('snare_quick'), mut('snare_charges'), mut('snare_thrift')],
+        core: abil('Oiled Springs', ['hp 1', 'evasion 1'], 'snare_trap', 'cd', -0.06) },
+      { id: 'snares_tripwire', name: 'Tripwires', row: 2, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['detonatePower 1', 'hp 1', 'dmgTrap 1', 'evasion 1', 'aoe 1'],
+        core: web('tripwire', 'Tripwire Savant', ['detonatePower 1'], 'A trap that goes off detonates your other armed traps within 5 m.', { off: 1.03, def: 1 }),
+        bonus: ['detonatePower 1.5', 'hp 1'] },
+
+      // ---- Row 3
+      { id: 'snares_jaws', name: 'Iron Bite', row: 3, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['statusDur 1', 'hp 1', 'dmgTrap 1', 'resAll 1'],
+        core: rule('jaws', 'Held Fast', ['statusDur 1'], 'Enemies you have Rooted take 15% more damage from you.', { off: 1.04, def: 1 }),
+        bonus: ['statusDur 1.5', 'hp 1'] },
+      { id: 'snares_powder', name: 'Black Powder', row: 3, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['detonatePower 1', 'hp 1', 'armor 1', 'resAll 1'],
+        core: ['Primed', 'detonatePower 2', 'hp 1.5'], bonus: ['detonatePower 1.5', 'hp 1'] },
+      { id: 'snares_rhythm', name: "Trapper's Rhythm", row: 3, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['atkSpeed 1', 'hp 1', 'focusRefund 1', 'evasion 1'],
+        core: rule('rhythm', 'Snap and Loose', ['focusRefund 1'], 'Each trap that goes off makes you attack 15% faster for 4 s.', { off: 1.03, def: 1 }),
+        bonus: ['atkSpeed 1.5', 'hp 1'] },
+      { id: 'snares_pegs', name: 'Tent Pegs', row: 3, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['armor 1', 'hp 1', 'resAll 1', 'evasion 1'],
+        core: ['Staked Down', 'armor 2', 'resAll 1.5'], bonus: ['armor 1.5', 'hp 1'] },
+
+      // ---- Row 4
+      { id: 'snares_yield', name: 'Windfall', row: 4, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['focusRefund 1', 'hp 1', 'resMax 1', 'resAll 1'],
+        core: ['Full Pouch', 'focusRefund 2', 'resMax 1.5'], bonus: ['focusRefund 1.5', 'hp 1'] },
+      { id: 'snares_altar_a', name: 'Altar of the Snare', row: 4, lane: -1, shape: 'ring', kind: 'altar',
+        nodes: ['hp 1', 'dmgTrap 1', 'detonatePower 1'], core: { t: 'altar', name: 'Altar of the Snare' }, bonus: ['sigilPower 1.5'] },
+      { id: 'snares_line', name: 'The Trapline', row: 4, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['dmgTrap 1', 'hp 1', 'aoe 1', 'evasion 1'],
+        core: ['Well Laid', 'dmgTrap 2', 'trapsMax+1'], bonus: ['dmgTrap 1.5', 'hp 1'] },
+      { id: 'snares_patience', name: 'Patient Trapper', row: 4, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['dmgTaken 1@still', 'hp 1', 'statusDur 1', 'resAll 1'],
+        core: ['Lie in Wait', 'dmgTaken 1.5@still', 'hp 1.5'], bonus: ['statusDur 1.5', 'hp 1'] },
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      { id: 'snares_pits', name: 'Spiked Pits', row: 5, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['dmgTrap 1', 'hp 1', 'moveSpeed 1', 'resAll 1'],
+        core: ['Hidden Stakes', 'dmgTrap 2', 'moveSpeed 1.5'], bonus: ['moveSpeed 1.5', 'hp 1'] },
+      { id: 'snares_spring', name: 'Springsteel', row: 5, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['detonatePower 1', 'hp 1', 'evasion 1', 'armor 1'],
+        core: ['Hair Spring', 'detonatePower 2', 'evasion 1.5'], bonus: ['detonatePower 1.5', 'hp 1'] },
+      { id: 'snares_net', name: 'Nets', row: 5, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['statusDur 1', 'hp 1', 'aoe 1', 'resAll 1'],
+        core: ['Weighted Net', 'statusDur 2', 'aoe 1.5'], bonus: ['aoe 1.5', 'hp 1'] },
+      { id: 'snares_snug', name: 'Snug Hide', row: 5, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'hpRegen 1', 'evasion 1', 'resAll 1'],
+        core: ['Camouflage', 'evasion 2', 'hpRegen 1.5'], bonus: ['evasion 1.5', 'hp 1'] },
+
+      // ---- Row 6
+      { id: 'snares_hookjaw', name: 'The Hooked Jaw', row: 6, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'dmgTrap 1', 'resAll 1', { t: 'trophy', name: "Hookjaw's Hook", mods: ['dmgTrap 1.5', 'statusDur 1.5'], req: { boss: 'hookjaw' } }],
+        core: ['Barbed Hook', 'dmgTrap 2', 'resAll 1.5'], bonus: ['dmgTrap 1.5', 'hp 1'] },
+      { id: 'snares_cult', name: 'The Hollow Snare', row: 6, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', { t: 'corrupted', name: 'Blackwire', mods: ['dmgTrap 2', 'detonatePower 1'], req: { corruption: 20 } }, 'resAll 1', 'evasion 1'],
+        core: { t: 'corrupted', name: 'Maw Trap', mods: ['dmg*2', 'dmgTrap 3', 'detonatePower 2'], req: { corruption: 40 } },
+        bonus: ['dmgTrap 1', 'hp 1.5'] },
+      { id: 'snares_crown', name: "The King's Warren", row: 6, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['evasion 1', { t: 'faction', name: "Warrener's Licence", mods: ['dmgTrap 1.5', 'hp 1'], req: { faction: { id: 'crown', rep: 20 } } }, 'hp 1', 'armor 1'],
+        core: { t: 'faction', name: 'Royal Trapper', mods: ['trapsMax+1', 'focusRefund 2'], req: { faction: { id: 'crown', rep: 60 } } },
+        bonus: ['focusRefund 1', 'evasion 1.5'] },
+      { id: 'snares_toll', name: 'The Toll Gate', row: 6, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'focusRefund 1', 'resAll 1', { t: 'trophy', name: "Toll Warden's Chain", mods: ['focusRefund 1.5', 'armor 1.5'], req: { boss: 'toll_warden' } }],
+        core: ['Pay to Pass', 'focusRefund 2', 'armor 1.5'], bonus: ['focusRefund 1.5', 'hp 1'] },
+
+      // ---- Row 7
+      { id: 'snares_pacts', name: "Trapper's Bargains", row: 7, lane: -2, shape: 'star', kind: 'special',
+        nodes: ['hp 1',
+          pact('Hair-Trigger Snares', ['dmgTrap*10', 'focusRefund*-25']),
+          pact('Heavy Springs', ['detonatePower*30', 'atkSpeed*-6']),
+          pact('Light Snares', ['focusRefund*30', 'dmgTrap*-10'])],
+        core: ["Trapper's Terms", 'dmgTrap 1', 'hp 1'] },
+      { id: 'snares_web', name: "The Brood's Web", row: 7, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'statusDur 1', 'evasion 1', { t: 'trophy', name: "Webmother's Thread", mods: ['statusDur 1.5', 'evasion 1.5'], req: { boss: 'webmothers_brood' } }],
+        core: ['Sticky Lines', 'statusDur 2', 'hp 1.5'], bonus: ['statusDur 1.5', 'hp 1'] },
+      { id: 'snares_altar_b', name: 'Altar of the Pit', row: 7, lane: 1, shape: 'ring', kind: 'altar',
+        nodes: ['hp 1', 'focusRefund 1', 'evasion 1'], core: { t: 'altar', name: 'Altar of the Pit' }, bonus: ['sigilPower 1.5'] },
+      { id: 'snares_key_pact', name: "Trapper's Pact", row: 7, lane: 2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['dmgTrap 1', 'focusRefund 1'],
+        core: key("Trapper's Pact", ['dmgTrap*-20'], 'Every trap re-arms once, 1.5 s after it goes off, and can go off a second time. Your traps deal 20% less damage.', 'web_trappers_pact', { off: 1.06, def: 1 }) },
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      { id: 'snares_field', name: 'Trapped Field', row: 8, lane: -3, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'dmgTrap 1', 'resAll 1', 'evasion 1'],
+        core: ['Every Step', 'dmgTrap 2', 'evasion 1.5'], bonus: ['dmgTrap 1.5', 'hp 1'] },
+      { id: 'snares_key_mines', name: 'Minefield', row: 8, lane: -2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['dmgTrap 1', 'aoe 1'],
+        core: key('Minefield', ['trapsMax+2', 'dmgTrap*-15'], 'Two more traps may lie at once, but your traps deal 15% less damage.', null, { off: 1.04, def: 1 }) },
+      { id: 'snares_oil', name: 'Greased Springs', row: 8, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'detonatePower 1', 'armor 1', 'resAll 1'],
+        core: ['Quick Release', 'detonatePower 2', 'hp 1.5'], bonus: ['detonatePower 1.5', 'hp 1'] },
+      { id: 'snares_redtooth', name: "The Captain's Mines", row: 8, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['dmgTrap 1', 'hp 1', 'resAll 1', { t: 'trophy', name: "Redtooth's Powder Keg", mods: ['detonatePower 1.5', 'dmgTrap 1.5'], req: { boss: 'captain_redtooth' } }],
+        core: ['Powder Store', 'dmgTrap 2', 'armor 1.5'], bonus: ['dmgTrap 1.5', 'hp 1'] },
+      { id: 'snares_key_hair', name: 'Hair Trigger', row: 8, lane: 2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['detonatePower 1', 'evasion 1'],
+        core: key('Hair Trigger', ['detonatePower*50', 'dmgRanged*-12'], 'Traps your arrows set off burst 50% harder, but your arrows deal 12% less damage.', null, { off: 1.05, def: 1 }) },
+      { id: 'snares_cache', name: 'Hidden Cache', row: 8, lane: 3, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'focusRefund 1', 'hpRegen 1', 'resAll 1'],
+        core: ['Buried Stores', 'focusRefund 2', 'hp 1.5'], bonus: ['focusRefund 1', 'hp 1.5'] }
+    ],
+
+    devotion: [
+      { at: 15, mods: ['dmgTrap 2', 'hp 2'] },
+      { at: 35, mods: ['detonatePower 3', 'focusRefund 2'] },
+      { at: 60, mods: ['dmgTrap 4', 'statusDur 3', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Snare Line and the Deer Path.
+  T.bridge('thornwarden', { id: 'snares_stride_inner', between: ['snares', 'stride'], ring: 'inner', name: 'Running Snare', shape: 'star',
+    nodes: ['dmgTrap 1', mut('arrow_quick'), 'moveSpeed 1', 'hp 1'],
+    core: ['Snare and Run', 'dmgTrap 1', 'dodgeCdr 1.5'], bonus: ['hp 1', 'evasion 1'] });
+  T.bridge('thornwarden', { id: 'snares_stride_mid', between: ['snares', 'stride'], ring: 'mid', name: 'Parting Snare', shape: 'diamond',
+    nodes: ['dodgeCdr 1', 'hp 1', 'dmgTrap 1', 'evasion 1'],
+    core: web('parting_snare', 'Parting Snare', ['dodgeCdr 1.5'], 'Your dodge roll leaves a Snare Trap where you stood (once every 12 s).', { off: 1.02, def: 1.02 }),
+    bonus: ['dodgeCdr 1.5', 'hp 1'] });
+  T.bridge('thornwarden', { id: 'snares_stride_outer', between: ['snares', 'stride'], ring: 'outer', name: 'Game Run', shape: 'diamond',
+    nodes: ['dmgTrap 1', 'hp 1', 'moveSpeed 1', 'resAll 1'],
+    core: ['Drive the Herd', 'dmgTrap 2', 'moveSpeed 1.5'], bonus: ['moveSpeed 1.5', 'hp 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_thornwarden_spores.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, W = T.thorn;
+  var mut = W.mut, rule = W.rule, key = W.key, pact = W.pact, abil = W.abil;
+
+  /**
+   * THORNWARDEN, arm 4 of 8: THE MUSHROOM RING (`spores`). Spores, Oil, Weaken and Slows: the Thornwarden's control, and the
+   * home of the Mycelial Host. Skill: Spore Cloud (trunk, 4 points). Design: docs/TREE_THORNWARDEN.md section 2.
+   * Rules: src/sim/56_tree_thornwarden.js. Holds the bridges to the venom arm.
+   */
+  T.arm('thornwarden', {
+    id: 'spores', name: 'The Mushroom Ring', focus: 'Spores, Oil and Weakness: the wood itself fights for you', color: '#a483c0', vein: 'plague',
+
+    trunk: W.arrowTrunk([
+      'statusDur 1', 'hp 1', { t: 'skill', grants: 'spore_cloud', abil: [{ a: 'spore_cloud', k: 'area', v: 0.08 }] }, 'statusChance 1', 'resPoison 1',   // T1..T5
+      'hp 1', 'aoe 1', 'statusDur 1', ['Fairy Ring Path', 'moveSpeed 1', 'statusDur 0.5'], 'hp 1',                                                    // T6..T10
+      'dmgAfflicted 1', 'resAll 1', 'hp 1', 'statusChance 1', 'evasion 1',                                                                            // T11..T15
+      'hp 1', 'aoe 1', 'statusDur 1', 'hp 1', 'dmgDot 1',                                                                                             // T16..T20
+      'resAll 1', 'hp 1', 'dmgAfflicted 1', 'hpRegen 1', 'hp 1'                                                                                        // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Spore Cloud, shape and essence
+      { id: 'spores_cloud_shape', name: 'Spore Cloud: shape', row: 1, lane: -1, shape: 'star', kind: 'mutation',
+        nodes: ['hp 1', mut('spore_wide'), mut('spore_long'), mut('spore_sack')],
+        core: ['Puffcap', 'aoe 1', 'hp 1'] },
+      { id: 'spores_cloud_essence', name: 'Spore Cloud: essence', row: 1, lane: 1, shape: 'star', kind: 'mutation',
+        nodes: ['resPoison 1', mut('spore_toxic'), mut('spore_choke'), mut('spore_drowsy')],
+        core: ['Inkcap', 'statusChance 1', 'evasion 1'] },
+
+      // ---- Row 2
+      { id: 'spores_cloud_rite', name: 'Spore Cloud: rite', row: 2, lane: -1, shape: 'star', kind: 'mutation',
+        nodes: ['statusDur 1', mut('spore_quick'), mut('spore_charges'), mut('spore_burst')],
+        core: abil('Ripe Caps', ['hp 1', 'resAll 1'], 'spore_cloud', 'cd', -0.06) },
+      { id: 'spores_ring', name: 'The Fairy Ring', row: 2, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['statusDur 1', 'hp 1', 'aoe 1', 'evasion 1', abil('Lingering Spores', ['resAll 0.5'], 'spore_cloud', 'dur', 0.12)],
+        core: ['Ring of Caps', 'statusDur 2', 'aoe 1.5'], bonus: ['statusDur 1.5', 'hp 1'] },
+
+      // ---- Row 3
+      { id: 'spores_kindling', name: 'Kindling', row: 3, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['dmgDot 1', 'hp 1', 'resFire 1', 'evasion 1'],
+        core: rule('kindling', 'Tinder Spores', ['dmgDot 1'], 'Your hits on Oiled enemies make them Burn, once every 3 s for each enemy.', { off: 1.03, def: 1 }),
+        bonus: ['dmgDot 1.5', 'hp 1'] },
+      { id: 'spores_mold', name: 'Soft Mold', row: 3, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['statusChance 1', 'hp 1', 'dmgAfflicted 1', 'resAll 1'],
+        core: rule('mold', 'Rot from Within', ['statusChance 1'], 'Your hits on Weakened enemies deal 10% more damage.', { off: 1.03, def: 1 }),
+        bonus: ['statusChance 1.5', 'hp 1'] },
+      { id: 'spores_puff', name: 'Puffballs', row: 3, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['aoe 1', 'hp 1', 'statusDur 1', 'resPoison 1'],
+        core: rule('puff', 'Bursting Caps', ['aoe 1'], 'An enemy that dies in your Spore Cloud bursts into a small cloud: 2.5 m for 3 s, Slowing by 35% and Weakening.', { off: 1.02, def: 1.02 }),
+        bonus: ['aoe 1.5', 'hp 1'] },
+      { id: 'spores_damp', name: 'Damp Earth', row: 3, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['hpRegen 1', 'hp 1', 'resPoison 1', 'resAll 1'],
+        core: ['Leaf Mould', 'hpRegen 2', 'resAll 1.5'], bonus: ['hpRegen 1.5', 'hp 1'] },
+
+      // ---- Row 4
+      { id: 'spores_gills', name: 'Gills', row: 4, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['statusDur 1', 'hp 1', 'evasion 1', 'resAll 1'],
+        core: ['Spore Print', 'statusDur 2', 'evasion 1.5'], bonus: ['statusDur 1.5', 'hp 1'] },
+      { id: 'spores_altar_a', name: 'Altar of the Toadstool', row: 4, lane: -1, shape: 'ring', kind: 'altar',
+        nodes: ['hp 1', 'statusChance 1', 'aoe 1'], core: { t: 'altar', name: 'Altar of the Toadstool' }, bonus: ['sigilPower 1.5'] },
+      { id: 'spores_oil', name: 'Oily Spores', row: 4, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['dmgFire 1', 'hp 1', 'statusChance 1', 'resFire 1'],
+        core: ['Slick Caps', 'dmgFire 2', 'statusChance 1.5'], bonus: ['dmgFire 1.5', 'hp 1'] },
+      { id: 'spores_weak', name: 'Weakening Air', row: 4, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['dmgTaken 1@crowded', 'hp 1', 'statusDur 1', 'evasion 1'],
+        core: ['Heavy Air', 'dmgTaken 1.5@crowded', 'statusDur 1.5'], bonus: ['statusDur 1.5', 'hp 1'] },
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      { id: 'spores_hyphae', name: 'Hyphae', row: 5, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['aoe 1', 'hp 1', 'moveSpeed 1', 'resAll 1'],
+        core: ['Threads Underground', 'aoe 2', 'moveSpeed 1.5'], bonus: ['aoe 1.5', 'hp 1'] },
+      { id: 'spores_rot', name: 'Rotting Log', row: 5, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['dmgDot 1', 'hp 1', 'dmgAfflicted 1', 'evasion 1'],
+        core: ['Deadwood', 'dmgDot 2', 'hp 1.5'], bonus: ['dmgDot 1.5', 'hp 1'] },
+      { id: 'spores_veil', name: 'Spore Veil', row: 5, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['evasion 1', 'hp 1', 'resPoison 1', 'resAll 1'],
+        core: ['Hazy', 'evasion 2', 'resAll 1.5'], bonus: ['evasion 1.5', 'hp 1'] },
+      { id: 'spores_cap', name: 'Death Cap', row: 5, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['dmgAfflicted 1', 'hp 1', 'statusChance 1', 'armor 1'],
+        core: ['Pale Cap', 'dmgAfflicted 2', 'hp 1.5'], bonus: ['dmgAfflicted 1.5', 'hp 1'] },
+
+      // ---- Row 6
+      { id: 'spores_cellar', name: 'Root Cellar', row: 6, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'statusDur 1', 'hpRegen 1', 'resAll 1'],
+        core: ['Dark and Damp', 'statusDur 2', 'hp 1.5'], bonus: ['hpRegen 1.5', 'hp 1'] },
+      { id: 'spores_cult', name: 'The Sickly Grove', row: 6, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', { t: 'corrupted', name: 'Corpse Fungus', mods: ['statusDur 2', 'dmgAfflicted 1'], req: { corruption: 20 } }, 'resAll 1', 'evasion 1'],
+        core: { t: 'corrupted', name: 'Hollow Mycelium', mods: ['dmg*2', 'dmgAfflicted 3', 'statusChance 2'], req: { corruption: 40 } },
+        bonus: ['dmgAfflicted 1', 'hp 1.5'] },
+      { id: 'spores_cult_b', name: 'Cult Mushrooms', row: 6, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['evasion 1', { t: 'faction', name: 'Dream Caps', mods: ['statusChance 1.5', 'hp 1'], req: { faction: { id: 'cult', rep: 20 } } }, 'hp 1', 'resAll 1'],
+        core: { t: 'faction', name: 'Mushroom Priest', mods: ['statusDur 2', 'aoe 2'], req: { faction: { id: 'cult', rep: 60 } } },
+        bonus: ['statusChance 1', 'evasion 1.5'] },
+      { id: 'spores_ooze', name: 'Slime Mould', row: 6, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'aoe 1', 'resAll 1', { t: 'trophy', name: "Ooze Sovereign's Jelly", mods: ['aoe 1.5', 'hp 1.5'], req: { boss: 'ooze_sovereign' } }],
+        core: ['Creeping Mould', 'aoe 2', 'resAll 1.5'], bonus: ['aoe 1.5', 'hp 1'] },
+
+      // ---- Row 7
+      { id: 'spores_pacts', name: "Forager's Bargains", row: 7, lane: -2, shape: 'star', kind: 'special',
+        nodes: ['hp 1',
+          pact('Strange Caps', ['statusDur*30', 'hp*-8']),
+          pact('Wide Spores', ['aoe*20', 'dmg*-5']),
+          pact('Bitter Caps', ['statusChance*30', 'healTaken*-15'])],
+        core: ["Forager's Terms", 'statusDur 1', 'hp 1'] },
+      { id: 'spores_reeve', name: "The Reeve's Field", row: 7, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'statusChance 1', 'resAll 1', { t: 'trophy', name: "Scarecrow Reeve's Straw", mods: ['statusChance 1.5', 'hp 1.5'], req: { boss: 'scarecrow_reeve' } }],
+        core: ['Blighted Field', 'statusChance 2', 'hp 1.5'], bonus: ['statusChance 1.5', 'hp 1'] },
+      { id: 'spores_altar_b', name: 'Altar of the Fairy Ring', row: 7, lane: 1, shape: 'ring', kind: 'altar',
+        nodes: ['hp 1', 'statusDur 1', 'evasion 1'], core: { t: 'altar', name: 'Altar of the Fairy Ring' }, bonus: ['sigilPower 1.5'] },
+      { id: 'spores_key_host', name: 'Mycelial Host', row: 7, lane: 2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['statusDur 1', 'hp 1'],
+        core: key('Mycelial Host', ['moveSpeed*-8'], 'Spores grow on you: enemies within 3.5 m are Weakened and Slowed by 15%, refreshed every second. You move 8% slower.', 'tree_thornwarden_host', { off: 1.02, def: 1.05 }) },
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      { id: 'spores_deep', name: 'The Deep Mycelium', row: 8, lane: -3, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'statusDur 1', 'resAll 1', 'evasion 1'],
+        core: ['Old Network', 'statusDur 2', 'hp 1.5'], bonus: ['statusDur 1.5', 'hp 1'] },
+      { id: 'spores_key_lord', name: 'Spore Lord', row: 8, lane: -2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['statusDur 1', 'aoe 1'],
+        core: key('Spore Lord', ['statusDur*40', 'aoe*15', 'dmg*-10'], 'Your statuses last 40% longer and your areas are 15% larger, but you deal 10% less damage.', null, { off: 1.03, def: 1.03 }) },
+      { id: 'spores_glow', name: 'Glowcaps', row: 8, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'dmgAfflicted 1', 'statusChance 1', 'evasion 1'],
+        core: ['Foxfire', 'dmgAfflicted 2', 'statusChance 1.5'], bonus: ['dmgAfflicted 1.5', 'hp 1'] },
+      { id: 'spores_miller', name: "The Miller's Rot", row: 8, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['statusChance 1', 'hp 1', 'resAll 1', { t: 'trophy', name: "Miller's Shade Dust", mods: ['dmgDot 1.5', 'statusDur 1.5'], req: { boss: 'millers_shade' } }],
+        core: ['Mouldy Flour', 'dmgDot 2', 'statusDur 1.5'], bonus: ['dmgDot 1.5', 'hp 1'] },
+      { id: 'spores_key_blight', name: 'Blight', row: 8, lane: 2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['dmgAfflicted 1', 'resPoison 1'],
+        core: key('Blight', ['dmgAfflicted*30', 'hp*-10'], 'You deal 30% more damage to enemies suffering from a status, but have 10% less Health.', null, { off: 1.05, def: 0.97 }) },
+      { id: 'spores_morel', name: 'Morel Patch', row: 8, lane: 3, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'aoe 1', 'hpRegen 1', 'resAll 1'],
+        core: ['Honeycomb Cap', 'hpRegen 2', 'aoe 1.5'], bonus: ['aoe 1', 'hp 1.5'] }
+    ],
+
+    devotion: [
+      { at: 15, mods: ['statusDur 2', 'hp 2'] },
+      { at: 35, mods: ['statusChance 3', 'aoe 2'] },
+      { at: 60, mods: ['dmgAfflicted 4', 'statusDur 3', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Mushroom Ring and the Nightshade Garden.
+  T.bridge('thornwarden', { id: 'spores_venom_inner', between: ['spores', 'venom'], ring: 'inner', name: 'Toxic Loam', shape: 'star',
+    nodes: ['statusDur 1', mut('arrow_venom'), 'dmgPoison 1', 'hp 1'],
+    core: ['Poisoned Soil', 'dmgPoison 1.5', 'statusDur 1'], bonus: ['hp 1', 'resPoison 1'] });
+  T.bridge('thornwarden', { id: 'spores_venom_mid', between: ['spores', 'venom'], ring: 'mid', name: 'Sickbed', shape: 'diamond',
+    nodes: ['dmgDot 1', 'hp 1', 'statusChance 1', 'resPoison 1'],
+    core: ['Fever Spores', 'dmgDot 2', 'statusChance 1.5'], bonus: ['dmgDot 1.5', 'hp 1'] });
+  T.bridge('thornwarden', { id: 'spores_venom_outer', between: ['spores', 'venom'], ring: 'outer', name: 'Witch Garden', shape: 'diamond',
+    nodes: ['dmgPoison 1', 'hp 1', 'statusDur 1', 'resAll 1'],
+    core: ['Hemlock and Cap', 'dmgPoison 2', 'statusDur 1.5'], bonus: ['statusDur 1.5', 'hp 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_thornwarden_stride.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, W = T.thorn;
+  var mut = W.mut, rule = W.rule, web = W.web, key = W.key, pact = W.pact, abil = W.abil;
+
+  /**
+   * THORNWARDEN, arm 7 of 8: THE DEER PATH (`stride`). Kiting: rolling, leaping and shooting on the move. Skill: Leap Shot
+   * (trunk, 4 points). Design: docs/TREE_THORNWARDEN.md section 2. Rules: src/sim/56_tree_thornwarden.js.
+   * Holds the bridges to the bow arm.
+   */
+  T.arm('thornwarden', {
+    id: 'stride', name: 'The Deer Path', focus: 'Never where they swing: leap, roll and shoot on the move', color: '#5fae9c', vein: null,
+
+    trunk: W.arrowTrunk([
+      'moveSpeed 1', 'hp 1', { t: 'skill', grants: 'leap_shot', abil: [{ a: 'leap_shot', k: 'cd', v: -0.05 }] }, 'dodgeCdr 1', 'evasion 1',   // T1..T5
+      'hp 1', 'moveSpeed 1', 'evasion 1', ['Deer Run', 'moveSpeed 1', 'dodgeCdr 0.5'], 'hp 1',                                             // T6..T10
+      'dodgeCdr 1', 'resAll 1', 'hp 1', 'moveSpeed 1', 'evasion 1',                                                                       // T11..T15
+      'hp 1', 'dmg 1@moving', 'dodgeCdr 1', 'hp 1', 'evasion 1',                                                                          // T16..T20
+      'resAll 1', 'hp 1', 'moveSpeed 1', 'evasion 1', 'hp 1'                                                                               // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Leap Shot, shape and essence
+      { id: 'stride_leap_shape', name: 'Leap Shot: shape', row: 1, lane: -1, shape: 'star', kind: 'mutation',
+        nodes: ['hp 1', mut('leap_far'), mut('leap_fan'), mut('leap_hop')],
+        core: ['Springheel', 'moveSpeed 1', 'hp 1'] },
+      { id: 'stride_leap_essence', name: 'Leap Shot: essence', row: 1, lane: 1, shape: 'star', kind: 'mutation',
+        nodes: ['evasion 1', mut('leap_venom'), mut('leap_pin'), mut('leap_heavy')],
+        core: ['Mid-Air', 'dmgRanged 1', 'evasion 1'] },
+
+      // ---- Row 2
+      { id: 'stride_leap_rite', name: 'Leap Shot: rite', row: 2, lane: -1, shape: 'star', kind: 'mutation',
+        nodes: ['dodgeCdr 1', mut('leap_quick'), mut('leap_charges'), mut('leap_focus')],
+        core: abil('Light Landing', ['hp 1', 'evasion 1'], 'leap_shot', 'cd', -0.06) },
+      { id: 'stride_deer', name: "Deerstalker's Pace", row: 2, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['moveSpeed 1', 'hp 1', 'steadyAim 0.5', 'evasion 1', 'dodgeCdr 1'],
+        core: web('deerstalker', "Deerstalker's Pace", ['moveSpeed 1', 'dmg 1@moving'], 'Steady Aim lasts 2 s after you start moving.', { off: 1.02, def: 1.01 }),
+        bonus: ['moveSpeed 1.5', 'hp 1'] },
+
+      // ---- Row 3
+      { id: 'stride_fleet', name: 'Fleet of Foot', row: 3, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['moveSpeed 1', 'hp 1', 'evasion 1', 'resAll 1'],
+        core: rule('fleet', 'Bounding', ['moveSpeed 1'], 'After Leap Shot you move 25% faster for 3 s.', { off: 1.01, def: 1.03 }),
+        bonus: ['moveSpeed 1.5', 'hp 1'] },
+      { id: 'stride_roll', name: 'Rolling Shot', row: 3, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['dodgeCdr 1', 'hp 1', 'dmgRanged 1@afterDodge', 'resAll 1'],
+        core: rule('roll', 'Shot from the Roll', ['dodgeCdr 1'], 'Your first shot within 2 s of a dodge roll deals 30% more damage.', { off: 1.03, def: 1 }),
+        bonus: ['dodgeCdr 1.5', 'hp 1'] },
+      { id: 'stride_wind', name: 'Light Wind', row: 3, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['evasion 1', 'hp 1', 'moveSpeed 1', 'resAll 1'],
+        core: ['Leaf on the Wind', 'evasion 2', 'moveSpeed 1.5'], bonus: ['evasion 1.5', 'hp 1'] },
+      { id: 'stride_trail', name: 'Old Trails', row: 3, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'pickupRadius 1', 'moveSpeed 1', 'resAll 1'],
+        core: ['Wayfinder', 'moveSpeed 2', 'hp 1.5'], bonus: ['moveSpeed 1.5', 'hp 1'] },
+
+      // ---- Row 4
+      { id: 'stride_quiver', name: 'Hip Quiver', row: 4, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['dmg 1@moving', 'hp 1', 'evasion 1', 'resAll 1'],
+        core: ['Shoot on the Run', 'dmg 2@moving', 'evasion 1.5'], bonus: ['evasion 1.5', 'hp 1'] },
+      { id: 'stride_altar_a', name: 'Altar of the Hart', row: 4, lane: -1, shape: 'ring', kind: 'altar',
+        nodes: ['hp 1', 'moveSpeed 1', 'dodgeCdr 1'], core: { t: 'altar', name: 'Altar of the Hart' }, bonus: ['sigilPower 1.5'] },
+      { id: 'stride_tumble', name: 'Tumble', row: 4, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['dodgeCdr 1', 'hp 1', 'armor 1', 'evasion 1'],
+        core: ['Shoulder Roll', 'dodgeCdr 2', 'armor 1.5'], bonus: ['dodgeCdr 1.5', 'hp 1'] },
+      { id: 'stride_breath', name: 'Second Wind', row: 4, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['hpRegen 1', 'hp 1', 'moveSpeed 1', 'resAll 1'],
+        core: ['Deep Lungs', 'hpRegen 2', 'resMax 1.5'], bonus: ['hpRegen 1.5', 'hp 1'] },
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      { id: 'stride_hare', name: 'March Hare', row: 5, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['moveSpeed 1', 'hp 1', 'dodgeCdr 1', 'resAll 1'],
+        core: ['Mad Dash', 'moveSpeed 2', 'dodgeCdr 1.5'], bonus: ['moveSpeed 1.5', 'hp 1'] },
+      { id: 'stride_feint', name: 'Feint', row: 5, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['evasion 1', 'hp 1', 'dmgRanged 1@afterDodge', 'armor 1'],
+        core: ['False Step', 'evasion 2', 'dmgRanged 1.5@afterDodge'], bonus: ['evasion 1.5', 'hp 1'] },
+      { id: 'stride_fern', name: 'Fern Cover', row: 5, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['evasion 1', 'hp 1', 'resAll 1', 'hpRegen 1'],
+        core: ['Lost in the Ferns', 'evasion 2', 'hp 1.5'], bonus: ['evasion 1.5', 'hp 1'] },
+      { id: 'stride_far', name: 'Long Range', row: 5, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['projSpeed 1', 'hp 1', 'moveSpeed 1', 'evasion 1'],
+        core: ['Keep Your Distance', 'projSpeed 2', 'evasion 1.5'], bonus: ['projSpeed 1.5', 'hp 1'] },
+
+      // ---- Row 6
+      { id: 'stride_stream', name: 'Crossing the Stream', row: 6, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'moveSpeed 1', 'resAll 1', 'dodgeCdr 1'],
+        core: ['Stepping Stones', 'dodgeCdr 2', 'hp 1.5'], bonus: ['dodgeCdr 1.5', 'hp 1'] },
+      { id: 'stride_cult', name: 'The Pale Path', row: 6, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', { t: 'corrupted', name: 'Ghost Hooves', mods: ['moveSpeed 2', 'evasion 1'], req: { corruption: 20 } }, 'resAll 1', 'evasion 1'],
+        core: { t: 'corrupted', name: 'Hollow Stride', mods: ['dmg*2', 'dmg 2@moving', 'dodgeCdr 2'], req: { corruption: 40 } },
+        bonus: ['moveSpeed 1', 'hp 1.5'] },
+      { id: 'stride_lantern', name: 'Lantern Roads', row: 6, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['evasion 1', { t: 'faction', name: "Courier's Pass", mods: ['moveSpeed 1.5', 'hp 1'], req: { faction: { id: 'lantern', rep: 20 } } }, 'hp 1', 'resAll 1'],
+        core: { t: 'faction', name: 'Lantern Scout', mods: ['evasion 2', 'dodgeCdr 2'], req: { faction: { id: 'lantern', rep: 60 } } },
+        bonus: ['dodgeCdr 1', 'evasion 1.5'] },
+      { id: 'stride_windlord', name: 'The High Winds', row: 6, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'moveSpeed 1', 'resAll 1', { t: 'trophy', name: "Windlord's Feather", mods: ['moveSpeed 1.5', 'evasion 1.5'], req: { boss: 'windlord_caul' } }],
+        core: ['Updraft', 'moveSpeed 2', 'evasion 1.5'], bonus: ['moveSpeed 1.5', 'hp 1'] },
+
+      // ---- Row 7
+      { id: 'stride_pacts', name: "Runner's Bargains", row: 7, lane: -2, shape: 'star', kind: 'special',
+        nodes: ['hp 1',
+          pact('Light Pack', ['moveSpeed*15', 'armor*-15']),
+          pact('Quick Roll', ['dodgeCdr*25', 'hp*-6']),
+          pact('Running Shot', ['dmg*10@moving', 'dmg*-6@still'])],
+        core: ["Runner's Terms", 'moveSpeed 1', 'hp 1'] },
+      { id: 'stride_rider', name: 'Outrun the Rider', row: 7, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'moveSpeed 1', 'evasion 1', { t: 'trophy', name: "Pale Rider's Spur", mods: ['moveSpeed 1.5', 'hp 1.5'], req: { boss: 'pale_rider' } }],
+        core: ['Never Caught', 'moveSpeed 2', 'evasion 1.5'], bonus: ['evasion 1.5', 'hp 1'] },
+      { id: 'stride_altar_b', name: 'Altar of the Fawn', row: 7, lane: 1, shape: 'ring', kind: 'altar',
+        nodes: ['hp 1', 'evasion 1', 'dodgeCdr 1'], core: { t: 'altar', name: 'Altar of the Fawn' }, bonus: ['sigilPower 1.5'] },
+      { id: 'stride_key_still', name: 'Never Still', row: 7, lane: 2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['evasion 1@moving', 'moveSpeed 1'],
+        core: key('Never Still', ['dmg*20@moving', 'dmg*-15@still'], 'You deal 20% more damage while moving, but 15% less while standing still.', null, { off: 1.05, def: 1 }) },
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      { id: 'stride_meadow', name: 'Open Meadow', row: 8, lane: -3, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'moveSpeed 1', 'resAll 1', 'evasion 1'],
+        core: ['Wide Grass', 'moveSpeed 2', 'hp 1.5'], bonus: ['moveSpeed 1.5', 'hp 1'] },
+      { id: 'stride_key_wind', name: 'Wind Runner', row: 8, lane: -2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['moveSpeed 1', 'dodgeCdr 1'],
+        core: key('Wind Runner', ['moveSpeed*20', 'dodgeCdr*25', 'hp*-10'], 'You move 20% faster and your dodge roll recovers 25% faster, but you have 10% less Health.', null, { off: 1.02, def: 1.04 }) },
+      { id: 'stride_ridge', name: 'Ridge Line', row: 8, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'evasion 1', 'dodgeCdr 1', 'armor 1'],
+        core: ['High Ground', 'evasion 2', 'hp 1.5'], bonus: ['dodgeCdr 1.5', 'hp 1'] },
+      { id: 'stride_varr', name: 'Retreat in Order', row: 8, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['moveSpeed 1', 'hp 1', 'resAll 1', { t: 'trophy', name: "Varr's Field Map", mods: ['moveSpeed 1.5', 'resAll 1.5'], req: { boss: 'general_varr' } }],
+        core: ['Fighting Withdrawal', 'dodgeCdr 2', 'resAll 1.5'], bonus: ['resAll 1.5', 'hp 1'] },
+      { id: 'stride_key_willow', name: 'Willow', row: 8, lane: 2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['evasion 1', 'hp 1'],
+        core: key('Willow', ['evasion*40', 'armor*-40'], 'You have 40% more Evasion, but 40% less Armour.', null, { off: 1, def: 1.04 }) },
+      { id: 'stride_dusk', name: 'Dusk Run', row: 8, lane: 3, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'moveSpeed 1', 'hpRegen 1', 'resAll 1'],
+        core: ['Last Light Home', 'hpRegen 2', 'moveSpeed 1.5'], bonus: ['moveSpeed 1', 'hp 1.5'] }
+    ],
+
+    devotion: [
+      { at: 15, mods: ['moveSpeed 2', 'hp 2'] },
+      { at: 35, mods: ['dodgeCdr 3', 'evasion 2'] },
+      { at: 60, mods: ['evasion 4', 'moveSpeed 2', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Deer Path and the Longbow.
+  T.bridge('thornwarden', { id: 'stride_bow_inner', between: ['stride', 'bow'], ring: 'inner', name: 'Running Archer', shape: 'star',
+    nodes: ['moveSpeed 1', mut('arrow_focus'), 'dmgRanged 1', 'hp 1'],
+    core: ['Loose on the Run', 'dmgRanged 1.5', 'moveSpeed 1'], bonus: ['hp 1', 'evasion 1'] });
+  T.bridge('thornwarden', { id: 'stride_bow_mid', between: ['stride', 'bow'], ring: 'mid', name: 'Skirmish Line', shape: 'diamond',
+    nodes: ['dmgRanged 1', 'hp 1', 'moveSpeed 1', 'evasion 1'],
+    core: ['Skirmisher', 'dmgRanged 2', 'moveSpeed 1.5'], bonus: ['moveSpeed 1.5', 'hp 1'] });
+  T.bridge('thornwarden', { id: 'stride_bow_outer', between: ['stride', 'bow'], ring: 'outer', name: 'The Long Retreat', shape: 'diamond',
+    nodes: ['projSpeed 1', 'hp 1', 'dodgeCdr 1', 'resAll 1'],
+    core: ['Parthian Shot', 'dmgRanged 2', 'dodgeCdr 1.5'], bonus: ['dodgeCdr 1.5', 'hp 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_thornwarden_venom.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, W = T.thorn;
+  var mut = W.mut, rule = W.rule, web = W.web, key = W.key, pact = W.pact, abil = W.abil;
+
+  /**
+   * THORNWARDEN, arm 5 of 8: THE NIGHTSHADE GARDEN (`venom`). Poison on arrows, blooms and traps, and the way it spreads.
+   * Skill: Poison Bloom (trunk, 4 points). Design: docs/TREE_THORNWARDEN.md section 2. Rules: src/sim/56_tree_thornwarden.js.
+   * Holds the bridges to the snares arm.
+   */
+  T.arm('thornwarden', {
+    id: 'venom', name: 'The Nightshade Garden', focus: 'Poison on every arrow, bloom and snare: stack it, then let it spread', color: '#78bf44', vein: 'plague',
+
+    trunk: W.arrowTrunk([
+      'dmgPoison 1', 'hp 1', { t: 'skill', grants: 'poison_bloom', abil: [{ a: 'poison_bloom', k: 'area', v: 0.08 }] }, 'arrowPoison 0.5', 'resPoison 1',   // T1..T5
+      'hp 1', 'dmgDot 1', 'evasion 1', ['Herb Lane', 'moveSpeed 1', 'dmgPoison 0.5'], 'hp 1',                                                         // T6..T10
+      'dmgPoison 1', 'resAll 1', 'hp 1', 'dmgAfflicted 1', 'evasion 1',                                                                              // T11..T15
+      'hp 1', 'arrowPoison 0.5', 'statusDur 1', 'hp 1', 'dmgDot 1',                                                                                    // T16..T20
+      'dmgPoison 1', 'hp 1', 'dmgAfflicted 1', 'resAll 1', 'hp 1'                                                                                     // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Poison Bloom, shape and essence
+      { id: 'venom_bloom_shape', name: 'Poison Bloom: shape', row: 1, lane: -1, shape: 'star', kind: 'mutation',
+        nodes: ['hp 1', mut('bloom_wide'), mut('bloom_far'), mut('bloom_seeds')],
+        core: ['Seed Head', 'aoe 1', 'hp 1'] },
+      { id: 'venom_bloom_essence', name: 'Poison Bloom: essence', row: 1, lane: 1, shape: 'star', kind: 'mutation',
+        nodes: ['resPoison 1', mut('bloom_thick'), mut('bloom_wilt'), mut('bloom_rot')],
+        core: ['Belladonna', 'dmgPoison 1', 'evasion 1'] },
+
+      // ---- Row 2
+      { id: 'venom_bloom_rite', name: 'Poison Bloom: rite', row: 2, lane: -1, shape: 'star', kind: 'mutation',
+        nodes: ['evasion 1', mut('bloom_quick'), mut('bloom_charges'), mut('bloom_cheap')],
+        core: abil('Early Flower', ['hp 1', 'resPoison 1'], 'poison_bloom', 'cd', -0.06) },
+      { id: 'venom_nettles', name: 'Nettle Bed', row: 2, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['arrowPoison 0.5', 'hp 1', 'dmgPoison 1', 'evasion 1', abil('Ripe Pods', ['resPoison 0.5'], 'poison_bloom', 'dmg', 0.1)],
+        core: ['Stinging Arrows', 'arrowPoison 1', 'hp 1.5'], bonus: ['arrowPoison 0.75', 'hp 1'] },
+
+      // ---- Row 3
+      { id: 'venom_spread', name: 'Sporefall', row: 3, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['dmgAfflicted 1', 'hp 1', 'aoe 1', 'resAll 1'],
+        core: web('sporefall', 'Sporefall', ['dmgDot 1'], 'When you or your beasts kill a Poisoned enemy, its Poison spreads to enemies within 4 m.', { off: 1.03, def: 1 }),
+        bonus: ['dmgAfflicted 1.5', 'hp 1'] },
+      { id: 'venom_deep', name: 'Deep Venom', row: 3, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['dmgPoison 1', 'hp 1', 'statusDur 1', 'resPoison 1'],
+        core: rule('deep', 'Steeped in Venom', ['dmgPoison 1'], 'Your hits on an enemy with 6 or more stacks of Poison deal 12% more damage.', { off: 1.04, def: 1 }),
+        bonus: ['dmgPoison 1.5', 'hp 1'] },
+      { id: 'venom_antidote', name: 'Bitter Antidote', row: 3, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['hpRegen 1', 'hp 1', 'resPoison 1', 'healTaken 1'],
+        core: rule('antidote', 'Bitter Cure', ['hp 1.5'], 'When you kill a Poisoned enemy you regain 2% of your maximum Health.', { off: 1, def: 1.04 }),
+        bonus: ['hpRegen 1.5', 'hp 1'] },
+      { id: 'venom_dose', name: 'Measured Dose', row: 3, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['statusDur 1', 'hp 1', 'dmgDot 1', 'resAll 1'],
+        core: ['Slow Drip', 'statusDur 2', 'dmgDot 1.5'], bonus: ['dmgDot 1.5', 'hp 1'] },
+
+      // ---- Row 4
+      { id: 'venom_hemlock', name: 'Hemlock Row', row: 4, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['dmgPoison 1', 'hp 1', 'evasion 1', 'resAll 1'],
+        core: ['Hemlock', 'dmgPoison 2', 'evasion 1.5'], bonus: ['dmgPoison 1.5', 'hp 1'] },
+      { id: 'venom_altar_a', name: 'Altar of Nightshade', row: 4, lane: -1, shape: 'ring', kind: 'altar',
+        nodes: ['hp 1', 'dmgPoison 1', 'arrowPoison 0.5'], core: { t: 'altar', name: 'Altar of Nightshade' }, bonus: ['sigilPower 1.5'] },
+      { id: 'venom_foxglove', name: 'Foxglove', row: 4, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['dmgAfflicted 1', 'hp 1', 'statusChance 1', 'resPoison 1'],
+        core: ['Witch Bells', 'dmgAfflicted 2', 'statusChance 1.5'], bonus: ['dmgAfflicted 1.5', 'hp 1'] },
+      { id: 'venom_skin', name: 'Pale Skin', row: 4, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['resPoison 1', 'hp 1', 'resAll 1', 'hpRegen 1'],
+        core: ['Immune', 'resPoison 2', 'hp 2'], bonus: ['resAll 1.5', 'hp 1'] },
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      { id: 'venom_wolfsbane', name: 'Wolfsbane Path', row: 5, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['dmgDot 1', 'hp 1', 'moveSpeed 1', 'resAll 1'],
+        core: ['Bane Leaf', 'dmgDot 2', 'moveSpeed 1.5'], bonus: ['moveSpeed 1.5', 'hp 1'] },
+      { id: 'venom_tips', name: 'Dipped Tips', row: 5, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['arrowPoison 0.5', 'hp 1', 'dmgRanged 1', 'evasion 1'],
+        core: ['Coated Quiver', 'arrowPoison 1', 'evasion 1.5'], bonus: ['arrowPoison 0.75', 'hp 1'] },
+      { id: 'venom_yew', name: 'Yew Berries', row: 5, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['dmgPoison 1', 'hp 1', 'armor 1', 'resPoison 1'],
+        core: ['Red Berries', 'dmgPoison 2', 'armor 1.5'], bonus: ['dmgPoison 1.5', 'hp 1'] },
+      { id: 'venom_still', name: 'The Still Room', row: 5, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['statusDur 1', 'hp 1', 'dmgAfflicted 1', 'resAll 1'],
+        core: ['Distilled', 'statusDur 2', 'dmgAfflicted 1.5'], bonus: ['statusDur 1.5', 'hp 1'] },
+
+      // ---- Row 6
+      { id: 'venom_mire', name: 'Mire Water', row: 6, lane: -2, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'statusDur 1', 'resAll 1', { t: 'trophy', name: "Leech Queen's Sting", mods: ['dmgPoison 1.5', 'lifesteal 1'], req: { boss: 'leech_queen' } }],
+        core: ['Stagnant', 'statusDur 2', 'dmgAfflicted 1.5'], bonus: ['statusDur 1.5', 'hp 1'] },
+      { id: 'venom_cult', name: 'Rot Cellar', row: 6, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', { t: 'corrupted', name: 'Black Sap', mods: ['dmgPoison 2', 'arrowPoison 0.5'], req: { corruption: 20 } }, 'resPoison 1', 'evasion 1'],
+        core: { t: 'corrupted', name: 'Plague Garden', mods: ['dmg*2', 'dmgPoison 3', 'dmgDot 2'], req: { corruption: 40 } },
+        bonus: ['dmgPoison 1', 'hp 1.5'] },
+      { id: 'venom_choir', name: "The Herbalist's Choir", row: 6, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['evasion 1', { t: 'faction', name: 'Hymn of Herbs', mods: ['resPoison 1.5', 'hpRegen 1'], req: { faction: { id: 'choir', rep: 20 } } }, 'hp 1', 'moveSpeed 1'],
+        core: { t: 'faction', name: 'Choir Apothecary', mods: ['dmgAfflicted 2', 'statusDur 2'], req: { faction: { id: 'choir', rep: 60 } } },
+        bonus: ['statusDur 1', 'evasion 1.5'] },
+      { id: 'venom_alch', name: "The Alchemist's Notes", row: 6, lane: 2, shape: 'ring', kind: 'stat',
+        nodes: ['dmgDot 1', 'hp 1', 'resAll 1', { t: 'trophy', name: 'Plague Recipe', mods: ['dmgPoison 1.5', 'statusDur 1.5'], req: { boss: 'plague_alchemist' } }],
+        core: ['Margin Notes', 'dmgDot 2', 'resAll 1.5'], bonus: ['dmgDot 1.5', 'hp 1'] },
+
+      // ---- Row 7
+      { id: 'venom_pacts', name: "Poisoner's Bargains", row: 7, lane: -2, shape: 'star', kind: 'special',
+        nodes: ['hp 1',
+          pact('Strong Brew', ['dmgPoison*25', 'atkSpeed*-6']),
+          pact('Thin Blood', ['dmgDot*20', 'healTaken*-15']),
+          pact('Wet Arrows', ['arrowPoison*40', 'dmgRanged*-8'])],
+        core: ['Sour Terms', 'dmgPoison 1', 'hp 1'] },
+      { id: 'venom_bog', name: 'Bog Garden', row: 7, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'statusDur 1', 'resPoison 1', { t: 'trophy', name: "Bog Mother's Gall", mods: ['dmgPoison 1.5', 'resPoison 1.5'], req: { boss: 'bog_mother' } }],
+        core: ['Marsh Gas', 'dmgPoison 2', 'resPoison 1.5'], bonus: ['resPoison 1.5', 'hp 1'] },
+      { id: 'venom_altar_b', name: 'Altar of Hemlock', row: 7, lane: 1, shape: 'ring', kind: 'altar',
+        nodes: ['hp 1', 'dmgAfflicted 1', 'statusDur 1'], core: { t: 'altar', name: 'Altar of Hemlock' }, bonus: ['sigilPower 1.5'] },
+      { id: 'venom_key_steel', name: 'Venom Over Steel', row: 7, lane: 2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['dmgPoison 1', 'statusDur 1'],
+        core: key('Venom Over Steel', ['dmgPoison*35', 'statusDur*25', 'dmgPhys*-10'], 'Your Poison deals 35% more damage and your statuses last 25% longer, but your Physical damage is 10% lower.', null, { off: 1.05, def: 1 }) },
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      { id: 'venom_garden', name: 'Poison Garden', row: 8, lane: -3, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'dmgPoison 1', 'resPoison 1', 'resAll 1'],
+        core: ['Nightshade Bed', 'dmgPoison 2', 'hp 1.5'], bonus: ['dmgPoison 1.5', 'hp 1'] },
+      { id: 'venom_key_arrows', name: 'Hemlock Arrows', row: 8, lane: -2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['arrowPoison 0.5', 'dmgDot 1'],
+        core: key('Hemlock Arrows', ['arrowPoison+0.3', 'dmgPhys*-20'], 'Your arrows have 30% more chance to Poison, but your Physical damage is 20% lower.', null, { off: 1.05, def: 1 }) },
+      { id: 'venom_cure', name: 'No Cure', row: 8, lane: -1, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'dmgAfflicted 1', 'statusChance 1', 'evasion 1'],
+        core: ['Incurable', 'dmgAfflicted 2', 'statusChance 1.5'], bonus: ['dmgAfflicted 1.5', 'hp 1'] },
+      { id: 'venom_saint', name: 'The Plague Saint', row: 8, lane: 1, shape: 'ring', kind: 'stat',
+        nodes: ['resPoison 1', 'hp 1', 'resAll 1', { t: 'trophy', name: "Plague Saint's Censer", mods: ['dmgDot 1.5', 'hp 1.5'], req: { boss: 'plague_saint' } }],
+        core: ['Holy Rot', 'dmgDot 2', 'hp 1.5'], bonus: ['dmgDot 1.5', 'hp 1'] },
+      { id: 'venom_key_slow', name: 'The Slow Death', row: 8, lane: 2, shape: 'arc', kind: 'keystone', spokes: [0, 1],
+        nodes: ['dmgDot 1', 'statusDur 1'],
+        core: key('Slow Death', ['dmgDot*40', 'dmgRanged*-15'], 'Your damage over time is 40% stronger, but your arrows deal 15% less damage.', null, { off: 1.04, def: 1 }) },
+      { id: 'venom_miasma', name: 'Miasma', row: 8, lane: 3, shape: 'ring', kind: 'stat',
+        nodes: ['hp 1', 'aoe 1', 'dmgPoison 1', 'statusDur 1'],
+        core: ['Foul Air', 'aoe 2', 'dmgPoison 1.5'], bonus: ['statusDur 1', 'hp 1.5'] }
+    ],
+
+    devotion: [
+      { at: 15, mods: ['dmgPoison 2', 'hp 2'] },
+      { at: 35, mods: ['arrowPoison 1.5', 'resPoison 2'] },
+      { at: 60, mods: ['dmgAfflicted 4', 'dmgDot 3', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Nightshade Garden and the Snare Line.
+  T.bridge('thornwarden', { id: 'venom_snares_inner', between: ['venom', 'snares'], ring: 'inner', name: 'Baited Ground', shape: 'star',
+    nodes: ['dmgPoison 1', mut('arrow_split'), 'dmgTrap 1', 'hp 1'],
+    core: ['Laced Wire', 'dmgTrap 1.5', 'dmgPoison 1'], bonus: ['hp 1', 'evasion 1'] });
+  T.bridge('thornwarden', { id: 'venom_snares_mid', between: ['venom', 'snares'], ring: 'mid', name: 'Poisoned Bait', shape: 'diamond',
+    nodes: ['dmgDot 1', 'hp 1', 'dmgTrap 1', 'statusDur 1'],
+    core: rule('bait', 'Poisoned Bait', ['dmgTrap 1'], 'Your Snare Traps add 2 stacks of Poison to every enemy they hit.', { off: 1.03, def: 1 }),
+    bonus: ['statusDur 1.5', 'hp 1'] });
+  T.bridge('thornwarden', { id: 'venom_snares_outer', between: ['venom', 'snares'], ring: 'outer', name: 'Rat Poison', shape: 'diamond',
+    nodes: ['dmgPoison 1', 'hp 1', 'dmgTrap 1', 'resAll 1'],
+    core: ['Bait and Wait', 'dmgPoison 2', 'dmgTrap 1.5'], bonus: ['dmgTrap 1.5', 'hp 1'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/data/37_mutations_emberscribe.js
 (function (root) {
   'use strict';
@@ -19477,6 +20866,329 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/data/37_mutations_thornwarden.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+
+  /**
+   * THORNWARDEN, every mutation of the Thornwarden's own tree (docs/TREE_THORNWARDEN.md section 4). One record changes ONE
+   * ability in ONE slot (shape: where and how many; essence: what the hit carries; rite: cost, cooldown, charges, extra
+   * effects), so two mutations of one ability never write the same field: KD.skills.mutationReport() proves it
+   * (tests/mutations.test.js, tests/tree_thornwarden.test.js). Format: docs/SKILLS.md section 12. Pure data, no hooks.
+   * The tree nodes that hold these ids: src/data/36_tree_thornwarden_<arm>.js (the Thorn Arrow ones sit in the inner bridges).
+   * Texts quote the numbers of the records; change both together.
+   */
+  var M = [];
+  function shape(id, ability, name, text, rec) { rec.id = id; rec.ability = ability; rec.slot = 'shape'; rec.name = name; rec.text = text; M.push(rec); }
+  function essence(id, ability, name, text, rec) { rec.id = id; rec.ability = ability; rec.slot = 'essence'; rec.name = name; rec.text = text; M.push(rec); }
+  function rite(id, ability, name, text, rec) { rec.id = id; rec.ability = ability; rec.slot = 'rite'; rec.name = name; rec.text = text; M.push(rec); }
+
+  var PROJ = { type: 'projectile' }, AOE = { type: 'aoe' }, ZONE = { type: 'zone' }, TRAP = { type: 'trap' }, BUFF = { type: 'buff' },
+    SUMMON = { type: 'summon' }, CMD = { type: 'command' }, DASH = { type: 'dash' }, EXPLODE = { _in: 'explode' }, INZONE = { _in: 'zone' },
+    INBUFF = { _in: 'buff' };
+  function focus(n) { return { type: 'resource', gain: n }; }
+
+  // =============================================================================================
+  // THORN ARROW (primary). Base: one arrow, 63%, 12% chance to Bleed, 20 m. One mutation in each inner bridge.
+  // =============================================================================================
+  shape('arrow_split', 'thorn_arrow', 'Split Arrow', 'Three arrows in a narrow fan, each for 45% of the damage.',
+    { power: 0.45, fx: [{ find: PROJ, set: { count: 3, spread: 16 } }] });
+  shape('arrow_pierce', 'thorn_arrow', 'Bodkin Point', 'The arrow passes through 2 enemies, for 85% of the damage.',
+    { power: 0.85, fx: [{ find: PROJ, set: { pierce: 2 } }] });
+  shape('arrow_seek', 'thorn_arrow', 'Seeking Arrow', 'The arrow curves towards its target, for 90% of the damage.',
+    { power: 0.9, fx: [{ find: PROJ, set: { homing: 5 } }] });
+
+  essence('arrow_venom', 'thorn_arrow', 'Nettle Arrow', 'The arrow deals Poison damage and adds a stack of Poison, but deals 13% less damage.',
+    { set: { elem: 'poison' }, fx: [{ find: PROJ, set: { elem: 'poison', mult: 0.55, status: { id: 'poison', stacks: 1 } } }] });
+  essence('arrow_barb', 'thorn_arrow', 'Barbed Head', 'A 40% chance to cause Bleed instead of 12%, but the arrow deals 10% less damage.',
+    { fx: [{ find: PROJ, set: { mult: 0.57, status: { id: 'bleed', chance: 0.4 } } }] });
+  essence('arrow_heavy', 'thorn_arrow', 'Heavy Shaft', 'The arrow breaks Poise harder and pushes enemies back, but causes Bleed only 5% of the time.',
+    { fx: [{ find: PROJ, set: { poise: 1, knockback: 0.6, status: { id: 'bleed', chance: 0.05 } } }] });
+
+  rite('arrow_quick', 'thorn_arrow', 'Quick Draw', 'You shoot about a quarter faster: shorter windup and recovery.',
+    { set: { windup: 0.22, recover: 0.3 } });
+  rite('arrow_focus', 'thorn_arrow', "Fletcher's Thrift", 'Each Thorn Arrow that hits gives 2 Focus.',
+    { set: { gain: 2, gainOnHit: true } });
+
+  // =============================================================================================
+  // SNARE TRAP. Base: 7 s, 25 Focus; a snare up to 10 m (3 at a time, 25 s): a 3 m burst for 100% that Roots for 2 s.
+  // The tooltip is hand-written (dmgLines): an essence that changes the multiplier rewrites it.
+  // =============================================================================================
+  shape('snare_wide', 'snare_trap', 'Bear Jaws', 'The burst covers 4.5 m instead of 3, for 75% of the damage.',
+    { power: 0.75, fx: [{ find: AOE, set: { radius: 4.5 } }] });
+  shape('snare_far', 'snare_trap', 'Far Snare', 'The snare is thrown up to 16 m instead of 10.',
+    { set: { range: 16, aiUse: { use: 'attack', range: 15 } }, fx: [{ find: TRAP, set: { range: 16 } }] });
+  shape('snare_many', 'snare_trap', 'Snare Line', 'Up to 5 snares lie at once instead of 3, but each lasts 15 s instead of 25.',
+    { fx: [{ find: TRAP, set: { cap: 5, duration: 15 } }] });
+
+  essence('snare_venom', 'snare_trap', 'Venom Jaws', 'The burst deals Poison damage and adds 3 stacks of Poison, but Roots for only 1 s.',
+    { set: { elem: 'poison' }, fx: [{ find: AOE, set: { elem: 'poison', status: [{ id: 'root', dur: 1 }, { id: 'poison', stacks: 3 }] } }] });
+  essence('snare_bleed', 'snare_trap', 'Barbed Jaws', 'The burst adds 3 stacks of Bleed and deals 85% instead of 100%.',
+    { set: { dmgLines: [{ label: 'trap', mult: 0.85, delivery: 'trap' }] },
+      fx: [{ find: AOE, set: { mult: 0.85, status: [{ id: 'root', dur: 2 }, { id: 'bleed', stacks: 3, power: 0.08 }] } }] });
+  essence('snare_stun', 'snare_trap', 'Iron Jaws', 'The burst Stuns for 1.5 s instead of Rooting, and deals 80% instead of 100%.',
+    { set: { dmgLines: [{ label: 'trap', mult: 0.8, delivery: 'trap' }] }, fx: [{ find: AOE, set: { mult: 0.8, status: { id: 'stun', dur: 1.5 } } }] });
+
+  rite('snare_quick', 'snare_trap', 'Light Snares', 'Cooldown 4 s instead of 7, but each snare costs 35 Focus.',
+    { set: { cooldown: 4, cost: 35 } });
+  rite('snare_charges', 'snare_trap', 'Spare Snares', 'Snare Trap has 2 charges. Each takes 9 s.',
+    { set: { charges: 2, cooldown: 9 } });
+  rite('snare_thrift', 'snare_trap', "Trapper's Thrift", 'Costs 10 Focus instead of 25. Cooldown 9 s.',
+    { set: { cost: 10, cooldown: 9 } });
+
+  // =============================================================================================
+  // BARBED VOLLEY. Base: 6 s, 25 Focus; a fan of 5 arrows (30 degrees), 60% each, 40% chance to Bleed.
+  // =============================================================================================
+  shape('volley_wide', 'barbed_volley', 'Wide Fan', 'Seven arrows in a 60 degree fan, each for 80% of the damage.',
+    { power: 0.8, fx: [{ find: PROJ, set: { count: 7, spread: 60 } }] });
+  shape('volley_tight', 'barbed_volley', 'Tight Sheaf', 'The arrows fly in a narrow 10 degree sheaf, for 80% of the damage: most of them find one mark.',
+    { power: 0.8, fx: [{ find: PROJ, set: { spread: 10 } }] });
+  shape('volley_pierce', 'barbed_volley', 'Clean Through', 'Each arrow passes through one enemy, for 80% of the damage.',
+    { power: 0.8, fx: [{ find: PROJ, set: { pierce: 1 } }] });
+
+  essence('volley_venom', 'barbed_volley', 'Nettle Volley', 'The arrows deal Poison damage and each adds a stack of Poison, for 50% each instead of 60%.',
+    { set: { elem: 'poison' }, fx: [{ find: PROJ, set: { elem: 'poison', mult: 0.5, status: { id: 'poison', stacks: 1 } } }] });
+  essence('volley_cripple', 'barbed_volley', 'Crippling Volley', 'The arrows Slow by 30% for 2 s instead of causing Bleed.',
+    { fx: [{ find: PROJ, set: { status: { id: 'slow', dur: 2, power: 0.3 } } }] });
+  essence('volley_broad', 'barbed_volley', 'Broadheads', 'Each arrow deals 72% instead of 60%, but causes Bleed only 10% of the time.',
+    { fx: [{ find: PROJ, set: { mult: 0.72, status: { id: 'bleed', chance: 0.1 } } }] });
+
+  rite('volley_quick', 'barbed_volley', 'Quick Nock', 'Cooldown 4 s instead of 6, but costs 32 Focus.',
+    { set: { cooldown: 4, cost: 32 } });
+  rite('volley_charges', 'barbed_volley', 'Second Quiver', 'Barbed Volley has 2 charges. Each takes 8 s.',
+    { set: { charges: 2, cooldown: 8 } });
+  rite('volley_focus', 'barbed_volley', 'Recovered Arrows', 'Each arrow that hits gives 2 Focus. Cooldown 7 s.',
+    { set: { cooldown: 7 }, fx: [{ find: PROJ, add: { onHit: [focus(2)] } }] });
+
+  // =============================================================================================
+  // VINE WALL. Base: 14 s, 25 Focus; an 8 m wall (1.3 m) for 6 s that blocks, 20% Poison every half second, Slow 50%.
+  // =============================================================================================
+  shape('wall_long', 'vine_wall', 'Long Hedge', 'The wall runs 14 m instead of 8, but stands only 4 s.',
+    { fx: [{ find: ZONE, set: { length: 14, duration: 4 } }] });
+  shape('wall_old', 'vine_wall', 'Old Growth', 'The wall stands 10 s instead of 6, but runs only 5 m.',
+    { fx: [{ find: ZONE, set: { length: 5, duration: 10 } }] });
+  shape('wall_thick', 'vine_wall', 'Thick Hedge', 'The wall is 2.6 m deep instead of 1.3, but runs only 6 m.',
+    { fx: [{ find: ZONE, set: { width: 2.6, length: 6 } }] });
+
+  essence('wall_venom', 'vine_wall', 'Nightshade Hedge', 'The vines deal 35% instead of 20%, but Slow by only 25%.',
+    { fx: [{ find: ZONE, set: { mult: 0.35, slow: 0.25 } }] });
+  essence('wall_grasp', 'vine_wall', 'Grasping Vines', 'The vines Root for 1 s, but deal 12% instead of 20%.',
+    { fx: [{ find: ZONE, set: { mult: 0.12, status: { id: 'root', dur: 1 } } }] });
+  essence('wall_briar', 'vine_wall', 'Briar Hedge', 'The vines deal Physical damage and add a stack of Bleed, for 16% instead of 20%.',
+    { set: { elem: 'phys' }, fx: [{ find: ZONE, set: { elem: 'phys', mult: 0.16, status: { id: 'bleed', stacks: 1, power: 0.05 } } }] });
+
+  rite('wall_quick', 'vine_wall', 'Fast Roots', 'Cooldown 9 s instead of 14.',
+    { set: { cooldown: 9 } });
+  rite('wall_charges', 'vine_wall', 'Two Hedges', 'Vine Wall has 2 charges. Each takes 16 s.',
+    { set: { charges: 2, cooldown: 16 } });
+  rite('wall_shelter', 'vine_wall', 'Sheltering Wall', 'Raising the wall restores 8% of your maximum Health. Cooldown 16 s.',
+    { set: { cooldown: 16 }, add: [{ type: 'heal', self: true, pct: 0.08 }] });
+
+  // =============================================================================================
+  // BEAST CALL. Base: 20 s, 30 Focus; one Thornhound that stays, set on your target in a Frenzy (+30% damage and Attack Speed)
+  // for 8 s.
+  // =============================================================================================
+  shape('beast_two', 'beast_call', 'Littermates', 'Two Thornhounds instead of one, each with 60% of the Health.',
+    { fx: [{ find: SUMMON, set: { count: 2, cap: 2, hpMult: 0.6 } }] });
+  shape('beast_great', 'beast_call', 'Great Hound', 'The Thornhound has 80% more Health, but its Frenzy lasts only 4 s.',
+    { fx: [{ find: SUMMON, set: { hpMult: 1.8 } }, { find: CMD, set: { dur: 4 } }, { find: INBUFF, set: { dur: 4 } }] });
+  shape('beast_long', 'beast_call', 'Slipped Leash', 'The Frenzy lasts 14 s instead of 8.',
+    { fx: [{ find: CMD, set: { dur: 14 } }, { find: INBUFF, set: { dur: 14 } }] });
+
+  essence('beast_savage', 'beast_call', 'Savage Frenzy', 'The Frenzy gives 50% more damage and no Attack Speed.',
+    { fx: [{ find: INBUFF, set: { mods: [{ s: 'dmg', t: 'inc', v: 0.5 }] } }] });
+  essence('beast_swift', 'beast_call', 'Swift Frenzy', 'The Frenzy gives 60% more Attack Speed and no damage.',
+    { fx: [{ find: INBUFF, set: { mods: [{ s: 'atkSpeed', t: 'inc', v: 0.6 }] } }] });
+  essence('beast_hide', 'beast_call', 'Thick Hide', 'The Thornhound takes 40% less damage.',
+    { fx: [{ find: SUMMON, set: { mods: [{ s: 'dmgTaken', t: 'more', v: -0.4 }] } }] });
+
+  rite('beast_quick', 'beast_call', 'Short Whistle', 'Cooldown 12 s instead of 20, but costs 40 Focus.',
+    { set: { cooldown: 12, cost: 40 } });
+  rite('beast_blood', 'beast_call', 'Shared Blood', 'Beast Call also restores 8% of your maximum Health. Cooldown 24 s.',
+    { set: { cooldown: 24 }, add: [{ type: 'heal', self: true, pct: 0.08 }] });
+  rite('beast_cheap', 'beast_call', 'Old Friend', 'Costs 10 Focus instead of 30. Cooldown 24 s.',
+    { set: { cost: 10, cooldown: 24 } });
+
+  // =============================================================================================
+  // RAIN OF THORNS. Base: 12 s, 35 Focus; arrows rain on 4.2 m at the aim for 5 s: 25% every half second, Slow 30%,
+  // a 10% chance to Bleed.
+  // =============================================================================================
+  shape('rain_wide', 'rain_of_thorns', 'Storm of Arrows', 'The rain covers 6 m instead of 4.2, for 70% of the damage.',
+    { power: 0.7, fx: [{ find: ZONE, set: { radius: 6 } }] });
+  shape('rain_long', 'rain_of_thorns', 'Endless Rain', 'The rain falls for 8 s instead of 5, but on only 3.2 m.',
+    { fx: [{ find: ZONE, set: { duration: 8, radius: 3.2 } }] });
+  shape('rain_hail', 'rain_of_thorns', 'Hail of Arrows', 'The rain falls for only 2.5 s, but twice as hard.',
+    { power: 2, fx: [{ find: ZONE, set: { duration: 2.5 } }] });
+
+  essence('rain_venom', 'rain_of_thorns', 'Poisoned Rain', 'The arrows deal Poison damage (20% a tick) and add a stack of Poison.',
+    { set: { elem: 'poison' }, fx: [{ find: ZONE, set: { elem: 'poison', mult: 0.2, status: { id: 'poison', stacks: 1 } } }] });
+  essence('rain_pin', 'rain_of_thorns', 'Pinning Rain', 'The rain Slows by 60% instead of 30%, for 20% a tick.',
+    { fx: [{ find: ZONE, set: { mult: 0.2, slow: 0.6 } }] });
+  essence('rain_pitch', 'rain_of_thorns', 'Pitch Arrows', 'The arrows are lit: Fire damage (22% a tick) with a 25% chance to Burn. Fire on Oil makes an Inferno.',
+    { set: { elem: 'fire' }, fx: [{ find: ZONE, set: { elem: 'fire', mult: 0.22, status: { id: 'burn', chance: 0.25 } } }] });
+
+  rite('rain_quick', 'rain_of_thorns', 'Quick Volleys', 'Cooldown 8 s instead of 12, but costs 45 Focus.',
+    { set: { cooldown: 8, cost: 45 } });
+  rite('rain_charges', 'rain_of_thorns', 'Two Clouds', 'Rain of Thorns has 2 charges. Each takes 14 s.',
+    { set: { charges: 2, cooldown: 14 } });
+  rite('rain_burst', 'rain_of_thorns', 'Cloudburst', 'A first volley lands for 120% as the rain starts. Cooldown 15 s.',
+    { set: { cooldown: 15 }, add: [{ copy: ZONE, keep: ['at', 'range', 'radius'], type: 'aoe', mult: 1.2, poise: 1 }] });
+
+  // =============================================================================================
+  // HUNTER'S MARK. Base: 12 s, 15 Focus; a seeking arrow for 60% that Marks its quarry (10% more damage taken, 8 s).
+  // =============================================================================================
+  shape('mark_far', 'hunters_mark', 'Far Sight', 'The arrow flies 30 m instead of 20, and faster.',
+    { set: { range: 28, aiUse: { use: 'attack', range: 26 } }, fx: [{ find: PROJ, set: { range: 30, speed: 48 } }] });
+  shape('mark_pierce', 'hunters_mark', 'Through the Herd', 'The arrow passes through 3 enemies, for 85% of the damage.',
+    { power: 0.85, fx: [{ find: PROJ, set: { pierce: 3 } }] });
+  shape('mark_two', 'hunters_mark', 'Two Quarries', 'Two seeking arrows, each for 75% of the damage.',
+    { power: 0.75, fx: [{ find: PROJ, set: { count: 2, spread: 30 } }] });
+
+  essence('mark_bleed', 'hunters_mark', 'Blood Spoor', 'The arrow adds 3 stacks of Bleed, but deals 50% instead of 60%.',
+    { fx: [{ find: PROJ, set: { mult: 0.5, status: { id: 'bleed', stacks: 3, power: 0.08 } } }] });
+  essence('mark_slow', 'hunters_mark', 'Hamstrung Quarry', 'The arrow Slows by 40% for 4 s.',
+    { fx: [{ find: PROJ, set: { status: { id: 'slow', dur: 4, power: 0.4 } } }] });
+  essence('mark_heart', 'hunters_mark', 'Heart Shot', 'The arrow deals 90% instead of 60% and has +20% Critical Chance.',
+    { fx: [{ find: PROJ, set: { mult: 0.9, critAdd: 0.2 } }] });
+
+  rite('mark_quick', 'hunters_mark', 'Keen Eye', 'Cooldown 8 s instead of 12.',
+    { set: { cooldown: 8 } });
+  rite('mark_free', 'hunters_mark', 'Old Habits', "Hunter's Mark costs no Focus. Cooldown 14 s.",
+    { set: { cost: 0, cooldown: 14 } });
+  rite('mark_charges', 'hunters_mark', 'Two Arrows Ready', "Hunter's Mark has 2 charges. Each takes 14 s.",
+    { set: { charges: 2, cooldown: 14 } });
+
+  // =============================================================================================
+  // POISON BLOOM. Base: 9 s, 35 Focus; a lobbed pod bursts 3.2 m for 70% Poison and 2 stacks, leaving a patch for 4 s
+  // (8% every half second).
+  // =============================================================================================
+  shape('bloom_wide', 'poison_bloom', 'Great Bloom', 'The bloom and its patch cover 5 m instead of 3.2, for 75% of the damage.',
+    { power: 0.75, fx: [{ find: EXPLODE, set: { radius: 5 } }, { find: INZONE, set: { radius: 5 } }] });
+  shape('bloom_far', 'poison_bloom', 'Long Lob', 'The pod flies up to 20 m instead of 13.',
+    { set: { range: 19, aiUse: { use: 'attack', range: 18 } }, fx: [{ find: PROJ, set: { range: 20 } }] });
+  shape('bloom_seeds', 'poison_bloom', 'Seed Burst', 'Three pods in a fan, each for 45% of the damage.',
+    { power: 0.45, fx: [{ find: PROJ, set: { count: 3, spread: 40 } }] });
+
+  essence('bloom_thick', 'poison_bloom', 'Thick Spores', 'The bloom adds 4 stacks of Poison instead of 2, but deals 50% instead of 70%.',
+    { fx: [{ find: EXPLODE, set: { mult: 0.5, status: { id: 'poison', stacks: 4 } } }] });
+  essence('bloom_wilt', 'poison_bloom', 'Wilting Bloom', 'The bloom also Weakens for 4 s.',
+    { fx: [{ find: EXPLODE, set: { status: [{ id: 'poison', stacks: 2 }, { id: 'weaken', dur: 4 }] } }] });
+  essence('bloom_rot', 'poison_bloom', 'Rotten Patch', 'The patch deals 14% a tick instead of 8% and Slows by 30%, but the bloom deals 50% instead of 70%.',
+    { fx: [{ find: EXPLODE, set: { mult: 0.5 } }, { find: INZONE, set: { mult: 0.14, slow: 0.3 } }] });
+
+  rite('bloom_quick', 'poison_bloom', 'Ripe Pods', 'Cooldown 6 s instead of 9, but costs 45 Focus.',
+    { set: { cooldown: 6, cost: 45 } });
+  rite('bloom_charges', 'poison_bloom', 'Seed Pouch', 'Poison Bloom has 2 charges. Each takes 11 s.',
+    { set: { charges: 2, cooldown: 11 } });
+  rite('bloom_cheap', 'poison_bloom', 'Wild Seeds', 'Costs 20 Focus instead of 35. Cooldown 11 s.',
+    { set: { cost: 20, cooldown: 11 } });
+
+  // =============================================================================================
+  // LEAP SHOT. Base: 7 s, 15 Focus; three arrows (26 degrees) for 80% that push back and Slow 40%, and a 6.5 m leap back.
+  // =============================================================================================
+  shape('leap_far', 'leap_shot', 'Bounding Leap', 'You spring 10 m back instead of 6.5.',
+    { fx: [{ find: DASH, set: { dist: 10 } }] });
+  shape('leap_fan', 'leap_shot', 'Fan of Five', 'Five arrows in a 50 degree fan, each for 70% of the damage.',
+    { power: 0.7, fx: [{ find: PROJ, set: { count: 5, spread: 50 } }] });
+  shape('leap_hop', 'leap_shot', 'Short Hop', 'You hop only 3.5 m back, but the arrows deal 25% more.',
+    { power: 1.25, fx: [{ find: DASH, set: { dist: 3.5 } }] });
+
+  essence('leap_venom', 'leap_shot', 'Venom Tips', 'The arrows deal Poison damage and add a stack of Poison, for 70% each instead of 80%.',
+    { set: { elem: 'poison' }, fx: [{ find: PROJ, set: { elem: 'poison', mult: 0.7, status: { id: 'poison', stacks: 1 } } }] });
+  essence('leap_pin', 'leap_shot', 'Pinning Shot', 'The arrows Root for 1.2 s instead of Slowing and push nobody back, for 70% each.',
+    { fx: [{ find: PROJ, set: { mult: 0.7, knockback: 0, status: { id: 'root', dur: 1.2 } } }] });
+  essence('leap_heavy', 'leap_shot', 'Heavy Shot', 'The arrows push twice as far and break Poise harder, for 72% each.',
+    { fx: [{ find: PROJ, set: { mult: 0.72, knockback: 3.2, poise: 1.2 } }] });
+
+  rite('leap_quick', 'leap_shot', 'Light Feet', 'Cooldown 4.5 s instead of 7, but costs 25 Focus.',
+    { set: { cooldown: 4.5, cost: 25 } });
+  rite('leap_charges', 'leap_shot', 'Two Springs', 'Leap Shot has 2 charges. Each takes 9 s.',
+    { set: { charges: 2, cooldown: 9 } });
+  rite('leap_focus', 'leap_shot', 'Spring Back', 'Leap Shot gives 15 Focus. Cooldown 9 s.',
+    { set: { cooldown: 9 }, add: [focus(15)] });
+
+  // =============================================================================================
+  // BRAMBLE ARMOR. Base: 18 s, 25 Focus; 8 s of 20% less damage taken, and every hit you take lashes 3.2 m for 50% and Bleed.
+  // The tooltip is hand-written (dmgLines): an essence that changes the multiplier rewrites it.
+  // =============================================================================================
+  shape('bram_long', 'bramble_armor', 'Thick Brambles', 'The armor lasts 12 s instead of 8.',
+    { fx: [{ find: BUFF, set: { dur: 12 } }] });
+  shape('bram_wide', 'bramble_armor', 'Spreading Thorns', 'The lash reaches 5 m instead of 3.2, for 70% of the damage.',
+    { power: 0.7, fx: [{ find: AOE, set: { radius: 5 } }] });
+  shape('bram_close', 'bramble_armor', 'Close Thorns', 'The lash reaches only 2 m, but deals 50% more.',
+    { power: 1.5, fx: [{ find: AOE, set: { radius: 2 } }] });
+
+  essence('bram_iron', 'bramble_armor', 'Ironbark', 'You take 35% less damage instead of 20%, but the lash deals 30% instead of 50%.',
+    { set: { dmgLines: [{ label: 'per hit taken', mult: 0.3, delivery: 'trap' }] },
+      fx: [{ find: BUFF, set: { mods: [{ s: 'dmgTaken', t: 'more', v: -0.35 }] } }, { find: AOE, set: { mult: 0.3 } }] });
+  essence('bram_venom', 'bramble_armor', 'Poison Thorns', 'The lash deals Poison damage and adds 2 stacks of Poison instead of Bleed.',
+    { set: { elem: 'poison' }, fx: [{ find: AOE, set: { elem: 'poison', status: { id: 'poison', stacks: 2 } } }] });
+  essence('bram_barbs', 'bramble_armor', 'Barbed Hide', 'The lash deals 80% instead of 50%, but you take only 10% less damage.',
+    { set: { dmgLines: [{ label: 'per hit taken', mult: 0.8, delivery: 'trap' }] },
+      fx: [{ find: BUFF, set: { mods: [{ s: 'dmgTaken', t: 'more', v: -0.1 }] } }, { find: AOE, set: { mult: 0.8 } }] });
+
+  rite('bram_quick', 'bramble_armor', 'Fast Growth', 'Cooldown 12 s instead of 18.',
+    { set: { cooldown: 12 } });
+  rite('bram_sap', 'bramble_armor', 'Sap Flow', 'Bramble Armor also restores 10% of your maximum Health. Cooldown 20 s.',
+    { set: { cooldown: 20 }, add: [{ type: 'heal', self: true, pct: 0.1 }] });
+  rite('bram_charges', 'bramble_armor', 'Second Skin', 'Bramble Armor has 2 charges. Each takes 20 s.',
+    { set: { charges: 2, cooldown: 20 } });
+
+  // =============================================================================================
+  // SPORE CLOUD. Base: 12 s, 20 Focus; a 4.5 m cloud at the aim for 6 s: Slow 35%, Weaken, Oil, 10% Poison every half second.
+  // =============================================================================================
+  shape('spore_wide', 'spore_cloud', 'Spreading Cloud', 'The cloud covers 6.5 m instead of 4.5, but hangs only 4 s.',
+    { fx: [{ find: ZONE, set: { radius: 6.5, duration: 4 } }] });
+  shape('spore_long', 'spore_cloud', 'Still Air', 'The cloud hangs 10 s instead of 6, but covers only 3.5 m.',
+    { fx: [{ find: ZONE, set: { duration: 10, radius: 3.5 } }] });
+  shape('spore_sack', 'spore_cloud', 'Spore Sack', 'The cloud rises around you and follows you, 3.5 m wide.',
+    { set: { range: 3, aiUse: { use: 'attack', range: 3, minTargets: 2, orBoss: true } }, fx: [{ find: ZONE, set: { at: 'self', follow: true, radius: 3.5 } }] });
+
+  essence('spore_toxic', 'spore_cloud', 'Toxic Spores', 'The cloud deals 20% a tick and adds Poison instead of Weakening, but Slows by only 20%.',
+    { fx: [{ find: ZONE, set: { mult: 0.2, slow: 0.2, status: [{ id: 'poison', stacks: 1 }, { id: 'oil', dur: 3 }] } }] });
+  essence('spore_choke', 'spore_cloud', 'Choking Spores', 'Enemies in the cloud also deal 20% less damage.',
+    { fx: [{ find: ZONE, set: { enemyBuff: { id: 'spore_choke', name: 'Choking', mods: [{ s: 'dmg', t: 'more', v: -0.2 }] } } }] });
+  essence('spore_drowsy', 'spore_cloud', 'Drowsy Spores', 'The cloud Slows by 60% instead of 35%, but deals 5% a tick.',
+    { fx: [{ find: ZONE, set: { mult: 0.05, slow: 0.6 } }] });
+
+  rite('spore_quick', 'spore_cloud', 'Puffball Patch', 'Cooldown 8 s instead of 12, but costs 30 Focus.',
+    { set: { cooldown: 8, cost: 30 } });
+  rite('spore_charges', 'spore_cloud', 'Two Caps', 'Spore Cloud has 2 charges. Each takes 14 s.',
+    { set: { charges: 2, cooldown: 14 } });
+  rite('spore_burst', 'spore_cloud', 'Puffball', 'The cloud bursts as it forms: 60% Poison damage. Cooldown 14 s.',
+    { set: { cooldown: 14 }, add: [{ copy: ZONE, keep: ['at', 'range', 'radius', 'follow'], type: 'aoe', mult: 0.6, elem: 'poison', poise: 0.5 }] });
+
+  // =============================================================================================
+  // THE WILD HUNT (Ultimate). Base: 80 s; 250% on 7 m and Mark for 10 s, three Hounds of the Hunt for 12 s, 20% faster
+  // attacks and movement for 10 s.
+  // =============================================================================================
+  shape('hunt_wide', 'the_wild_hunt', 'Wide Hunt', 'The arrows fall on 10 m instead of 7, for 80% of the damage.',
+    { power: 0.8, fx: [{ find: AOE, set: { radius: 10 } }] });
+  shape('hunt_pack', 'the_wild_hunt', 'Great Pack', 'Five Hounds of the Hunt instead of three, each with 70% of the Health.',
+    { fx: [{ find: SUMMON, set: { count: 5, cap: 5, hpMult: 0.7 } }] });
+  shape('hunt_long', 'the_wild_hunt', 'Long Chase', 'The Hounds stay 20 s instead of 12, and the speed lasts 16 s instead of 10.',
+    { fx: [{ find: SUMMON, set: { duration: 20 } }, { find: BUFF, set: { dur: 16 } }] });
+
+  essence('hunt_blood', 'the_wild_hunt', 'Blood Moon', 'The arrows also add 4 stacks of Bleed.',
+    { fx: [{ find: AOE, set: { status: [{ id: 'mark', dur: 10 }, { id: 'bleed', stacks: 4, power: 0.1 }] } }] });
+  essence('hunt_fury', 'the_wild_hunt', 'Hunting Fury', 'You attack 35% faster instead of 20%, but move only 10% faster.',
+    { fx: [{ find: BUFF, set: { mods: [{ s: 'atkSpeed', t: 'inc', v: 0.35 }, { s: 'moveSpeed', t: 'inc', v: 0.1 }] } }] });
+  essence('hunt_iron', 'the_wild_hunt', 'Iron Hounds', 'The Hounds of the Hunt take 40% less damage.',
+    { fx: [{ find: SUMMON, set: { mods: [{ s: 'dmgTaken', t: 'more', v: -0.4 }] } }] });
+
+  rite('hunt_early', 'the_wild_hunt', 'Early Horn', 'Cooldown 60 s instead of 80.',
+    { set: { cooldown: 60 } });
+  rite('hunt_twice', 'the_wild_hunt', 'Second Horn', 'The Wild Hunt has 2 charges. Each takes 95 s.',
+    { set: { charges: 2, cooldown: 95 } });
+  rite('hunt_pact', 'the_wild_hunt', 'Blood Horn', 'Costs 15% of your Health. Cooldown 45 s.',
+    { set: { hpCost: 0.15, cooldown: 45 } });
+
+  KD.register('mutations', M);
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/data/38_tree_builds_emberscribe.js
 (function (root) {
   'use strict';
@@ -20155,6 +21867,141 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       { to: 25, goals: ['mut:fo_long', 'cluster:plate_mail', 'cluster:plate_mend', 'cluster:plate_padding', 'skill:bulwark_stance'] },
       { to: 40, goals: ['Living Fortress', 'cluster:plate_ward', 'cluster:plate_harness', 'cluster:plate_heart', 'cluster:plate_wall_mid'] },
       { to: 60, goals: ['Iron Skin', 'cluster:plate_gorget', 'cluster:plate_enamel', 'cluster:plate_salve', 'cluster:plate_mantle'] }
+    ] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/38_tree_builds_thornwarden.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+
+  /**
+   * RECOMMENDED BUILDS of the Thornwarden's tree (docs/TREE_THORNWARDEN.md section 4). Pure data; the registry and the format
+   * are in src/data/38_tree_builds_gravecaller.js (KD.data.treeBuilds.add), the logic in src/meta/35_tree_builds.js, the screen
+   * is the Builds tab of the tree page. Goals are stable names: 'skill:<abilityId>', 'mut:<mutationId>', 'cluster:<clusterId>'
+   * (complete it) or a node's name. Every build starts from a different skill and fits KD.treeBuilds.BUDGET (152) points
+   * (tests/tree_thornwarden.test.js).
+   */
+  var R = KD.data = KD.data || {};
+  var TBD = R.treeBuilds = R.treeBuilds || { byClass: {} };
+  TBD.add = TBD.add || function (classId, rec) {
+    if (!rec || typeof rec.id !== 'string') throw new Error('KD.data.treeBuilds.add(' + classId + '): a record with an id is needed');
+    rec.cls = classId;
+    (TBD.byClass[classId] = TBD.byClass[classId] || []).push(rec);
+    return rec;
+  };
+  function add(rec) { return TBD.add('thornwarden', rec); }
+
+  // 4.1 the archer who never moves
+  add({ id: 'deadeye', name: 'Deadeye', design: '4.1', difficulty: 1, start: 'barbed_volley', arms: ['bow', 'hunt'],
+    pitch: 'Plant your feet, hold your breath and let the volleys fly: every critical arrow pays for the next.',
+    tags: ['Arrows', 'Steady Aim', 'Critical hits'],
+    stages: [
+      { to: 10, goals: ['mut:volley_tight', 'mut:volley_broad', 'mut:volley_charges'] },
+      { to: 25, goals: ['cluster:bow_breath', 'cluster:bow_close', 'cluster:bow_hawk', 'skill:hunters_mark', 'mut:mark_heart'] },
+      { to: 40, goals: ['Rooted Stance', 'cluster:bow_patience', 'cluster:bow_gut', 'cluster:bow_hunt_mid', 'cluster:bow_string'] },
+      { to: 60, goals: ['Deadeye', 'cluster:bow_steady', 'cluster:bow_treetop', 'cluster:bow_heartwood', 'cluster:bow_flight', 'cluster:bow_last'] }
+    ] });
+
+  // 4.2 the boss hunter
+  add({ id: 'huntmaster', name: 'Huntmaster', design: '4.2', difficulty: 2, start: 'hunters_mark', arms: ['hunt', 'bow'],
+    pitch: 'One quarry at a time: Mark the biggest thing in the room, follow it and blow the horn when it turns.',
+    tags: ['Bosses', 'Mark', 'Single target'],
+    stages: [
+      { to: 10, goals: ['mut:mark_heart', 'mut:mark_quick', 'mut:mark_far', 'cluster:hunt_spoor'] },
+      { to: 25, goals: ['skill:the_wild_hunt', 'mut:hunt_fury', 'cluster:hunt_trail', 'skill:barbed_volley', 'mut:volley_tight'] },
+      { to: 40, goals: ['Trophy Hunter', 'cluster:hunt_trophy', 'cluster:hunt_elite', 'cluster:bow_hunt_mid', 'cluster:hunt_stalk'] },
+      { to: 60, goals: ['The Long Hunt', 'cluster:hunt_kill', 'cluster:hunt_scent', 'cluster:hunt_moon', 'cluster:hunt_lodge', 'mut:hunt_early'] }
+    ] });
+
+  // 4.3 the beastmaster
+  add({ id: 'packleader', name: 'Packleader', design: '4.3', difficulty: 1, start: 'beast_call', arms: ['pack', 'hunt'],
+    pitch: 'Two Thornhounds that never stay down: point at a target and let the pack do the rest.',
+    tags: ['Beasts', 'Minions', 'Safe'],
+    stages: [
+      { to: 10, goals: ['mut:beast_two', 'mut:beast_hide', 'mut:beast_quick', 'cluster:pack_litter'] },
+      { to: 25, goals: ['cluster:pack_teeth', 'cluster:pack_mend', 'cluster:pack_howl', 'skill:hunters_mark', 'mut:mark_slow'] },
+      { to: 40, goals: ['Master of Hounds', 'cluster:pack_marked', 'cluster:hunt_pack_mid', 'cluster:pack_frenzy', 'cluster:pack_bones'] },
+      { to: 60, goals: ['Bonded', 'cluster:pack_alpha', 'cluster:pack_leash', 'cluster:pack_hackles', 'cluster:pack_wolfsbane', 'cluster:pack_den'] }
+    ] });
+
+  // 4.4 the thorn tank
+  add({ id: 'briarheart', name: 'Briarheart', design: '4.4', difficulty: 1, start: 'bramble_armor', arms: ['briar', 'pack'],
+    pitch: 'Wear the briar and stand in the crowd: every blow that lands on you cuts the one who struck it.',
+    tags: ['Thorns', 'Tanky', 'Close range'],
+    stages: [
+      { to: 10, goals: ['mut:bram_long', 'mut:bram_barbs', 'mut:bram_sap', 'cluster:briar_patch'] },
+      { to: 25, goals: ['cluster:briar_sap', 'cluster:briar_bark', 'skill:beast_call', 'mut:beast_hide', 'cluster:pack_briar_mid'] },
+      { to: 40, goals: ['Mantle of Thorns', 'cluster:briar_spines', 'cluster:briar_close', 'cluster:briar_hold', 'cluster:briar_moss'] },
+      { to: 60, goals: ['Thornskin', 'cluster:briar_thicket', 'cluster:briar_root', 'cluster:briar_bloodbark', 'cluster:briar_wild_rose', 'cluster:pack_briar_outer'] }
+    ] });
+
+  // 4.5 walls and control
+  add({ id: 'hedge_warden', name: 'Hedge Warden', design: '4.5', difficulty: 2, start: 'vine_wall', arms: ['briar', 'spores'],
+    pitch: 'Wall them in, choke them in spores and shoot over the hedge. Nobody reaches you.',
+    tags: ['Control', 'Walls', 'Defence'],
+    stages: [
+      { to: 10, goals: ['mut:wall_old', 'mut:wall_grasp', 'mut:wall_charges', 'cluster:briar_wall'] },
+      { to: 25, goals: ['cluster:briar_hedge', 'skill:spore_cloud', 'mut:spore_choke', 'mut:spore_long', 'cluster:briar_spores_mid'] },
+      { to: 40, goals: ['Heart of Oak', 'cluster:spores_mold', 'cluster:spores_puff', 'cluster:briar_bark', 'cluster:briar_close'] },
+      { to: 60, goals: ['Spore Lord', 'cluster:spores_gills', 'cluster:spores_deep', 'cluster:briar_root'] }
+    ] });
+
+  // 4.6 spores, Oil and fire
+  add({ id: 'sporecaller', name: 'Sporecaller', design: '4.6', difficulty: 3, start: 'spore_cloud', arms: ['spores', 'bow'],
+    pitch: 'Oil them in spores, then light the sky: pitch arrows turn every cloud into an Inferno.',
+    tags: ['Oil', 'Fire', 'Area'],
+    stages: [
+      { to: 10, goals: ['mut:spore_wide', 'mut:spore_drowsy', 'mut:spore_burst', 'cluster:spores_ring'] },
+      { to: 25, goals: ['cluster:spores_kindling', 'cluster:spores_oil', 'skill:rain_of_thorns', 'mut:rain_pitch', 'mut:rain_wide'] },
+      { to: 40, goals: ['Mycelial Host', 'cluster:spores_mold', 'cluster:spores_puff', 'cluster:spores_rot', 'cluster:spores_cap'] },
+      { to: 60, goals: ['Blight', 'cluster:spores_glow', 'cluster:spores_hyphae', 'cluster:spores_veil'] }
+    ] });
+
+  // 4.7 the poisoner
+  add({ id: 'nightshade', name: 'Nightshade', design: '4.7', difficulty: 2, start: 'poison_bloom', arms: ['venom', 'spores'],
+    pitch: 'Every arrow, bloom and cloud adds Poison; every death passes it on.',
+    tags: ['Poison', 'Damage over time', 'Spreading'],
+    stages: [
+      { to: 10, goals: ['mut:bloom_wide', 'mut:bloom_thick', 'mut:bloom_charges', 'cluster:venom_nettles'] },
+      { to: 25, goals: ['cluster:venom_spread', 'cluster:venom_deep', 'cluster:venom_dose', 'mut:arrow_venom', 'skill:spore_cloud', 'mut:spore_toxic'] },
+      { to: 40, goals: ['Venom Over Steel', 'cluster:venom_tips', 'cluster:venom_hemlock', 'cluster:spores_venom_mid', 'cluster:venom_foxglove'] },
+      { to: 60, goals: ['Slow Death', 'cluster:venom_garden', 'cluster:venom_cure', 'cluster:venom_still'] }
+    ] });
+
+  // 4.8 the trapper
+  add({ id: 'trapper', name: 'Trapper', design: '4.8', difficulty: 2, start: 'snare_trap', arms: ['snares', 'venom'],
+    pitch: 'Five snares on the ground, all poisoned, and one arrow sets the whole line off.',
+    tags: ['Traps', 'Detonations', 'Control'],
+    stages: [
+      { to: 10, goals: ['mut:snare_many', 'mut:snare_venom', 'mut:snare_thrift', 'cluster:snares_tripwire'] },
+      { to: 25, goals: ['cluster:snares_jaws', 'cluster:snares_rhythm', 'cluster:snares_powder', 'skill:poison_bloom', 'mut:bloom_wilt'] },
+      { to: 40, goals: ["Trapper's Pact", 'cluster:venom_snares_mid', 'cluster:snares_line', 'cluster:snares_spring', 'cluster:snares_yield'] },
+      { to: 60, goals: ['Hair Trigger', 'cluster:snares_field', 'cluster:snares_oil', 'cluster:snares_pits', 'cluster:snares_net', 'cluster:snares_cache'] }
+    ] });
+
+  // 4.9 the kiter
+  add({ id: 'skirmisher', name: 'Skirmisher', design: '4.9', difficulty: 3, start: 'leap_shot', arms: ['stride', 'snares'],
+    pitch: 'Never where they swing: leap back, roll, shoot from the roll and leave a snare where you stood.',
+    tags: ['Kiting', 'Movement', 'Evasion'],
+    stages: [
+      { to: 10, goals: ['mut:leap_far', 'mut:leap_pin', 'mut:leap_charges', 'cluster:stride_deer'] },
+      { to: 25, goals: ['cluster:stride_fleet', 'cluster:stride_roll', 'cluster:stride_quiver', 'skill:snare_trap', 'mut:snare_stun'] },
+      { to: 40, goals: ['Never Still', 'cluster:snares_stride_mid', 'cluster:stride_tumble', 'cluster:stride_feint', 'cluster:stride_hare'] },
+      { to: 60, goals: ['Wind Runner', 'cluster:stride_fern', 'cluster:stride_ridge', 'cluster:stride_meadow', 'cluster:stride_far', 'cluster:stride_bow_mid'] }
+    ] });
+
+  // 4.10 the arrow storm
+  add({ id: 'stormcaller', name: 'Stormcaller', design: '4.10', difficulty: 2, start: 'rain_of_thorns', arms: ['bow', 'stride'],
+    pitch: 'Two clouds of arrows at once and a fan of five in between: the whole field is a killing ground.',
+    tags: ['Area', 'Arrows', 'Packs'],
+    stages: [
+      { to: 10, goals: ['mut:rain_wide', 'mut:rain_pin', 'mut:rain_charges', 'cluster:bow_rain'] },
+      { to: 25, goals: ['cluster:bow_downpour', 'skill:barbed_volley', 'mut:volley_wide', 'cluster:bow_breath', 'cluster:bow_close'] },
+      { to: 40, goals: ['Quickdraw', 'cluster:bow_string', 'cluster:bow_flight', 'cluster:stride_bow_mid', 'cluster:bow_gut'] },
+      { to: 60, goals: ['Rooted Stance', 'cluster:bow_heartwood', 'cluster:bow_treetop', 'cluster:bow_steady', 'cluster:bow_last', 'cluster:stride_bow_outer'] }
     ] });
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -28121,6 +29968,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.81', date: '2026-10-16', title: 'The Thornwarden\'s Old Wood', notes: [
+      'The Thornwarden has her own skill tree now: The Old Wood, eight arms from the Longbow to the Deer Path',
+      'Pick one skill to start, find the rest in the tree, and shape each with three mutations',
+      'Ten recommended builds: archer, huntmaster, packleader, thorn tank, trapper, kiter and more'
+    ] },
     { version: '0.7.80', date: '2026-10-16', title: 'The Emberscribe\'s own tree', notes: [
       'The Emberscribe has its own talent tree now: The Burning Library, with over 1,500 nodes in eight arms',
       'Fire, rune lines, traps, quills, Ink and Ward, frost, storms and alchemy: every skill and over 100 mutations come from the tree',
@@ -50076,6 +51928,332 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       if (p.dead || !(p.resMax > 0) || p.res < p.resMax - 1e-6 || p.hp >= p.hpMax) return;
       S.heal(c.world, p, p.hpMax * T.mendHeal * c.dt, p, { noScale: true, silent: true });
     }
+  });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/sim/56_tree_thornwarden.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var U = KD.util;
+  var S = KD.sim = KD.sim || {};
+  var K = KD.skills = KD.skills || {};
+  if (!K.registerHook) return;
+
+  /**
+   * THORNWARDEN, the rules of the class tree (docs/TREE_THORNWARDEN.md section 3): the `effect` keys `tree_thornwarden_<id>` of
+   * the rule notables and keystones in src/data/36_tree_thornwarden_<arm>.js. The tree also reuses the Greenwood rules of the
+   * Crownweb (`web_thornwarden_*`, src/sim/51_class_thornwarden.js) and Trapper's Pact (src/sim/32_webfx.js); the mutations are
+   * pure data. Every hook acts on the owner's own hits, statuses, casts and beasts, uses world.rng / world.time only, and guards
+   * the places where it could start itself again. Every number is in the T table; the node texts quote them
+   * (tests/tree_thornwarden.test.js compares).
+   */
+  var T = {
+    pbRange: 5, pbMore: 1.2,               // Point Blank: Barbed Volley arrows on enemies this close
+    eagleFocus: 3,                         // Eagle Eye: Focus per critical arrow
+    downMore: 1.1,                         // Downpour: arrows on enemies standing in your Rain of Thorns
+    deadFar: 8, deadMore: 1.3, deadLess: 0.8,   // Deadeye (keystone): arrows at range / up close
+    focusMore: 1.1,                        // Focused Fire (bridge): your arrows on your quarry
+    trailIcd: 2, trailPower: 0.08,         // Blood Trail: Bleed on the quarry, once every 2 s
+    stalkSpeed: 0.15,                      // Stalker: Movement Speed while your quarry lives
+    longRange: 10,                         // The Long Hunt (keystone): the Mark jumps this far
+    packHeal: 0.005, packIcd: 0.5,         // Pack Mend: Health per beast hit, once every 0.5 s
+    howlSpeed: 0.15, howlDur: 8,           // Rallying Howl: Attack Speed after Beast Call
+    bondShare: 0.2,                        // Bonded (keystone): share of the damage you take that your Thornhound takes
+    guardRange: 5, guardLess: 0.9,         // Guard Dog (bridge): damage taken while a Thornhound is this close
+    sapHeal: 0.015,                        // Sap Mend: Health per second while Bramble Armor lasts
+    patchSlow: 0.3, patchDur: 2,           // Briar Patch: Slow on melee attackers
+    shelterRange: 3, shelterLess: 0.8,     // Behind the Hedge: damage taken this close to your Vine Wall
+    skinShare: 1,                          // Thornskin (keystone): Thorns also answer ranged and spell hits, at this share
+    kindleIcd: 3,                          // Kindling: Burn on Oiled enemies, once every 3 s per enemy
+    puffRadius: 2.5, puffDur: 3, puffSlow: 0.35,   // Puffballs: a cloud where an enemy dies in your Spore Cloud
+    moldMore: 1.1,                         // Soft Mold: hits on Weakened enemies
+    hostRadius: 3.5, hostSlow: 0.15,       // Mycelial Host (keystone): the aura
+    deepAt: 6, deepMore: 1.12,             // Deep Venom: hits on an enemy with this many Poison stacks
+    antiHeal: 0.02,                        // Bitter Antidote: Health on killing a Poisoned enemy
+    baitStacks: 2,                         // Poisoned Bait (bridge): Poison stacks from your traps
+    jawsMore: 1.15,                        // Iron Bite: hits on enemies Rooted by you
+    rhythmSpeed: 0.15, rhythmDur: 4,       // Trapper's Rhythm: Attack Speed when a trap goes off
+    fleetSpeed: 0.25, fleetDur: 3,         // Fleet of Foot: Movement Speed after Leap Shot
+    rollMore: 1.3, rollWindow: 2           // Rolling Shot: the first arrow this soon after a dodge roll
+  };
+  S.treeThornwarden = { T: T };
+
+  function enemy(e) { return !!e && e.kind === 'enemy' && !e.dead && !e.removed; }
+  function arrow(c) { return !!(c.spec && c.spec.delivery === 'ranged' && !c.spec.dot && !c.spec.proc); }
+  function mine(st, p) { return !!(st && (st.src === p || st.src === p.id)); }
+  /** The enemy carrying this player's Hunter's Mark (its own quarry), or null. */
+  function quarry(world, p) {
+    var q = p.twQuarry;
+    if (q && !q.dead && !q.removed && mine(S.hasStatus(q, 'hunters_mark'), p)) return q;
+    for (var i = 0; i < world.chars.length; i++) {
+      var c = world.chars[i];
+      if (c.dead || c.removed || c.kind !== 'enemy') continue;
+      if (mine(S.hasStatus(c, 'hunters_mark'), p)) return (p.twQuarry = c);
+    }
+    return null;
+  }
+  function isQuarry(p, t) { return !!t && mine(S.hasStatus(t, 'hunters_mark'), p); }
+  /** Living Thornhounds of a player. */
+  function hounds(p) {
+    var out = [], m = p.minions || [];
+    for (var i = 0; i < m.length; i++) if (!m[i].dead && !m[i].removed && m[i].defId === 'thorn_hound') out.push(m[i]);
+    return out;
+  }
+  /** True when `o` stands in one of the owner's zones of that ability (any shape the mutations give it). */
+  function inOwnZone(world, owner, abilityId, o, pad) {
+    var zs = world.zones, i, z, rr;
+    for (i = 0; i < zs.length; i++) {
+      z = zs[i];
+      if (z.removed || z.src !== owner || !z.ctx || !z.ctx.def || z.ctx.def.id !== abilityId || z.trap) continue;
+      if (z.shape === 'line') { if (S.inLine(z.x, z.z, z.x + Math.sin(z.yaw) * z.len, z.z + Math.cos(z.yaw) * z.len, z.wid + 2 * (pad || 0), o.x, o.z, o.r)) return true; continue; }
+      rr = z.r + o.r * 0.5 + (pad || 0);
+      if (U.dist2(z.x, z.z, o.x, o.z) <= rr * rr) return true;
+    }
+    return false;
+  }
+  /** A per-enemy, per-owner cooldown kept on the enemy: true (and starts it) when it is ready. */
+  function icd(world, tgt, k, owner, secs) {
+    var m = tgt.twIcd || (tgt.twIcd = {}), key = k + ':' + owner.id;
+    if ((m[key] || 0) > world.time) return false;
+    m[key] = world.time + secs;
+    return true;
+  }
+  function buff(world, p, id, name, dur, mods, desc, icon) {
+    var b = S.addBuff(world, p, { id: id, name: name, dur: dur, src: p, icon: icon || 'leaf', color: '#9fd97a', mods: mods });
+    if (b && desc && !b.def.desc) b.def.desc = desc;
+    return b;
+  }
+  function pc(v) { return Math.round(v * 100) + '%'; }
+
+  // ---------------------------------------------------------------------------------------------
+  // The Longbow (bow)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_thornwarden_pointblank', {
+    onBeforeHit: function (c) {
+      var t = c.target, p = c.self;
+      if (enemy(t) && c.spec && c.spec.ability === 'barbed_volley' && !c.spec.dot && U.dist(p.x, p.z, t.x, t.z) - (t.r || 0) <= T.pbRange) c.mult *= T.pbMore;
+    }
+  });
+  K.registerHook('tree_thornwarden_eagle', {
+    onCrit: function (c) { if (enemy(c.target) && arrow(c)) S.player.gainRes(c.world, c.self, T.eagleFocus, 'tree'); }
+  });
+  K.registerHook('tree_thornwarden_downpour', {
+    onBeforeHit: function (c) { if (enemy(c.target) && arrow(c) && inOwnZone(c.world, c.self, 'rain_of_thorns', c.target)) c.mult *= T.downMore; }
+  });
+  K.registerHook('tree_thornwarden_deadeye', {
+    onBeforeHit: function (c) {
+      var t = c.target, p = c.self;
+      if (!enemy(t) || !arrow(c)) return;
+      c.mult *= U.dist(p.x, p.z, t.x, t.z) - (t.r || 0) > T.deadFar ? T.deadMore : T.deadLess;
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Quarry (hunt)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_thornwarden_focusfire', {
+    onBeforeHit: function (c) { if (enemy(c.target) && arrow(c) && isQuarry(c.self, c.target)) c.mult *= T.focusMore; }
+  });
+  K.registerHook('tree_thornwarden_trail', {
+    onHit: function (c) {
+      var t = c.target, p = c.self;
+      if (!enemy(t) || !c.spec || c.spec.dot || c.spec.proc || !isQuarry(p, t) || !icd(c.world, t, 'trail', p, T.trailIcd)) return;
+      S.applyStatus(c.world, t, 'bleed', { src: p, stacks: 1, power: T.trailPower, delivery: 'ranged' });
+    }
+  });
+  K.registerHook('tree_thornwarden_stalk', {
+    onTick: function (c, eff, st) {
+      var p = c.self, w = c.world;
+      st.acc = (st.acc || 0) + c.dt;
+      if (st.acc < 0.25) return;
+      st.acc = 0;
+      if (p.dead || !quarry(w, p)) return;
+      buff(w, p, 'tw_stalk', 'Stalker', 0.6, [{ s: 'moveSpeed', t: 'inc', v: T.stalkSpeed }], pc(T.stalkSpeed) + ' more Movement Speed while your quarry lives.', 'target');
+    }
+  });
+  K.registerHook('tree_thornwarden_horncall', {
+    onCast: function (c) { if (c.ability && c.ability.id === 'the_wild_hunt' && !(c.inst && c.inst.echo)) K.reduceCooldown(c.world, c.self, 'hunters_mark', 1e4); }
+  });
+  /** The Long Hunt: when the quarry dies (by you or your beasts) the Mark jumps to the nearest enemy within reach. */
+  function jump(c) {
+    var w = c.world, p = c.self, t = c.target;
+    if (p.dead || !t || !isQuarry(p, t)) return;
+    var best = null, bd = T.longRange * T.longRange, list = w.queryCircle(t.x, t.z, T.longRange);
+    for (var i = 0; i < list.length; i++) {
+      var o = list[i];
+      if (o === t || !enemy(o) || !S.hostile(p, o)) continue;
+      var d = U.dist2(o.x, o.z, t.x, t.z);
+      if (d < bd) { bd = d; best = o; }
+    }
+    if (!best) return;
+    var old = S.hasStatus(t, 'hunters_mark');
+    var hm = S.addBuff(w, best, { id: 'hunters_mark', name: "Hunter's Mark", kind: 'debuff', dur: old ? Math.max(1, old.dur - old.t) : 8, taken: true, power: old ? old.power : 0.1, src: p, icon: 'target', color: '#9fd97a' });
+    if (hm) { hm.def.desc = 'Hunted: takes more damage. Killing it refunds Focus.'; p.twQuarry = best; }
+    w.events.emit('fx', { name: 'mark', x: best.x, y: 1, z: best.z, src: p });
+  }
+  K.registerHook('tree_thornwarden_longhunt', { onKill: jump });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Kennel (pack)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_thornwarden_packmend', {
+    onMinionHit: function (c, eff, st) {
+      var p = c.self, w = c.world;
+      if (p.dead || !c.minion || c.minion.hireling || (st.ready || 0) > w.time) return;
+      st.ready = w.time + T.packIcd;
+      S.heal(w, p, p.hpMax * T.packHeal, p, { noScale: true, silent: true });
+    }
+  });
+  K.registerHook('tree_thornwarden_howl', {
+    onCast: function (c) {
+      if (!c.ability || c.ability.id !== 'beast_call') return;
+      buff(c.world, c.self, 'tw_howl', 'Rallying Howl', T.howlDur, [{ s: 'atkSpeed', t: 'inc', v: T.howlSpeed }], pc(T.howlSpeed) + ' more Attack Speed after Beast Call.', 'wolf');
+    }
+  });
+  K.registerHook('tree_thornwarden_bond', {
+    onBeforeDamaged: function (c, eff, st) {
+      var p = c.self, w = c.world;
+      if (st.busy || !(c.amount > 0) || !c.attacker || c.attacker === p) return;
+      var h = hounds(p)[0];
+      if (!h) return;
+      var share = c.amount * T.bondShare;
+      c.amount -= share;
+      st.busy = true;
+      try { S.damage(w, null, h, { flat: share, elem: 'phys', pure: true, noCrit: true, dot: true }); } finally { st.busy = false; }
+    }
+  });
+  K.registerHook('tree_thornwarden_guarddog', {
+    onBeforeDamaged: function (c) {
+      var p = c.self, list;
+      if (!(c.amount > 0)) return;
+      list = hounds(p);
+      for (var i = 0; i < list.length; i++) if (U.dist(list[i].x, list[i].z, p.x, p.z) <= T.guardRange) { c.amount *= T.guardLess; return; }
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Briar (briar)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_thornwarden_sap', {
+    onTick: function (c, eff, st) {
+      var p = c.self;
+      if (p.dead || !S.hasStatus(p, 'bramble_armor')) { st.acc = 0; return; }
+      st.acc = (st.acc || 0) + c.dt;
+      if (st.acc < 1) return;
+      st.acc -= 1;
+      S.heal(c.world, p, p.hpMax * T.sapHeal, p, { noScale: true, silent: true });
+    }
+  });
+  K.registerHook('tree_thornwarden_patch', {
+    onDamaged: function (c) {
+      var a = c.attacker;
+      if (!enemy(a) || !c.spec || c.spec.delivery !== 'melee' || c.spec.dot) return;
+      S.applyStatus(c.world, a, 'slow', { src: c.self, dur: T.patchDur, power: T.patchSlow });
+    }
+  });
+  K.registerHook('tree_thornwarden_shelter', {
+    onBeforeDamaged: function (c) { if (c.amount > 0 && inOwnZone(c.world, c.self, 'vine_wall', c.self, T.shelterRange)) c.amount *= T.shelterLess; }
+  });
+  K.registerHook('tree_thornwarden_thornskin', {
+    onDamaged: function (c, eff, st) {
+      var p = c.self, a = c.attacker, th = p.stats ? p.stats.thorns : 0;
+      if (st.busy || !(th > 0) || !enemy(a) || !c.spec || c.spec.dot || c.spec.thorns || c.spec.delivery === 'melee' || !S.hostile(p, a)) return;
+      st.busy = true;
+      try { S.damage(c.world, p, a, { flat: th * T.skinShare, elem: 'phys', thorns: true, noCrit: true }); } finally { st.busy = false; }
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Mushroom Ring (spores)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_thornwarden_kindling', {
+    onHit: function (c) {
+      var t = c.target, p = c.self;
+      if (!enemy(t) || !c.spec || c.spec.dot || c.spec.proc || !S.hasStatus(t, 'oil') || !icd(c.world, t, 'kindle', p, T.kindleIcd)) return;
+      S.applyStatus(c.world, t, 'burn', { src: p, hit: c.info ? c.info.raw : 0 });
+    }
+  });
+  K.registerHook('tree_thornwarden_puff', {
+    onKill: function (c) {
+      var p = c.self, w = c.world, t = c.target;
+      if (!t || !inOwnZone(w, p, 'spore_cloud', t)) return;
+      K.spawnZone(K.makeCtx(w, p, null, { x: t.x, z: t.z, delivery: 'trap' }), { name: 'tw_puffball', radius: T.puffRadius, duration: T.puffDur, tick: 0.5, tickNow: true, slow: T.puffSlow,
+        status: { id: 'weaken', dur: 2 }, fx: 'spore_cloud', noSigil: true }, t.x, t.z);
+    }
+  });
+  K.registerHook('tree_thornwarden_mold', {
+    onBeforeHit: function (c) { if (enemy(c.target) && S.hasStatus(c.target, 'weaken')) c.mult *= T.moldMore; }
+  });
+  K.registerHook('tree_thornwarden_host', {
+    onTick: function (c, eff, st) {
+      var p = c.self, w = c.world;
+      st.acc = (st.acc || 0) + c.dt;
+      if (st.acc < 1 || p.dead) return;
+      st.acc = 0;
+      var list = w.queryCircle(p.x, p.z, T.hostRadius);
+      for (var i = 0; i < list.length; i++) {
+        var o = list[i];
+        if (!enemy(o) || !S.hostile(p, o)) continue;
+        S.applyStatus(w, o, 'weaken', { src: p, dur: 1.5 });
+        S.applyStatus(w, o, 'slow', { src: p, dur: 1.5, power: T.hostSlow });
+      }
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Nightshade Garden (venom)
+  // ---------------------------------------------------------------------------------------------
+  function poisonStacks(t) { var st = S.hasStatus(t, 'poison'); return st ? (st.stacks || 1) : 0; }
+  K.registerHook('tree_thornwarden_deep', {
+    onBeforeHit: function (c) { if (enemy(c.target) && poisonStacks(c.target) >= T.deepAt) c.mult *= T.deepMore; }
+  });
+  K.registerHook('tree_thornwarden_antidote', {
+    onKill: function (c) {
+      var p = c.self;
+      if (p.dead || !c.target || !S.hasStatus(c.target, 'poison')) return;
+      S.heal(c.world, p, p.hpMax * T.antiHeal, p, { noScale: true });
+    }
+  });
+  K.registerHook('tree_thornwarden_bait', {
+    onHit: function (c) {
+      if (!enemy(c.target) || !c.spec || c.spec.dot || c.spec.delivery !== 'trap' || c.spec.ability !== 'snare_trap') return;
+      S.applyStatus(c.world, c.target, 'poison', { src: c.self, stacks: T.baitStacks, hit: c.info ? c.info.raw : 0, delivery: 'trap' });
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Snare Line (snares)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_thornwarden_jaws', {
+    onBeforeHit: function (c) { if (enemy(c.target) && mine(S.hasStatus(c.target, 'root'), c.self)) c.mult *= T.jawsMore; }
+  });
+  K.registerHook('tree_thornwarden_rhythm', {
+    onTrap: function (c) {
+      if (c.self.dead) return;
+      buff(c.world, c.self, 'tw_rhythm', "Trapper's Rhythm", T.rhythmDur, [{ s: 'atkSpeed', t: 'inc', v: T.rhythmSpeed }], pc(T.rhythmSpeed) + ' more Attack Speed after a trap goes off.', 'trap');
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Deer Path (stride)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_thornwarden_fleet', {
+    onCast: function (c) {
+      if (!c.ability || c.ability.id !== 'leap_shot') return;
+      buff(c.world, c.self, 'tw_fleet', 'Fleet of Foot', T.fleetDur, [{ s: 'moveSpeed', t: 'inc', v: T.fleetSpeed }], pc(T.fleetSpeed) + ' more Movement Speed after Leap Shot.', 'leap');
+    }
+  });
+  K.registerHook('tree_thornwarden_roll', {
+    onDodge: function (c, eff, st) { st.until = c.world.time + T.rollWindow; st.inst = null; },
+    onCast: function (c, eff, st) {
+      var ab = c.ability;
+      if (!ab || ab.delivery !== 'ranged') return;
+      if (st.until > c.world.time) { st.inst = c.inst || null; st.until = 0; } else st.inst = null;     // only the first shot after the roll
+    },
+    onBeforeHit: function (c, eff, st) { if (st.inst && c.spec && c.spec.inst === st.inst && enemy(c.target) && arrow(c)) c.mult *= T.rollMore; }
   });
 })(typeof window !== 'undefined' ? window : globalThis);
 
