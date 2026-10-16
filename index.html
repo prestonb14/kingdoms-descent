@@ -3872,7 +3872,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.76';
+  KD.VERSION = '0.7.77';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -4073,6 +4073,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     dmgBroken: { base: 1, label: 'Damage to Broken enemies', fmt: 'mult', group: 'off' },
     // other offense
     atkSpeed: { base: 1, label: 'Attack and Cast Speed', fmt: 'mult', group: 'off', cap: 3 },
+    meleeSpeed: { base: 1, label: 'Melee Attack Speed', fmt: 'mult', group: 'off', cap: 3 },      // [atk pace] melee attacks only, on top of atkSpeed (KD.attackPace.isMelee)
     critChance: { base: 0.05, label: 'Critical Chance', fmt: 'pct', group: 'off', cap: 0.95 },
     critMult: { base: 1.5, label: 'Critical Damage', fmt: 'mult', group: 'off' },
     aoe: { base: 1, label: 'Area of Effect', fmt: 'mult', group: 'off', cap: 3 },
@@ -6330,7 +6331,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     dmgMelee: ['inc', 0.02, 0.005], dmgRanged: ['inc', 0.02, 0.005], dmgSpell: ['inc', 0.02, 0.005],
     dmgMinion: ['inc', 0.03, 0.005], dmgTrap: ['inc', 0.025, 0.005], dmgDot: ['inc', 0.025, 0.005],
     dmgBoss: ['inc', 0.035, 0.005], dmgElite: ['inc', 0.035, 0.005], dmgBroken: ['inc', 0.04, 0.005],
-    atkSpeed: ['inc', 0.01, 0.005], critChance: ['add', 0.0075, 0.0025], critMult: ['add', 0.03, 0.01],
+    atkSpeed: ['inc', 0.01, 0.005], meleeSpeed: ['inc', 0.03, 0.005], critChance: ['add', 0.0075, 0.0025], critMult: ['add', 0.03, 0.01],
     aoe: ['inc', 0.02, 0.005], projSpeed: ['inc', 0.04, 0.01], cdr: ['inc', 0.015, 0.005],
     breakPower: ['inc', 0.04, 0.01], momentumGain: ['inc', 0.03, 0.01], statusChance: ['inc', 0.04, 0.01], statusDur: ['inc', 0.04, 0.01],
     lifesteal: ['add', 0.0015, 0.0005], resOnHit: ['add', 0.25, 0.05],
@@ -11467,10 +11468,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
     trunk: G.dagTrunk([
       'critChance 1', 'hp 1', { t: 'skill', grants: 'backstab', abil: [{ a: 'backstab', k: 'dmg', v: 0.05 }] }, 'dmgBack 1', 'evasion 1',     // T1..T5
-      'hp 1', 'backCrit 1', 'atkSpeed 1', ['Knife Row', 'critMult 0.5', 'moveSpeed 1'], 'hp 1',                                                     // T6..T10
+      'hp 1', 'backCrit 1', 'meleeSpeed 1', ['Knife Row', 'critMult 0.5', 'moveSpeed 1'], 'hp 1',                                                   // T6..T10 ([atk pace] meleeSpeed was atkSpeed)
       'critChance 1', 'resAll 1', 'hp 1', 'dmgBack 1', 'evasion 1',                                                                                // T11..T15
       'hp 1', 'critMult 1', 'backLeech 1', 'hp 1', 'backCrit 1',                                                                                    // T16..T20
-      'atkSpeed 1', 'hp 1', 'critMult 1', 'resAll 1', 'hp 1'                                                                                        // T21..T25
+      'meleeSpeed 1', 'hp 1', 'critMult 1', 'resAll 1', 'hp 1'                                                                                      // T21..T25 ([atk pace] meleeSpeed was atkSpeed)
     ]),
 
     clusters: [
@@ -11496,8 +11497,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         core: rule('bleeder', 'Bleed Them Dry', ['backCrit 1'], 'Your critical backstabs add 2 stacks of Bleed.', { off: 1.03, def: 1 }),
         bonus: ['backCrit 1.5', 'hp 1'] },
       { id: 'knives_fangs', name: 'Twin Fangs', row: 3, lane: -1, shape: 'ring', kind: 'stat',
-        nodes: ['atkSpeed 1', 'hp 1', abil('Quick Draw', ['evasion 0.5'], 'twin_daggers', 'dmg', 0.05), 'resAll 1'],
-        core: ['Two Blades', 'atkSpeed 2', 'dmgMelee 1'], bonus: ['atkSpeed 1.5', 'hp 1'] },
+        nodes: ['meleeSpeed 1', 'hp 1', abil('Quick Draw', ['evasion 0.5'], 'twin_daggers', 'dmg', 0.05), 'resAll 1'],      // [atk pace] Melee Attack Speed (was atkSpeed)
+        core: ['Two Blades', 'meleeSpeed 2', 'dmgMelee 1'], bonus: ['meleeSpeed 1.5', 'hp 1'] },
       { id: 'knives_hamstring', name: 'Low Cuts', row: 3, lane: 1, shape: 'ring', kind: 'stat',
         nodes: ['dmgBack 1', 'hp 1', 'moveSpeed 1', 'evasion 1'],
         core: rule('hamstring', 'Hamstring Cut', ['dmgBack 1'], 'Your backstabs Slow the enemy by 25% for 2 s.', { off: 1.01, def: 1.03 }),
@@ -11555,7 +11556,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         nodes: ['hp 1',
           pact('Reckless Lunge', ['dmgBack*10', 'evasion*-12']),
           pact('Sharp Habits', ['critMult*15', 'hp*-6']),
-          pact('Thin Blade', ['backCrit+10', 'dmgPhys*-8'])],
+          pact('Quick Knives', ['meleeSpeed*15', 'dmgMelee*-9'])],      // [atk pace] faster stabs for less per stab (was Thin Blade: backCrit+10, dmgPhys*-8)
         core: ['Edged Terms', 'critChance 1', 'hp 1'] },
       { id: 'knives_drog', name: 'The Warlord\'s Back', row: 7, lane: -1, shape: 'ring', kind: 'stat',
         nodes: ['hp 1', 'dmgBack 1', 'poise 1', { t: 'trophy', name: "Drog's Spine", mods: ['dmgBack 1.5', 'hp 1.5'], req: { boss: 'warlord_drog' } }],
@@ -12996,9 +12997,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
       // ---- Row 6 ----
       { id: 'carrion_scythe', name: 'The Scythe', row: 6, lane: -2, shape: 'ring', kind: 'stat',
-        nodes: ['atkSpeed 1', 'lifesteal 1', 'hp 1', 'dmgExecute 1'],
-        core: { t: 'notable', name: 'Clean Sweep', mods: ['atkSpeed 1.5'], abil: [ab('bone_lash', 'dmg', 0.12)] },
-        bonus: ['atkSpeed 1', 'hp 1.5'] },
+        nodes: ['meleeSpeed 1', 'lifesteal 1', 'hp 1', 'dmgExecute 1'],      // [atk pace] Melee Attack Speed (was atkSpeed): a quicker Bone Lash
+        core: { t: 'notable', name: 'Clean Sweep', mods: ['meleeSpeed 1.5'], abil: [ab('bone_lash', 'dmg', 0.12)] },
+        bonus: ['meleeSpeed 1', 'hp 1.5'] },
       { id: 'carrion_yard', name: 'The Boneyard', row: 6, lane: -1, shape: 'ring', kind: 'stat',
         nodes: ['hp 1', 'dmg 1@nearCorpse', 'corpseDmg 1', 'dmgTaken 1@nearCorpse'],
         core: { t: 'notable', name: 'Boneyard', mods: ['hp 1'], effect: 'tree_gravecaller_boneyard', est: { off: 1.04, def: 1 },
@@ -17349,10 +17350,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
   KD.register('abilities', [
     { id: 'bone_lash', name: 'Bone Lash', cls: 'gravecaller', slot: 'primary', icon: 'bone', anim: 'swing_r',
-      desc: 'Crack a whip of knucklebones 5 m ahead for 56% weapon damage. Each lash that lands gathers a quarter of a Soul.',
+      desc: 'Crack a whip of knucklebones 5 m ahead for 65% weapon damage. Each lash that lands gathers a quarter of a Soul.',
       flavor: 'Every knuckle in it once pointed at someone.',
-      windup: 0.3, recover: 0.42, moveMult: 0.5, delivery: 'spell', elem: 'phys', tags: ['spell', 'attack'], gain: 0.25, gainOnHit: true, range: 5,
-      effects: [{ type: 'melee', range: 5, arc: 36, mult: 0.56, poise: 0.8 }],
+      windup: 0.34, recover: 0.48, moveMult: 0.5, delivery: 'spell', elem: 'phys', tags: ['spell', 'attack'], gain: 0.25, gainOnHit: true, range: 5,      // [atk pace] Oct 15: slower, readable swings (was 0.3 / 0.42, 56%, poise 0.8)
+      effects: [{ type: 'melee', range: 5, arc: 36, mult: 0.65, poise: 0.91 }],
       aiUse: { use: 'attack', range: 4.6 } },
 
     { id: 'raise_thrall', name: 'Raise Thrall', cls: 'gravecaller', slot: 'skill', icon: 'skull', anim: 'summon', start: true,
@@ -17467,10 +17468,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   KD.register('abilities', [
     { id: 'hexed_slash', name: 'Hexed Slash', cls: 'hexblade', slot: 'primary', icon: 'sword', anim: 'swing_r',
-      desc: 'A wide two-handed cut for 88% weapon damage. Every third slash is a hexing cut that Marks the enemies it hits for 6 s.',
+      desc: 'A wide two-handed cut for 102% weapon damage. Every third slash is a hexing cut that Marks the enemies it hits for 6 s.',
       flavor: 'The blade was cursed long before it was sharpened.',
-      windup: 0.3, recover: 0.44, moveMult: 0.45, delivery: 'melee', elem: 'phys', tags: ['melee', 'attack'], range: 2.6,
-      effects: [{ type: 'melee', range: 2.8, arc: 130, mult: 0.88, poise: 1.1 }],
+      windup: 0.36, recover: 0.5, moveMult: 0.45, delivery: 'melee', elem: 'phys', tags: ['melee', 'attack'], range: 2.6,      // [atk pace] Oct 15: slower, readable swings (was 0.3 / 0.44, 88%, poise 1.1)
+      effects: [{ type: 'melee', range: 2.8, arc: 130, mult: 1.02, poise: 1.28 }],
       aiUse: { use: 'attack', range: 2.5 } },
 
     { id: 'mark_of_frailty', name: 'Mark of Frailty', cls: 'hexblade', slot: 'skill', icon: 'target', anim: 'cast_hand', start: true,
@@ -17571,10 +17572,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   KD.register('abilities', [
     { id: 'shield_bash', name: 'Shield Bash', cls: 'ironbound', slot: 'primary', icon: 'shield_bash', anim: 'swing_r',
-      desc: 'A short arc with sword and shield for 85% weapon damage. Each cast that lands builds 7 Guard.',
+      desc: 'A heavy arc with sword and shield for 136% weapon damage. Each cast that lands builds 9 Guard.',
       flavor: 'The shield does the talking. The sword only agrees.',
-      windup: 0.26, recover: 0.42, moveMult: 0.5, delivery: 'melee', elem: 'phys', tags: ['melee', 'attack'], gain: 7, gainOnHit: true, range: 2.3,
-      effects: [{ type: 'melee', range: 2.5, arc: 100, mult: 0.85, poise: 1.0 }],
+      windup: 0.36, recover: 0.6, moveMult: 0.5, delivery: 'melee', elem: 'phys', tags: ['melee', 'attack'], gain: 9, gainOnHit: true, range: 2.3,      // [atk pace] Oct 15: slower, readable swings (was 0.26 / 0.42, 85%, poise 1.0, 7 Guard)
+      effects: [{ type: 'melee', range: 2.5, arc: 100, mult: 1.36, poise: 1.44 }],
       aiUse: { use: 'attack', range: 2.2 } },
 
     { id: 'bulwark_stance', name: 'Bulwark Stance', cls: 'ironbound', slot: 'skill', icon: 'tower', anim: 'block', start: true,
@@ -17921,8 +17922,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     { id: 'banner_strike', name: 'Banner Strike', cls: 'bannerlord', slot: 'primary', icon: 'spear', anim: 'thrust',
       desc: 'A long thrust with the banner pole. It reaches 3 m in a narrow arc and hits Poise hard.',
       flavor: 'The colours go first. The point follows.',
-      windup: 0.3, recover: 0.44, moveMult: 0.5, delivery: 'melee', elem: 'phys', tags: ['melee', 'attack'], range: 2.8,
-      effects: [{ type: 'melee', range: 3.0, arc: 55, mult: 0.77, poise: 1.1 }],
+      windup: 0.42, recover: 0.56, moveMult: 0.5, delivery: 'melee', elem: 'phys', tags: ['melee', 'attack'], range: 2.8,      // [atk pace] Oct 15: slower, readable swings (was 0.3 / 0.44, 77%, poise 1.1)
+      effects: [{ type: 'melee', range: 3.0, arc: 55, mult: 1.02, poise: 1.46 }],
       aiUse: { use: 'attack', range: 2.7 } },
 
     { id: 'plant_banner', name: 'Plant Banner', cls: 'bannerlord', slot: 'skill', start: true, icon: 'banner', anim: 'plant',
@@ -18190,10 +18191,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
   KD.register('abilities', [
     { id: 'twin_daggers', name: 'Twin Daggers', cls: 'gloamblade', slot: 'primary', icon: 'daggers', anim: 'dual_slash',
-      desc: 'Two quick stabs. Hits from behind are backstabs: 15% more damage and 7 Shade each.',
+      desc: 'Two quick stabs, one per hand. Hits from behind are backstabs: 15% more damage and 7 Shade each.',
       flavor: 'One for the purse, one for the throat.',
-      windup: 0.16, recover: 0.36, moveMult: 0.6, delivery: 'melee', elem: 'phys', tags: ['melee', 'attack'], range: 2.0,
-      effects: [{ type: 'melee', range: 2.1, arc: 80, mult: 0.225, poise: 0.3, hits: 2, interval: 0.12, max: 2 }],      // [w9 checker] 0.25 -> 0.225
+      windup: 0.2, recover: 0.4, moveMult: 0.6, delivery: 'melee', elem: 'phys', tags: ['melee', 'attack'], range: 2.0,      // [atk pace] Oct 15: slower, readable swings (was 0.16 / 0.36, stabs 0.12 s apart, 22.5%, poise 0.3)
+      effects: [{ type: 'melee', range: 2.1, arc: 80, mult: 0.245, poise: 0.35, hits: 2, interval: 0.22, max: 2 }],      // [w9 checker] 0.25 -> 0.225
       aiUse: { use: 'attack', range: 2.0 } },
 
     { id: 'shadow_step', name: 'Shadow Step', cls: 'gloamblade', slot: 'skill', start: true, icon: 'dash', anim: 'stab',
@@ -18320,8 +18321,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     { id: 'lantern_swing', name: 'Lantern Swing', cls: 'lanternbearer', slot: 'primary', icon: 'lantern', anim: 'swing_r',
       desc: 'A wide swing of mace and lantern that deals Holy damage. Holy hits leave enemies Radiant: Shadow damage on them causes an Eclipse.',
       flavor: 'The light is honest. The mace is for those who are not.',
-      windup: 0.28, recover: 0.42, moveMult: 0.5, delivery: 'melee', elem: 'holy', tags: ['melee', 'attack'], range: 2.3,
-      effects: [{ type: 'melee', range: 2.4, arc: 120, mult: 0.85, poise: 0.9 }],
+      windup: 0.36, recover: 0.5, moveMult: 0.5, delivery: 'melee', elem: 'holy', tags: ['melee', 'attack'], range: 2.3,      // [atk pace] Oct 15: slower, readable swings (was 0.28 / 0.42, 85%, poise 0.9)
+      effects: [{ type: 'melee', range: 2.4, arc: 120, mult: 1.06, poise: 1.1 }],
       aiUse: { use: 'attack', range: 2.2 } },
 
     { id: 'beacon', name: 'Beacon', cls: 'lanternbearer', slot: 'skill', icon: 'candle', anim: 'plant',
@@ -18447,12 +18448,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     { id: 'claw_rake', name: 'Claw Rake', cls: 'wildmask', slot: 'primary', icon: 'claw', anim: 'swing_r',
       desc: 'A rake of the claws. Wolf: two fast slashes that may Bleed. Bear: a heavy paw slam that hits everything in front of you and breaks Poise. Raven: a thrown feather that flies 16 m and passes through one enemy.',
       flavor: 'The mask decides what the hands are.',
-      windup: 0.2, recover: 0.36, moveMult: 0.55, delivery: 'melee', elem: 'phys', tags: ['melee', 'attack'], range: 2.1,
-      dmgLines: [{ label: 'no mask', mult: 0.4 }, { label: 'Wolf', mult: 0.165, hits: 2 }, { label: 'Bear', mult: 0.48 }, { label: 'Raven', mult: 0.4, delivery: 'ranged' }],
-      effects: [{ type: 'custom', fn: 'wild_form', mask: 'none', effects: [{ type: 'melee', range: 2.2, arc: 100, mult: 0.4, poise: 0.7 }] },
-        { type: 'custom', fn: 'wild_form', mask: 'wolf', effects: [{ type: 'melee', range: 2.2, arc: 100, mult: 0.165, poise: 0.35, hits: 2, interval: 0.1, max: 2 }] },
-        { type: 'custom', fn: 'wild_form', mask: 'bear', effects: [{ type: 'aoe', at: 'front', dist: 1.4, radius: 2.4, mult: 0.48, poise: 1.4, fx: 'swing' }] },
-        { type: 'custom', fn: 'wild_form', mask: 'raven', effects: [{ type: 'projectile', speed: 28, range: 16, mult: 0.4, poise: 0.5, pierce: 1, delivery: 'ranged', model: 'feather' }] }],
+      windup: 0.24, recover: 0.42, moveMult: 0.55, delivery: 'melee', elem: 'phys', tags: ['melee', 'attack'], range: 2.1,      // [atk pace] Oct 15: slower, readable swings (was 0.2 / 0.36, x0.85 per hit)
+      dmgLines: [{ label: 'no mask', mult: 0.47 }, { label: 'Wolf', mult: 0.195, hits: 2 }, { label: 'Bear', mult: 0.565 }, { label: 'Raven', mult: 0.47, delivery: 'ranged' }],
+      effects: [{ type: 'custom', fn: 'wild_form', mask: 'none', effects: [{ type: 'melee', range: 2.2, arc: 100, mult: 0.47, poise: 0.82 }] },
+        { type: 'custom', fn: 'wild_form', mask: 'wolf', effects: [{ type: 'melee', range: 2.2, arc: 100, mult: 0.195, poise: 0.41, hits: 2, interval: 0.17, max: 2 }] },
+        { type: 'custom', fn: 'wild_form', mask: 'bear', effects: [{ type: 'aoe', at: 'front', dist: 1.4, radius: 2.4, mult: 0.565, poise: 1.65, fx: 'swing' }] },
+        { type: 'custom', fn: 'wild_form', mask: 'raven', effects: [{ type: 'projectile', speed: 28, range: 16, mult: 0.47, poise: 0.59, pierce: 1, delivery: 'ranged', model: 'feather' }] }],
       aiUse: { use: 'attack', range: 2.1 } },
 
     { id: 'wolf_mask', name: 'Wolf Mask', cls: 'wildmask', slot: 'skill', start: true, icon: 'wolf', anim: 'dual_slash',
@@ -18576,6 +18577,109 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         { type: 'buff', id: 'apex_form', name: 'Apex Form', dur: 10, mods: [{ s: 'atkSpeed', t: 'inc', v: 0.1 }, { s: 'moveSpeed', t: 'inc', v: 0.1 }, { s: 'dmgTaken', t: 'more', v: -0.15 }] }],
       aiUse: { use: 'attack', range: 5, minTargets: 4, orBoss: true } }
   ]);
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/56_attack_pace.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+
+  /**
+   * [atk pace] ATTACK PACING (owner, Oct 15: "The melee attacks look super unclear. Make attacks more clean and slow, with
+   * characters like the assassin still a bit quicker ... Certain classes should really show proper attack speeds.").
+   *
+   * The melee primaries were slowed down so each swing reads (a longer wind-up and follow-through, fewer hits a second)
+   * and hit harder per swing, so damage per second stays where it was. The new numbers live in the ability files
+   * themselves (src/data/50_abilities_*.js, 55_abilities_*.js, each line marked [atk pace]); this file keeps the table,
+   * scales the tree mutations that were written against the old numbers, and holds the melee speed helper.
+   *
+   *   Class          Primary         wind-up / recover (s)    swing every   swings/s   per hit
+   *   Ironbound      Shield Bash     0.26/0.42 -> 0.36/0.60   0.68 -> 0.96  1.47 -> 1.04  85% -> 136%, 7 -> 9 Guard
+   *   Bannerlord     Banner Strike   0.30/0.44 -> 0.42/0.56   0.74 -> 0.98  1.35 -> 1.02  77% -> 102%
+   *   Hexblade       Hexed Slash     0.30/0.44 -> 0.36/0.50   0.74 -> 0.86  1.35 -> 1.16  88% -> 102%
+   *   Lanternbearer  Lantern Swing   0.28/0.42 -> 0.36/0.50   0.70 -> 0.86  1.43 -> 1.16  85% -> 106%
+   *   Gravecaller    Bone Lash       0.30/0.42 -> 0.34/0.48   0.72 -> 0.82  1.39 -> 1.22  56% -> 65%
+   *   Wildmask       Claw Rake       0.20/0.36 -> 0.24/0.42   0.56 -> 0.66  1.79 -> 1.52  x1.18 (Wolf stabs 0.10 -> 0.17 s apart)
+   *   Gloamblade     Twin Daggers    0.16/0.36 -> 0.20/0.40   0.52 -> 0.60  1.92 -> 1.67  2 x 22.5% -> 2 x 24.5%, stabs 0.12 -> 0.22 s apart
+   * Per hit the heavy swings got a little more than the time factor (Ironbound +11%, Lanternbearer +1%)
+   * and the Twin Daggers a little less (-5%): in real fights (tools/build_bench.js) a long wind-up is lost more often to
+   * a dodge or a target that steps away, and the Gloamblade's slower stabs land more of their backstabs.
+   * Ranged and spell primaries (Thorn Arrow, Spring Pistol, Ember Bolt) are unchanged. Poise damage per hit grew with the
+   * damage. Resource per hit (Souls, Shade, ...) is unchanged, except the Ironbound's Guard per bash (7 -> 9, Guard Builder 11 -> 14): its
+   * Guard is its defence, and fewer bashes a second had cut it by a third. Attack stamina prices follow the attack's length, so the
+   * drain per second is the same as before.
+   *
+   * KD.attackPace.MUT: for the tree mutations that already existed on Oct 15 (listed by id; mutations written later are
+   * written against the new numbers and are NOT touched), absolute wind-up / recovery are multiplied by the primary's
+   * time factor and absolute damage / Poise by its damage factor, so "a fifth faster" or "12% less damage" stay true;
+   * `poise` an exact Poise value, `gain` an exact resource gain, `iv` the new gap between the hits of the multi-hit shapes (a clear second blow), `text` a new description where
+   * the old one quoted the old numbers.
+   *
+   * MELEE ATTACK SPEED (stat `meleeSpeed`, src/core/02_stats.js): multiplies the speed of melee attacks on top of Attack
+   * and Cast Speed: abilities with `delivery: 'melee'` and the primaries whose hit is a `melee` effect (the Gravecaller's
+   * Bone Lash). KD.attackPace.isMelee(def). Tree unit: 2% (src/data/30_web_content.js). Tests: tests/attack_pace.test.js.
+   */
+  var AP = KD.attackPace = KD.attackPace || {};
+
+  // primary -> [time factor, damage factor] (new / old)
+  AP.FACTOR = {
+    shield_bash: [0.96 / 0.68, 1.36 / 0.85], banner_strike: [0.98 / 0.74, 1.02 / 0.77], hexed_slash: [0.86 / 0.74, 1.02 / 0.88],
+    lantern_swing: [0.86 / 0.70, 1.06 / 0.85], bone_lash: [0.82 / 0.72, 0.65 / 0.56], claw_rake: [0.66 / 0.56, 0.47 / 0.4],
+    twin_daggers: [0.60 / 0.52, 0.245 / 0.225]
+  };
+  AP.MUT = {
+    // Ironbound
+    bash_double: { iv: 0.24 }, bash_daze: {}, bash_shove: {}, bash_heavy: {}, bash_quick: {},
+    bash_guard: { gain: 14, text: 'A bash that lands builds 14 Guard instead of 9, but you recover from it a little slower.' },
+    // Bannerlord
+    bs_twin: { iv: 0.24 }, bs_heavy: {}, bs_mark: {}, bs_bleed: {}, bs_quick: {},
+    // Hexblade
+    hx_slash_twice: { iv: 0.2 }, hx_slash_frost: {}, hx_slash_drain: {}, hx_slash_quick: {},
+    // Lanternbearer
+    ls_double: { iv: 0.2 }, ls_dazzle: {}, ls_heavy: {}, ls_quick: {},
+    // Gravecaller
+    lash_heavy: { poise: 2.28 }, lash_marrow: { text: "6% of the lash's damage heals you. It deals 58% instead of 65%." },
+    lash_pox: { text: 'The lash is Poison, deals 52% and adds 1 stack of Poison.' },
+    lash_frenzy: { text: 'Bone Lash is nearly a third faster (0.57 s instead of 0.82 s) and gathers a tenth of a Soul.' },
+    // Gloamblade
+    dag_flurry: { iv: 0.15 }, dag_serrate: {}, dag_heavy: {}, dag_quick: {}
+  };
+  function r3(x) { return Math.round(x * 1000) / 1000; }
+  /** Applies AP.MUT to the registered mutations (once). */
+  AP.scaleMutations = function () {
+    var M = KD.data && KD.data.mutations; if (!M) return 0;
+    var n = 0;
+    for (var id in AP.MUT) {
+      var m = M[id], o = AP.MUT[id]; if (!m || m._paced) continue;
+      var f = AP.FACTOR[m.ability]; if (!f) continue;
+      var tf = f[0], df = f[1];
+      if (m.set && o.gain !== undefined) m.set.gain = o.gain;
+      if (m.set) { if (m.set.windup !== undefined) m.set.windup = r3(m.set.windup * tf); if (m.set.recover !== undefined) m.set.recover = r3(m.set.recover * tf); }
+      (m.fx || []).forEach(function (x) {
+        var s = x.set; if (!s) return;
+        if (s.mult !== undefined) s.mult = r3(s.mult * df);
+        if (s.poise !== undefined) s.poise = o.poise !== undefined ? o.poise : r3(s.poise * df);
+        if (s.interval !== undefined) s.interval = o.iv !== undefined ? o.iv : r3(s.interval * tf);
+      });
+      if (o.text) m.text = o.text;
+      Object.defineProperty(m, '_paced', { value: true, enumerable: false });
+      n++;
+    }
+    return n;
+  };
+  AP.scaleMutations();
+
+  /** True for a melee attack: Melee Attack Speed (`meleeSpeed`) applies to it. */
+  AP.isMelee = function (def) {
+    if (!def) return false;
+    if (def._melee !== undefined) return def._melee;
+    var m = def.delivery === 'melee';
+    if (!m && def.slot === 'primary') { var fx = def.effects || []; for (var i = 0; i < fx.length; i++) if (fx[i] && fx[i].type === 'melee') { m = true; break; } }
+    try { Object.defineProperty(def, '_melee', { value: m, enumerable: false, writable: true }); } catch (e) { /* frozen */ }
+    return m;
+  };
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -23533,6 +23637,13 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.77', date: '2026-10-15', title: 'Slower, cleaner melee', notes: [
+      'Melee attacks are slower and cleaner: every swing has a real wind-up and follow-through, and hits harder to make up for it',
+      'Heavy hitters like the Ironbound and Bannerlord swing about once a second, the Gloamblade is still the quickest and you can see both of his stabs',
+      'New stat in the Gloamblade and Gravecaller trees: Melee Attack Speed, plus the Quick Knives pact for faster stabs',
+      'The Ironbound\'s Shield Bash builds 9 Guard',
+      'Attacks per second on the hero sheet now shows your real attack rate'
+    ] },
     { version: '0.7.76', date: '2026-10-15', title: 'Straighter running feet', notes: [
       'The Gloamblade and the Gravecaller now run with their feet pointing where they are going, no more duck feet',
       'A little natural turn-out is kept when they stand still'
@@ -31963,6 +32074,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     else { if (inst.twin > 0 && e.sigilIcd) delete e.sigilIcd[twinKey]; if (inst.cooldown > 0) startCooldown(world, e, def, inst.cooldown); }
     var hero = e.hero;
     var speed = def.fixedTime ? 1 : (e.stats ? e.stats.atkSpeed : 1) * (hero && def.weapon !== false && def.delivery !== 'spell' ? KD.hero.weaponSpeed(hero) : 1);
+    if (!def.fixedTime && e.stats && e.stats.meleeSpeed !== undefined && e.stats.meleeSpeed !== 1 && KD.attackPace && KD.attackPace.isMelee(def)) speed *= e.stats.meleeSpeed;      // [atk pace] Melee Attack Speed
     if (e.kind === 'player') S.player.onCastStart(world, e, def, inst);
     if (e.stealthed && !def.stealthy) {
       inst.fromStealth = true;
@@ -38059,7 +38171,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       // [attack stamina] winded or nearly out of attack stamina: a melee bot steps back and breathes until the bar is half
       // full again, a ranged one holds its fire (src/sim/21_attack_stamina.js)
       if (S.astam && S.astam.active(world) && p.astam !== undefined) {
-        if (p.astamOut > 0 || p.astam < p.astamMax * 0.1) b.breath = true;
+        var nxt = 0;      // [atk pace] a slow heavy swing can cost more than a tenth of the bar: stop before the one that empties it
+        if (S.astam.cost && S.player && S.player.slotAbility) { var pd = KD.skills.defFor(p, S.player.slotAbility(p, 'primary')); if (pd) nxt = S.astam.cost(p, pd) * 1.1; }
+        if (p.astamOut > 0 || p.astam < Math.max(p.astamMax * 0.1, nxt)) b.breath = true;
         else if (p.astam >= p.astamMax * 0.5) b.breath = false;
       } else b.breath = false;
       if (b.breath && !ranged) b.kiteT = Math.max(b.kiteT, 2 * dt);
@@ -39268,7 +39382,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       var cd = a.cooldown * cdMul / Math.max(0.1, stats ? stats.cdr || 1 : 1);
       lines.push({ text: 'Cooldown: ' + secs(cd) + (a.charges > 1 ? ' (' + a.charges + ' charges)' : ''), kind: 'base' });
     }
-    var speed = a.fixedTime ? 1 : (stats ? stats.atkSpeed || 1 : 1) * (hero && a.weapon !== false && a.delivery !== 'spell' && KD.hero ? KD.hero.weaponSpeed(hero) : 1);
+    var speed = a.fixedTime ? 1 : (stats ? stats.atkSpeed || 1 : 1) * (hero && a.weapon !== false && a.delivery !== 'spell' && KD.hero ? KD.hero.weaponSpeed(hero) : 1) * (!a.fixedTime && stats && stats.meleeSpeed && KD.attackPace && KD.attackPace.isMelee(a) ? stats.meleeSpeed : 1);      // [atk pace] Melee Attack Speed
     var castTime = (a.windup === undefined ? 0.2 : a.windup) / speed;
     if (castTime >= 0.05) lines.push({ text: 'Cast time: ' + secs(castTime), kind: 'dim' });
     // damage
@@ -40624,7 +40738,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     tune: T,
     text: 'Guard is earned by standing in the way and spent on shield bursts and stuns.',
     rules: [
-      'A Shield Bash that lands builds 7 Guard.',
+      'A Shield Bash that lands builds 9 Guard.',      // [atk pace] 7 -> 9 (slower bashes)
       'Every hit you block or parry builds ' + T.block + ' Guard.',
       'In Bulwark Stance every unblocked hit you take builds ' + T.bulwarkHit + ' Guard.',
       'Guard fades by 4 per second after 3 s without a gain.'
@@ -48501,7 +48615,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var atk = [], mw = 0, sum = 0;
     list.forEach(function (a) {
       var t = PT[a]; if (!t || !(t.w > 0)) return;
-      if (t.minion) mw += t.w; else atk.push({ w: t.w, keys: t.keys.slice(), crit: true, speed: t.speed || 'cdr' });
+      if (t.minion) mw += t.w; else atk.push({ w: t.w, keys: t.keys.slice(), crit: true, speed: t.speed || 'cdr', melee: !!(KD.attackPace && KD.attackPace.isMelee(A[a])) });      // [atk pace] melee: Melee Attack Speed counts
       sum += t.w;
     });
     if (mw > 0) atk.push({ w: mw, keys: ['dmgMinion'], minion: true });
@@ -48574,7 +48688,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       } else {
         var f = part.speed === 'cdr' ? E.cdShareDevice : E.cdShare, dm = 0;
         for (var q = 0; q < E.situations.length; q++) { var sit = E.situations[q]; dm += sit.p * S.dmgMult(s, sit.keys.length ? part.keys.concat(sit.keys) : part.keys); }
-        v = dm * (part.crit ? critF : 1) * ((1 - f) * s.atkSpeed + f * s.cdr);
+        v = dm * (part.crit ? critF : 1) * ((1 - f) * s.atkSpeed * (part.melee && s.meleeSpeed ? s.meleeSpeed : 1) + f * s.cdr);
       }
       atk.push(v);
     }
@@ -61319,6 +61433,13 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   var A = null, CH = null, P = null, M = null, ready = false;
   var S = {};          // pose sets by name
   function mir(p) { return A.mirrorPose(p); }
+  /** [atk pace] base pose with the channels [a0, a1) of src copied in, and the torso [t0, t1) blended `tk` of the way to src. */
+  function graft(base, src, tr, ar, tk) {
+    var o = new Float64Array(base), i;
+    for (i = ar[0]; i < ar[1]; i++) if (src[i] === src[i]) o[i] = src[i];
+    for (i = tr[0]; i < tr[1]; i++) if (src[i] === src[i] && o[i] === o[i]) o[i] += (src[i] - o[i]) * tk;
+    return o;
+  }
   function build() {
     A = KD.anim; CH = A.CH; P = A.pose; M = A.mirrorPose;
     var ST_L = [0.04, 0, 0.16, 0, 0.15], ST_R = [-0.08, 0, -0.14, 0, -0.5];
@@ -61338,6 +61459,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         armR: [0.3, -0.05, -0.25], foreR: -1.8, handR: [0.8, -0.1, 0], armL: [-0.95, -0.15, 0.08], foreL: -0.3, handL: [-0.5, 0.05, 0], footL: LUNGE_L, footR: LUNGE_R })
     };
     S.tdB = { ant: M(S.tdA.ant), h1: M(S.tdA.h1), h2: M(S.tdA.h2), fol: M(S.tdA.fol) };
+    // [atk pace] the second stab gets its own wind-up: after the first hit lands and holds, the other hand cocks back
+    // (k2 = the lead hand still out from hit 1, the other arm drawn up like the opening anticipation of the mirrored
+    // string); k1 cocks the first hand again for a third stab (Flurry)
+    S.tdA.k2 = graft(S.tdA.h1, S.tdB.ant, [CH.CHEST, CH.HEAD], [CH.ARM_L, CH.HAND_L + 3], 0.55);
+    S.tdA.k1 = graft(S.tdA.h2, S.tdA.ant, [CH.CHEST, CH.HEAD], [CH.ARM_R, CH.HAND_R + 3], 0.55);
+    S.tdB.k2 = M(S.tdA.k2); S.tdB.k1 = M(S.tdA.k1);
     // --- Twin Daggers C (finisher): arms crossed high, scissor both blades out, then a double stab with a lunge
     var WIDE_L = [0.07, 0, 0.12, 0, 0.3], WIDE_R = [-0.07, 0, -0.1, 0, -0.35], DL_L = [0.06, 0, 0.32, 0, 0.12], DL_R = [-0.07, 0.03, -0.2, 0.45, -0.3];
     S.tdC = {
@@ -61350,6 +61477,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       fol: P({ hips: [0.18, 0, 0], hipsPos: [0, -0.26, 0.22], chest: [0.48, 0, 0], head: [-0.32, 0, 0],
         armR: [-1.02, 0.28, 0], foreR: -0.3, handR: [-0.45, 0, 0], armL: [-1.02, -0.28, 0], foreL: -0.3, handL: [-0.45, 0, 0], footL: DL_L, footR: DL_R })
     };
+    S.tdC.k2 = graft(S.tdC.h1, S.tdC.ant, [CH.CHEST, CH.HEAD], [CH.ARM_R, CH.HAND_L + 3], 0.5);      // [atk pace] both blades drawn back for the double stab
+    S.tdC.k1 = S.tdC.k2;
 
     // --- Backstab: 1) rise, right blade high, left hand reaches to grab, plunge down (ice pick); 2) both blades together
     S.bs1 = {
@@ -61530,12 +61659,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    * play(c, ants, hit, posts, o): ants = [{ u, pose }] (or []), hit = pose at the fire moment, posts = [{ s, pose, snap }].
    * o: { full } (sets c.full). Writes c.out and c.w.
    */
-  function play(c, ants, hit, posts, full) {
+  function play(c, ants, hit, posts, full, strikeS) {
     var g = gst(c), out = c.out, base = c.base, tf = tfire(c, g), sp = g.speed > 0 ? g.speed : 1, i;
     // full-body moves own the legs when standing; while the hero walks during the cast the gait keeps most of them
     if (full) { var mw = c.st.moveW || 0; c.full = max(0.05, 1 - 0.8 * mw); }
     if (tf < 0) {
-      var wu = c.dur > 0 ? c.dur : 0.0001, sf = STRIKE / wu; sf = sf < 0.2 ? 0.2 : (sf > 0.55 ? 0.55 : sf);
+      var wu = c.dur > 0 ? c.dur : 0.0001, sf = (strikeS || STRIKE) / wu; sf = sf < 0.2 ? 0.2 : (sf > 0.55 ? 0.55 : sf);
       var a = 1 - sf, p = c.p;
       if (p < a) {
         var q = p / a;
@@ -61621,14 +61750,27 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     L.td = {};
     L.ok = true;
   }
-  /** Twin Daggers post keys for `n` hits `iv` apart (attack speed 1): one hand per hit, alternating. */
+  /**
+   * Twin Daggers post keys for `n` hits `iv` apart (attack speed 1): one hand per hit, alternating. [atk pace] With a
+   * gap of 0.12 s or more every later stab is its own small strike: the last hit holds a moment (it reads), the other
+   * hand cocks back, then snaps into its hit exactly on the sim's hit time; a short follow-through after the last one.
+   */
   function tdPosts(vn, n, iv) {
-    var byV = L.td[vn] || (L.td[vn] = []), r = byV[n];
+    var byV = L.td[vn] || (L.td[vn] = {}), kk = n + ':' + iv, r = byV[kk];
     if (r) return r;
-    var set = vn === 'C' ? S.tdC : (vn === 'B' ? S.tdB : S.tdA), alt = vn === 'C' ? S.tdC.h1 : set.h1, ps = [];
-    for (var k = 1; k < n; k++) ps.push(post(k * iv, k % 2 === 1 ? set.h2 : alt, true));
-    ps.push(post((n - 1) * iv + 0.1, (n % 2 === 0 || vn === 'C') ? set.fol : set.h1));
-    return (byV[n] = ps);
+    var set = vn === 'C' ? S.tdC : (vn === 'B' ? S.tdB : S.tdA), alt = vn === 'C' ? S.tdC.h1 : set.h1, ps = [], prev = set.h1;
+    for (var k = 1; k < n; k++) {
+      var to = k % 2 === 1 ? set.h2 : alt, t0 = (k - 1) * iv;
+      if (iv >= 0.12) {
+        ps.push(post(t0 + 0.27 * iv, prev));                                   // hold the hit that just landed
+        ps.push(post(t0 + 0.6 * iv, k % 2 === 1 ? set.k2 : set.k1));           // cock the other blade
+      }
+      ps.push(post(k * iv, to, true));
+      prev = to;
+    }
+    ps.push(post((n - 1) * iv + (iv >= 0.12 ? 0.05 : 0), prev));             // the last stab holds a beat
+    ps.push(post((n - 1) * iv + 0.14, (n % 2 === 0 || vn === 'C') ? set.fol : set.h1));
+    return (byV[kk] = ps);
   }
   SK.twin_daggers = function (c) {
     var g = gst(c), id = (c.e && c.e.act && c.e.act.skill) || 'twin_daggers';
@@ -61638,7 +61780,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var v = g.n % 3, vn = v === 2 ? 'C' : (v === 1 ? 'B' : 'A');
     g.v = v;
     var set = vn === 'C' ? S.tdC : (vn === 'B' ? S.tdB : S.tdA);
-    play(c, (vn === 'C' ? L.tdC : (vn === 'B' ? L.tdB : L.tdA)).ants, set.h1, tdPosts(vn, n, iv), false);
+    play(c, (vn === 'C' ? L.tdC : (vn === 'B' ? L.tdB : L.tdA)).ants, set.h1, tdPosts(vn, n, iv), false, 0.085);      // [atk pace] a sharper first stab after a longer anticipation
   };
   function two(a, b) { return function (c) { var g = gst(c), v = g.n % 2; g.v = v; var Lx = v ? b : a; play(c, Lx.l.ants, Lx.hit, Lx.l.posts, Lx.full); }; }
   function one(x) { return function (c) { gst(c).v = 0; play(c, x.l.ants, x.hit, x.l.posts, x.full); }; }
@@ -62996,7 +63138,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   // a set: [ANT, MID (a pose the whip passes through, or null), HIT, FOL, options]
   //   options: whip (seconds of the strike motion, default 0.12), full (owns the legs too), hold (fraction of the recover
   //   the follow-through is held before settling), shake (tremble while holding)
-  var O_LASH = { whip: 0.12 }, O_LASH3 = { whip: 0.14, hold: 0.15 }, O_SUM = { whip: 0.16, full: true, hold: 0.25 }, O_SUMB = { whip: 0.2, full: true, hold: 0.3, shake: 0.02 };
+  var O_LASH = { whip: 0.12, hold: 0.12 }, O_LASH3 = { whip: 0.14, hold: 0.2 },      // [atk pace] the crack holds a beat (the slower lash)
+   O_SUM = { whip: 0.16, full: true, hold: 0.25 }, O_SUMB = { whip: 0.2, full: true, hold: 0.3, shake: 0.02 };
   var O_CAST = { whip: 0.11 }, O_CASTH = { whip: 0.13, hold: 0.2 }, O_STAFF = { whip: 0.14 }, O_FULL = { whip: 0.14, full: true, hold: 0.2 };
   var O_SHOUT = { whip: 0.13, full: true, hold: 0.2, shake: 0.018 };
   var SKILLS = GC.SKILLS = {
@@ -120771,12 +120914,24 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var cache = null, mods = function () { return cache || (cache = W.safe(function () { return KD.hero.mods(c.hero, c.run); }, [])); };
     var hero = c.hero, wd = KD.hero.weaponDamage(hero), ws = KD.hero.weaponSpeed(hero);
     var tips = ['The damage every ability scales from: your weapon, never below the floor for your level.', 'Weapon speed ' + ws.toFixed(2) + ' x Attack and Cast Speed.'];
+    // [atk pace] the real rate of the primary attack: its own swing length at weapon speed x Attack and Cast Speed (x Melee Attack Speed)
+    var aps = ws * (c.stats.atkSpeed || 1), apsNote = 'Weapon speed ' + ws.toFixed(2) + ' x Attack and Cast Speed';
+    W.safe(function () {
+      var K = KD.skills, pid = (hero.skills && hero.skills.primary) || (KD.classes && KD.classes.abilityIds ? KD.classes.abilityIds(hero.classId).primary : null), d = pid && K && (K.heroDef ? K.heroDef(hero, c.run, pid) : K.get(pid));
+      var len = d ? (d.windup || 0) + (d.active || 0) + (d.recover || 0) : 0;
+      if (!(len > 0)) return;
+      var sp = d.fixedTime ? 1 : (c.stats.atkSpeed || 1) * (d.weapon !== false && d.delivery !== 'spell' ? ws : 1), mel = KD.attackPace && KD.attackPace.isMelee(d);
+      if (!d.fixedTime && mel) sp *= c.stats.meleeSpeed || 1;
+      aps = sp / len;
+      apsNote = d.name + ': one every ' + (len / sp).toFixed(2) + ' s';
+      tips[1] = d.name + ' (your primary attack): one every ' + (len / sp).toFixed(2) + ' s, at ' + (d.weapon !== false && d.delivery !== 'spell' ? 'weapon speed ' + ws.toFixed(2) + ' x ' : '') + 'Attack and Cast Speed' + (mel ? ' x Melee Attack Speed' : '') + '.';
+    }, null);
     var off = [
       UI.stat('Weapon Damage', Math.round(wd * 10) / 10, { className: 'kd-interactive win-stat', tip: UI.compact ? null : tips[0] }),
-      UI.stat('Attacks per second', (Math.round(ws * (c.stats.atkSpeed || 1) * 100) / 100).toFixed(2), { className: 'kd-interactive win-stat', tip: UI.compact ? null : tips[1] })
+      UI.stat('Attacks per second', (Math.round(aps * 100) / 100).toFixed(2), { className: 'kd-interactive win-stat', tip: UI.compact ? null : tips[1] })
     ];
     // a phone: the same two rows with a short explanation printed under them, the tooltip on the whole two-line row
-    if (UI.compact) off = [noted(off[0], 'What every ability scales from'), noted(off[1], 'Weapon speed ' + ws.toFixed(2) + ' x Attack and Cast Speed')].map(function (r, i) { return UI.tooltip.bind(r, tips[i]); });
+    if (UI.compact) off = [noted(off[0], 'What every ability scales from'), noted(off[1], apsNote)].map(function (r, i) { return UI.tooltip.bind(r, tips[i]); });
     off.forEach(W.tapTip);
     return el('div.win-sheet-hero', [
       el('div.win-sheet-left' + (UI.compact ? '.kd-scroll' : ''), UI.compact ? { data: { keep: 'sheet-left' } } : null, [heroCard(c), attributes(c), resistances(c, mods)]),
