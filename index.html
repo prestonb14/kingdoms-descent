@@ -3872,7 +3872,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.74';
+  KD.VERSION = '0.7.75';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -11345,7 +11345,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     // Balance (docs/TREE_GLOAMBLADE.md section 5): most of this tree's damage stats want a backstab, Stealth or a status,
     // so the estimator rates them far above what they give a hero hitting a target from the front. Tune 0.7 / 0.6 keeps the
     // estimate inside the caps; the primary's share (6% per hub node, 4.5% on every fifth trunk node) keeps real fights in band.
-    tune: { off: 0.6, def: 0.6 },          // [w9 checker] off 0.7 -> 0.6 (docs/BALANCE_BENCH.md)
+    tune: { off: 0.6, def: 0.8 },          // [w9 checker] off 0.7 -> 0.6, def 0.6 -> 0.8 (docs/BALANCE_BENCH.md)
     road: ['hp 1', 'moveSpeed 1', 'resAll 1'],
     // the owner's rule for class trees: links across the borders to the neighbouring arms only, no diagonals inside an arm
     links: { bypass: false, rows: false, road: ['moveSpeed 1'] }
@@ -11443,7 +11443,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     // under the 3.0 cap at 152 points). Version 6: back to the tune from before the shortcuts (bypasses and row links are off
     // again, the cross-border links barely change the cost of a build): tools/tree_balance.js caps, 8 seeds, balanced 152-point
     // build off 2.24 / def 1.83, pure defence 2.99; tests/classes_b_balance.test.js dps
-    tune: { off: 1.3, def: 0.66, arms: { blood: { def: 0.8 } } },
+    tune: { off: 1.3, def: 0.85, arms: { blood: { def: 0.8 } } },      // [w9 checker] def 0.66 -> 0.85: survive builds gained 10% Health for 45% of their damage (docs/BALANCE_BENCH.md)
     road: ['hp 1', 'moveSpeed 1', 'resAll 1'],
     links: { bypass: false, rows: false, road: ['moveSpeed 1'] }
   });
@@ -23533,6 +23533,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.75', date: '2026-10-15', title: 'Balance: tanky builds', notes: [
+      'Gloamblade and Gravecaller defensive talents are a bit stronger, so tanky builds really are tanky'
+    ] },
     { version: '0.7.74', date: '2026-10-15', title: 'Balance: assassin and necromancer', notes: [
       'Gloamblade toned down: Twin Daggers and Ambush hit a little softer',
       'Bosses now sense a hidden Gloamblade after a couple of seconds',
