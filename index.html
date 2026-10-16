@@ -3882,7 +3882,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.88';
+  KD.VERSION = '0.7.89';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -3912,6 +3912,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   if (KD.config.trees && KD.config.trees.thornwarden === undefined) KD.config.trees.thornwarden = true; // [w8 thornwarden tree] The Old Wood, docs/TREE_THORNWARDEN.md
   if (KD.config.trees && KD.config.trees.wildmask === undefined) KD.config.trees.wildmask = true; // [w8 wildmask tree] The Moon Grove, docs/TREE_WILDMASK.md
   if (KD.config.trees && KD.config.trees.ironbound === undefined) KD.config.trees.ironbound = true; // [w8 ironbound tree] The Iron Keep, docs/TREE_IRONBOUND.md
+  if (KD.config.trees && KD.config.trees.bannerlord === undefined) KD.config.trees.bannerlord = true; // [w8 bannerlord tree] The Royal Host, docs/TREE_BANNERLORD.md
   // The online service (accounts, friends, invites, co-op rooms: the kd-online repository on Cloudflare Workers).
   // Fill in its address once it is deployed, e.g. 'https://kd-online.<your-subdomain>.workers.dev'. Empty = the game
   // says "Online play is not set up yet." (?online=<url> in the page address overrides it for testing.) docs/ONLINE.md.
@@ -11311,6 +11312,100 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/data/35_tree_bannerlord.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree;
+
+  /**
+   * The Bannerlord's own talent tree, THE ROYAL HOST: the class-wide record (arm order, hub, tuning) and the small helpers
+   * the eight arm files use. The arms live in src/data/36_tree_bannerlord_<armId>.js, the mutations in
+   * src/data/37_mutations_bannerlord.js, the recommended builds in src/data/38_tree_builds_bannerlord.js and the rules (rule
+   * notables, keystones) in src/sim/56_tree_bannerlord.js. Design: docs/TREE_BANNERLORD.md. Format and grid: docs/TREE.md.
+   * Switch: KD.config.trees.bannerlord (src/core/00_base.js). Off = the Bannerlord uses the Crownweb (its Garrison) as before.
+   *
+   * Arms, clockwise from the top (neighbours are the arms whose play mixes best; cross-border links join neighbours only):
+   *   colours     planted standards and their auras, the Ultimate    drum     the War Drum: tempo, Attack Speed, Slows
+   *   vanguard    Charge Order: leading the charge                   spear    Strike Formation: the pike, Marks, critical hits
+   *   horn        Signal Horn and Battlefield Orders: shouts         phalanx  Phalanx: blocks, Armor, standing together
+   *   muster      Rally Hirelings and Recall: soldiers, hirelings    bearer   Standard Bearer: the carried standard, fighting alone
+   */
+
+  /** Helpers of the arm files (data only): the shared cluster shorthands (src/data/35_tree_00_kit.js) and two rule makers. */
+  var K0 = T.kit, BL = T.host = {};
+  for (var f in K0) BL[f] = K0[f];
+  /** A rule notable whose rule is a hook of src/sim/56_tree_bannerlord.js (`tree_bannerlord_<id>`). */
+  BL.rule = function (id, name, mods, spec, est) { return { t: 'notable', name: name, mods: mods, effect: 'tree_bannerlord_' + id, spec: spec, est: est || { off: 1.02, def: 1.01 } }; };
+  /** A rule notable whose rule is one of the Crownweb's Garrison hooks (src/sim/55_class_bannerlord.js, `web_bannerlord_<key>`). */
+  BL.web = function (key, name, mods, spec, est) { return { t: 'notable', name: name, mods: mods, effect: 'web_bannerlord_' + key, spec: spec, est: est || { off: 1.02, def: 1.01 } }; };
+  /** Every fifth trunk node (T5, T10 .. T25) also gives TRUNK_STRIKE more Banner Strike damage. */
+  BL.TRUNK_STRIKE = 0.03; BL.HUB_STRIKE = 0.04;
+  BL.strikeTrunk = function (tr) { return K0.primaryTrunk(tr, 'banner_strike', BL.TRUNK_STRIKE); };
+
+  // ---------------------------------------------------------------------------------------------
+  // What the estimator cannot see in stats (KD.data.tree.EST; never touches gameplay). Damage parts: the share of each
+  // slotted ability in a fight and the stat keys its hits use (Banner Strike is the primary, w 1); the soldiers are the
+  // minion part.
+  // ---------------------------------------------------------------------------------------------
+  (function () {
+    var E = T.EST, P = E.parts, S = E.skills;
+    var MELEE = ['dmg', 'dmgPhys', 'dmgMelee'];
+    P.banner_strike = { w: 1, keys: MELEE, speed: 'atkSpeed' };
+    P.strike_formation = { w: 0.5, keys: MELEE };
+    P.charge_order = { w: 0.25, keys: MELEE };
+    P.signal_horn = { w: 0.15, keys: MELEE };
+    P.plant_banner = { w: 0.1, keys: MELEE };
+    P.war_drum = { w: 0.2, keys: MELEE };
+    P.standard_bearer = { w: 0.08, keys: MELEE };
+    P.phalanx = { w: 0.1, keys: MELEE };
+    P.recall = { w: 0.05, keys: MELEE };
+    P.battlefield_orders = { w: 0.05, keys: ['dmg'] };
+    P.rally_hirelings = { w: 0.3, minion: true };
+    P.royal_decree = { w: 0.3, keys: MELEE };
+    S.strike_formation = { off: 0.09, def: 0.02 };
+    S.plant_banner = { off: 0.06, def: 0.06 };
+    S.rally_hirelings = { off: 0.06, def: 0.06 };
+    S.charge_order = { off: 0.07, def: 0.02 };
+    S.battlefield_orders = { off: 0.08, def: 0.01 };
+    S.signal_horn = { off: 0.04, def: 0.06 };
+    S.war_drum = { off: 0.06, def: 0.03 };
+    S.phalanx = { off: 0.02, def: 0.1 };
+    S.standard_bearer = { off: 0.04, def: 0.02 };
+    S.recall = { off: 0.01, def: 0.08 };
+    S.royal_decree = { off: 0.07, def: 0.04 };
+  })();
+
+  /** A hub node: a named minor with two half-size mods and HUB_STRIKE more Banner Strike damage. */
+  function strike(name, a, b) { return { name: name, mods: [a, b], abil: [{ a: 'banner_strike', k: 'dmg', v: BL.HUB_STRIKE }] }; }
+  // Version 1: the first tree (docs/TREE_BANNERLORD.md).
+  T.define('bannerlord', {
+    version: 1, name: 'The Royal Host',
+    arms: ['colours', 'drum', 'vanguard', 'spear', 'horn', 'phalanx', 'muster', 'bearer'],
+    hub: [
+      strike('Colour Party', 'bannerPower 0.75', 'hp 0.75'),       // colours
+      strike('Drummer Boy', 'atkSpeed 0.75', 'hp 0.75'),          // drum
+      strike('Forward Rank', 'moveSpeed 0.75', 'armor 0.75'),     // vanguard
+      strike('Pike Drill', 'critChance 0.75', 'hp 0.75'),         // spear
+      strike('Bugler', 'cdr 0.75', 'resAll 0.75'),                // horn
+      strike('Shield Rank', 'block 0.75', 'armor 0.75'),          // phalanx
+      strike('Recruiting Sergeant', 'minionHp 0.75', 'hp 0.75'),  // muster
+      strike('Ensign', 'commandGain 0.75', 'hp 0.75')             // bearer
+    ],
+    hubBonus: ['hp 1.5', 'resAll 1'],
+    // A new tree Bannerlord knows Banner Strike and ONE skill where the Crownweb hero starts with two: until its third skill
+    // it hits harder and is a little tougher (the rule of the other trees, docs/TREE_BALANCE.md).
+    startBonus: { skills: 2, mods: ['dmg*15', 'hp*15'], text: 'While you know two skills or fewer besides Banner Strike, you deal 15% more damage and have 15% more Health.' },
+    // Balance (docs/TREE_BANNERLORD.md section 5).
+    tune: { off: 0.9, def: 0.55, arms: { phalanx: { def: 0.8 } } },
+    road: ['hp 1', 'armor 1', 'resAll 1'],
+    // the owner's rule for class trees: links across the borders to the neighbouring arms only, no diagonals inside an arm
+    links: { bypass: false, rows: false, road: ['moveSpeed 1'] }
+  });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/data/35_tree_clockwright.js
 (function (root) {
   'use strict';
@@ -12391,6 +12486,957 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     road: ['hp 1', 'moveSpeed 1', 'resAll 1'],
     links: { bypass: false, rows: false, road: ['moveSpeed 1'] }
   });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_bannerlord_bearer.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, B = T.host;
+  var rule = B.rule, key = B.key, pact = B.pact, abil = B.abil, star = B.star, ring = B.ring, altar = B.altar, keystone = B.keystone;
+
+  /**
+   * BANNERLORD, arm 7 of 8: THE STANDARD BEARER (`bearer`). The carried standard: the banner goes where you go, and a
+   * commander who fights alone. Skill: Standard Bearer (trunk, 4 points). Design: docs/TREE_BANNERLORD.md.
+   * Rules: src/sim/56_tree_bannerlord.js. Holds the three bridges to the colours arm.
+   */
+  T.arm('bannerlord', {
+    id: 'bearer', name: 'The Standard Bearer', focus: 'Carry the standard: the aura goes where you go, even when you fight alone', color: '#c98a9a', vein: null,
+
+    trunk: B.strikeTrunk([
+      'commandGain 1', 'hp 1', { t: 'skill', grants: 'standard_bearer', abil: [{ a: 'standard_bearer', k: 'area', v: 0.08 }] }, 'dmg 1@underBanner', 'armor 1',   // T1..T5
+      'hp 1', 'bannerPower 1', 'resAll 1', ['Bearer Road', 'moveSpeed 1', 'commandGain 0.5'], 'hp 1',                                                         // T6..T10
+      'commandGain 1', 'armor 1', 'hp 1', 'dmgTaken 1@underBanner', 'resAll 1',                                                                              // T11..T15
+      'hp 1', 'dmgMelee 1', 'moveSpeed 1', 'hp 1', 'bannerSize 1',                                                                                           // T16..T20
+      'commandGain 1', 'hp 1', 'armor 1', 'resAll 1', 'hp 1'                                                                                                 // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Standard Bearer, shape and essence
+      star('bearer_sb_shape', 'Standard Bearer: shape', 1, -1, 'hp 1', ['sb_wide', 'sb_close'], ['Tall Pole', 'bannerSize 1', 'hp 1']),
+      star('bearer_sb_essence', 'Standard Bearer: essence', 1, 1, 'dmg 1@underBanner', ['sb_war', 'sb_light', 'sb_stun'], ['Proud Bearer', 'commandGain 1', 'armor 1']),
+
+      // ---- Row 2
+      star('bearer_sb_rite', 'Standard Bearer: rite', 2, -1, 'commandGain 1', ['sb_quick', 'sb_cmd', 'sb_ward'], abil('Quick Strap', ['commandGain 1', 'hp 1'], 'standard_bearer', 'cd', -0.15)),
+      ring('bearer_guard', 'Colour Guard', 2, 1, ['armor 1', 'hp 1', 'dmgTaken 1@underBanner', 'resAll 1', 'dmgMelee 1'],
+        rule('bearerward', 'Colour Guard', ['armor 1'], 'While you carry the standard, every 5 s you gain Ward equal to 5% of your Health for 5 s.', { off: 1, def: 1.04 }),
+        ['armor 1', 'hp 1.5']),
+
+      // ---- Row 3
+      ring('bearer_pride', 'Pride', 3, -2, ['dmg 1@underBanner', 'hp 1', 'critChance 1', 'armor 1'],
+        ['Head High', 'dmg 1.5@underBanner', 'critChance 1'], ['critChance 1', 'hp 1.5']),
+      ring('bearer_strap', 'Leather Strap', 3, -1, ['moveSpeed 1', 'hp 1', 'armor 1', 'resAll 1'],
+        ['Light Harness', 'moveSpeed 1.5', 'armor 1.5'], ['moveSpeed 1', 'hp 1.5']),
+      ring('bearer_voice', 'Voice of the Banner', 3, 1, ['commandGain 1', 'hp 1', 'resMax 1', 'resAll 1'],
+        ['Rallying Voice', 'commandGain 2', 'resMax 1'], ['commandGain 1.5', 'hp 1']),
+      ring('bearer_alone', 'Alone', 3, 2, ['dmg 1@solo', 'hp 1', 'dmgTaken 1@solo', 'armor 1'],
+        ['Nobody Else', 'dmg 1.5@solo', 'dmgTaken 1@solo'], ['armor 1', 'hp 1.5']),
+
+      // ---- Row 4
+      ring('bearer_oath', 'Bearer\'s Oath', 4, -2, ['hp 1', 'armor 1', 'poise 1', 'resAll 1'],
+        ['Sworn to the Flag', 'hp 1.5', 'poise 1.5'], ['poise 1', 'hp 1.5']),
+      altar('bearer_altar_a', 'Altar of the Bearer', 4, -1, ['hp 1', 'commandGain 1', 'armor 1']),
+      ring('bearer_reach', 'Wide Colours', 4, 1, ['bannerSize 1', 'hp 1', abil('Wide Swing', ['armor 0.5'], 'standard_bearer', 'dmg', 0.12), 'resAll 1'],
+        ['Flying Wide', 'bannerSize 2', 'bannerPower 1'], ['bannerSize 1.5', 'hp 1']),
+      ring('bearer_pole', 'Iron Pole', 4, 2, ['dmgMelee 1', 'hp 1', 'meleeSpeed 1', 'armor 1'],
+        ['Shod Butt', 'dmgMelee 1.5', 'breakPower 1.5'], ['dmgMelee 1', 'hp 1.5']),
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      ring('bearer_rally', 'Rallying Flag', 5, -2, ['bannerPower 1', 'hp 1', 'commandGain 1', 'resAll 1'],
+        ['Rally Here', 'bannerPower 1.5', 'commandGain 1.5'], ['bannerPower 1', 'hp 1.5']),
+      ring('bearer_lone', 'Lone Wolf', 5, -1, ['dmg 1@solo', 'hp 1', 'critMult 1', 'armor 1'],
+        ['One-Man Army', 'dmg 1.5@solo', 'critMult 1.5'], ['critMult 1', 'hp 1.5']),
+      ring('bearer_tough', 'Tough as Leather', 5, 1, ['hp 1', 'armor 1', 'hpRegen 1', 'resAll 1'],
+        ['Weathered', 'hp 1.5', 'hpRegen 1.5'], ['hpRegen 1', 'hp 1.5']),
+      ring('bearer_cloth', 'Battle Cloth', 5, 2, ['dmgTaken 1@underBanner', 'hp 1', 'bannerPower 1', 'armor 1'],
+        ['Shot-Torn Flag', 'dmgTaken 1.5@underBanner', 'bannerPower 1.5'], ['bannerPower 1', 'hp 1.5']),
+
+      // ---- Row 6
+      ring('bearer_march', 'Colour March', 6, -2, ['moveSpeed 1', 'hp 1', 'dmgMelee 1', 'armor 1'],
+        ['Step Out', 'moveSpeed 1.5', 'dmgMelee 1.5'], ['moveSpeed 1', 'hp 1.5']),
+      ring('bearer_madam', "Madam Silverhand's Parlour", 6, -1, ['hp 1', B.trophy('Silver Tassel', ['commandGain 1.5', 'bannerPower 1.5'], 'madam_silverhand'), 'armor 1', 'resAll 1'],
+        ['Fine Silks', 'bannerPower 2', 'hp 1'], ['bannerPower 1', 'hp 1.5']),
+      ring('bearer_cult', 'Tattered Flag', 6, 1, ['hp 1', B.corrupt('Rotten Cloth', ['dmg 2@underBanner', 'bannerPower 1.5'], 20), 'armor 1', 'resAll 1'],
+        B.corrupt('Flag of the Hollow', ['dmg*2', 'bannerPower 2', 'commandGain 2'], 40), ['bannerPower 1', 'hp 1.5']),
+      ring('bearer_crown', 'Crown Bearers', 6, 2, ['armor 1', B.faction("Bearer's Sash", ['commandGain 1.5', 'hp 1'], 'crown', 20), 'hp 1', 'resAll 1'],
+        B.faction('Royal Standard-Bearer', ['bannerPower 2', 'dmgElite 2'], 'crown', 60), ['bannerPower 1', 'armor 1.5']),
+
+      // ---- Row 7
+      B.pacts('bearer_pacts', 'Bearer Bargains', 7, -2, 'hp 1',
+        [pact('Heavy Standard', ['bannerPower*20', 'moveSpeed*-6']), pact('Light Pennant', ['moveSpeed*10', 'bannerPower*-15']), pact('Proud Colours', ['dmg*8@underBanner', 'dmg*-8@solo'])],
+        ['Terms of the Flag', 'commandGain 1', 'hp 1']),
+      ring('bearer_beggar', "The Beggar Prince's Rags", 7, -1, ['hp 1', 'commandGain 1', 'resAll 1', B.trophy('Rag Banner', ['commandGain 1.5', 'hp 1.5'], 'beggar_prince')],
+        ['Banner of Rags', 'commandGain 2', 'resAll 1'], ['commandGain 1', 'hp 1.5']),
+      altar('bearer_altar_b', 'Altar of the Flag', 7, 1, ['hp 1', 'bannerPower 1', 'armor 1']),
+      keystone('bearer_key_realm', 'Standard of the Realm', 7, 2, 'bannerSize 1', 'bannerPower 1',
+        key('Standard of the Realm', [], 'Your banner auras, planted and carried, are 40% larger but 15% weaker.', 'tree_bannerlord_realm', { off: 1.02, def: 1.02 })),
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      ring('bearer_veteran', 'Old Ensign', 8, -3, ['hp 1', 'commandGain 1', 'armor 1', 'resAll 1'],
+        ['Forty Battles', 'commandGain 1.5', 'armor 1.5'], ['commandGain 1', 'hp 1.5']),
+      keystone('bearer_key_sergeant', 'Colour Sergeant', 8, -2, 'dmg 1@underBanner', 'armor 1',
+        key('Colour Sergeant', ['dmg*15@underBanner', 'dmg*-10'], 'Inside your own banner aura you deal 15% more damage; everywhere you deal 10% less.', null, { off: 1.03, def: 1 })),
+      ring('bearer_honour', 'Honour of the Flag', 8, -1, ['hp 1', 'critMult 1', 'dmg 1@underBanner', 'resAll 1'],
+        ['Never Lowered', 'critMult 2', 'hp 1'], ['critMult 1.5', 'hp 1']),
+      ring('bearer_road', 'Long Road Home', 8, 1, ['moveSpeed 1', 'hp 1', 'hpRegen 1', 'armor 1'],
+        ['Homeward', 'moveSpeed 1.5', 'hpRegen 1.5'], ['moveSpeed 1', 'hp 1.5']),
+      keystone('bearer_key_army', 'Army of One', 8, 2, 'dmg 1@solo', 'hp 1',
+        key('Army of One', ['dmg*12@solo', 'dmgTaken*-8@solo', 'dmgMinion*-30'], 'With no allies at your side you deal 12% more damage and take 8% less. Your soldiers and summons deal 30% less.', null, { off: 1.04, def: 1.03 })),
+      ring('bearer_tassel', 'Gold Tassel', 8, 3, ['hp 1', 'bannerPower 1', 'commandGain 1', 'resAll 1'],
+        ['Gilded Pole', 'bannerPower 1.5', 'hp 1.5'], ['bannerPower 1', 'hp 1.5'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['commandGain 2', 'hp 2'] },
+      { at: 35, mods: ['dmg 2@underBanner', 'armor 2'] },
+      { at: 60, mods: ['bannerPower 3', 'commandGain 2', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Standard Bearer and the Colours (gap 7).
+  T.bridge('bannerlord', { id: 'bearer_colours_inner', between: ['bearer', 'colours'], ring: 'inner', name: 'Flag and Field', shape: 'star',
+    nodes: ['commandGain 1', B.mut('bs_bleed'), 'bannerPower 1', 'hp 1'],
+    core: ['Barbed Finial', 'dmgMelee 1', 'bannerPower 1'], bonus: ['hp 1', 'armor 1'] });
+  T.bridge('bannerlord', { id: 'bearer_colours_mid', between: ['bearer', 'colours'], ring: 'mid', name: 'Two Standards', shape: 'diamond',
+    nodes: ['bannerPower 1', 'hp 1', 'bannerSize 1', 'armor 1'],
+    core: ['Planted and Carried', 'bannerPower 1.5', 'bannerSize 1.5'], bonus: ['bannerPower 1.5', 'hp 1'] });
+  T.bridge('bannerlord', { id: 'bearer_colours_outer', between: ['bearer', 'colours'], ring: 'outer', name: 'The Old Colours', shape: 'diamond',
+    nodes: ['bannerDur 1', 'hp 1', 'commandGain 1', 'resAll 1'],
+    core: ['Faded Glory', 'bannerDur 1.5', 'commandGain 1.5'], bonus: ['bannerDur 1', 'hp 1.5'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_bannerlord_colours.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, B = T.host;
+  var rule = B.rule, web = B.web, key = B.key, pact = B.pact, abil = B.abil, star = B.star, ring = B.ring, altar = B.altar, keystone = B.keystone;
+
+  /**
+   * BANNERLORD, arm 0 of 8: THE COLOURS (`colours`). Planted standards and their auras. Skills: Plant Banner (trunk, 4
+   * points), Royal Decree (the Ultimate, row 3). Design: docs/TREE_BANNERLORD.md. Rules: src/sim/56_tree_bannerlord.js.
+   * Holds the three bridges on its clockwise side (colours and drum).
+   */
+  T.arm('bannerlord', {
+    id: 'colours', name: 'The Colours', focus: 'Plant the standard: bigger, stronger, longer auras for everyone under it', color: '#a8323a', vein: 'order',
+
+    trunk: B.strikeTrunk([
+      'bannerPower 1', 'hp 1', { t: 'skill', grants: 'plant_banner', abil: [{ a: 'plant_banner', k: 'cd', v: -0.05 }] }, 'bannerSize 1', 'armor 1',   // T1..T5
+      'hp 1', 'bannerDur 1', 'resAll 1', ['Colour Road', 'moveSpeed 1', 'bannerSize 0.5'], 'hp 1',                                                // T6..T10
+      'bannerPower 1', 'armor 1', 'hp 1', 'commandGain 1', 'resAll 1',                                                                            // T11..T15
+      'hp 1', 'bannerSize 1', 'dmgTaken 1@underBanner', 'hp 1', 'bannerPower 1',                                                                  // T16..T20
+      'bannerDur 1', 'hp 1', 'armor 1', 'resAll 1', 'hp 1'                                                                                        // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Plant Banner, shape and essence
+      star('colours_plant_shape', 'Plant Banner: shape', 1, -1, 'hp 1', ['pb_wide', 'pb_long', 'pb_throw'], ['Long Pole', 'bannerSize 1', 'hp 1']),
+      star('colours_plant_essence', 'Plant Banner: essence', 1, 1, 'bannerPower 1', ['pb_war', 'pb_iron', 'pb_heal'], ['Embroidered', 'bannerPower 1', 'armor 1']),
+
+      // ---- Row 2: Plant Banner, rite; the first aura wheel
+      star('colours_plant_rite', 'Plant Banner: rite', 2, -1, 'commandGain 1', ['pb_quick', 'pb_cmd', 'pb_cheap'], abil('Quick Planting', ['bannerDur 1', 'hp 1'], 'plant_banner', 'cd', -0.1)),
+      ring('colours_field', 'Field of Colours', 2, 1, ['bannerPower 1', 'hp 1', 'bannerSize 1', 'armor 1', 'dmg 1@underBanner'],
+        rule('plant', 'Rallying Colours', ['bannerPower 1'], 'Planting a standard (Plant Banner, War Drum, Royal Decree) gives you 15 Command.', { off: 1.03, def: 1 }),
+        ['bannerPower 1', 'hp 1.5']),
+
+      // ---- Row 3: the Ultimate and its rite and essence
+      star('colours_decree_rite', 'Royal Decree: rite', 3, -2, 'hp 1', ['rd_quick', 'rd_cmd'], ['Royal Seal', 'cdr 1', 'hp 1']),
+      ring('colours_silk', 'Silk and Gold', 3, -1, ['bannerDur 1', 'hp 1', 'bannerSize 1', 'resAll 1'],
+        ['Cloth of Gold', 'bannerDur 2', 'bannerSize 1'], ['bannerDur 1.5', 'hp 1']),
+      ring('colours_decree', 'The Throne Room', 3, 1, ['bannerPower 1', 'hp 1', abil('Royal Command', ['resAll 1'], 'royal_decree', 'cd', -0.08), 'armor 1'],
+        { t: 'skill', grants: 'royal_decree', abil: [{ a: 'royal_decree', k: 'area', v: 0.1 }] }, ['bannerPower 1.5', 'hp 1'], { kind: 'skill', spokes: [0] }),
+      star('colours_decree_essence', 'Royal Decree: essence', 3, 2, 'bannerPower 1', ['rd_war', 'rd_blast', 'rd_heal'], ['By Royal Hand', 'dmgMelee 1', 'armor 1']),
+
+      // ---- Row 4
+      ring('colours_furled', 'Furled Colours', 4, -2, ['bannerDur 1', 'hp 1', 'ward 1', 'armor 1'],
+        web('furled', 'Folded Flag', ['bannerDur 1.5'], 'When one of your banners runs out, you and allies inside its aura gain Ward equal to 12% of their Health for 6 s.', { off: 1, def: 1.03 }),
+        ['bannerDur 1.5', 'hp 1']),
+      altar('colours_altar_a', 'Altar of the Colours', 4, -1, ['hp 1', 'bannerPower 1', 'armor 1']),
+      star('colours_decree_shape', 'Royal Decree: shape', 4, 1, 'hp 1', ['rd_wide', 'rd_long', 'rd_host'], ['Wide Realm', 'aoe 1', 'hp 1']),
+      ring('colours_heraldry', 'Heraldry', 4, 2, ['bannerPower 1', 'hp 1', 'resAll 1', 'critChance 1'],
+        ['Coat of Arms', 'bannerPower 2', 'critChance 1'], ['bannerPower 1.5', 'hp 1']),
+
+      // ---- Row 5 (the MID ring road runs along lane +-2)
+      ring('colours_canopy', 'Canopy', 5, -2, ['bannerSize 1', 'hp 1', 'moveSpeed 1', 'resAll 1'],
+        ['Wide Shadow', 'bannerSize 2', 'moveSpeed 1'], ['bannerSize 1.5', 'hp 1']),
+      ring('colours_under', 'Under the Colours', 5, -1, ['dmg 1@underBanner', 'hp 1', 'commandGain 1', 'armor 1'],
+        ['Proud Ranks', 'dmg 1.5@underBanner', 'commandGain 1'], ['commandGain 1', 'hp 1.5']),
+      ring('colours_mend', 'Field Surgeons', 5, 1, ['healPower 1', 'hp 1', 'healTaken 1', 'resAll 1'],
+        ['Dressing Station', 'healPower 1.5', 'healTaken 1.5'], ['healTaken 1', 'hp 1.5']),
+      ring('colours_blazon', 'Blazon', 5, 2, ['bannerPower 1', 'hp 1', 'dmgTaken 1@underBanner', 'armor 1'],
+        ['Rampant Lion', 'bannerPower 1.5', 'dmgTaken 1.5@underBanner'], ['bannerPower 1', 'hp 1.5']),
+
+      // ---- Row 6
+      ring('colours_stakes', 'Deep Stakes', 6, -2, ['bannerDur 1', 'hp 1', 'dmgMelee 1', 'armor 1'],
+        ['Iron Ferrule', 'bannerDur 2', 'dmgMelee 1'], ['bannerDur 1', 'hp 1.5']),
+      ring('colours_varr', "General Varr's Standard", 6, -1, ['hp 1', B.trophy("Varr's Colours", ['bannerPower 1.5', 'hp 1.5'], 'general_varr'), 'armor 1', 'resAll 1'],
+        ['Captured Standard', 'bannerPower 2', 'armor 1'], ['bannerPower 1', 'hp 1.5']),
+      ring('colours_cult', 'Black Banner', 6, 1, ['hp 1', B.corrupt('Rotted Silk', ['bannerSize 2', 'bannerPower 1.5'], 20), 'armor 1', 'resAll 1'],
+        B.corrupt('Banner of the Hollow', ['dmg*2', 'bannerPower 3', 'bannerDur 2'], 40), ['bannerSize 1', 'hp 1.5']),
+      ring('colours_crown', 'Crown Ensigns', 6, 2, ['armor 1', B.faction("Ensign's Oath", ['bannerPower 1.5', 'hp 1'], 'crown', 20), 'hp 1', 'resAll 1'],
+        B.faction('Royal Colours', ['bannerPower 2', 'orderPower 2'], 'crown', 60), ['bannerPower 1', 'armor 1.5']),
+
+      // ---- Row 7
+      B.pacts('colours_pacts', 'Banner Bargains', 7, -2, 'hp 1',
+        [pact('Tight Ranks', ['bannerPower*25', 'bannerSize*-25']), pact('Hasty Standards', ['bannerSize*40', 'bannerDur*-20']), pact('Heavy Silk', ['bannerDur*30', 'moveSpeed*-6'])],
+        ['Terms of the Colours', 'bannerPower 1', 'hp 1']),
+      ring('colours_gale', 'The Gale Banner', 7, -1, ['hp 1', 'bannerSize 1', 'resAll 1', B.trophy('Gale Pennon', ['bannerSize 1.5', 'hp 1.5'], 'gale_matriarch')],
+        ['Wind in the Cloth', 'bannerSize 2', 'resAll 1'], ['bannerSize 1', 'hp 1.5']),
+      altar('colours_altar_b', 'Altar of the Standard', 7, 1, ['hp 1', 'bannerDur 1', 'bannerSize 1']),
+      keystone('colours_key_bound', 'Banner Bound', 7, 2, 'bannerPower 1', 'bannerSize 1',
+        key('Banner Bound', [], 'Banner auras are 50% stronger and 30% larger. While you stand outside all of your own banner auras you deal 25% less damage.', 'web_banner_bound', { off: 1.05, def: 1.03 })),
+
+      // ---- Row 8 (the OUTER ring road runs along lane +-3)
+      ring('colours_parade', 'Parade Ground', 8, -3, ['hp 1', 'bannerPower 1', 'armor 1', 'resAll 1'],
+        ['Trooping the Colour', 'bannerPower 1.5', 'armor 1.5'], ['bannerPower 1', 'hp 1.5']),
+      keystone('colours_key_eternal', 'The Eternal Standard', 8, -2, 'bannerDur 1', 'bannerSize 1',
+        key('Eternal Standard', ['bannerDur*60', 'bannerPower*-15'], 'Your planted standards stand 60% longer, but their auras are 15% weaker.', null, { off: 1.02, def: 1.03 })),
+      ring('colours_relic', 'Relic Banner', 8, -1, ['hp 1', 'bannerDur 1', 'healPower 1', 'resAll 1'],
+        ['Saint\'s Pennant', 'bannerDur 1.5', 'healPower 1.5'], ['bannerDur 1', 'hp 1.5']),
+      ring('colours_keep', 'Keep Flag', 8, 1, ['bannerSize 1', 'hp 1', 'armor 1', 'dmg 1@underBanner'],
+        ['Flying High', 'bannerSize 1.5', 'dmg 1.5@underBanner'], ['bannerSize 1', 'hp 1.5']),
+      keystone('colours_key_blood', 'Colours of Blood', 8, 2, 'bannerPower 1', 'dmg 1@underBanner',
+        key('Colours of Blood', ['bannerPower*30', 'hp*-10'], 'Your banner auras are 30% stronger, but you have 10% less Health.', null, { off: 1.04, def: 0.99 })),
+      ring('colours_last', 'Last Flag Standing', 8, 3, ['hp 1', 'bannerPower 1', 'hpRegen 1', 'resAll 1'],
+        ['Still Flying', 'bannerPower 1.5', 'hp 1.5'], ['bannerPower 1', 'hp 1.5'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['bannerPower 2', 'hp 2'] },
+      { at: 35, mods: ['bannerSize 2', 'bannerDur 2'] },
+      { at: 60, mods: ['bannerPower 3', 'armor 3', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Colours and the Drum Line (gap 0).
+  T.bridge('bannerlord', { id: 'colours_drum_inner', between: ['colours', 'drum'], ring: 'inner', name: 'Pole and Drum', shape: 'star',
+    nodes: ['bannerPower 1', B.mut('bs_sweep'), 'atkSpeed 1', 'hp 1'],
+    core: ['Swinging Pole', 'dmgMelee 1', 'bannerPower 1'], bonus: ['hp 1', 'armor 1'] });
+  T.bridge('bannerlord', { id: 'colours_drum_mid', between: ['colours', 'drum'], ring: 'mid', name: 'Beat Under the Banner', shape: 'diamond',
+    nodes: ['bannerSize 1', 'hp 1', 'atkSpeed 1', 'armor 1'],
+    core: ['Colours and Cadence', 'bannerSize 1.5', 'atkSpeed 1.5'], bonus: ['bannerSize 1.5', 'hp 1'] });
+  T.bridge('bannerlord', { id: 'colours_drum_outer', between: ['colours', 'drum'], ring: 'outer', name: 'Marching Colours', shape: 'diamond',
+    nodes: ['bannerDur 1', 'hp 1', 'moveSpeed 1', 'resAll 1'],
+    core: ['On the March', 'bannerDur 1.5', 'moveSpeed 1.5'], bonus: ['moveSpeed 1', 'hp 1.5'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_bannerlord_drum.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, B = T.host;
+  var rule = B.rule, key = B.key, pact = B.pact, abil = B.abil, star = B.star, ring = B.ring, altar = B.altar, keystone = B.keystone;
+
+  /**
+   * BANNERLORD, arm 1 of 8: THE DRUM LINE (`drum`). The War Drum: tempo, Attack Speed and Slows.
+   * Skill: War Drum (trunk, 4 points). Design: docs/TREE_BANNERLORD.md. Rules: src/sim/56_tree_bannerlord.js.
+   * Holds the three bridges to the vanguard arm.
+   */
+  T.arm('bannerlord', {
+    id: 'drum', name: 'The Drum Line', focus: 'The War Drum: set the tempo, speed your arms and slow theirs', color: '#e2b94a', vein: 'war',
+
+    trunk: B.strikeTrunk([
+      'atkSpeed 1', 'hp 1', { t: 'skill', grants: 'war_drum', abil: [{ a: 'war_drum', k: 'cd', v: -0.05 }] }, 'statusDur 1', 'armor 1',   // T1..T5
+      'hp 1', 'bannerSize 1', 'resAll 1', ['Drum Road', 'moveSpeed 1', 'atkSpeed 0.5'], 'hp 1',                                         // T6..T10
+      'atkSpeed 1', 'armor 1', 'hp 1', 'aoe 1', 'resAll 1',                                                                            // T11..T15
+      'hp 1', 'statusDur 1', 'moveSpeed 1', 'hp 1', 'atkSpeed 1',                                                                      // T16..T20
+      'bannerDur 1', 'hp 1', 'armor 1', 'resAll 1', 'hp 1'                                                                             // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: War Drum, shape and essence
+      star('drum_drum_shape', 'War Drum: shape', 1, -1, 'hp 1', ['wd_wide', 'wd_long', 'wd_fast'], ['Big Drum', 'aoe 1', 'hp 1']),
+      star('drum_drum_essence', 'War Drum: essence', 1, 1, 'statusDur 1', ['wd_war', 'wd_slow', 'wd_haste'], ['Taut Skin', 'statusDur 1', 'armor 1']),
+
+      // ---- Row 2
+      star('drum_drum_rite', 'War Drum: rite', 2, -1, 'atkSpeed 1', ['wd_quick', 'wd_cmd', 'wd_ward'], abil('Quick Sticks', ['atkSpeed 1', 'hp 1'], 'war_drum', 'cd', -0.08)),
+      ring('drum_tempo', 'Tempo', 2, 1, ['atkSpeed 1', 'hp 1', abil('Heavy Beat', ['armor 0.5'], 'war_drum', 'dmg', 0.1), 'resAll 1', 'dmgMelee 1'],
+        rule('tempo', "Drummer's Tempo", ['atkSpeed 1'], 'Inside your own banner aura, each hit that lands gives you 2% more Attack Speed for 3 s, up to 5 times.', { off: 1.03, def: 1 }),
+        ['atkSpeed 1', 'hp 1.5']),
+
+      // ---- Row 3
+      ring('drum_cadence', 'Cadence', 3, -2, ['moveSpeed 1', 'hp 1', 'atkSpeed 1', 'armor 1'],
+        ['Quick March', 'moveSpeed 1.5', 'atkSpeed 1.5'], ['moveSpeed 1', 'hp 1.5']),
+      ring('drum_rumble', 'Rumble', 3, -1, ['statusDur 1', 'hp 1', 'aoe 1', 'resAll 1'],
+        ['Ground Shakes', 'statusDur 2', 'aoe 1'], ['statusDur 1.5', 'hp 1']),
+      ring('drum_skins', 'Drum Skins', 3, 1, ['armor 1', 'hp 1', 'bannerDur 1', 'resAll 1'],
+        ['Stretched Hide', 'armor 2', 'bannerDur 1'], ['armor 1.5', 'hp 1']),
+      ring('drum_fervour', 'Fervour', 3, 2, ['critChance 1', 'hp 1', 'atkSpeed 1', 'armor 1'],
+        ['Blood Up', 'critChance 2', 'atkSpeed 1'], ['critChance 1', 'hp 1.5']),
+
+      // ---- Row 4
+      ring('drum_pace', 'Pace', 4, -2, ['moveSpeed 1', 'hp 1', 'dodgeCdr 1', 'resAll 1'],
+        ['Double Time', 'moveSpeed 2', 'dodgeCdr 1'], ['moveSpeed 1.5', 'hp 1']),
+      altar('drum_altar_a', 'Altar of the Drum', 4, -1, ['hp 1', 'atkSpeed 1', 'armor 1']),
+      ring('drum_beat', 'Battle Beat', 4, 1, ['atkSpeed 1', 'hp 1', abil('Wide Beat', ['statusDur 0.5'], 'war_drum', 'area', 0.1), 'armor 1'],
+        ['Thundering Drums', 'atkSpeed 1.5', 'aoe 1.5'], ['atkSpeed 1', 'hp 1.5']),
+      ring('drum_mire', 'Bog Beat', 4, 2, ['statusDur 1', 'hp 1', 'armor 1', 'resAll 1'],
+        ['Heavy Legs', 'statusDur 2', 'armor 1'], ['statusDur 1', 'hp 1.5']),
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      ring('drum_march', 'Long March', 5, -2, ['hp 1', 'moveSpeed 1', 'hpRegen 1', 'resAll 1'],
+        ['Road Weary', 'hp 1.5', 'hpRegen 1.5'], ['hpRegen 1', 'hp 1.5']),
+      ring('drum_rhythm', 'Rhythm', 5, -1, ['meleeSpeed 1', 'hp 1', 'critMult 1', 'armor 1'],
+        ['In Time', 'meleeSpeed 1.5', 'critMult 1.5'], ['meleeSpeed 1', 'hp 1.5']),
+      ring('drum_war', 'War Song', 5, 1, ['dmg 1@underBanner', 'hp 1', 'commandGain 1', 'resAll 1'],
+        ['Song of Iron', 'dmg 1.5@underBanner', 'commandGain 1.5'], ['commandGain 1', 'hp 1.5']),
+      ring('drum_cymbal', 'Cymbals', 5, 2, ['aoe 1', 'hp 1', 'statusDur 1', 'armor 1'],
+        ['Crash', 'aoe 1.5', 'statusDur 1.5'], ['aoe 1', 'hp 1.5']),
+
+      // ---- Row 6
+      ring('drum_bass', 'Bass Drum', 6, -2, ['dmgMelee 1', 'hp 1', 'meleeSpeed 1', 'armor 1'],
+        ['Deep Boom', 'dmgMelee 2', 'meleeSpeed 1'], ['dmgMelee 1', 'hp 1.5']),
+      ring('drum_bell', "The Bell Ringer's Loft", 6, -1, ['hp 1', B.trophy('Cracked Bell', ['atkSpeed 1.5', 'statusDur 1.5'], 'bell_ringer'), 'armor 1', 'resAll 1'],
+        ['Tolling Beat', 'statusDur 2', 'hp 1'], ['statusDur 1', 'hp 1.5']),
+      ring('drum_cult', 'Hollow Drum', 6, 1, ['hp 1', B.corrupt('Skin of the Hollow', ['atkSpeed 2', 'aoe 1.5'], 20), 'armor 1', 'resAll 1'],
+        B.corrupt('Drum of the Pit', ['dmg*2', 'atkSpeed 2', 'statusDur 2'], 40), ['atkSpeed 1', 'hp 1.5']),
+      ring('drum_crown', 'Crown Drummers', 6, 2, ['armor 1', B.faction("Regiment's Drum", ['atkSpeed 1.5', 'hp 1'], 'crown', 20), 'hp 1', 'resAll 1'],
+        B.faction('Royal Tattoo', ['atkSpeed 2', 'orderPower 2'], 'crown', 60), ['atkSpeed 1', 'armor 1.5']),
+
+      // ---- Row 7
+      B.pacts('drum_pacts', 'Drum Bargains', 7, -2, 'hp 1',
+        [pact('Frantic Beat', ['atkSpeed*10', 'armor*-10']), pact('Slow March', ['statusDur*25', 'moveSpeed*-6']), pact('Loud Skins', ['aoe*20', 'critChance*-12'])],
+        ['Terms of the Drum', 'atkSpeed 1', 'hp 1']),
+      ring('drum_barker', "The Barker's Stand", 7, -1, ['hp 1', 'atkSpeed 1', 'resAll 1', B.trophy("Barker's Drum", ['atkSpeed 1.5', 'hp 1.5'], 'the_barker')],
+        ['Roll Up', 'atkSpeed 2', 'resAll 1'], ['atkSpeed 1', 'hp 1.5']),
+      altar('drum_altar_b', 'Altar of the Beat', 7, 1, ['hp 1', 'statusDur 1', 'atkSpeed 1']),
+      keystone('drum_key_time', 'Marching Time', 7, 2, 'atkSpeed 1', 'dmg 1@underBanner',
+        key('Marching Time', ['atkSpeed*12@underBanner', 'atkSpeed*-8'], 'Inside your own banner aura you attack and cast 12% faster; outside it, 8% slower.', null, { off: 1.04, def: 1 })),
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      ring('drum_snare', 'Snare Drum', 8, -3, ['hp 1', 'atkSpeed 1', 'armor 1', 'resAll 1'],
+        ['Rattle', 'atkSpeed 1.5', 'armor 1.5'], ['atkSpeed 1', 'hp 1.5']),
+      keystone('drum_key_trance', "The Drummer's Trance", 8, -2, 'cdr 1', 'atkSpeed 1',
+        key("Drummer's Trance", ['cdr*20@underBanner', 'resRegen*-20'], 'Inside your own banner aura your cooldowns recover 20% faster, but your Command builds 20% slower.', null, { off: 1.04, def: 1.01 })),
+      ring('drum_fife', 'Fife and Drum', 8, -1, ['hp 1', 'moveSpeed 1', 'critChance 1', 'resAll 1'],
+        ['Piper\'s Tune', 'moveSpeed 1.5', 'critChance 1.5'], ['moveSpeed 1', 'hp 1.5']),
+      ring('drum_kettle', 'Kettle Drums', 8, 1, ['statusDur 1', 'hp 1', 'bannerSize 1', 'armor 1'],
+        ['Copper Kettles', 'statusDur 1.5', 'bannerSize 1.5'], ['statusDur 1', 'hp 1.5']),
+      keystone('drum_key_deafen', 'Deafening Drums', 8, 2, 'statusDur 1', 'aoe 1',
+        key('Deafening Drums', ['bannerSize*-15'], 'Each beat of your War Drum Weakens enemies it hits (15% less damage) for 1.5 s, but your banner auras are 15% smaller.', 'tree_bannerlord_deafen', { off: 1.01, def: 1.04 })),
+      ring('drum_echo', 'Echoing Beat', 8, 3, ['hp 1', 'aoe 1', 'atkSpeed 1', 'resAll 1'],
+        ['Long Echo', 'aoe 1.5', 'hp 1.5'], ['aoe 1', 'hp 1.5'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['atkSpeed 2', 'hp 2'] },
+      { at: 35, mods: ['statusDur 2', 'armor 2'] },
+      { at: 60, mods: ['atkSpeed 3', 'moveSpeed 2', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Drum Line and the Vanguard (gap 1).
+  T.bridge('bannerlord', { id: 'drum_vanguard_inner', between: ['drum', 'vanguard'], ring: 'inner', name: 'Drum Charge', shape: 'star',
+    nodes: ['atkSpeed 1', B.mut('bs_quick'), 'moveSpeed 1', 'hp 1'],
+    core: ['Sound the Advance', 'atkSpeed 1', 'moveSpeed 1'], bonus: ['hp 1', 'armor 1'] });
+  T.bridge('bannerlord', { id: 'drum_vanguard_mid', between: ['drum', 'vanguard'], ring: 'mid', name: 'Charging Rhythm', shape: 'diamond',
+    nodes: ['atkSpeed 1', 'hp 1', 'moveSpeed 1', 'armor 1'],
+    core: ['Gallop Beat', 'atkSpeed 1.5', 'moveSpeed 1.5'], bonus: ['atkSpeed 1.5', 'hp 1'] });
+  T.bridge('bannerlord', { id: 'drum_vanguard_outer', between: ['drum', 'vanguard'], ring: 'outer', name: 'War Pace', shape: 'diamond',
+    nodes: ['critChance 1', 'hp 1', 'atkSpeed 1', 'resAll 1'],
+    core: ['Forced Pace', 'critChance 1.5', 'atkSpeed 1.5'], bonus: ['critChance 1', 'hp 1.5'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_bannerlord_horn.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, B = T.host;
+  var rule = B.rule, key = B.key, pact = B.pact, abil = B.abil, star = B.star, ring = B.ring, altar = B.altar, keystone = B.keystone;
+
+  /**
+   * BANNERLORD, arm 4 of 8: THE SIGNAL TOWER (`horn`). Shouts and orders: Breaks, Marks and cooldowns.
+   * Skills: Signal Horn (trunk, 4 points), Battlefield Orders (the core of a row-2 wheel, 10 points). Design:
+   * docs/TREE_BANNERLORD.md. Rules: src/sim/56_tree_bannerlord.js. Holds the three bridges to the phalanx arm.
+   */
+  T.arm('bannerlord', {
+    id: 'horn', name: 'The Signal Tower', focus: 'Shouts and orders: one blast and the whole field moves', color: '#d08a3a', vein: 'dread',
+
+    trunk: B.strikeTrunk([
+      'cdr 1', 'hp 1', { t: 'skill', grants: 'signal_horn', abil: [{ a: 'signal_horn', k: 'area', v: 0.08 }] }, 'breakPower 1', 'armor 1',   // T1..T5
+      'hp 1', 'orderPower 1', 'resAll 1', ['Signal Road', 'moveSpeed 1', 'cdr 0.5'], 'hp 1',                                              // T6..T10
+      'cdr 1', 'armor 1', 'hp 1', 'commandGain 1', 'resAll 1',                                                                           // T11..T15
+      'hp 1', 'aoe 1', 'resMax 1', 'hp 1', 'orderPower 1',                                                                               // T16..T20
+      'cdr 1', 'hp 1', 'armor 1', 'resAll 1', 'hp 1'                                                                                     // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Signal Horn, shape and essence
+      star('horn_horn_shape', 'Signal Horn: shape', 1, -1, 'hp 1', ['sh_wide', 'sh_twice'], ['Brass Bell', 'aoe 1', 'hp 1']),
+      star('horn_horn_essence', 'Signal Horn: essence', 1, 1, 'breakPower 1', ['sh_blast', 'sh_weaken', 'sh_steel'], ['Shrill Note', 'breakPower 1', 'armor 1']),
+
+      // ---- Row 2: Signal Horn, rite; Battlefield Orders in the core of a wheel
+      star('horn_horn_rite', 'Signal Horn: rite', 2, -1, 'cdr 1', ['sh_quick', 'sh_cmd', 'sh_cheap'], abil('Ready Lips', ['cdr 1', 'hp 1'], 'signal_horn', 'cd', -0.08)),
+      ring('horn_orders', 'The War Tent', 2, 1, ['orderPower 1', 'hp 1', abil('Standing Orders', ['resAll 1'], 'battlefield_orders', 'dur', 0.1), 'armor 1', 'cdr 1'],
+        { t: 'skill', grants: 'battlefield_orders', abil: [{ a: 'battlefield_orders', k: 'area', v: 0.08 }] }, ['orderPower 1', 'hp 1.5'], { kind: 'skill', spokes: [0] }),
+
+      // ---- Row 3: Battlefield Orders, shape and essence
+      star('horn_orders_shape', 'Battlefield Orders: shape', 3, -2, 'hp 1', ['bo_wide', 'bo_long'], ['Runners', 'aoe 1', 'hp 1']),
+      ring('horn_clarion', 'Clarion', 3, -1, ['cdr 1', 'hp 1', 'resMax 1', 'resAll 1'],
+        rule('clarion', 'Clarion Call', ['cdr 1'], 'Signal Horn and Battlefield Orders take 2 s off the cooldowns of your other skills.', { off: 1.03, def: 1.01 }),
+        ['cdr 1.5', 'hp 1']),
+      ring('horn_dispatch', 'Dispatches', 3, 1, ['orderPower 1', 'hp 1', 'dmgMelee 1', 'armor 1'],
+        ['Sealed Orders', 'orderPower 2', 'dmgMelee 1'], ['orderPower 1.5', 'hp 1']),
+      star('horn_orders_essence', 'Battlefield Orders: essence', 3, 2, 'orderPower 1', ['bo_war', 'bo_haste', 'bo_expose'], ['General Staff', 'orderPower 1', 'armor 1']),
+
+      // ---- Row 4
+      ring('horn_lungs', 'Brass Lungs', 4, -2, ['hp 1', 'cdr 1', 'hpRegen 1', 'resAll 1'],
+        ['Long Breath', 'cdr 1.5', 'hpRegen 1.5'], ['cdr 1', 'hp 1.5']),
+      altar('horn_altar_a', 'Altar of the Horn', 4, -1, ['hp 1', 'cdr 1', 'armor 1']),
+      ring('horn_blast', 'Blast', 4, 1, ['breakPower 1', 'hp 1', abil('Wide Blast', ['armor 0.5'], 'signal_horn', 'dmg', 0.1), 'resAll 1'],
+        ['Shattering Note', 'breakPower 2', 'aoe 1'], ['breakPower 1.5', 'hp 1']),
+      star('horn_orders_rite', 'Battlefield Orders: rite', 4, 2, 'hp 1', ['bo_quick', 'bo_cmd', 'bo_heal'], ['Council of War', 'cdr 1', 'hp 1']),
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      ring('horn_beacon', 'Beacon Fires', 5, -2, ['cdr 1', 'hp 1', 'aoe 1', 'resAll 1'],
+        ['Fires on the Hills', 'cdr 1.5', 'aoe 1.5'], ['cdr 1', 'hp 1.5']),
+      ring('horn_command', 'Voice of Command', 5, -1, ['commandGain 1', 'hp 1', 'orderPower 1', 'armor 1'],
+        ['Obeyed', 'commandGain 2', 'orderPower 1'], ['commandGain 1.5', 'hp 1']),
+      ring('horn_steady', 'Steady Nerves', 5, 1, ['hp 1', 'resAll 1', 'poise 1', 'armor 1'],
+        ['Unshaken', 'resAll 1.5', 'poise 1.5'], ['resAll 1', 'hp 1.5']),
+      ring('horn_mark', 'Marked Ground', 5, 2, ['statusDur 1', 'hp 1', 'critChance 1', 'armor 1'],
+        ['Painted Targets', 'statusDur 1.5', 'critChance 1.5'], ['statusDur 1', 'hp 1.5']),
+
+      // ---- Row 6
+      ring('horn_trumpets', 'Trumpets', 6, -2, ['aoe 1', 'hp 1', 'breakPower 1', 'armor 1'],
+        ['Fanfare', 'aoe 2', 'breakPower 1'], ['aoe 1', 'hp 1.5']),
+      ring('horn_sergeant', "The Sergeant's Whistle", 6, -1, ['hp 1', B.trophy('Frozen Bugle', ['cdr 1.5', 'resAll 1.5'], 'frostbitten_sergeant'), 'armor 1', 'resAll 1'],
+        ['Cold Command', 'cdr 1.5', 'hp 1.5'], ['cdr 1', 'hp 1.5']),
+      ring('horn_cult', 'Hollow Horn', 6, 1, ['hp 1', B.corrupt('Scream in the Brass', ['aoe 2', 'breakPower 1.5'], 20), 'armor 1', 'resAll 1'],
+        B.corrupt('Horn of the Hollow', ['dmg*2', 'cdr 2', 'aoe 2'], 40), ['aoe 1', 'hp 1.5']),
+      ring('horn_crown', 'Crown Heralds', 6, 2, ['armor 1', B.faction("Herald's Tabard", ['orderPower 1.5', 'hp 1'], 'crown', 20), 'hp 1', 'resAll 1'],
+        B.faction('Royal Proclamation', ['orderPower 2', 'cdr 2'], 'crown', 60), ['orderPower 1', 'armor 1.5']),
+
+      // ---- Row 7
+      B.pacts('horn_pacts', 'Horn Bargains', 7, -2, 'hp 1',
+        [pact('Loud Orders', ['orderPower*20', 'hp*-6']), pact('Short Breath', ['cdr*12', 'aoe*-10']), pact('Constant Calls', ['resRegen*15', 'armor*-10'])],
+        ['Terms of the Tower', 'cdr 1', 'hp 1']),
+      ring('horn_choir', "The Choir Master's Gallery", 7, -1, ['hp 1', 'cdr 1', 'resAll 1', B.trophy("Choir Master's Pipe", ['cdr 1.5', 'hp 1.5'], 'choir_master')],
+        ['Perfect Pitch', 'cdr 2', 'resAll 1'], ['cdr 1', 'hp 1.5']),
+      altar('horn_altar_b', 'Altar of the Signal', 7, 1, ['hp 1', 'orderPower 1', 'aoe 1']),
+      keystone('horn_key_brazen', 'The Brazen Horn', 7, 2, 'cdr 1', 'commandGain 1',
+        key('Brazen Horn', ['resRegen*-20'], 'Each shout you use gives you 20% more damage for 5 s, but your Command builds 20% slower.', 'tree_bannerlord_brazen', { off: 1.05, def: 1 })),
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      ring('horn_tower', 'Watchtower', 8, -3, ['hp 1', 'cdr 1', 'armor 1', 'resAll 1'],
+        ['High Lookout', 'cdr 1.5', 'armor 1.5'], ['cdr 1', 'hp 1.5']),
+      keystone('horn_key_behind', 'Lead From Behind', 8, -2, 'orderPower 1', 'minionHp 1',
+        key('Lead From Behind', ['dmgMinion*20', 'minionHp*20', 'dmg*-20'], 'Your soldiers and summons deal 20% more damage and have 20% more Health, but you deal 20% less damage.', null, { off: 1.01, def: 1.02 })),
+      ring('horn_seal', 'Seal and Ribbon', 8, -1, ['hp 1', 'orderPower 1', 'commandGain 1', 'resAll 1'],
+        ['Under Seal', 'orderPower 1.5', 'hp 1.5'], ['orderPower 1', 'hp 1.5']),
+      ring('horn_echo', 'Echo Valley', 8, 1, ['aoe 1', 'hp 1', 'cdr 1', 'armor 1'],
+        ['Called Back', 'aoe 1.5', 'cdr 1.5'], ['aoe 1', 'hp 1.5']),
+      keystone('horn_key_council', 'War Council', 8, 2, 'orderPower 1', 'cdr 1',
+        key('War Council', ['orderPower*30', 'dmg*-8'], 'Your orders give allies 30% more, but you deal 8% less damage.', null, { off: 1.02, def: 1.01 })),
+      ring('horn_retreat', 'Sound the Retreat', 8, 3, ['hp 1', 'moveSpeed 1', 'cdr 1', 'resAll 1'],
+        ['Orderly Retreat', 'moveSpeed 1.5', 'hp 1.5'], ['moveSpeed 1', 'hp 1.5'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['cdr 2', 'hp 2'] },
+      { at: 35, mods: ['orderPower 2', 'aoe 2'] },
+      { at: 60, mods: ['cdr 3', 'armor 3', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Signal Tower and the Phalanx (gap 4).
+  T.bridge('bannerlord', { id: 'horn_phalanx_inner', between: ['horn', 'phalanx'], ring: 'inner', name: 'Horn and Shield', shape: 'star',
+    nodes: ['cdr 1', B.mut('bs_heavy'), 'block 1', 'hp 1'],
+    core: ['Butt of the Pole', 'breakPower 1', 'block 1'], bonus: ['hp 1', 'armor 1'] });
+  T.bridge('bannerlord', { id: 'horn_phalanx_mid', between: ['horn', 'phalanx'], ring: 'mid', name: 'Close Ranks', shape: 'diamond',
+    nodes: ['orderPower 1', 'hp 1', 'block 1', 'resAll 1'],
+    core: ['Form Up', 'orderPower 1.5', 'block 1.5'], bonus: ['block 1', 'hp 1.5'] });
+  T.bridge('bannerlord', { id: 'horn_phalanx_outer', between: ['horn', 'phalanx'], ring: 'outer', name: 'Hold Fast', shape: 'diamond',
+    nodes: ['cdr 1', 'hp 1', 'armor 1', 'resAll 1'],
+    core: ['Hold Your Ground', 'armor 1.5', 'cdr 1.5'], bonus: ['armor 1', 'hp 1.5'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_bannerlord_muster.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, B = T.host;
+  var rule = B.rule, web = B.web, key = B.key, pact = B.pact, abil = B.abil, star = B.star, ring = B.ring, altar = B.altar, keystone = B.keystone;
+
+  /**
+   * BANNERLORD, arm 6 of 8: THE MUSTER FIELD (`muster`). Soldiers and hirelings: call them, keep them alive, call them back.
+   * Skills: Rally Hirelings (trunk, 4 points), Recall (the core of a row-2 wheel, 10 points). Design: docs/TREE_BANNERLORD.md.
+   * Rules: src/sim/56_tree_bannerlord.js. Holds the three bridges to the bearer arm.
+   */
+  T.arm('bannerlord', {
+    id: 'muster', name: 'The Muster Field', focus: 'Soldiers and hirelings: call them, keep them alive, call them back', color: '#6f8a5a', vein: 'order',
+
+    trunk: B.strikeTrunk([
+      'minionHp 1', 'hp 1', { t: 'skill', grants: 'rally_hirelings', abil: [{ a: 'rally_hirelings', k: 'cd', v: -0.05 }] }, 'dmgMinion 1', 'armor 1',   // T1..T5
+      'hp 1', 'hirelingDmg 1', 'resAll 1', ['Muster Road', 'moveSpeed 1', 'minionSpeed 0.5'], 'hp 1',                                                // T6..T10
+      'minionHp 1', 'armor 1', 'hp 1', 'minionDur 1', 'resAll 1',                                                                                   // T11..T15
+      'hp 1', 'dmgMinion 1', 'healPower 1', 'hp 1', 'minionHp 1',                                                                                   // T16..T20
+      'hirelingDmg 1', 'hp 1', 'armor 1', 'resAll 1', 'hp 1'                                                                                        // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Rally Hirelings, shape and essence
+      star('muster_rally_shape', 'Rally Hirelings: shape', 1, -1, 'hp 1', ['rh_wide', 'rh_long', 'rh_more'], ['Loud Call', 'minionHp 1', 'hp 1']),
+      star('muster_rally_essence', 'Rally Hirelings: essence', 1, 1, 'dmgMinion 1', ['rh_fury', 'rh_mend', 'rh_iron'], ['Fresh Blood', 'dmgMinion 1', 'armor 1']),
+
+      // ---- Row 2: Rally Hirelings, rite; Recall in the core of a wheel
+      star('muster_rally_rite', 'Rally Hirelings: rite', 2, -1, 'minionHp 1', ['rh_quick', 'rh_cmd', 'rh_cleanse'], abil('Ready Levies', ['minionHp 1', 'hp 1'], 'rally_hirelings', 'cd', -0.08)),
+      ring('muster_recall', 'The Rally Point', 2, 1, ['minionHp 1', 'hp 1', abil('Quick Return', ['armor 1'], 'recall', 'cd', -0.08), 'resAll 1', 'healPower 1'],
+        { t: 'skill', grants: 'recall', abil: [{ a: 'recall', k: 'area', v: 0.08 }] }, ['minionHp 1', 'hp 1.5'], { kind: 'skill', spokes: [0] }),
+
+      // ---- Row 3: Recall, shape and essence
+      star('muster_recall_shape', 'Recall: shape', 3, -2, 'hp 1', ['rl_wide', 'rl_far'], ['Fall Back', 'moveSpeed 1', 'hp 1']),
+      ring('muster_full', 'Full Muster', 3, -1, ['dmgMinion 1', 'hp 1', 'minionHp 1', 'resAll 1'],
+        web('full_muster', 'Every Man Answers', ['dmgMinion 1'], 'Rally Hirelings calls its Levy Spearmen even while allies fight at your side.', { off: 1.025, def: 1.01 }),
+        ['dmgMinion 1.5', 'hp 1']),
+      ring('muster_behind', 'No One Left Behind', 3, 1, ['minionHp 1', 'hp 1', 'healPower 1', 'armor 1'],
+        web('left_behind', 'Leave No Man', ['minionHp 1.5'], 'A soldier or hireling of yours that drops below 30% Health heals 30% of its Health. Each can be saved this way once every 30 s.', { off: 1.01, def: 1.02 }),
+        ['minionHp 1.5', 'hp 1']),
+      star('muster_recall_essence', 'Recall: essence', 3, 2, 'armor 1', ['rl_ward', 'rl_heal', 'rl_stun'], ['Safe Ground', 'armor 1', 'resAll 1']),
+
+      // ---- Row 4
+      ring('muster_out', 'Mustered Out', 4, -2, ['minionDur 1', 'hp 1', 'commandGain 1', 'resAll 1'],
+        web('mustered_out', 'End of Service', ['dmgMinion 1.5'], 'When the time of one of your soldiers runs out, you gain 12 Command.', { off: 1.02, def: 1 }),
+        ['minionDur 1.5', 'hp 1']),
+      altar('muster_altar_a', 'Altar of the Muster', 4, -1, ['hp 1', 'minionHp 1', 'armor 1']),
+      ring('muster_pay', 'Pay Chest', 4, 1, ['hirelingDmg 1', 'hp 1', abil('Long Rally', ['minionHp 0.5'], 'rally_hirelings', 'dur', 0.1), 'armor 1'],
+        ['Silver for Steel', 'hirelingDmg 2', 'goldFind 1'], ['hirelingDmg 1.5', 'hp 1']),
+      star('muster_recall_rite', 'Recall: rite', 4, 2, 'hp 1', ['rl_quick', 'rl_cmd', 'rl_cleanse'], ['Trumpet Home', 'cdr 1', 'hp 1']),
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      ring('muster_drill', 'Drill Yard', 5, -2, ['dmgMinion 1', 'hp 1', 'minionSpeed 1', 'resAll 1'],
+        ['Square Bashing', 'dmgMinion 1.5', 'minionSpeed 1.5'], ['dmgMinion 1', 'hp 1.5']),
+      ring('muster_reinforce', 'Reinforcements', 5, -1, ['commandGain 1', 'hp 1', 'minionHp 1', 'armor 1'],
+        rule('reinforce', 'Close the Gap', ['commandGain 1'], 'When one of your soldiers or hirelings is killed, you gain 10 Command.', { off: 1.02, def: 1.01 }),
+        ['commandGain 1.5', 'hp 1']),
+      ring('muster_mess', 'Mess Tent', 5, 1, ['minionHp 1', 'hp 1', 'hpRegen 1', 'resAll 1'],
+        ['Hot Meal', 'minionHp 1.5', 'hpRegen 1.5'], ['minionHp 1', 'hp 1.5']),
+      ring('muster_sellswords', 'Sellswords', 5, 2, ['hirelingDmg 1', 'hp 1', 'dmgMinion 1', 'armor 1'],
+        ['Hired Blades', 'hirelingDmg 1.5', 'dmgMinion 1.5'], ['hirelingDmg 1', 'hp 1.5']),
+
+      // ---- Row 6
+      ring('muster_levy', 'Levy Rolls', 6, -2, ['minionDur 1', 'hp 1', 'dmgMinion 1', 'armor 1'],
+        ['Long Service', 'minionDur 2', 'dmgMinion 1'], ['minionDur 1', 'hp 1.5']),
+      ring('muster_orsk', "Houndmaster Orsk's Kennel", 6, -1, ['hp 1', B.trophy("Orsk's Whistle", ['dmgMinion 1.5', 'minionSpeed 1.5'], 'houndmaster_orsk'), 'armor 1', 'resAll 1'],
+        ['Kennel Master', 'minionSpeed 2', 'hp 1'], ['minionSpeed 1', 'hp 1.5']),
+      ring('muster_cult', 'Hollow Recruits', 6, 1, ['hp 1', B.corrupt('Press Gang', ['dmgMinion 2', 'minionHp 1.5'], 20), 'armor 1', 'resAll 1'],
+        B.corrupt('Army of the Hollow', ['dmg*2', 'dmgMinion 3', 'minionDur 2'], 40), ['dmgMinion 1', 'hp 1.5']),
+      ring('muster_crown', 'Crown Recruiters', 6, 2, ['armor 1', B.faction("Recruiter's Shilling", ['minionHp 1.5', 'hp 1'], 'crown', 20), 'hp 1', 'resAll 1'],
+        B.faction('Royal Levy', ['dmgMinion 2', 'hirelingDmg 2'], 'crown', 60), ['minionHp 1', 'armor 1.5']),
+
+      // ---- Row 7
+      B.pacts('muster_pacts', 'Muster Bargains', 7, -2, 'hp 1',
+        [pact('Fresh Recruits', ['minionCount+1', 'minionHp*-20', 'dmgMinion*-12']), pact('Short Enlistment', ['minionDur*-30', 'dmgMinion*15']), pact('Double Pay', ['hirelingDmg*15', 'resRegen*-15'])],
+        ['Terms of Service', 'minionHp 1', 'hp 1']),
+      ring('muster_drog', "Warlord Drog's Camp", 7, -1, ['hp 1', 'dmgMinion 1', 'armor 1', B.trophy("Drog's War Banner", ['dmgMinion 1.5', 'hp 1.5'], 'warlord_drog')],
+        ['Captured Warband', 'dmgMinion 2', 'armor 1'], ['dmgMinion 1', 'hp 1.5']),
+      altar('muster_altar_b', 'Altar of the Host', 7, 1, ['hp 1', 'dmgMinion 1', 'minionHp 1']),
+      keystone('muster_key_lone', 'Lone Standard', 7, 2, 'dmg 1@noMinions', 'armor 1',
+        key('Lone Standard', [], 'You call no soldiers. Instead, for each soldier Rally Hirelings or Royal Decree would call, you deal 5% more damage and gain Ward equal to 15% of that soldier\'s Health for the time it would serve.', 'web_bannerlord_lone_standard', { off: 1.02, def: 1.04 })),
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      ring('muster_barracks', 'Barracks', 8, -3, ['hp 1', 'minionHp 1', 'armor 1', 'resAll 1'],
+        ['Bunks and Boots', 'minionHp 1.5', 'armor 1.5'], ['minionHp 1', 'hp 1.5']),
+      keystone('muster_key_ranks', 'Endless Ranks', 8, -2, 'minionHp 1', 'minionDur 1',
+        key('Endless Ranks', ['minionCount+1', 'minionDur*-25', 'dmgMinion*-10'], 'You call one more soldier each time, but they serve 25% shorter and deal 10% less damage.', null, { off: 1.03, def: 1.02 })),
+      ring('muster_quarter', 'Quartermaster', 8, -1, ['hp 1', 'hirelingDmg 1', 'goldFind 1', 'resAll 1'],
+        ['Full Stores', 'hirelingDmg 1.5', 'hp 1.5'], ['hirelingDmg 1', 'hp 1.5']),
+      ring('muster_honour', 'Roll of Honour', 8, 1, ['dmgMinion 1', 'hp 1', 'minionSpeed 1', 'armor 1'],
+        ['Mentioned in Dispatches', 'dmgMinion 1.5', 'minionSpeed 1.5'], ['dmgMinion 1', 'hp 1.5']),
+      keystone('muster_key_veteran', 'Veteran Company', 8, 2, 'dmgMinion 1', 'minionHp 1',
+        key('Veteran Company', ['dmgMinion*25', 'minionHp*25', 'minionCount+-1'], 'You call one soldier fewer each time, but each deals 25% more damage and has 25% more Health.', null, { off: 1.02, def: 1.02 })),
+      ring('muster_hospital', 'Field Hospital', 8, 3, ['hp 1', 'healPower 1', 'minionHp 1', 'resAll 1'],
+        ['Surgeon\'s Tent', 'healPower 1.5', 'hp 1.5'], ['healPower 1', 'hp 1.5'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['minionHp 2', 'hp 2'] },
+      { at: 35, mods: ['dmgMinion 3', 'armor 2'] },
+      { at: 60, mods: ['dmgMinion 3', 'hirelingDmg 3', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Muster Field and the Standard Bearer (gap 6).
+  T.bridge('bannerlord', { id: 'muster_bearer_inner', between: ['muster', 'bearer'], ring: 'inner', name: 'Follow the Flag', shape: 'star',
+    nodes: ['minionHp 1', B.mut('bs_twin'), 'commandGain 1', 'hp 1'],
+    core: ['Twin Thrusts', 'dmgMelee 1', 'commandGain 1'], bonus: ['hp 1', 'armor 1'] });
+  T.bridge('bannerlord', { id: 'muster_bearer_mid', between: ['muster', 'bearer'], ring: 'mid', name: 'Rally to the Flag', shape: 'diamond',
+    nodes: ['minionHp 1', 'hp 1', 'bannerPower 1', 'armor 1'],
+    core: ['Colours in View', 'minionHp 1.5', 'bannerPower 1.5'], bonus: ['minionHp 1.5', 'hp 1'] });
+  T.bridge('bannerlord', { id: 'muster_bearer_outer', between: ['muster', 'bearer'], ring: 'outer', name: 'Camp Followers', shape: 'diamond',
+    nodes: ['hirelingDmg 1', 'hp 1', 'commandGain 1', 'resAll 1'],
+    core: ['Baggage Train', 'hirelingDmg 1.5', 'commandGain 1.5'], bonus: ['commandGain 1', 'hp 1.5'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_bannerlord_phalanx.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, B = T.host;
+  var rule = B.rule, web = B.web, key = B.key, pact = B.pact, abil = B.abil, star = B.star, ring = B.ring, altar = B.altar, keystone = B.keystone;
+
+  /**
+   * BANNERLORD, arm 5 of 8: THE PHALANX (`phalanx`). Locked shields: blocks, Armor and standing together.
+   * Skill: Phalanx (trunk, 4 points). Design: docs/TREE_BANNERLORD.md. Rules: src/sim/56_tree_bannerlord.js.
+   * Holds the three bridges to the muster arm.
+   */
+  T.arm('bannerlord', {
+    id: 'phalanx', name: 'The Phalanx', focus: 'Lock shields: block, answer every blow and never break the line', color: '#7d8f9c', vein: 'order',
+
+    trunk: B.strikeTrunk([
+      'block 1', 'hp 1', { t: 'skill', grants: 'phalanx', abil: [{ a: 'phalanx', k: 'cd', v: -0.05 }] }, 'armor 1', 'resAll 1',   // T1..T5
+      'hp 1', 'block 1', 'poise 1', ['Shield Road', 'moveSpeed 1', 'armor 0.5'], 'hp 1',                                        // T6..T10
+      'armor 1', 'resAll 1', 'hp 1', 'dmgTaken 1@withAllies', 'block 1',                                                        // T11..T15
+      'hp 1', 'armor 1', 'poise 1', 'hp 1', 'block 1',                                                                          // T16..T20
+      'resAll 1', 'hp 1', 'armor 1', 'hpRegen 1', 'hp 1'                                                                        // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Phalanx, shape and essence
+      star('phalanx_ph_shape', 'Phalanx: shape', 1, -1, 'hp 1', ['ph_wide', 'ph_long', 'ph_reach'], ['Wider Line', 'block 1', 'hp 1']),
+      star('phalanx_ph_essence', 'Phalanx: essence', 1, 1, 'armor 1', ['ph_iron', 'ph_spear', 'ph_stun'], ['Locked Rims', 'armor 1', 'resAll 1']),
+
+      // ---- Row 2
+      star('phalanx_ph_rite', 'Phalanx: rite', 2, -1, 'block 1', ['ph_quick', 'ph_cmd', 'ph_ward'], abil('Drilled Line', ['block 1', 'hp 1'], 'phalanx', 'cd', -0.08)),
+      ring('phalanx_interlock', 'Interlocked', 2, 1, ['block 1', 'hp 1', abil('Tight Line', ['armor 0.5'], 'phalanx', 'dur', 0.1), 'resAll 1', 'dmgMelee 1'],
+        rule('interlock', 'Interlocked Shields', ['block 1'], 'Each hit you block gives you Ward equal to 3% of your Health for 4 s (at most twice a second).', { off: 1, def: 1.04 }),
+        ['block 1', 'hp 1.5']),
+
+      // ---- Row 3
+      ring('phalanx_dug', 'Dug In', 3, -2, ['block 1', 'hp 1', 'commandGain 1', 'armor 1'],
+        web('dug_in', 'Dug Into the Line', ['block 1.5'], 'Blocking a hit while inside your own banner aura gives 5 Command.', { off: 1.015, def: 1 }),
+        ['commandGain 1.5', 'hp 1']),
+      ring('phalanx_bronze', 'Bronze Rims', 3, -1, ['armor 1', 'hp 1', 'block 1', 'resAll 1'],
+        ['Bronze Face', 'armor 2', 'block 1'], ['armor 1.5', 'hp 1']),
+      ring('phalanx_spears', 'Spears Over Shields', 3, 1, ['dmgMelee 1', 'hp 1', 'critChance 1', 'armor 1'],
+        ['Over the Top', 'dmgMelee 1.5', 'critChance 1.5'], ['dmgMelee 1', 'hp 1.5']),
+      ring('phalanx_together', 'Together', 3, 2, ['dmgTaken 1@withAllies', 'hp 1', 'armor 1', 'resAll 1'],
+        ['Brothers in Arms', 'dmgTaken 1.5@withAllies', 'hp 1.5'], ['armor 1', 'hp 1.5']),
+
+      // ---- Row 4
+      ring('phalanx_weight', 'Weight of Shields', 4, -2, ['poise 1', 'hp 1', 'armor 1', 'resAll 1'],
+        ['Push of Shields', 'poise 2', 'breakPower 1'], ['poise 1.5', 'hp 1']),
+      altar('phalanx_altar_a', 'Altar of the Shield', 4, -1, ['hp 1', 'block 1', 'armor 1']),
+      ring('phalanx_testudo', 'Shell', 4, 1, ['armor 1', 'hp 1', abil('Broad Line', ['block 0.5'], 'phalanx', 'area', 0.1), 'resAll 1'],
+        ['Tortoise Shell', 'armor 2', 'resAll 1'], ['armor 1.5', 'hp 1']),
+      ring('phalanx_rest', 'Shield Rest', 4, 2, ['hpRegen 1', 'hp 1', 'healTaken 1', 'armor 1'],
+        ['Lean on the Rim', 'hpRegen 2', 'healTaken 1'], ['hpRegen 1.5', 'hp 1']),
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      ring('phalanx_line', 'Unbroken Line', 5, -2, ['block 1', 'hp 1', 'poise 1', 'resAll 1'],
+        ['Line Holds', 'block 1.5', 'poise 1.5'], ['block 1', 'hp 1.5']),
+      ring('phalanx_answer', 'Shield Answer', 5, -1, ['dmgMelee 1', 'hp 1', 'block 1', 'armor 1'],
+        ['Thrust Over Rim', 'dmgMelee 1.5', 'block 1.5'], ['dmgMelee 1', 'hp 1.5']),
+      ring('phalanx_scars', 'Shield Scars', 5, 1, ['hp 1', 'armor 1', 'hpRegen 1', 'resAll 1'],
+        ['Dented and Proud', 'hp 1.5', 'armor 1.5'], ['hp 2']),
+      ring('phalanx_rear', 'Rear Rank', 5, 2, ['orderPower 1', 'hp 1', 'block 1', 'armor 1'],
+        ['Hold the Rear', 'orderPower 1.5', 'block 1.5'], ['orderPower 1', 'hp 1.5']),
+
+      // ---- Row 6
+      ring('phalanx_tower', 'Tower Shields', 6, -2, ['block 1', 'hp 1', 'armor 1', 'resAll 1'],
+        ['Tall Shields', 'block 2', 'armor 1'], ['block 1', 'hp 1.5']),
+      ring('phalanx_gargoyle', 'Gargoyle Gate', 6, -1, ['hp 1', B.trophy('Stone Shield', ['block 1.5', 'armor 1.5'], 'gargoyle_pair'), 'armor 1', 'resAll 1'],
+        ['Guarded Gate', 'armor 2', 'block 1'], ['armor 1.5', 'hp 1']),
+      ring('phalanx_cult', 'Hollow Shields', 6, 1, ['hp 1', B.corrupt('Rusted Bronze', ['block 1.5', 'armor 1.5'], 20), 'armor 1', 'resAll 1'],
+        B.corrupt('Wall of the Hollow', ['dmg*2', 'block 2', 'armor 2'], 40), ['block 1', 'hp 1.5']),
+      ring('phalanx_lantern', 'Lantern Guard', 6, 2, ['resAll 1', B.faction('Blessed Rims', ['resAll 1.5', 'hp 1'], 'lantern', 20), 'hp 1', 'armor 1'],
+        B.faction('Lantern Shieldwall', ['healTaken 2', 'block 2'], 'lantern', 60), ['resAll 1', 'armor 1.5']),
+
+      // ---- Row 7
+      B.pacts('phalanx_pacts', 'Shield Bargains', 7, -2, 'hp 1',
+        [pact('Heavy Rims', ['block+5', 'moveSpeed*-6']), pact('Shield First', ['armor*20', 'dmg*-6']), pact('Close Order', ['dmgTaken*-6@withAllies', 'dmgTaken*6@solo'])],
+        ['Terms of the Line', 'block 1', 'hp 1']),
+      ring('phalanx_warden', "The Iron Warden's Hall", 7, -1, ['hp 1', 'block 1', 'resAll 1', B.trophy("Warden's Shield Boss", ['block 1.5', 'hp 1.5'], 'iron_warden')],
+        ['Warden\'s Rule', 'block 2', 'resAll 1'], ['block 1', 'hp 1.5']),
+      altar('phalanx_altar_b', 'Altar of the Line', 7, 1, ['hp 1', 'armor 1', 'block 1']),
+      keystone('phalanx_key_hold', 'Hold the Line', 7, 2, 'poise 1', 'armor 1',
+        key('Hold the Line', ['dmgTaken*-12@still', 'poise+20', 'moveSpeed*-8'], 'While you stand still you take 12% less damage. +20 Poise. You move 8% slower.', null, { off: 1, def: 1.05 })),
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      ring('phalanx_bulwark', 'Bulwark', 8, -3, ['hp 1', 'block 1', 'armor 1', 'resAll 1'],
+        ['Rampart of Shields', 'block 1.5', 'armor 1.5'], ['block 1', 'hp 1.5']),
+      keystone('phalanx_key_testudo', 'Testudo', 8, -2, 'block 1', 'armor 1',
+        key('Testudo', ['block+8', 'atkSpeed*-10'], 'You have +8% Block Chance, but attack and cast 10% slower.', null, { off: 0.98, def: 1.06 })),
+      ring('phalanx_veterans', 'Shield Veterans', 8, -1, ['hp 1', 'armor 1', 'dmgMelee 1', 'resAll 1'],
+        ['Old Shields', 'armor 1.5', 'hp 1.5'], ['armor 1', 'hp 1.5']),
+      ring('phalanx_brothers', 'Shield Brothers', 8, 1, ['dmgTaken 1@withAllies', 'hp 1', 'block 1', 'armor 1'],
+        ['Side by Side', 'dmgTaken 1.5@withAllies', 'block 1.5'], ['block 1', 'hp 1.5']),
+      keystone('phalanx_key_shoulder', 'Shoulder to Shoulder', 8, 2, 'dmgTaken 1@withAllies', 'hp 1',
+        key('Shoulder to Shoulder', ['dmgTaken*-15@withAllies', 'dmgTaken*8@solo'], 'With allies at your side you take 15% less damage; alone, 8% more.', null, { off: 1, def: 1.04 })),
+      ring('phalanx_last', 'Last Rank', 8, 3, ['hp 1', 'hpRegen 1', 'block 1', 'resAll 1'],
+        ['Never Broken', 'hpRegen 1.5', 'hp 1.5'], ['hpRegen 1', 'hp 1.5'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['block 2', 'hp 2'] },
+      { at: 35, mods: ['armor 2', 'resAll 2'] },
+      { at: 60, mods: ['block 3', 'armor 3', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Phalanx and the Muster Field (gap 5).
+  T.bridge('bannerlord', { id: 'phalanx_muster_inner', between: ['phalanx', 'muster'], ring: 'inner', name: 'Shields and Levies', shape: 'star',
+    nodes: ['block 1', B.mut('bs_command'), 'minionHp 1', 'hp 1'],
+    core: ['Shield Drill', 'block 1', 'minionHp 1'], bonus: ['hp 1', 'armor 1'] });
+  T.bridge('bannerlord', { id: 'phalanx_muster_mid', between: ['phalanx', 'muster'], ring: 'mid', name: 'Shield Wall of Men', shape: 'diamond',
+    nodes: ['minionHp 1', 'hp 1', 'armor 1', 'resAll 1'],
+    core: ['Men of the Line', 'minionHp 1.5', 'armor 1.5'], bonus: ['minionHp 1.5', 'hp 1'] });
+  T.bridge('bannerlord', { id: 'phalanx_muster_outer', between: ['phalanx', 'muster'], ring: 'outer', name: 'Guarded Camp', shape: 'diamond',
+    nodes: ['block 1', 'hp 1', 'hirelingDmg 1', 'resAll 1'],
+    core: ['Camp Guard', 'hirelingDmg 1.5', 'block 1.5'], bonus: ['hirelingDmg 1', 'hp 1.5'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_bannerlord_spear.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, B = T.host;
+  var rule = B.rule, key = B.key, pact = B.pact, abil = B.abil, star = B.star, ring = B.ring, altar = B.altar, keystone = B.keystone;
+
+  /**
+   * BANNERLORD, arm 3 of 8: THE SPEAR LINE (`spear`). Strike Formation: the pike, Marks and critical hits.
+   * Skill: Strike Formation (trunk, 4 points). Design: docs/TREE_BANNERLORD.md. Rules: src/sim/56_tree_bannerlord.js.
+   * Holds the three bridges to the horn arm.
+   */
+  T.arm('bannerlord', {
+    id: 'spear', name: 'The Spear Line', focus: 'The pike: Mark them, then drive the whole line through', color: '#b8a070', vein: 'war',
+
+    trunk: B.strikeTrunk([
+      'critChance 1', 'hp 1', { t: 'skill', grants: 'strike_formation', abil: [{ a: 'strike_formation', k: 'dmg', v: 0.05 }] }, 'dmgMelee 1', 'armor 1',   // T1..T5
+      'hp 1', 'meleeSpeed 1', 'resAll 1', ['Pike Road', 'moveSpeed 1', 'critChance 0.5'], 'hp 1',                                                       // T6..T10
+      'dmgPhys 1', 'armor 1', 'hp 1', 'breakPower 1', 'resAll 1',                                                                                    // T11..T15
+      'hp 1', 'critChance 1', 'poise 1', 'hp 1', 'critMult 1',                                                                                       // T16..T20
+      'dmgMelee 1', 'hp 1', 'armor 1', 'resAll 1', 'hp 1'                                                                                            // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Strike Formation, shape and essence
+      star('spear_strike_shape', 'Strike Formation: shape', 1, -1, 'hp 1', ['sf_long', 'sf_wide', 'sf_twice'], ['Long Line', 'aoe 1', 'hp 1']),
+      star('spear_strike_essence', 'Strike Formation: essence', 1, 1, 'critChance 1', ['sf_bleed', 'sf_heavy', 'sf_crit'], ['Leaf Blade', 'critChance 1', 'armor 1']),
+
+      // ---- Row 2
+      star('spear_strike_rite', 'Strike Formation: rite', 2, -1, 'dmgMelee 1', ['sf_quick', 'sf_cmd', 'sf_cheap'], abil('Drilled Thrust', ['critChance 1', 'hp 1'], 'strike_formation', 'cd', -0.08)),
+      ring('spear_pikes', 'Pikemen', 2, 1, ['critChance 1', 'hp 1', abil('Long Thrust', ['armor 0.5'], 'strike_formation', 'area', 0.1), 'resAll 1', 'dmgPhys 1'],
+        rule('skewer', 'Skewer', ['critChance 1'], 'Your hits on Marked enemies have +10% Critical Chance.', { off: 1.03, def: 1 }),
+        ['critChance 1', 'hp 1.5']),
+
+      // ---- Row 3
+      ring('spear_shaft', 'Ash Shaft', 3, -2, ['dmgPhys 1', 'hp 1', 'poise 1', 'armor 1'],
+        ['Seasoned Ash', 'dmgPhys 2', 'poise 1'], ['dmgPhys 1', 'hp 1.5']),
+      ring('spear_point', 'Leaf Point', 3, -1, ['critMult 1', 'hp 1', 'critChance 1', 'resAll 1'],
+        ['Honed Point', 'critMult 2', 'critChance 1'], ['critMult 1.5', 'hp 1']),
+      ring('spear_brace', 'Brace for Horse', 3, 1, ['poise 1', 'hp 1', 'armor 1', 'resAll 1'],
+        ['Butt in the Earth', 'poise 2', 'armor 1'], ['poise 1.5', 'hp 1']),
+      ring('spear_mark', 'Marked Men', 3, 2, ['dmgElite 1', 'hp 1', 'statusDur 1', 'armor 1'],
+        ['Chosen Target', 'dmgElite 2', 'statusDur 1'], ['dmgElite 1', 'hp 1.5']),
+
+      // ---- Row 4
+      ring('spear_ranks', 'Ranks', 4, -2, ['dmgMelee 1', 'hp 1', 'orderPower 1', 'resAll 1'],
+        ['Second Rank', 'dmgMelee 1.5', 'orderPower 1.5'], ['orderPower 1', 'hp 1.5']),
+      altar('spear_altar_a', 'Altar of the Pike', 4, -1, ['hp 1', 'critChance 1', 'armor 1']),
+      ring('spear_formation', 'Formation', 4, 1, ['critChance 1', 'hp 1', abil('Fast Formation', ['armor 0.5'], 'strike_formation', 'cd', -0.08), 'armor 1'],
+        ['Hedgehog', 'critChance 1.5', 'armor 1.5'], ['critChance 1', 'hp 1.5']),
+      ring('spear_halberd', 'Halberds', 4, 2, ['breakPower 1', 'hp 1', 'dmgMelee 1', 'resAll 1'],
+        ['Hook and Blade', 'breakPower 2', 'dmgMelee 1'], ['breakPower 1', 'hp 1.5']),
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      ring('spear_wall', 'Wall of Points', 5, -2, ['hp 1', 'armor 1', 'critChance 1', 'resAll 1'],
+        ['Bristling', 'armor 1.5', 'critChance 1.5'], ['armor 1', 'hp 1.5']),
+      ring('spear_thrust', 'Thrust Drill', 5, -1, ['meleeSpeed 1', 'hp 1', 'critMult 1', 'armor 1'],
+        ['Thrust and Return', 'meleeSpeed 1.5', 'critMult 1.5'], ['meleeSpeed 1', 'hp 1.5']),
+      ring('spear_veteran', 'Old Pikeman', 5, 1, ['hp 1', 'hpRegen 1', 'poise 1', 'resAll 1'],
+        ['Twenty Winters', 'hp 1.5', 'poise 1.5'], ['hp 2']),
+      ring('spear_giant', 'Giant Killers', 5, 2, ['dmgBoss 1', 'hp 1', 'critChance 1', 'armor 1'],
+        ['Set for the Charge', 'dmgBoss 2', 'critChance 1'], ['dmgBoss 1', 'hp 1.5']),
+
+      // ---- Row 6
+      ring('spear_steel', 'Spearhead Steel', 6, -2, ['dmgPhys 1', 'hp 1', 'critChance 1', 'armor 1'],
+        ['Forged Point', 'dmgPhys 2', 'critChance 1'], ['dmgPhys 1', 'hp 1.5']),
+      ring('spear_valdric', "Captain Valdric's Line", 6, -1, ['hp 1', B.trophy("Valdric's Partisan", ['critChance 1.5', 'dmgPhys 1.5'], 'captain_valdric'), 'armor 1', 'resAll 1'],
+        ['Hold the Pass', 'critMult 2', 'hp 1'], ['critMult 1', 'hp 1.5']),
+      ring('spear_cult', 'Hollow Pikes', 6, 1, ['hp 1', B.corrupt('Barbed Hunger', ['critMult 2', 'dmgPhys 1.5'], 20), 'armor 1', 'resAll 1'],
+        B.corrupt('Pike of the Pit', ['dmg*2', 'critChance 3', 'critMult 2'], 40), ['critChance 1', 'hp 1.5']),
+      ring('spear_crown', 'Crown Pikemen', 6, 2, ['armor 1', B.faction("Pikeman's Pay", ['critChance 1.5', 'hp 1'], 'crown', 20), 'hp 1', 'resAll 1'],
+        B.faction('Royal Pike Square', ['dmgElite 2', 'critMult 2'], 'crown', 60), ['critMult 1', 'armor 1.5']),
+
+      // ---- Row 7
+      B.pacts('spear_pacts', 'Pike Bargains', 7, -2, 'hp 1',
+        [pact('Overreach', ['critMult*15', 'armor*-10']), pact('Long Shaft', ['dmgMelee*14', 'meleeSpeed*-12']), pact('Thin Point', ['critChance*15', 'dmgPhys*-8'])],
+        ['Terms of the Line', 'critChance 1', 'hp 1']),
+      ring('spear_marshal', "The Marshal's Pass", 7, -1, ['hp 1', 'critChance 1', 'armor 1', B.trophy("Marshal's Baton", ['critMult 1.5', 'orderPower 1.5'], 'pass_marshal')],
+        ['Pass Held', 'critChance 2', 'hp 1'], ['critChance 1', 'hp 1.5']),
+      altar('spear_altar_b', 'Altar of the Line', 7, 1, ['hp 1', 'critMult 1', 'dmgPhys 1']),
+      keystone('spear_key_mark', 'Mark of the King', 7, 2, 'critChance 1', 'statusDur 1',
+        key('Mark of the King', [], 'Your hits on Marked enemies deal 20% more damage; your hits on other enemies deal 8% less.', 'tree_bannerlord_marked', { off: 1.05, def: 1 })),
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      ring('spear_square', 'The Square', 8, -3, ['hp 1', 'armor 1', 'critChance 1', 'resAll 1'],
+        ['Four Faces', 'armor 1.5', 'critChance 1.5'], ['armor 1', 'hp 1.5']),
+      keystone('spear_key_wall', 'Pike Wall', 8, -2, 'dmgMelee 1', 'armor 1',
+        key('Pike Wall', ['dmgMelee*15', 'atkSpeed*-8'], 'Your melee hits deal 15% more damage, but you attack and cast 8% slower.', null, { off: 1.04, def: 1 })),
+      ring('spear_red', 'Red Point', 8, -1, ['hp 1', 'critMult 1', 'dmgPhys 1', 'resAll 1'],
+        ['Blooded Steel', 'critMult 2', 'hp 1'], ['critMult 1.5', 'hp 1']),
+      ring('spear_reach', 'Reach', 8, 1, ['critChance 1', 'hp 1', 'aoe 1', 'armor 1'],
+        ['Out of Reach', 'critChance 1.5', 'aoe 1.5'], ['critChance 1', 'hp 1.5']),
+      keystone('spear_key_long', 'The Long Pike', 8, 2, 'critMult 1', 'critChance 1',
+        key('Long Pike', ['critMult+40', 'critChance*-30'], 'Your critical hits deal +40% Critical Damage, but you have 30% less Critical Chance.', null, { off: 1.04, def: 1 })),
+      ring('spear_ensign', 'Ensign Pike', 8, 3, ['hp 1', 'critChance 1', 'bannerPower 1', 'resAll 1'],
+        ['Flag on the Pike', 'critChance 1.5', 'bannerPower 1.5'], ['critChance 1', 'hp 1.5'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['critChance 2', 'hp 2'] },
+      { at: 35, mods: ['critMult 3', 'armor 2'] },
+      { at: 60, mods: ['dmgMelee 3', 'critChance 2', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Spear Line and the Signal Tower (gap 3).
+  T.bridge('bannerlord', { id: 'spear_horn_inner', between: ['spear', 'horn'], ring: 'inner', name: 'Pike and Bugle', shape: 'star',
+    nodes: ['critChance 1', B.mut('bs_mark'), 'cdr 1', 'hp 1'],
+    core: ['Point the Way', 'critChance 1', 'cdr 1'], bonus: ['hp 1', 'armor 1'] });
+  T.bridge('bannerlord', { id: 'spear_horn_mid', between: ['spear', 'horn'], ring: 'mid', name: 'Marked by Order', shape: 'diamond',
+    nodes: ['statusDur 1', 'hp 1', 'cdr 1', 'armor 1'],
+    core: ['Called Target', 'statusDur 1.5', 'dmgElite 1.5'], bonus: ['statusDur 1.5', 'hp 1'] });
+  T.bridge('bannerlord', { id: 'spear_horn_outer', between: ['spear', 'horn'], ring: 'outer', name: 'Last Charge', shape: 'diamond',
+    nodes: ['critMult 1', 'hp 1', 'cdr 1', 'resAll 1'],
+    core: ['Sounding the End', 'critMult 1.5', 'cdr 1.5'], bonus: ['cdr 1', 'hp 1.5'] });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/36_tree_bannerlord_vanguard.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var T = KD.data.tree, B = T.host;
+  var rule = B.rule, web = B.web, key = B.key, pact = B.pact, abil = B.abil, star = B.star, ring = B.ring, altar = B.altar, keystone = B.keystone;
+
+  /**
+   * BANNERLORD, arm 2 of 8: THE VANGUARD (`vanguard`). Charge Order: lead the charge from the front.
+   * Skill: Charge Order (trunk, 4 points). Design: docs/TREE_BANNERLORD.md. Rules: src/sim/56_tree_bannerlord.js.
+   * Holds the three bridges to the spear arm.
+   */
+  T.arm('bannerlord', {
+    id: 'vanguard', name: 'The Vanguard', focus: 'Lead the charge: first into the line, and everyone follows', color: '#c24a3a', vein: 'war',
+
+    trunk: B.strikeTrunk([
+      'moveSpeed 1', 'hp 1', { t: 'skill', grants: 'charge_order', abil: [{ a: 'charge_order', k: 'cd', v: -0.05 }] }, 'dmgMelee 1', 'armor 1',   // T1..T5
+      'hp 1', 'orderPower 1', 'resAll 1', ['Vanguard Road', 'moveSpeed 1', 'dmgMelee 0.5'], 'hp 1',                                             // T6..T10
+      'moveSpeed 1', 'armor 1', 'hp 1', 'breakPower 1', 'resAll 1',                                                                           // T11..T15
+      'hp 1', 'dmg 1@moving', 'orderPower 1', 'hp 1', 'critChance 1',                                                                         // T16..T20
+      'moveSpeed 1', 'hp 1', 'armor 1', 'resAll 1', 'hp 1'                                                                                    // T21..T25
+    ]),
+
+    clusters: [
+      // ---- Row 1: Charge Order, shape and essence
+      star('vanguard_charge_shape', 'Charge Order: shape', 1, -1, 'hp 1', ['co_far', 'co_wide', 'co_long'], ['Long Gallop', 'moveSpeed 1', 'hp 1']),
+      star('vanguard_charge_essence', 'Charge Order: essence', 1, 1, 'breakPower 1', ['co_stun', 'co_heavy', 'co_vuln'], ['Lowered Pike', 'breakPower 1', 'armor 1']),
+
+      // ---- Row 2
+      star('vanguard_charge_rite', 'Charge Order: rite', 2, -1, 'moveSpeed 1', ['co_charges', 'co_cmd', 'co_ward'], abil('Fresh Horses', ['moveSpeed 1', 'hp 1'], 'charge_order', 'cd', -0.08)),
+      ring('vanguard_front', 'The Front Rank', 2, 1, ['dmgMelee 1', 'hp 1', abil('Hard Charge', ['armor 0.5'], 'charge_order', 'dmg', 0.1), 'resAll 1', 'moveSpeed 1'],
+        web('lead_front', 'Lead From the Front', ['dmgMelee 1'], 'Charge Order and Strike Formation always use their no-allies form as well: the charge strengthens you and the thrust strikes twice, even with allies at your side.', { off: 1.03, def: 1 }),
+        ['dmgMelee 1', 'hp 1.5']),
+
+      // ---- Row 3
+      ring('vanguard_break', 'Breakthrough', 3, -2, ['breakPower 1', 'hp 1', 'dmgMelee 1', 'armor 1'],
+        rule('breakthrough', 'Breakthrough', ['breakPower 1'], 'After a Charge Order, your next Banner Strike within 4 s deals 50% more damage.', { off: 1.03, def: 1 }),
+        ['breakPower 1.5', 'hp 1']),
+      ring('vanguard_spurs', 'Spurs', 3, -1, ['moveSpeed 1', 'hp 1', 'dodgeCdr 1', 'resAll 1'],
+        ['Silver Spurs', 'moveSpeed 1.5', 'dodgeCdr 1.5'], ['moveSpeed 1', 'hp 1.5']),
+      ring('vanguard_first', 'First Over the Wall', 3, 1, ['orderPower 1', 'hp 1', 'dmgMelee 1', 'armor 1'],
+        web('first_over', 'Over the Wall', ['dmgMelee 1'], 'When one of your orders gives a bonus to allies, you gain half of that bonus too.', { off: 1.03, def: 1 }),
+        ['orderPower 1.5', 'hp 1']),
+      ring('vanguard_mail', 'Riding Mail', 3, 2, ['armor 1', 'hp 1', 'dmgTaken 1@moving', 'resAll 1'],
+        ['Scale Coat', 'armor 2', 'dmgTaken 1@moving'], ['armor 1.5', 'hp 1']),
+
+      // ---- Row 4
+      ring('vanguard_warleader', 'Warleader', 4, -2, ['commandGain 1', 'hp 1', 'critChance 1', 'resAll 1'],
+        rule('warleader', 'Warleader', ['commandGain 1'], 'Each enemy you kill gives you 4 Command.', { off: 1.02, def: 1.01 }),
+        ['commandGain 1.5', 'hp 1']),
+      altar('vanguard_altar_a', 'Altar of the Vanguard', 4, -1, ['hp 1', 'dmgMelee 1', 'armor 1']),
+      ring('vanguard_lance', 'Lances', 4, 1, ['dmgMelee 1', 'hp 1', abil('Long Charge', ['moveSpeed 0.5'], 'charge_order', 'range', 0.12), 'armor 1'],
+        ['Couched', 'dmgMelee 1.5', 'breakPower 1.5'], ['dmgMelee 1', 'hp 1.5']),
+      ring('vanguard_hooves', 'Hooves', 4, 2, ['hp 1', 'poise 1', 'moveSpeed 1', 'resAll 1'],
+        ['Thunder of Hooves', 'poise 1.5', 'moveSpeed 1.5'], ['poise 1', 'hp 1.5']),
+
+      // ---- Row 5 (mid ring road on lane +-2)
+      ring('vanguard_wedge', 'The Wedge', 5, -2, ['breakPower 1', 'hp 1', 'moveSpeed 1', 'resAll 1'],
+        ['Tip of the Wedge', 'breakPower 2', 'moveSpeed 1'], ['breakPower 1', 'hp 1.5']),
+      ring('vanguard_valour', 'Valour', 5, -1, ['critMult 1', 'hp 1', 'dmg 1@moving', 'armor 1'],
+        ['Valiant', 'critMult 2', 'dmg 1@moving'], ['critMult 1', 'hp 1.5']),
+      ring('vanguard_scars', 'Battle Scars', 5, 1, ['hp 1', 'armor 1', 'hpRegen 1', 'resAll 1'],
+        ['Hard Lessons', 'hp 1.5', 'hpRegen 1.5'], ['hpRegen 1', 'hp 1.5']),
+      ring('vanguard_glory', 'Glory', 5, 2, ['dmgElite 1', 'hp 1', 'critChance 1', 'armor 1'],
+        ['Seek Glory', 'dmgElite 2', 'critChance 1'], ['dmgElite 1', 'hp 1.5']),
+
+      // ---- Row 6
+      ring('vanguard_ride', 'Ride Them Down', 6, -2, ['dmgMelee 1', 'hp 1', 'meleeSpeed 1', 'armor 1'],
+        ['Trampled', 'dmgMelee 2', 'moveSpeed 1'], ['dmgMelee 1', 'hp 1.5']),
+      ring('vanguard_pale', "The Pale Rider's Field", 6, -1, ['hp 1', B.trophy('Pale Spur', ['moveSpeed 1.5', 'dmgMelee 1.5'], 'pale_rider'), 'armor 1', 'resAll 1'],
+        ['Death Rides Ahead', 'moveSpeed 1.5', 'hp 1.5'], ['moveSpeed 1', 'hp 1.5']),
+      ring('vanguard_cult', 'Hollow Charge', 6, 1, ['hp 1', B.corrupt('Reckless Hunger', ['dmgMelee 2', 'moveSpeed 1.5'], 20), 'armor 1', 'resAll 1'],
+        B.corrupt('Rider of the Hollow', ['dmg*2', 'dmgMelee 2', 'breakPower 2'], 40), ['dmgMelee 1', 'hp 1.5']),
+      ring('vanguard_crown', 'Crown Knights', 6, 2, ['armor 1', B.faction("Knight's Vow", ['dmgMelee 1.5', 'armor 1'], 'crown', 20), 'hp 1', 'resAll 1'],
+        B.faction('Royal Vanguard', ['dmgElite 2', 'orderPower 2'], 'crown', 60), ['orderPower 1', 'armor 1.5']),
+
+      // ---- Row 7
+      B.pacts('vanguard_pacts', 'Vanguard Bargains', 7, -2, 'hp 1',
+        [pact('Headlong', ['moveSpeed*10', 'armor*-10']), pact('Lead by Example', ['dmgMelee*12', 'orderPower*-15']), pact('Heavy Horse', ['breakPower*20', 'moveSpeed*-6'])],
+        ['Terms of the Charge', 'moveSpeed 1', 'hp 1']),
+      ring('vanguard_wyvern', 'Wyvern Field', 7, -1, ['hp 1', 'critChance 1', 'moveSpeed 1', B.trophy('Wyvern Lance', ['critChance 1.5', 'dmgMelee 1.5'], 'wyvern_rider')],
+        ['Dive', 'critChance 2', 'moveSpeed 1'], ['critChance 1', 'hp 1.5']),
+      altar('vanguard_altar_b', 'Altar of the Charge', 7, 1, ['hp 1', 'moveSpeed 1', 'breakPower 1']),
+      keystone('vanguard_key_spear', 'Spearhead', 7, 2, 'dmgMelee 1', 'moveSpeed 1',
+        key('Spearhead', ['dmgMelee*20', 'dmgMinion*-20'], 'Your melee hits deal 20% more damage, but your soldiers and summons deal 20% less.', null, { off: 1.04, def: 1 })),
+
+      // ---- Row 8 (outer ring road on lane +-3)
+      ring('vanguard_road', 'Road to War', 8, -3, ['hp 1', 'moveSpeed 1', 'armor 1', 'resAll 1'],
+        ['Long Campaign', 'moveSpeed 1.5', 'armor 1.5'], ['moveSpeed 1', 'hp 1.5']),
+      keystone('vanguard_key_advance', 'Unstoppable Advance', 8, -2, 'moveSpeed 1', 'armor 1',
+        key('Unstoppable Advance', ['dmgTaken*-12@moving', 'dmgTaken*10@still'], 'While you move you take 12% less damage; standing still, 10% more.', null, { off: 1, def: 1.04 })),
+      ring('vanguard_plume', 'White Plume', 8, -1, ['hp 1', 'critMult 1', 'dmgMelee 1', 'resAll 1'],
+        ['Follow the Plume', 'critMult 2', 'hp 1'], ['critMult 1.5', 'hp 1']),
+      ring('vanguard_horn', 'Charge Horn', 8, 1, ['orderPower 1', 'hp 1', 'commandGain 1', 'armor 1'],
+        ['Sound the Charge', 'orderPower 1.5', 'commandGain 1.5'], ['orderPower 1', 'hp 1.5']),
+      keystone('vanguard_key_cavalry', 'Cavalry Charge', 8, 2, 'breakPower 1', 'moveSpeed 1',
+        key('Cavalry Charge', ['breakPower*30@moving', 'armor*-15'], 'While you move you break Poise 30% faster, but you have 15% less Armor.', null, { off: 1.04, def: 0.99 })),
+      ring('vanguard_dust', 'Dust and Thunder', 8, 3, ['hp 1', 'dodgeCdr 1', 'moveSpeed 1', 'resAll 1'],
+        ['Dust Cloud', 'dodgeCdr 1.5', 'hp 1.5'], ['dodgeCdr 1', 'hp 1.5'])
+    ],
+
+    devotion: [
+      { at: 15, mods: ['moveSpeed 2', 'hp 2'] },
+      { at: 35, mods: ['dmgMelee 2', 'armor 2'] },
+      { at: 60, mods: ['dmg 3@moving', 'orderPower 2', 'hp 2'] }
+    ]
+  });
+
+  // The three bridges between the Vanguard and the Spear Line (gap 2).
+  T.bridge('bannerlord', { id: 'vanguard_spear_inner', between: ['vanguard', 'spear'], ring: 'inner', name: 'Lance and Pike', shape: 'star',
+    nodes: ['dmgMelee 1', B.mut('bs_reach'), 'critChance 1', 'hp 1'],
+    core: ['Longer Pole', 'dmgMelee 1', 'critChance 1'], bonus: ['hp 1', 'armor 1'] });
+  T.bridge('bannerlord', { id: 'vanguard_spear_mid', between: ['vanguard', 'spear'], ring: 'mid', name: 'Charge and Thrust', shape: 'diamond',
+    nodes: ['moveSpeed 1', 'hp 1', 'critChance 1', 'armor 1'],
+    core: ['Running Thrust', 'critChance 1.5', 'dmg 1@moving'], bonus: ['critChance 1.5', 'hp 1'] });
+  T.bridge('bannerlord', { id: 'vanguard_spear_outer', between: ['vanguard', 'spear'], ring: 'outer', name: 'Broken Line', shape: 'diamond',
+    nodes: ['breakPower 1', 'hp 1', 'critMult 1', 'resAll 1'],
+    core: ['Through the Gap', 'breakPower 1.5', 'critMult 1.5'], bonus: ['breakPower 1', 'hp 1.5'] });
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -22123,6 +23169,320 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/data/37_mutations_bannerlord.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+
+  /**
+   * BANNERLORD, every mutation of the Bannerlord's own tree (docs/TREE_BANNERLORD.md section 4). One record changes ONE
+   * ability in ONE slot (shape: where and how many; essence: what the hit or the aura carries; rite: cost, cooldown,
+   * charges, extra effects), so two mutations of one ability never write the same field: KD.skills.mutationReport() proves
+   * it (tests/mutations.test.js, tests/tree_bannerlord.test.js). Format: docs/SKILLS.md section 12. Pure data, no hooks.
+   * The tree nodes that hold these ids: src/data/36_tree_bannerlord_<arm>.js (the Banner Strike ones sit in the inner
+   * bridges). Texts quote the numbers of the records; change both together.
+   */
+  var M = [];
+  function shape(id, ability, name, text, rec) { rec.id = id; rec.ability = ability; rec.slot = 'shape'; rec.name = name; rec.text = text; M.push(rec); }
+  function essence(id, ability, name, text, rec) { rec.id = id; rec.ability = ability; rec.slot = 'essence'; rec.name = name; rec.text = text; M.push(rec); }
+  function rite(id, ability, name, text, rec) { rec.id = id; rec.ability = ability; rec.slot = 'rite'; rec.name = name; rec.text = text; M.push(rec); }
+
+  var MEL = { type: 'melee' }, AOE = { type: 'aoe' }, DASH = { type: 'dash' }, BUFF = { type: 'buff' }, HEAL = { type: 'heal' },
+    SHIELD = { type: 'shield' }, BANNER = { type: 'banner' }, SUMMON = { type: 'summon' }, COMMAND = { type: 'command' },
+    STANCE = { type: 'stance' }, STATUS = { type: 'status' }, RES = { type: 'resource' }, CLEANSE = { type: 'cleanse' };
+  function command(n) { return { type: 'resource', gain: n }; }
+
+  // =============================================================================================
+  // BANNER STRIKE (primary). Base: a 77% thrust (3 m, 55 degrees) that hits Poise hard. One mutation in each inner bridge.
+  // =============================================================================================
+  shape('bs_sweep', 'banner_strike', 'Sweeping Pole', 'The pole sweeps 140 degrees and hits up to 4 enemies, for 80% of the damage.',
+    { power: 0.8, fx: [{ find: MEL, set: { arc: 140, max: 4 } }] });
+  shape('bs_reach', 'banner_strike', 'Longer Pole', 'The thrust reaches 4 m instead of 3.',
+    { set: { range: 3.7, aiUse: { use: 'attack', range: 3.6 } }, fx: [{ find: MEL, set: { range: 4 } }] });
+  shape('bs_twin', 'banner_strike', 'Twin Thrust', 'Two quick thrusts, each dealing 60% of the damage.',
+    { power: 0.6, fx: [{ find: MEL, set: { hits: 2, interval: 0.15 } }] });
+
+  essence('bs_heavy', 'banner_strike', 'Pole Butt', 'The thrust breaks Poise twice as hard.',
+    { fx: [{ find: MEL, set: { poise: 2.2 } }] });
+  essence('bs_mark', 'banner_strike', 'Marking Thrust', 'The thrust Marks the enemy for 3 s, but deals 9% less damage.',
+    { fx: [{ find: MEL, set: { mult: 0.7, status: { id: 'mark', dur: 3 } } }] });
+  essence('bs_bleed', 'banner_strike', 'Barbed Finial', 'The thrust adds a stack of Bleed, but deals 9% less damage.',
+    { fx: [{ find: MEL, set: { mult: 0.7, status: { id: 'bleed', stacks: 1, power: 0.05 } } }] });
+
+  rite('bs_quick', 'banner_strike', 'Quick Thrust', 'You thrust about a fifth faster: shorter windup and recovery.',
+    { set: { windup: 0.22, recover: 0.36 } });
+  rite('bs_command', 'banner_strike', 'Commanding Thrust', 'Each Banner Strike that lands gives 3 Command.',
+    { set: { gain: 3, gainOnHit: true } });
+
+  // =============================================================================================
+  // PLANT BANNER. Base: 20 Command, 18 s; a 7 m aura for 14 s (10% damage, 20% Armor, 0.8% Health a second) and a 70% shove.
+  // =============================================================================================
+  shape('pb_wide', 'plant_banner', 'Wide Colours', 'The aura reaches 10 m instead of 7.',
+    { fx: [{ find: BANNER, set: { radius: 10 } }] });
+  shape('pb_long', 'plant_banner', 'Deep Stake', 'The banner stands 22 s instead of 14.',
+    { fx: [{ find: BANNER, set: { duration: 22 } }] });
+  shape('pb_throw', 'plant_banner', 'Thrown Standard', 'You hurl the banner up to 10 m to your aim; the shove lands there.',
+    { set: { range: 10 }, fx: [{ find: BANNER, set: { at: 'aim', range: 10 } }, { find: AOE, set: { at: 'aim', range: 10 } }] });
+
+  essence('pb_war', 'plant_banner', 'War Banner', 'The aura gives 20% increased damage and 10% increased Armor.',
+    { fx: [{ find: BANNER, set: { mods: [{ s: 'dmg', t: 'inc', v: 0.2 }, { s: 'armor', t: 'inc', v: 0.1 }] } }] });
+  essence('pb_iron', 'plant_banner', 'Iron Banner', 'The aura gives 45% increased Armor and 5% increased damage.',
+    { fx: [{ find: BANNER, set: { mods: [{ s: 'dmg', t: 'inc', v: 0.05 }, { s: 'armor', t: 'inc', v: 0.45 }] } }] });
+  essence('pb_heal', 'plant_banner', 'Healing Banner', 'The aura heals 2% of Health a second instead of 0.8%.',
+    { fx: [{ find: BANNER, set: { healPct: 0.02 } }] });
+
+  rite('pb_quick', 'plant_banner', 'Ready Standard', 'Cooldown 12 s instead of 18.',
+    { set: { cooldown: 12 } });
+  rite('pb_cmd', 'plant_banner', 'Rallying Standard', 'Plant Banner gives back 20 Command.',
+    { add: [command(20)] });
+  rite('pb_cheap', 'plant_banner', 'Light Standard', 'Plant Banner costs 8 Command instead of 20.',
+    { set: { cost: 8 } });
+
+  // =============================================================================================
+  // RALLY HIRELINGS. Base: 40 Command, 25 s; heal 15% and 20% Attack Speed for 8 s within 12 m; 2 Levy Spearmen for 22 s
+  // when nobody fights at your side.
+  // =============================================================================================
+  shape('rh_wide', 'rally_hirelings', 'Far Call', 'The call reaches 18 m instead of 12.',
+    { fx: [{ find: HEAL, set: { radius: 18 } }, { find: BUFF, set: { radius: 18 } }] });
+  shape('rh_long', 'rally_hirelings', 'Long Service', 'The Attack Speed lasts 14 s and the Levy Spearmen serve 32 s.',
+    { fx: [{ find: BUFF, set: { dur: 14 } }, { find: SUMMON, set: { duration: 32 } }] });
+  shape('rh_more', 'rally_hirelings', 'Full Levy', 'Three Levy Spearmen answer instead of two.',
+    { fx: [{ find: SUMMON, set: { count: 3, cap: 3 } }] });
+
+  essence('rh_fury', 'rally_hirelings', 'Levy Fury', 'The rally also gives 10% increased damage.',
+    { fx: [{ find: BUFF, set: { mods: [{ s: 'atkSpeed', t: 'inc', v: 0.2 }, { s: 'dmg', t: 'inc', v: 0.1 }] } }] });
+  essence('rh_mend', 'rally_hirelings', 'Bandages', 'The rally heals 25% of Health instead of 15%.',
+    { fx: [{ find: HEAL, set: { pct: 0.25 } }] });
+  essence('rh_iron', 'rally_hirelings', 'Iron Levies', 'The rally gives 40% increased Armor, but only 10% Attack Speed.',
+    { fx: [{ find: BUFF, set: { mods: [{ s: 'atkSpeed', t: 'inc', v: 0.1 }, { s: 'armor', t: 'inc', v: 0.4 }] } }] });
+
+  rite('rh_quick', 'rally_hirelings', 'Ready Levies', 'Cooldown 18 s instead of 25.',
+    { set: { cooldown: 18 } });
+  rite('rh_cmd', 'rally_hirelings', 'Cheap Levies', 'Rally Hirelings costs 25 Command instead of 40.',
+    { set: { cost: 25 } });
+  rite('rh_cleanse', 'rally_hirelings', 'Steady Lads', 'The rally also removes up to 2 harmful effects from you and allies within 12 m.',
+    { add: [{ type: 'cleanse', radius: 12, count: 2 }] });
+
+  // =============================================================================================
+  // CHARGE ORDER. Base: 25 Command, 10 s; charge 7 m for 110%; every ally attacks your target with 25% damage and 30% speed
+  // for 6 s (no allies: you get the 25% damage).
+  // =============================================================================================
+  shape('co_far', 'charge_order', 'Far Charge', 'The charge runs 11 m instead of 7.',
+    { set: { range: 12, aiUse: { use: 'gapclose', range: 12, minRange: 2.5 } }, fx: [{ find: DASH, set: { dist: 11 } }] });
+  shape('co_wide', 'charge_order', 'Broad Front', 'The charge is half again as wide.',
+    { fx: [{ find: DASH, set: { width: 3.6 } }] });
+  shape('co_long', 'charge_order', 'Standing Order', 'The order lasts 9 s instead of 6.',
+    { fx: [{ find: COMMAND, set: { dur: 9 } }, { find: BUFF, set: { dur: 9 } }] });
+
+  essence('co_stun', 'charge_order', 'Ridden Down', 'Enemies you charge through are Stunned for 0.8 s.',
+    { fx: [{ find: DASH, set: { status: { id: 'stun', dur: 0.8 } } }] });
+  essence('co_heavy', 'charge_order', 'Heavy Horse', 'The charge breaks Poise more than twice as hard and throws enemies further.',
+    { fx: [{ find: DASH, set: { poise: 3.5, knockback: 3 } }] });
+  essence('co_vuln', 'charge_order', 'Opened Ranks', 'Enemies you charge through are Vulnerable for 4 s.',
+    { fx: [{ find: DASH, set: { status: { id: 'vulnerable', dur: 4 } } }] });
+
+  rite('co_charges', 'charge_order', 'Second Charge', 'Charge Order has 2 charges. Each takes 12 s.',
+    { set: { charges: 2, cooldown: 12 } });
+  rite('co_cmd', 'charge_order', 'Spoils of the Charge', 'Charge Order gives back 15 Command.',
+    { add: [command(15)] });
+  rite('co_ward', 'charge_order', 'Shielded Charge', 'Charge Order gives Ward worth 10% of your Health for 4 s.',
+    { add: [{ type: 'shield', pct: 0.1, dur: 4 }] });
+
+  // =============================================================================================
+  // PHALANX. Base: 30 Command, 20 s; +30% Block and 20% less damage taken for 6 s within 8 m; each block is answered with a
+  // 100% thrust (3 m, 110 degrees).
+  // =============================================================================================
+  shape('ph_wide', 'phalanx', 'Wide Phalanx', 'The shields lock 12 m wide instead of 8.',
+    { fx: [{ find: BUFF, set: { radius: 12 } }] });
+  shape('ph_long', 'phalanx', 'Held Line', 'The shields stay locked 9 s instead of 6.',
+    { fx: [{ find: BUFF, set: { dur: 9 } }, { find: COMMAND, set: { dur: 9 } }] });
+  shape('ph_reach', 'phalanx', 'Long Spears', 'The answering thrust reaches 4.2 m and sweeps 180 degrees.',
+    { fx: [{ find: MEL, set: { range: 4.2, arc: 180 } }] });
+
+  essence('ph_iron', 'phalanx', 'Iron Line', 'You take 30% less damage instead of 20%, but get only +20% Block Chance.',
+    { fx: [{ find: BUFF, set: { mods: [{ s: 'block', t: 'add', v: 0.2 }, { s: 'dmgTaken', t: 'more', v: -0.3 }] } }] });
+  essence('ph_spear', 'phalanx', 'Spear Wall', 'The answering thrust deals 160% weapon damage instead of 100%.',
+    { fx: [{ find: MEL, set: { mult: 1.6 } }] });
+  essence('ph_stun', 'phalanx', 'Shield Bash', 'The answering thrust Stuns for 0.8 s.',
+    { fx: [{ find: MEL, set: { status: { id: 'stun', dur: 0.8 } } }] });
+
+  rite('ph_quick', 'phalanx', 'Drilled Line', 'Cooldown 14 s instead of 20.',
+    { set: { cooldown: 14 } });
+  rite('ph_cmd', 'phalanx', 'Steady Ranks', 'Each hit you block in the Phalanx gives 3 Command.',
+    { fx: [{ find: BUFF, add: { onBlock: [command(3)] } }] });
+  rite('ph_ward', 'phalanx', 'Locked Shields', 'Phalanx gives you Ward worth 12% of your Health for 6 s.',
+    { add: [{ type: 'shield', pct: 0.12, dur: 6 }] });
+
+  // =============================================================================================
+  // SIGNAL HORN. Base: 20 Command, 14 s; a 70% blast with very heavy Poise damage within 8 m; you and allies within 10 m
+  // shake off control effects and are Unstoppable for 3 s; you gain 15 Command.
+  // =============================================================================================
+  shape('sh_wide', 'signal_horn', 'Great Horn', 'The blast reaches 11 m and the call 14 m.',
+    { fx: [{ find: AOE, set: { radius: 11 } }, { find: CLEANSE, set: { radius: 14 } }, { find: BUFF, set: { radius: 14 } }] });
+  shape('sh_twice', 'signal_horn', 'Double Blast', 'Two blasts, 0.6 s apart, each dealing 60% of the damage.',
+    { power: 0.6, fx: [{ find: AOE, set: { hits: 2, interval: 0.6 } }] });
+
+  essence('sh_blast', 'signal_horn', 'Brass Thunder', 'The blast deals 140% weapon damage instead of 70%.',
+    { fx: [{ find: AOE, set: { mult: 1.4 } }] });
+  essence('sh_weaken', 'signal_horn', 'Shaking Note', 'Enemies hit are Weakened (20% less damage) for 4 s.',
+    { fx: [{ find: AOE, set: { status: { id: 'weaken', dur: 4, power: 0.2 } } }] });
+  essence('sh_steel', 'signal_horn', 'Iron Nerve', 'You and your allies are Unstoppable for 5 s instead of 3.',
+    { fx: [{ find: BUFF, set: { status: { id: 'unstoppable', dur: 5 } } }] });
+
+  rite('sh_quick', 'signal_horn', 'Ready Horn', 'Cooldown 10 s instead of 14.',
+    { set: { cooldown: 10 } });
+  rite('sh_cmd', 'signal_horn', 'Commanding Call', 'Signal Horn gives 30 Command instead of 15.',
+    { fx: [{ find: RES, set: { gain: 30 } }] });
+  rite('sh_cheap', 'signal_horn', 'Easy Breath', 'Signal Horn costs 10 Command instead of 20.',
+    { set: { cost: 10 } });
+
+  // =============================================================================================
+  // BATTLEFIELD ORDERS. Base: 40 Command, 30 s; for 10 s, within 12 m: 20% damage, 15% Attack Speed, 20% faster cooldowns
+  // (15% more damage with no allies); enemies within 8 m are Marked for 6 s.
+  // =============================================================================================
+  shape('bo_wide', 'battlefield_orders', 'Field-Wide Orders', 'The orders reach 18 m and the Marks 12 m.',
+    { fx: [{ find: BUFF, set: { radius: 18 } }, { find: STATUS, set: { radius: 12 } }] });
+  shape('bo_long', 'battlefield_orders', 'Lasting Orders', 'The orders last 15 s instead of 10.',
+    { fx: [{ find: BUFF, set: { dur: 15 } }] });
+
+  essence('bo_war', 'battlefield_orders', 'Orders of War', 'The orders give 30% increased damage and 10% Attack Speed.',
+    { fx: [{ find: BUFF, set: { mods: [{ s: 'dmg', t: 'inc', v: 0.3 }, { s: 'atkSpeed', t: 'inc', v: 0.1 }, { s: 'cdr', t: 'inc', v: 0.2 }, { s: 'dmg', t: 'inc', v: 0.15, cond: 'solo' }] } }] });
+  essence('bo_haste', 'battlefield_orders', 'Orders of Haste', 'The orders give 25% Attack Speed and 15% increased damage.',
+    { fx: [{ find: BUFF, set: { mods: [{ s: 'dmg', t: 'inc', v: 0.15 }, { s: 'atkSpeed', t: 'inc', v: 0.25 }, { s: 'cdr', t: 'inc', v: 0.2 }, { s: 'dmg', t: 'inc', v: 0.15, cond: 'solo' }] } }] });
+  essence('bo_expose', 'battlefield_orders', 'Expose Them', 'Enemies nearby are made Vulnerable for 6 s instead of Marked.',
+    { fx: [{ find: STATUS, set: { status: { id: 'vulnerable', dur: 6 } } }] });
+
+  rite('bo_quick', 'battlefield_orders', 'Quick Council', 'Cooldown 22 s instead of 30.',
+    { set: { cooldown: 22 } });
+  rite('bo_cmd', 'battlefield_orders', 'Brief Orders', 'Battlefield Orders costs 25 Command instead of 40.',
+    { set: { cost: 25 } });
+  rite('bo_heal', 'battlefield_orders', 'Orders to Rest', 'The orders also heal you and allies within 12 m for 10% of Health.',
+    { add: [{ type: 'heal', radius: 12, pct: 0.1 }] });
+
+  // =============================================================================================
+  // STANDARD BEARER. Base: toggle, 6 s; you carry the aura (8% damage, 8% slower); raising it shoves enemies within 4.5 m
+  // for 80%.
+  // =============================================================================================
+  shape('sb_wide', 'standard_bearer', 'High Swing', 'Raising the standard shoves enemies within 6.5 m.',
+    { fx: [{ find: AOE, set: { radius: 6.5 } }] });
+  shape('sb_close', 'standard_bearer', 'Pole Slam', 'Raising the standard hits only within 3 m but deals 50% more damage.',
+    { power: 1.5, fx: [{ find: AOE, set: { radius: 3 } }] });
+
+  essence('sb_war', 'standard_bearer', 'War Standard', 'While you carry it you deal 14% increased damage instead of 8%.',
+    { fx: [{ find: STANCE, set: { mods: [{ s: 'dmg', t: 'inc', v: 0.14 }, { s: 'moveSpeed', t: 'more', v: -0.08 }] } }] });
+  essence('sb_light', 'standard_bearer', 'Light Pennant', 'Carrying the standard no longer slows you.',
+    { fx: [{ find: STANCE, set: { mods: [{ s: 'dmg', t: 'inc', v: 0.08 }] } }] });
+  essence('sb_stun', 'standard_bearer', 'Staggering Rise', 'Raising the standard Stuns for 0.8 s.',
+    { fx: [{ find: AOE, set: { status: { id: 'stun', dur: 0.8 } } }] });
+
+  rite('sb_quick', 'standard_bearer', 'Quick Strap', 'You can raise or lower the standard every 2 s instead of 6.',
+    { set: { cooldown: 2 } });
+  rite('sb_cmd', 'standard_bearer', 'Raised in Command', 'Raising or lowering the standard gives 15 Command. Cooldown 10 s.',
+    { set: { cooldown: 10 }, add: [command(15)] });
+  rite('sb_ward', 'standard_bearer', 'Bearer\'s Ward', 'Raising or lowering the standard gives Ward worth 8% of your Health for 4 s.',
+    { add: [{ type: 'shield', pct: 0.08, dur: 4 }] });
+
+  // =============================================================================================
+  // STRIKE FORMATION. Base: 30 Command, 9 s; a 140% thrust through a 6 m line that Marks for 4 s; allies attack your
+  // target; with no allies a second thrust for 70%.
+  // =============================================================================================
+  shape('sf_long', 'strike_formation', 'Long Line', 'The thrust drives 9 m instead of 6.',
+    { fx: [{ find: AOE, set: { length: 9 } }] });
+  shape('sf_wide', 'strike_formation', 'Broad Line', 'The thrust is 3 m wide instead of 1.8.',
+    { fx: [{ find: AOE, set: { width: 3 } }] });
+  shape('sf_twice', 'strike_formation', 'Double Rank', 'Every thrust hits twice, each for 60% of the damage.',
+    { power: 0.6, fx: [{ find: AOE, set: { hits: 2, interval: 0.2 } }] });
+
+  essence('sf_bleed', 'strike_formation', 'Barbed Points', 'The thrusts also add 2 stacks of Bleed.',
+    { fx: [{ find: AOE, add: { status: [{ id: 'bleed', stacks: 2, power: 0.1 }] } }] });
+  essence('sf_heavy', 'strike_formation', 'Push of Pike', 'The thrusts break Poise twice as hard.',
+    { fx: [{ find: AOE, set: { poise: 4 } }] });
+  essence('sf_crit', 'strike_formation', 'Aimed Points', 'The thrusts have +20% Critical Chance.',
+    { fx: [{ find: AOE, set: { critAdd: 0.2 } }] });
+
+  rite('sf_quick', 'strike_formation', 'Drilled Thrust', 'Cooldown 6.5 s instead of 9.',
+    { set: { cooldown: 6.5 } });
+  rite('sf_cmd', 'strike_formation', 'Line of Command', 'Each enemy the thrust hits gives 4 Command.',
+    { fx: [{ find: AOE, add: { onHit: [command(4)] } }] });
+  rite('sf_cheap', 'strike_formation', 'Easy Thrust', 'Strike Formation costs 20 Command instead of 30.',
+    { set: { cost: 20 } });
+
+  // =============================================================================================
+  // WAR DRUM. Base: 35 Command, 22 s; a drum for 10 s: every second a 30% beat within 8 m that Slows by 25%; you and allies
+  // in range attack 15% faster.
+  // =============================================================================================
+  shape('wd_wide', 'war_drum', 'Big Drum', 'The beat reaches 11 m instead of 8.',
+    { fx: [{ find: BANNER, set: { radius: 11 } }] });
+  shape('wd_long', 'war_drum', 'Long March', 'The drum plays 16 s instead of 10.',
+    { fx: [{ find: BANNER, set: { duration: 16 } }] });
+  shape('wd_fast', 'war_drum', 'Quick Beat', 'The drum beats every 0.6 s, each beat dealing 70% of the damage.',
+    { power: 0.7, fx: [{ find: BANNER, set: { tick: 0.6 } }] });
+
+  essence('wd_war', 'war_drum', 'War Beat', 'Each beat deals 60% weapon damage instead of 30%.',
+    { fx: [{ find: BANNER, set: { mult: 0.6 } }] });
+  essence('wd_slow', 'war_drum', 'Dirge', 'The beat Slows by 45% instead of 25%.',
+    { fx: [{ find: BANNER, set: { slow: 0.45 } }] });
+  essence('wd_haste', 'war_drum', 'Quickstep', 'You and allies in range attack 25% faster instead of 15%.',
+    { fx: [{ find: BANNER, set: { buff: { id: 'war_drum', name: 'War Drum', mods: [{ s: 'atkSpeed', t: 'inc', v: 0.25 }] } } }] });
+
+  rite('wd_quick', 'war_drum', 'Ready Drum', 'Cooldown 15 s instead of 22.',
+    { set: { cooldown: 15 } });
+  rite('wd_cmd', 'war_drum', 'Cheap Skins', 'War Drum costs 18 Command instead of 35.',
+    { set: { cost: 18 } });
+  rite('wd_ward', 'war_drum', 'Drum Ward', 'Setting down the drum gives you Ward worth 10% of your Health for 4 s.',
+    { add: [{ type: 'shield', pct: 0.1, dur: 4 }] });
+
+  // =============================================================================================
+  // RECALL. Base: 20 Command, 16 s; allies return to you and heal 25%; you gain Ward of 15% for 6 s and throw back enemies
+  // within 4 m (70%); with no allies you leap 6 m back.
+  // =============================================================================================
+  shape('rl_wide', 'recall', 'Wide Shove', 'The shove throws back enemies within 6 m.',
+    { fx: [{ find: AOE, set: { radius: 6 } }] });
+  shape('rl_far', 'recall', 'Long Leap', 'Alone, you leap 9 m back instead of 6.',
+    { fx: [{ find: DASH, set: { dist: 9 } }] });
+
+  essence('rl_ward', 'recall', 'Rearguard Ward', 'The Ward is worth 25% of your Health instead of 15%.',
+    { fx: [{ find: SHIELD, set: { pct: 0.25 } }] });
+  essence('rl_heal', 'recall', 'Field Dressing', 'Returning allies heal 40% of their Health instead of 25%.',
+    { fx: [{ find: HEAL, set: { pct: 0.4 } }] });
+  essence('rl_stun', 'recall', 'Stunning Shove', 'The shove Stuns for 1 s.',
+    { fx: [{ find: AOE, set: { status: { id: 'stun', dur: 1 } } }] });
+
+  rite('rl_quick', 'recall', 'Ready Retreat', 'Cooldown 11 s instead of 16.',
+    { set: { cooldown: 11 } });
+  rite('rl_cmd', 'recall', 'Regroup', 'Recall gives back 20 Command.',
+    { add: [command(20)] });
+  rite('rl_cleanse', 'recall', 'Clean Break', 'Recall also removes up to 3 harmful effects from you.',
+    { add: [{ type: 'cleanse', self: true, count: 3 }] });
+
+  // =============================================================================================
+  // ROYAL DECREE (Ultimate). Base: 90 s; a royal standard for 12 s (10 m: 15% damage, 10% Attack Speed, 2% Health a
+  // second); a 200% shockwave that Marks within 10 m; 3 Royal Guards for 12 s (alone: 25% damage, 15% less damage taken).
+  // =============================================================================================
+  shape('rd_wide', 'royal_decree', 'Realm-Wide', 'The standard covers 14 m and the shockwave 13 m.',
+    { fx: [{ find: BANNER, set: { radius: 14 } }, { find: AOE, set: { radius: 13 } }] });
+  shape('rd_long', 'royal_decree', 'Long Reign', 'The standard and the Royal Guards stay 18 s instead of 12.',
+    { fx: [{ find: BANNER, set: { duration: 18 } }, { find: SUMMON, set: { duration: 18 } }] });
+  shape('rd_host', 'royal_decree', 'Full Guard', 'Five Royal Guards answer instead of three.',
+    { fx: [{ find: SUMMON, set: { count: 5, cap: 5 } }] });
+
+  essence('rd_war', 'royal_decree', 'Decree of War', 'The standard gives 25% increased damage and 15% Attack Speed.',
+    { fx: [{ find: BANNER, set: { mods: [{ s: 'dmg', t: 'inc', v: 0.25 }, { s: 'atkSpeed', t: 'inc', v: 0.15 }] } }] });
+  essence('rd_blast', 'royal_decree', 'Thunder of Kings', 'The shockwave deals 350% weapon damage instead of 200%.',
+    { fx: [{ find: AOE, set: { mult: 3.5 } }] });
+  essence('rd_heal', 'royal_decree', 'Royal Mercy', 'The standard heals 4% of Health a second instead of 2%.',
+    { fx: [{ find: BANNER, set: { healPct: 0.04 } }] });
+
+  rite('rd_quick', 'royal_decree', 'Swift Decree', 'Cooldown 70 s instead of 90.',
+    { set: { cooldown: 70 } });
+  rite('rd_cmd', 'royal_decree', 'Royal Treasury', 'Royal Decree fills your Command.',
+    { add: [command(100)] });
+
+  KD.register('mutations', M);
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/data/37_mutations_clockwright.js
 (function (root) {
   'use strict';
@@ -25417,6 +26777,141 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     { set: { hpCost: 0.15, cooldown: 50 } });
 
   KD.register('mutations', M);
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/38_tree_builds_bannerlord.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+
+  /**
+   * RECOMMENDED BUILDS of the Bannerlord's tree (docs/TREE_BANNERLORD.md section 6). Pure data; the registry and the format
+   * are in src/data/38_tree_builds_gravecaller.js (KD.data.treeBuilds.add), the logic in src/meta/35_tree_builds.js, the
+   * screen is the Builds tab of the tree page. Goals are stable names: 'skill:<abilityId>', 'mut:<mutationId>',
+   * 'cluster:<clusterId>' (complete it) or a node's name. Every build starts from a different skill and fits
+   * KD.treeBuilds.BUDGET (152) points (tests/tree_bannerlord.test.js).
+   */
+  var R = KD.data = KD.data || {};
+  var TBD = R.treeBuilds = R.treeBuilds || { byClass: {} };
+  TBD.add = TBD.add || function (classId, rec) {
+    if (!rec || typeof rec.id !== 'string') throw new Error('KD.data.treeBuilds.add(' + classId + '): a record with an id is needed');
+    rec.cls = classId;
+    (TBD.byClass[classId] = TBD.byClass[classId] || []).push(rec);
+    return rec;
+  };
+  function add(rec) { return TBD.add('bannerlord', rec); }
+
+  // 6.1 the banners
+  add({ id: 'standard_master', name: 'Standard Master', design: '6.1', difficulty: 1, start: 'plant_banner', arms: ['colours', 'bearer'],
+    pitch: 'Plant the colours and fight under them: huge auras, stronger with every standard on the field.',
+    tags: ['Banners', 'Auras', 'Support'],
+    stages: [
+      { to: 10, goals: ['mut:pb_war', 'mut:pb_long', 'cluster:colours_field'] },
+      { to: 25, goals: ['skill:royal_decree', 'mut:pb_cmd', 'cluster:colours_silk', 'cluster:colours_furled', 'mut:rd_war'] },
+      { to: 40, goals: ['Banner Bound', 'cluster:colours_heraldry', 'cluster:colours_under', 'cluster:colours_canopy', 'cluster:bearer_colours_mid'] },
+      { to: 60, goals: ['Colours of Blood', 'cluster:colours_blazon', 'cluster:colours_keep', 'cluster:colours_parade', 'cluster:colours_stakes'] }
+    ] });
+
+  // 6.2 the drum
+  add({ id: 'drum_major', name: 'Drum Major', design: '6.2', difficulty: 2, start: 'war_drum', arms: ['drum', 'colours'],
+    pitch: 'Set down the drum and fight to its beat: faster arms for you, heavy legs for them.',
+    tags: ['Attack Speed', 'Slows', 'Area'],
+    stages: [
+      { to: 10, goals: ['mut:wd_haste', 'mut:wd_long', 'cluster:drum_tempo'] },
+      { to: 25, goals: ['skill:plant_banner', 'mut:wd_quick', 'cluster:drum_rumble', 'cluster:drum_fervour', 'mut:pb_war'] },
+      { to: 40, goals: ['Marching Time', 'cluster:drum_beat', 'cluster:drum_rhythm', 'cluster:drum_war', 'cluster:colours_drum_mid'] },
+      { to: 60, goals: ['Deafening Drums', 'cluster:drum_bass', 'cluster:drum_cymbal', 'cluster:drum_kettle', 'cluster:drum_cadence'] }
+    ] });
+
+  // 6.3 the charge
+  add({ id: 'vanguard', name: 'Vanguard', design: '6.3', difficulty: 2, start: 'charge_order', arms: ['vanguard', 'drum'],
+    pitch: 'First into the line: charge, strike while they reel, and keep moving.',
+    tags: ['Charge', 'Melee', 'Moving'],
+    stages: [
+      { to: 10, goals: ['mut:co_stun', 'mut:co_charges', 'cluster:vanguard_front'] },
+      { to: 25, goals: ['skill:war_drum', 'mut:co_far', 'cluster:vanguard_break', 'cluster:vanguard_spurs', 'cluster:vanguard_warleader'] },
+      { to: 40, goals: ['Spearhead', 'cluster:vanguard_lance', 'cluster:vanguard_valour', 'cluster:vanguard_wedge', 'cluster:drum_vanguard_mid'] },
+      { to: 60, goals: ['Unstoppable Advance', 'cluster:vanguard_ride', 'cluster:vanguard_plume', 'cluster:vanguard_glory', 'cluster:vanguard_hooves'] }
+    ] });
+
+  // 6.4 the pike
+  add({ id: 'pike_captain', name: 'Pike Captain', design: '6.4', difficulty: 1, start: 'strike_formation', arms: ['spear', 'vanguard'],
+    pitch: 'Drive the pike through the whole line, Mark them, and land the critical thrust.',
+    tags: ['Marks', 'Critical hits', 'Melee'],
+    stages: [
+      { to: 10, goals: ['mut:sf_long', 'mut:sf_crit', 'cluster:spear_pikes'] },
+      { to: 25, goals: ['skill:charge_order', 'mut:sf_quick', 'cluster:spear_point', 'cluster:spear_mark', 'mut:co_vuln'] },
+      { to: 40, goals: ['Mark of the King', 'cluster:spear_formation', 'cluster:spear_thrust', 'cluster:spear_shaft', 'cluster:vanguard_spear_mid'] },
+      { to: 60, goals: ['Long Pike', 'cluster:spear_steel', 'cluster:spear_red', 'cluster:spear_reach', 'cluster:spear_giant'] }
+    ] });
+
+  // 6.5 the horn
+  add({ id: 'herald', name: 'Herald', design: '6.5', difficulty: 2, start: 'signal_horn', arms: ['horn', 'spear'],
+    pitch: 'One blast and the field moves: Break them, shake off every Stun and cut your cooldowns.',
+    tags: ['Shouts', 'Breaks', 'Cooldowns'],
+    stages: [
+      { to: 10, goals: ['mut:sh_wide', 'mut:sh_blast', 'mut:sh_quick'] },
+      { to: 25, goals: ['skill:strike_formation', 'cluster:horn_clarion', 'cluster:horn_blast', 'cluster:horn_lungs', 'mut:sf_heavy'] },
+      { to: 40, goals: ['Brazen Horn', 'cluster:horn_beacon', 'cluster:horn_trumpets', 'cluster:spear_horn_mid', 'cluster:horn_mark'] },
+      { to: 60, goals: ['cluster:horn_echo', 'cluster:horn_tower', 'cluster:horn_steady', 'cluster:spear_pikes', 'cluster:spear_horn_outer'] }
+    ] });
+
+  // 6.6 the orders
+  add({ id: 'warmaster', name: 'Warmaster', design: '6.6', difficulty: 2, start: 'battlefield_orders', arms: ['horn', 'phalanx'],
+    pitch: 'The general at the war table: every order you give makes the whole party hit harder.',
+    tags: ['Orders', 'Allies', 'Buffs'],
+    stages: [
+      { to: 10, goals: ['mut:bo_war', 'cluster:horn_orders'] },
+      { to: 25, goals: ['skill:signal_horn', 'mut:bo_long', 'mut:bo_quick', 'cluster:horn_dispatch', 'cluster:horn_command'] },
+      { to: 40, goals: ['War Council', 'cluster:horn_clarion', 'cluster:horn_phalanx_mid', 'cluster:horn_seal', 'skill:phalanx'] },
+      { to: 60, goals: ['cluster:phalanx_rear', 'cluster:phalanx_together', 'cluster:horn_steady', 'cluster:horn_beacon', 'cluster:phalanx_brothers'] }
+    ] });
+
+  // 6.7 the shield wall
+  add({ id: 'shield_captain', name: 'Shield Captain', design: '6.7', difficulty: 1, start: 'phalanx', arms: ['phalanx', 'horn'],
+    pitch: 'Lock shields and answer every blow: the line holds, and every block hardens it further.',
+    tags: ['Block', 'Tank', 'Allies'],
+    stages: [
+      { to: 10, goals: ['mut:ph_iron', 'mut:ph_long', 'cluster:phalanx_interlock'] },
+      { to: 25, goals: ['skill:signal_horn', 'mut:ph_ward', 'cluster:phalanx_bronze', 'cluster:phalanx_together', 'cluster:phalanx_dug'] },
+      { to: 40, goals: ['Hold the Line', 'cluster:phalanx_testudo', 'cluster:phalanx_line', 'cluster:phalanx_answer', 'cluster:horn_phalanx_mid'] },
+      { to: 60, goals: ['Testudo', 'cluster:phalanx_tower', 'cluster:phalanx_bulwark', 'cluster:phalanx_scars', 'cluster:phalanx_weight'] }
+    ] });
+
+  // 6.8 the host
+  add({ id: 'marshal', name: 'Marshal of the Host', design: '6.8', difficulty: 1, start: 'rally_hirelings', arms: ['muster', 'phalanx'],
+    pitch: 'Call the levy, keep them alive and let the army do the fighting.',
+    tags: ['Soldiers', 'Hirelings', 'Minions'],
+    stages: [
+      { to: 10, goals: ['mut:rh_more', 'mut:rh_fury', 'mut:rh_quick'] },
+      { to: 25, goals: ['skill:recall', 'cluster:muster_full', 'cluster:muster_behind', 'cluster:muster_out', 'mut:rl_heal'] },
+      { to: 40, goals: ['Endless Ranks', 'cluster:muster_drill', 'cluster:muster_reinforce', 'cluster:muster_sellswords', 'cluster:phalanx_muster_mid'] },
+      { to: 60, goals: ['Lead From Behind', 'cluster:muster_levy', 'cluster:muster_honour', 'cluster:muster_barracks', 'cluster:muster_mess'] }
+    ] });
+
+  // 6.9 the rearguard
+  add({ id: 'rearguard', name: 'Rearguard', design: '6.9', difficulty: 2, start: 'recall', arms: ['muster', 'bearer'],
+    pitch: 'Fall back, regroup, heal and come again: the commander nobody can pin down.',
+    tags: ['Ward', 'Healing', 'Escape'],
+    stages: [
+      { to: 10, goals: ['mut:rl_ward', 'mut:rl_quick', 'cluster:muster_recall'] },
+      { to: 25, goals: ['skill:standard_bearer', 'mut:rl_far', 'cluster:muster_behind', 'cluster:muster_mess', 'mut:sb_ward'] },
+      { to: 40, goals: ['cluster:bearer_guard', 'cluster:bearer_tough', 'cluster:muster_bearer_mid', 'cluster:muster_hospital', 'cluster:bearer_oath'] },
+      { to: 60, goals: ['Army of One', 'cluster:bearer_road', 'cluster:bearer_strap', 'cluster:muster_quarter', 'cluster:bearer_cloth'] }
+    ] });
+
+  // 6.10 the lone standard
+  add({ id: 'lone_standard', name: 'Lone Standard', design: '6.10', difficulty: 2, start: 'standard_bearer', arms: ['bearer', 'colours'],
+    pitch: 'No army, just you and the flag on your back: the aura goes where you go.',
+    tags: ['Alone', 'Carried banner', 'Melee'],
+    stages: [
+      { to: 10, goals: ['mut:sb_war', 'mut:sb_cmd', 'cluster:bearer_guard'] },
+      { to: 25, goals: ['skill:plant_banner', 'mut:sb_wide', 'cluster:bearer_pride', 'cluster:bearer_alone', 'cluster:bearer_voice'] },
+      { to: 40, goals: ['Colour Sergeant', 'cluster:bearer_lone', 'cluster:bearer_reach', 'cluster:bearer_pole', 'cluster:bearer_colours_mid'] },
+      { to: 60, goals: ['Lone Standard', 'Army of One', 'cluster:bearer_honour', 'cluster:bearer_march', 'cluster:bearer_rally'] }
+    ] });
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -34646,6 +36141,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.89', date: '2026-10-16', title: 'The Bannerlord\'s Royal Host', notes: [
+      'The Bannerlord now has his own skill tree, The Royal Host: over 1,500 nodes for a commander and his banner',
+      'Start with Banner Strike and one more pick, then lead with planted colours, the war drum, the pike line, horn calls, a shield wall or your own soldiers',
+      'Ten recommended builds wait in the tree\'s Builds tab'
+    ] },
     { version: '0.7.88', date: '2026-10-16', title: 'Your own co-op loot', notes: [
       'Co-op loot is now yours alone: every kill, chest and barrel drops a separate share for each hero',
       'Ranged heroes no longer miss out while the melee friend stands on the bodies',
@@ -55696,6 +57196,174 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       'Bear: 20% increased Health, 15% less damage taken, 30% increased Poise damage, 10% slower attacks.',
       'Raven: Claw Rake becomes a ranged feather, ' + Math.round(T.ravenEvade * 100) + '% of attacks miss you, a further 15% increased ranged damage, 10% faster movement.',
       'Apex Form: every skill does its part for all three masks: the one you wear at full power, the others at ' + Math.round(T.apexOff * 100) + '% (all three at ' + Math.round(T.apexBare * 100) + '% with no mask on).']
+  });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/sim/56_tree_bannerlord.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var S = KD.sim = KD.sim || {};
+  var K = KD.skills = KD.skills || {};
+  if (!K.registerHook) return;
+
+  /**
+   * BANNERLORD, the rules of the class tree (docs/TREE_BANNERLORD.md section 3): the `effect` keys `tree_bannerlord_<id>`
+   * of the rule notables and keystones in src/data/36_tree_bannerlord_<arm>.js. The tree also reuses the Garrison rules of
+   * the Crownweb (`web_bannerlord_*`, src/sim/55_class_bannerlord.js) and the Banner Bound keystone (src/sim/32_webfx.js);
+   * the mutations are pure data. Every hook acts on the owner's own hits, blocks, casts and soldiers, uses world.rng /
+   * world.time only, and guards the places where it could start itself again. Every number is in the T table; the node
+   * texts quote them (tests/tree_bannerlord.test.js compares).
+   */
+  var T = {
+    plantCommand: 15,                               // Rallying Colours: Command for planting a standard
+    tempoSpeed: 0.02, tempoDur: 3, tempoMax: 5,     // Drummer's Tempo: Attack Speed per hit under your banner
+    breakMore: 1.5, breakWindow: 4,                 // Breakthrough: the next Banner Strike after a Charge Order
+    killCommand: 4,                                 // Warleader: Command per kill
+    skewerCrit: 0.1,                                // Skewer: Critical Chance against Marked enemies
+    markMore: 1.2, markLess: 0.92,                  // Mark of the King: hits on Marked / other enemies
+    clarionCut: 2,                                  // Clarion Call: seconds off your other cooldowns
+    brazenMore: 0.2, brazenDur: 5,                  // Brazen Horn: damage after a shout
+    lockWard: 0.03, lockDur: 4, lockEvery: 0.5,     // Interlocked Shields: Ward per block
+    lostCommand: 10,                                // Close the Gap: Command when a soldier is killed
+    guardWard: 0.05, guardEvery: 5,                 // Colour Guard: Ward while you carry the standard
+    realmSize: 1.4, realmValue: 0.85,               // Standard of the Realm: aura radius and strength
+    deafenPower: 0.15, deafenDur: 1.5               // Deafening Drums: Weaken from the War Drum's beat
+  };
+  S.treeBannerlord = { T: T };
+
+  var PLANTED = { plant_banner: 1, war_drum: 1, royal_decree: 1 };
+  function enemy(e) { return !!e && e.kind === 'enemy' && !e.dead && !e.removed; }
+  function BLC() { return KD.classB && KD.classB.bannerlord; }
+  function inAura(world, p) { var b = BLC(); return !!(b && b.inAura && b.inAura(world, p)); }
+  function carrying(p) { var st = p.hero && p.hero.flags && p.hero.flags.stances; return !!(st && st.stance === 'standard_bearer'); }
+  function gain(c, n, why) { S.player.gainRes(c.world, c.self, n, why || 'tree'); }
+  function marked(t) { return !!(t && S.hasStatus(t, 'mark')); }
+  function baseId(def) { var id = def && def.id; return typeof id === 'string' && id.indexOf('ref_') === 0 ? id.slice(4) : id; }
+  function isPrimary(p, def) {
+    var pr = p.hero && p.hero.skills ? p.hero.skills.primary : null;
+    return !!def && (def.slot === 'primary' || (!!pr && (pr === def.id || 'ref_' + pr === def.id)));
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // The Colours (colours)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_bannerlord_plant', {
+    onCast: function (c) { if (PLANTED[baseId(c.ability)]) gain(c, T.plantCommand, 'banner'); }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Drum Line (drum)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_bannerlord_tempo', {
+    onHit: function (c) {
+      if (!enemy(c.target) || c.spec.proc || c.spec.dot || !inAura(c.world, c.self)) return;
+      var b = S.addBuff(c.world, c.self, { id: 'host_tempo', name: "Drummer's Tempo", dur: T.tempoDur, maxStacks: T.tempoMax, stacks: 1, src: c.self, quiet: true, icon: 'drum', color: '#e2b94a',
+        mods: [{ s: 'atkSpeed', t: 'inc', v: T.tempoSpeed }] });
+      if (b && !b.def.desc) b.def.desc = Math.round(T.tempoSpeed * 100) + '% more Attack Speed per stack while you fight under your banner.';
+    }
+  });
+  K.registerHook('tree_bannerlord_deafen', {
+    onHit: function (c) {
+      if (!enemy(c.target) || c.spec.ability !== 'war_drum' && c.spec.ability !== 'ref_war_drum') return;
+      S.applyStatus(c.world, c.target, 'weaken', { src: c.self, dur: T.deafenDur, power: T.deafenPower, noReact: true });
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Vanguard (vanguard)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_bannerlord_breakthrough', {
+    onCast: function (c, eff, st) {
+      var p = c.self, id = baseId(c.ability);
+      if (id === 'charge_order') { st.until = c.world.time + T.breakWindow; return; }
+      if (st.until === undefined || c.world.time > st.until || !isPrimary(p, c.ability)) return;
+      st.until = undefined;
+      c.inst.mult *= T.breakMore;
+      c.world.events.emit('fx', { name: 'empower', x: p.x, y: 1, z: p.z, src: p, key: 'tree_bannerlord_breakthrough' });
+    }
+  });
+  K.registerHook('tree_bannerlord_warleader', {
+    onKill: function (c) { if (c.target && c.target.kind === 'enemy' && !c.self.dead) gain(c, T.killCommand, 'kill'); }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Spear Line (spear)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_bannerlord_skewer', {
+    onBeforeHit: function (c) { if (c.target && c.target.kind === 'enemy' && marked(c.target)) c.critAdd = (c.critAdd || 0) + T.skewerCrit; }
+  });
+  K.registerHook('tree_bannerlord_marked', {
+    onBeforeHit: function (c) {
+      var t = c.target;
+      if (!t || t.kind !== 'enemy' || !c.spec || c.spec.dot) return;
+      c.mult *= marked(t) ? T.markMore : T.markLess;
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Signal Tower (horn)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_bannerlord_clarion', {
+    onCast: function (c) {
+      var id = baseId(c.ability), p = c.self;
+      if (id !== 'signal_horn' && id !== 'battlefield_orders') return;
+      Object.keys(p.cds).forEach(function (k) {
+        if (k === id || k === 'ref_' + id || k === c.ability.id) return;
+        K.reduceCooldown(c.world, p, k, T.clarionCut);
+      });
+    }
+  });
+  K.registerHook('tree_bannerlord_brazen', {
+    onCast: function (c) {
+      var ab = c.ability;
+      if (!ab || !ab.tags || ab.tags.indexOf('shout') < 0) return;
+      var b = S.addBuff(c.world, c.self, { id: 'host_brazen', name: 'Brazen Horn', dur: T.brazenDur, src: c.self, icon: 'sound', color: '#d08a3a',
+        mods: [{ s: 'dmg', t: 'more', v: T.brazenMore }] });
+      if (b && !b.def.desc) b.def.desc = Math.round(T.brazenMore * 100) + '% more damage after a shout.';
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Phalanx (phalanx)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_bannerlord_interlock', {
+    onBlock: function (c, eff, st) {
+      var p = c.self, w = c.world;
+      if (p.dead || w.time < (st.next || 0)) return;
+      st.next = w.time + T.lockEvery;
+      S.addWard(w, p, p.hpMax * T.lockWard, T.lockDur);
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Muster Field (muster)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_bannerlord_reinforce', {
+    onMinionDeath: function (c) {
+      var m = c.minion;
+      if (!m || !c.killer || c.offered || c.self.dead) return;
+      gain(c, T.lostCommand, 'muster');
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // The Standard Bearer (bearer)
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('tree_bannerlord_bearerward', {
+    onTick: function (c, eff, st) {
+      var p = c.self;
+      if (p.dead || !carrying(p)) { st.acc = 0; return; }
+      st.acc = (st.acc || 0) + c.dt;
+      if (st.acc < T.guardEvery) return;
+      st.acc -= T.guardEvery;
+      S.addWard(c.world, p, p.hpMax * T.guardWard, T.guardEvery);
+    }
+  });
+  K.registerHook('tree_bannerlord_realm', {
+    setup: function (p) { p.knobs.bannerRadius *= T.realmSize; p.knobs.bannerValue *= T.realmValue; }
   });
 })(typeof window !== 'undefined' ? window : globalThis);
 
