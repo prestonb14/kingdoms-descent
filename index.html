@@ -3872,7 +3872,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.75';
+  KD.VERSION = '0.7.76';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -23533,6 +23533,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.76', date: '2026-10-15', title: 'Straighter running feet', notes: [
+      'The Gloamblade and the Gravecaller now run with their feet pointing where they are going, no more duck feet',
+      'A little natural turn-out is kept when they stand still'
+    ] },
     { version: '0.7.75', date: '2026-10-15', title: 'Balance: tanky builds', notes: [
       'Gloamblade and Gravecaller defensive talents are a bit stronger, so tanky builds really are tanky'
     ] },
@@ -62711,7 +62715,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         if (m.ankle + Pp[fo + 1] * u < m.ankle * 0.5) ty = m.ankle * 0.5 - jy;
         // into hips space
         var vx = MH[0] * tx + MH[1] * ty + MH[2] * tz, vy = MH[3] * tx + MH[4] * ty + MH[5] * tz, vz = MH[6] * tx + MH[7] * ty + MH[8] * tz;
-        var fy = Pp[fo + 4], fp = Pp[fo + 3], sfy = sin(fy), cfy = cos(fy);
+        var fy = Pp[fo + 4] - (opts.footFix ? sx * opts.footFix : 0), fp = Pp[fo + 3], sfy = sin(fy), cfy = cos(fy);      // [atk pace] opts.footFix: a mesh modelled with turned-out boots (48_hero_loco.js FOOT AIM)
         // knee pole: the direction the toes point (root space) -> hips space
         var sp = sin(fp), cp = cos(fp), wx = sfy * cp, wy = -sp, wz = cfy * cp;
         var px = MH[0] * wx + MH[1] * wy + MH[2] * wz, py = MH[3] * wx + MH[4] * wy + MH[5] * wz, pz = MH[6] * wx + MH[7] * wy + MH[8] * wz;
@@ -75701,10 +75705,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     gravecaller: {
       idle: P({ hips: [0.06, 0.08, 0], hipsPos: [0.01, -0.03, -0.01], chest: [0.3, -0.06, 0.02], head: [-0.26, 0.1, 0],
         armR: [-0.3, 0.1, -0.2], foreR: -1.15, armL: [-0.28, 0.25, 0.2], foreL: -0.95,
-        footR: [-0.03, 0, -0.05, 0, -0.3], footL: [0.03, 0, 0.09, 0, 0.32] }),
+        footR: [-0.03, 0, -0.05, 0, -0.2], footL: [0.03, 0, 0.09, 0, 0.2] }),
       stance: P({ hips: [0.1, -0.2, 0], hipsPos: [0, -0.07, -0.02], chest: [0.36, -0.12, 0.02], head: [-0.36, 0.3, 0],
         armR: [-0.7, 0.05, -0.3], foreR: -1.05, armL: [-0.95, 0.45, 0.42], foreL: -1.05,
-        footR: [-0.08, 0, -0.12, 0, -0.5], footL: [0.07, 0, 0.13, 0, 0.25] }),
+        footR: [-0.08, 0, -0.12, 0, -0.38], footL: [0.07, 0, 0.13, 0, 0.16] }),
       grip: 0,                  // the staff is held in the right hand only (the left is the casting claw)
       handL: [-0.25, 0.1, 0.1], // splayed casting hand in the stance
       cadence: [0.4, 1.8, 1.0, 2.5, 2.1, 3.3, 3.2, 3.6, 4.7, 3.95, 6.8, 4.4, 8, 4.6],      // speed (m/s), steps per second
@@ -75715,15 +75719,16 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       armW: 0.3, armR: 0.55, armS: 0.75, staffArm: 0.18, // arm swing (rad); the staff arm swings less
       armOut: 0.22, elbowW: -0.45, elbowR: -1.3,
       walkKeys: [0.3, -0.35, 0.17, 0.5, 0.64, 0.55, 0.15, 0.0, 0.86, 1.04, 0.05, -0.12],
-      runKeys: [0.3, -0.62, 0.34, 1.1, 0.6, 0.48, 0.3, 0.45, 0.84, 1.08, 0.09, 0.05]
+      runKeys: [0.3, -0.62, 0.34, 1.1, 0.6, 0.48, 0.3, 0.45, 0.84, 1.08, 0.09, 0.05],
+      footFix: 0.85, turnOut: 0.2             // [atk pace] see FOOT AIM below
     },
     gloamblade: {
       idle: P({ hips: [0.04, 0.12, 0.04], hipsPos: [0.025, -0.04, 0], chest: [0.1, -0.1, -0.03], head: [-0.06, 0.12, 0.02],
         armR: [-0.18, -0.05, -0.2], foreR: -0.75, armL: [-0.12, 0.05, 0.22], foreL: -0.7,
-        footR: [-0.04, 0, -0.06, 0, -0.35], footL: [0.06, 0, 0.08, 0, 0.3] }),
+        footR: [-0.04, 0, -0.06, 0, -0.2], footL: [0.06, 0, 0.08, 0, 0.2] }),
       stance: P({ hips: [0.26, 0.32, 0], hipsPos: [0, -0.16, -0.03], chest: [0.2, 0.08, 0], head: [-0.4, -0.3, 0],
         armR: [-0.75, -0.35, -0.3], foreR: -1.9, armL: [-1.05, 0.35, 0.26], foreL: -1.35,
-        footR: [-0.11, 0, -0.17, 0, -0.55], footL: [0.11, 0, 0.17, 0, 0.3] }),
+        footR: [-0.11, 0, -0.17, 0, -0.4], footL: [0.11, 0, 0.17, 0, 0.18] }),
       grip: null,
       handsIdle: [0.7, 0.05, 0, 0.7, -0.05, 0],          // relaxed fists, blades back along the forearms (reverse grip)
       handsStance: [0.8, 0.1, 0, 0.8, -0.1, 0],
@@ -75736,9 +75741,19 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       armW: 0.32, armR: 0.6, armS: 0.8, staffArm: 1,
       armOut: 0.26, elbowW: -0.6, elbowR: -1.5,
       walkKeys: [0.3, -0.35, 0.18, 0.5, 0.64, 0.55, 0.16, 0.0, 0.86, 1.04, 0.05, -0.12],
-      runKeys: [0.28, -0.6, 0.42, 1.15, 0.58, 0.5, 0.36, 0.45, 0.84, 1.1, 0.1, 0.05]
+      runKeys: [0.28, -0.6, 0.42, 1.15, 0.58, 0.5, 0.36, 0.45, 0.84, 1.1, 0.1, 0.05],
+      footFix: 0.5, turnOut: 0.2              // [atk pace] see FOOT AIM below
     }
   };
+  /*
+   * [atk pace] FOOT AIM (owner, Oct 15: "the feet on him are aimed to the sides; they should be straighter when running").
+   * The Tripo meshes are modelled with the boots turned out about 30 degrees (Gloamblade) / 35 (Gravecaller) from their
+   * foot bones, so a foot channel yaw of 0 still shows splayed feet. footFix (rad, opts.footFix, used by the leg IK of
+   * 32_anim_humanoid.js) turns every foot in by that much, so channel yaw 0 = toes along the direction of travel in
+   * every clip (attacks too); turnOut (rad, each foot) is the
+   * natural turn-out kept at idle / in the stance, fading to 0 as the hero walks and runs. Measure with
+   * `node tools/loco_preview.js --class <id> --clips idle,walk,run,sprint --views sole --feet` (planted run feet ~0..8).
+   */
 
   // ------------------------------------------------------------------ scratch (nothing allocated per frame)
   var POSE = new Float64Array(N), GAIT = new Float64Array(N);
@@ -75959,9 +75974,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       // channels (feet and hips in reference metres: divide by u)
       var iu = 1 / u;
       GAIT[CH.FOOT_R] = (m.hipW * narrow - spread + dx * aR) * iu; GAIT[CH.FOOT_R + 1] = yR * iu; GAIT[CH.FOOT_R + 2] = dz * aR * iu;
-      GAIT[CH.FOOT_R + 3] = pR; GAIT[CH.FOOT_R + 4] = -0.1 * (1 - runK);
+      GAIT[CH.FOOT_R + 3] = pR; GAIT[CH.FOOT_R + 4] = -0.35 * (sty.turnOut || 0.28) * (1 - runK);      // [atk pace] walking: a little turn-out; running: straight
       GAIT[CH.FOOT_L] = (-m.hipW * narrow + spread + dx * aLf) * iu; GAIT[CH.FOOT_L + 1] = yL * iu; GAIT[CH.FOOT_L + 2] = dz * aLf * iu;
-      GAIT[CH.FOOT_L + 3] = pL; GAIT[CH.FOOT_L + 4] = 0.1 * (1 - runK);
+      GAIT[CH.FOOT_L + 3] = pL; GAIT[CH.FOOT_L + 4] = 0.35 * (sty.turnOut || 0.28) * (1 - runK);
       GAIT[CH.HIPS] = hpitch; GAIT[CH.HIPS + 1] = hyaw; GAIT[CH.HIPS + 2] = hroll;
       GAIT[CH.HIPS_P] = hx0 * iu; GAIT[CH.HIPS_P + 1] = hipY * iu; GAIT[CH.HIPS_P + 2] = hz0 * iu;
       // torso: lean, the hunch, shoulders against the pelvis, a breath of pitch with the bob
@@ -76028,6 +76043,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       sty.sharedGuard = true;
     }
     o.loco = HL.loco; o.locoStyle = sty; o.locoClass = classId;
+    if (sty.footFix) o.footFix = sty.footFix;      // [atk pace] FOOT AIM: applied by the leg IK, so attack clips get straight feet too
     return true;
   };
 
