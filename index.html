@@ -3889,7 +3889,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.97';
+  KD.VERSION = '0.7.98';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -36562,6 +36562,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.98', date: '2026-10-17', title: 'Ironbound shield wall', notes: [
+      'The Ironbound now carries a much bigger shield and a heavier longsword',
+      'In a fight he raises his shield in front of him, sword ready behind it, and lowers it again when the fight is over'
+    ] },
     { version: '0.7.97', date: '2026-10-17', title: 'New boss models', notes: [
       'The Crowned Stag is gone. Ser Corvane the Oathbroken, a giant knight with a huge greatsword, now holds the toll bridge',
       'New models for six Act I bosses: the Scarecrow Reeve, Hookjaw, the Toll Warden, Captain Redtooth, Grindwell and Ser Corvane',
@@ -79403,6 +79407,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (casting || mode === M_HIT) st.sinceAct = 0; else st.sinceAct += dt;
     locomotion(st, e, dt, opts, clip, state);
     if (opts.loco) opts.loco(LOCO, st, e, dt, opts, c, clip, mode);      // [hero loco] a per-character locomotion layer on top (48_hero_loco.js)
+    if (opts.locoPost) opts.locoPost(LOCO, st, e, dt, opts, c, clip, mode);      // [iron guard] a class layer after that one (49_hero_ironguard.js)
 
     // ---- clip change: snapshot the last pose and cross-fade from it
     if (mode !== st.mode || ((mode === M_CAST || mode === M_DASH) && clip !== st.clip)) {
@@ -94091,6 +94096,234 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     }
     return data;
   };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/gfx/49_hero_ironguard.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+
+  /**
+   * [iron guard] The Ironbound's big shield and sword and his shield-forward combat guard (owner, Oct 17: "For our tank
+   * make him a larger shield and sword and when fighting have him get into a position that makes the shield outwards in
+   * front"). Visual only: nothing here writes the simulation; hitboxes, reach, timings and lockstep are untouched. Both
+   * looks (New / Tripo and Classic) and every sword / shield variant he can carry go through it.
+   *
+   *   KD.config.ironGuard = false             no combat guard (back to the shared hold-style guard of every hero)
+   *   KD.config.ironGear  = { sword: [thickness, length, width], shield: s }   held gear scale on top of the usual size;
+   *                                           { sword: 1, shield: 1 } (or KD.config.ironGear = false) = the old sizes
+   *   KD.ironGuard.GUARD / MOVE               the guard poses (tune here); .info(visual) what the layer is doing (tests)
+   *
+   * Gear: the hero plan is wrapped once more; after the hero is built, a sword1h-family weapon in his right hand and a
+   * shield-family item (held, or stowed on the back) are scaled about their grip, so the hand still holds the handle and
+   * the shield's strap. A tower shield is already huge and grows less (TOWER).
+   *
+   * Guard: a layer after the locomotion layer (opts.locoPost of KD.anim.humanoid: the generic layer and, on the Tripo
+   * body, KD.heroLoco run first), so clips (attacks, block, hit, dodge) still blend over it and start from / return to it.
+   * In combat (enemies in a fight within 10 m, just attacked or hit, hit someone, guarding or in Bulwark Stance) the
+   * shield arm comes up with the shield face out in front of the chest, the sword waits back and high over the shield
+   * rim, knees bend and the body turns side-on (shield shoulder forward). Out of combat he relaxes to the normal idle and
+   * run. The blend in and out takes BLEND seconds (smoothstep).
+   */
+  var IG = KD.ironGuard = KD.ironGuard || {};
+  KD.config = KD.config || {};
+  if (KD.config.ironGuard === undefined) KD.config.ironGuard = true;
+  if (KD.config.ironGear === undefined) KD.config.ironGear = { sword: [1.15, 1.26, 1.22], shield: 1.3 };
+  var A = KD.anim, M = KD.models;
+  if (!A || !A.CH || !M) return;
+  var CH = A.CH, N = CH.N, P = A.pose;
+  var sin = Math.sin, min = Math.min, max = Math.max;
+  IG.BLEND = 0.25;
+  IG.RANGE = 10;          // enemies in a fight this close put him on guard
+  IG.TOWER = 0.55;        // a tower shield takes this share of the shield growth
+  IG.CLASS = 'ironbound';
+
+  function clamp01(x) { return x < 0 ? 0 : (x > 1 ? 1 : x); }
+  function smooth(x) { x = clamp01(x); return x * x * (3 - 2 * x); }
+
+  // ------------------------------------------------------------------ poses
+  /*
+   * Units of KD.anim.pose. Hips yaw < 0 turns the left (shield) shoulder forward. GUARD = standing guard (whole body),
+   * MOVE = what the guard keeps while walking / running (arms; the legs stay the gait's). Per look: the Tripo body's
+   * arms hang from different shoulders than the classic rig, so each has its own arm numbers.
+   */
+  var BODY = { hips: [0.1, -0.34, 0], hipsPos: [0, -0.1, -0.03], chest: [0.1, -0.12, 0], head: [-0.1, 0.44, 0],
+    footL: [0.1, 0, 0.15, 0, 0.18], footR: [-0.11, 0, -0.16, 0, -0.6] };
+  var ARMS = {
+    classic: { armL: [-0.86, -0.62, 0.12], foreL: -1.6, handL: [0.5, 0, 0], armR: [-0.55, 0.45, -0.42], foreR: -1.55, handR: [0.15, 0.25, 0] },
+    tripo: { armL: [-0.86, -0.62, 0.12], foreL: -1.6, handL: [0.5, 0, 0], armR: [-0.55, 0.45, -0.42], foreR: -1.55, handR: [0.15, 0.25, 0] }
+  };
+  function build(look) {
+    var spec = {}, k;
+    for (k in BODY) spec[k] = BODY[k];
+    for (k in ARMS[look]) spec[k] = ARMS[look][k];
+    return P(spec);
+  }
+  IG.GUARD = { classic: build('classic'), tripo: build('tripo') };
+  IG.ARMS = ARMS; IG.BODY = BODY;
+  IG.MOVE = { arms: 0.88, chestYaw: -0.32, hipsYaw: -0.1, headYaw: 0.36, drop: -0.035 };
+  var SWEEP = IG.SWEEP = { swing_r: 1, swing: 1, slash: 1, attack: 1 };
+  var OPEN = IG.OPEN = P({ armL: [-0.55, 0.25, 0.5], foreL: -1.25, handL: [0.35, 0, 0] });
+  IG.rebuild = function () { IG.GUARD = { classic: build('classic'), tripo: build('tripo') }; };
+
+  // ------------------------------------------------------------------ the combat signal
+  var QA = [];
+  /** Any enemy that is fighting (ai state 'combat') within r of e. Read only (the sim's spatial hash, own scratch). */
+  function foesNear(e, r) {
+    var G = KD.game, w = G && G.world, S = KD.sim;
+    if (!w || !S || !S.qCircle || !w._hHead || !(e.x === e.x)) return false;
+    var n = S.qCircle(w, e.x, e.z, r, QA), hit = false;
+    for (var i = 0; i < n; i++) { var o = QA[i]; if (o !== e && o.kind === 'enemy' && !o.dead && o.ai && (o.ai.state === 'combat')) { hit = true; break; } }
+    QA.length = 0;
+    return hit;
+  }
+  function stanceOn(e) {
+    var st = e.hero && e.hero.flags && e.hero.flags.stances;
+    if (!st) return false;
+    for (var g in st) if (st[g] === 'bulwark') return true;
+    return false;
+  }
+  function state(st) {
+    var s = st.ig;
+    if (!s) s = st.ig = { g: 0, w: 0, lastCT: undefined, ago: 99, near: false, nearT: 0, why: '' };
+    return s;
+  }
+  /** Why the hero is on guard right now ('' = not in combat). */
+  function combatWhy(s, st, e, dt) {
+    if (s.lastCT !== e.combatT) { if (s.lastCT !== undefined) s.ago = 0; s.lastCT = e.combatT; } else s.ago += dt;
+    s.nearT -= dt;
+    if (s.nearT <= 0) { s.nearT = 0.25; s.near = foesNear(e, IG.RANGE); }
+    if (e.dead) return '';
+    if (e.guarding) return 'guarding';
+    if (st.sinceAct < 2.5) return 'acted';
+    if (s.ago < 3.5) return 'hit';
+    if (e.ai && (e.ai.state === 'combat' || e.ai.target)) return 'ai';
+    if (stanceOn(e)) return 'stance';
+    if (s.near) return 'foes';
+    return '';
+  }
+
+  // ------------------------------------------------------------------ the layer
+  /** Runs after the locomotion layer (the Tripo body's own first); rewrites the channels the guard owns in L. */
+  IG.layer = function (L, st, e, dt, opts, c, clip, mode) {
+    var s = state(st);
+    if (!(dt >= 0)) dt = 0;
+    var dtc = dt > 0.1 ? 0.1 : dt;
+    var why = KD.config.ironGuard === false ? '' : combatWhy(s, st, e, dt);
+    s.why = why;
+    var want = why ? 1 : 0;
+    if (dt >= 1) s.g = want;
+    else if (s.g < want) s.g = min(want, s.g + dtc / IG.BLEND);
+    else if (s.g > want) s.g = max(want, s.g - dtc / IG.BLEND);
+    var g = smooth(s.g); s.w = g;
+    if (g <= 0) return;
+    var G = IG.GUARD[opts.locoStyle ? 'tripo' : 'classic'], mv = st.moveW || 0, k0 = 1 - mv, MV = IG.MOVE, i;
+    // arms: the guard, a touch of swing kept while moving
+    var ka = g * (1 - mv * (1 - MV.arms));
+    for (i = CH.ARM_R; i < CH.FOOT_R; i++) L[i] += (G[i] - L[i]) * ka;
+    // standing: the whole guard body (side-on, knees bent, feet staggered)
+    var ks = g * k0;
+    if (ks > 0) {
+      for (i = CH.HIPS; i < CH.ARM_R; i++) L[i] += (G[i] - L[i]) * ks;
+      for (i = CH.FOOT_R; i < CH.ROOT; i++) L[i] += (G[i] - L[i]) * ks;
+      // a slow, small weight shift so the guard is alive
+      var t = c.time + st.seed * 40;
+      L[CH.HIPS_P + 1] += 0.008 * sin(t * 1.3) * ks; L[CH.CHEST] += 0.012 * sin(t * 1.3 + 0.6) * ks;
+    }
+    // moving: the shoulders stay turned in behind the shield, the head looks where he goes, lower hips
+    var km = g * mv;
+    if (km > 0) {
+      L[CH.CHEST + 1] += MV.chestYaw * km; L[CH.HIPS + 1] += MV.hipsYaw * km; L[CH.HEAD + 1] += MV.headYaw * km;
+      L[CH.HIPS_P + 1] += MV.drop * km;
+    }
+    // a sword sweep across the body (swing_r keeps 70% of this layer on the shield arm): the shield opens out to the
+    // left as the blade comes across, so the big shield never stands in its path; back in front for the recovery
+    if (mode === 1 && SWEEP[clip]) {
+      var act = e.act, p = act && act.dur > 0 ? clamp01(act.t / act.dur) : 1, ko;
+      if (act.state === 'windup') ko = smooth((p - 0.45) / 0.5);
+      else if (act.state === 'active') ko = 1;
+      else ko = 1 - smooth((p - 0.15) / 0.55);
+      ko *= g;
+      if (ko > 0) for (i = CH.ARM_L; i < CH.FOOT_R; i++) L[i] += (OPEN[i] - L[i]) * ko;
+    }
+    // the second hand never grips a one-handed sword
+    L[CH.GRIP] *= 1 - g;
+  };
+
+  /** Puts the layer on a built Ironbound (both looks): opts.locoPost runs after any locomotion layer (opts.loco). */
+  IG.attach = function (built) {
+    var o = built && built.animOpts;
+    if (!o) return false;
+    o.locoPost = IG.layer;
+    return true;
+  };
+  /** What the layer does on a visual: { g (0..1), why } (tests, tools). */
+  IG.info = function (visual) {
+    var st = visual && visual.state && visual.state.anim, s = st && st.ig;
+    return s ? { g: s.w, why: s.why, near: s.near } : { g: 0, why: '', near: false };
+  };
+
+  // ------------------------------------------------------------------ gear size
+  function gearCfg() {
+    var c = KD.config.ironGear;
+    if (!c) return null;
+    var sw = c.sword, sh = +c.shield;
+    if (typeof sw === 'number') sw = [sw, sw, sw];
+    if (!sw || sw.length !== 3) sw = [1, 1, 1];
+    if (!(sh > 0)) sh = 1;
+    return { sword: sw, shield: sh };
+  }
+  IG.gearKey = function () { var c = gearCfg(); return c ? c.sword.join(',') + '/' + c.shield : '-'; };
+  function mulScale(n, f) {
+    var s = n.scale;
+    if (typeof s === 'number') s = [s, s, s]; else if (!s) s = [1, 1, 1]; else s = s.slice();
+    n.scale = [s[0] * f[0], s[1] * f[1], s[2] * f[2]];
+  }
+  function famOf(n) { return n && n.def ? n.def.family : null; }
+  /** Scales his sword and shield nodes (under the weapon / offhand joints, or the shield stowed on his back). */
+  IG.scaleGear = function (built) {
+    var cfg = gearCfg(), rig = built && built.rig, J = rig && rig.joints, done = 0;
+    if (!cfg || !J) return 0;
+    var seen = [];
+    function visit(n) {
+      if (!n || seen.indexOf(n) >= 0) return;
+      seen.push(n);
+      var fam = famOf(n);
+      if ((n.name === 'weapon_model') && fam === 'sword1h') { mulScale(n, cfg.sword); done++; return; }
+      if ((n.name === 'offhand_model' || n.name === 'offhand_worn') && fam === 'shield') {
+        var f = n.def && n.def.model === 'tower_shield' ? 1 + (cfg.shield - 1) * IG.TOWER : cfg.shield;
+        mulScale(n, [f, f, f]);
+        // the shield grows about its strap: move it out from the forearm by the growth of its half-thickness
+        if (n.pos && n.name === 'offhand_model') { var p = n.pos; n.pos = [p[0] * (1 + (f - 1) * 0.6), p[1], p[2]]; }
+        done++; return;
+      }
+      if (n.children) for (var i = 0; i < n.children.length; i++) visit(n.children[i]);
+    }
+    for (var j in J) if (J[j] && J[j].children) for (var i = 0; i < J[j].children.length; i++) visit(J[j].children[i]);
+    built.ironGear = done;
+    return done;
+  };
+
+  // ------------------------------------------------------------------ the hero plan wrapper
+  IG.wrapHero = function () {
+    if (!M.builders || !M.builders.hero || M.builders.hero.kdIron) return false;
+    var base = M.builders.hero;
+    var fn = function (spec, ctx) {
+      var built = base(spec, ctx);
+      var cls = built && (built.classId || (spec && spec.classId));
+      if (!built || !built.model || cls !== IG.CLASS) return built;
+      try { IG.scaleGear(built); IG.attach(built); } catch (err) { if (typeof console !== 'undefined') console.error('KD.ironGuard: dressing failed', err); }
+      var r0 = built.refresh, key = IG.gearKey();
+      built.refresh = function (visual, e) { if (IG.gearKey() !== key) return true; return r0 ? r0(visual, e) : false; };
+      return built;
+    };
+    fn.kdArt = base.kdArt; fn.kdCos = base.kdCos; fn.kdIron = true;
+    M.register('hero', fn);
+    return true;
+  };
+  IG.wrapHero();
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
