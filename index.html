@@ -645,6 +645,13 @@ html.kd-pad-nav .win-hints > :not(.kd-badge) { display: none; }
 .hud-hire-name { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hud-hire .kd-bar { flex: none; }
 .hud-hire-dead { opacity: .45; text-decoration: line-through; }
+.hud-hire-head { display: flex; align-items: center; gap: calc(5 * var(--u)); font-size: var(--kd-fs-sm); color: var(--kd-gold, #e2b94a); font-weight: 600; }
+.hud-hire-head-text { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hud-hire-sub { font-size: var(--kd-fs-xs, var(--kd-fs-sm)); opacity: .8; }
+.hud-colours { color: #e2b94a; border-color: rgba(226, 185, 74, .6); }
+.hud-hires-big { gap: calc(2 * var(--u)); }
+.hud-hires-big .hud-hire { font-size: var(--kd-fs-xs, var(--kd-fs-sm)); }
+.hud-hires-big .hud-hire .kd-bar { height: calc(5 * var(--u)) !important; }
 
 /* ------------------------------------------------------------------------------- action bar */
 .hud-actionbar { position: absolute; left: 50%; bottom: calc(12 * var(--u)); transform: translateX(-50%); display: flex; flex-direction: column; gap: calc(7 * var(--u)); padding: calc(10 * var(--u)) calc(14 * var(--u)) calc(9 * var(--u)); }
@@ -3882,7 +3889,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.91';
+  KD.VERSION = '0.7.92';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -11339,6 +11346,15 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   BL.rule = function (id, name, mods, spec, est) { return { t: 'notable', name: name, mods: mods, effect: 'tree_bannerlord_' + id, spec: spec, est: est || { off: 1.02, def: 1.01 } }; };
   /** A rule notable whose rule is one of the Crownweb's Garrison hooks (src/sim/55_class_bannerlord.js, `web_bannerlord_<key>`). */
   BL.web = function (key, name, mods, spec, est) { return { t: 'notable', name: name, mods: mods, effect: 'web_bannerlord_' + key, spec: spec, est: est || { off: 1.02, def: 1.01 } }; };
+  /**
+   * [warband] A Warband rule notable that also adds `slots` hireling slots (flags.hirelingSlots, summed by KD.run.warband).
+   * Its rule is a hook of src/sim/57_bannerlord_warband.js (`tree_bannerlord_<id>`); numbers in KD.data.warband.
+   */
+  BL.band = function (id, name, mods, spec, slots, est) {
+    var n = BL.rule(id, name, mods, spec, est || { off: 1.03, def: 1.03 });
+    if (slots) n.flags = { hirelingSlots: slots };
+    return n;
+  };
   /** Every fifth trunk node (T5, T10 .. T25) also gives TRUNK_STRIKE more Banner Strike damage. */
   BL.TRUNK_STRIKE = 0.03; BL.HUB_STRIKE = 0.04;
   BL.strikeTrunk = function (tr) { return K0.primaryTrunk(tr, 'banner_strike', BL.TRUNK_STRIKE); };
@@ -11378,9 +11394,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
   /** A hub node: a named minor with two half-size mods and HUB_STRIKE more Banner Strike damage. */
   function strike(name, a, b) { return { name: name, mods: [a, b], abil: [{ a: 'banner_strike', k: 'dmg', v: BL.HUB_STRIKE }] }; }
-  // Version 1: the first tree (docs/TREE_BANNERLORD.md).
+  // Version 1: the first tree (docs/TREE_BANNERLORD.md). Version 2: the Warband (section 7 there).
   T.define('bannerlord', {
-    version: 1, name: 'The Royal Host',
+    version: 2, name: 'The Royal Host',      // 2: the Warband (Oct 16): two Muster Field clusters, theme notables
     arms: ['colours', 'drum', 'vanguard', 'spear', 'horn', 'phalanx', 'muster', 'bearer'],
     hub: [
       strike('Colour Party', 'bannerPower 0.75', 'hp 0.75'),       // colours
@@ -12884,7 +12900,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         rule('clarion', 'Clarion Call', ['cdr 1'], 'Signal Horn and Battlefield Orders take 2 s off the cooldowns of your other skills.', { off: 1.03, def: 1.01 }),
         ['cdr 1.5', 'hp 1']),
       ring('horn_dispatch', 'Dispatches', 3, 1, ['orderPower 1', 'hp 1', 'dmgMelee 1', 'armor 1'],
-        ['Sealed Orders', 'orderPower 2', 'dmgMelee 1'], ['orderPower 1.5', 'hp 1']),
+        B.band('drill', 'Company Drill', ['orderPower 1'], 'Every hireling you lead attacks 10% faster and deals 10% increased damage.'),
+        ['orderPower 1.5', 'hp 1']),
       star('horn_orders_essence', 'Battlefield Orders: essence', 3, 2, 'orderPower 1', ['bo_war', 'bo_haste', 'bo_expose'], ['General Staff', 'orderPower 1', 'armor 1']),
 
       // ---- Row 4
@@ -13056,7 +13073,18 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       keystone('muster_key_veteran', 'Veteran Company', 8, 2, 'dmgMinion 1', 'minionHp 1',
         key('Veteran Company', ['dmgMinion*25', 'minionHp*25', 'minionCount+-1'], 'You call one soldier fewer each time, but each deals 25% more damage and has 25% more Health.', null, { off: 1.02, def: 1.02 })),
       ring('muster_hospital', 'Field Hospital', 8, 3, ['hp 1', 'healPower 1', 'minionHp 1', 'resAll 1'],
-        ['Surgeon\'s Tent', 'healPower 1.5', 'hp 1.5'], ['healPower 1', 'hp 1.5'])
+        B.band('chaplains', 'Chaplains', ['healPower 1'], 'Your support and summoner hirelings heal 30% more and take 10% less damage.'),
+        ['healPower 1', 'hp 1.5']),
+
+      // ---- The Warband (owner, Oct 16; docs/TREE_BANNERLORD.md section 7): a bigger company, raising the fallen, the full company
+      ring('muster_warband', 'The Warband', 6, -3, ['hirelingDmg 1', 'hp 1',
+        B.band('surgeon', 'Field Surgeon', ['minionHp 1'], 'Raising a fallen hireling at its colours goes 50% faster, and it stands up with 15% more of its Health.'),
+        'armor 1',
+        B.band('rally_fallen', 'Rally the Fallen', ['hirelingDmg 1'], 'Rally Hirelings also stands every fallen hireling of yours up again with 30% of its Health. This can happen once every 40 s, or every 25 s with Lord of the Host.')],
+        B.band('muster_roll', 'Muster Roll', ['hirelingDmg 1'], 'You can lead one more hireling.', 1),
+        ['hirelingDmg 1.5', 'hp 1']),
+      keystone('muster_key_host', 'Lord of the Host', 7, -3, 'hirelingDmg 1', 'hp 1',
+        key('Lord of the Host', ['dmg*-90'], 'You lead a full company of up to 8 hirelings: they cost 40% less and every camp offers 2 more. Your hirelings deal 30% more damage and take 20% less. Banner Strike Marks what it hits for 4 s, and your company deals 25% more damage to Marked enemies. Rally Hirelings stands your fallen hirelings up again (as Rally the Fallen). Your own attacks and abilities deal 90% less damage.', 'tree_bannerlord_host', { off: 1.0, def: 1.03 }))
     ],
 
     devotion: [
@@ -13123,7 +13151,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       ring('phalanx_spears', 'Spears Over Shields', 3, 1, ['dmgMelee 1', 'hp 1', 'critChance 1', 'armor 1'],
         ['Over the Top', 'dmgMelee 1.5', 'critChance 1.5'], ['dmgMelee 1', 'hp 1.5']),
       ring('phalanx_together', 'Together', 3, 2, ['dmgTaken 1@withAllies', 'hp 1', 'armor 1', 'resAll 1'],
-        ['Brothers in Arms', 'dmgTaken 1.5@withAllies', 'hp 1.5'], ['armor 1', 'hp 1.5']),
+        B.band('shieldwall', 'Shield Wall', ['dmgTaken 1@withAllies'], 'You can lead one more hireling. Your tank hirelings take 20% less damage and gain 15% Block Chance, and while one of them stands within 4 m of you, you take 8% less damage.', 1),
+        ['armor 1', 'hp 1.5']),
 
       // ---- Row 4
       ring('phalanx_weight', 'Weight of Shields', 4, -2, ['poise 1', 'hp 1', 'armor 1', 'resAll 1'],
@@ -13242,7 +13271,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       ring('spear_brace', 'Brace for Horse', 3, 1, ['poise 1', 'hp 1', 'armor 1', 'resAll 1'],
         ['Butt in the Earth', 'poise 2', 'armor 1'], ['poise 1.5', 'hp 1']),
       ring('spear_mark', 'Marked Men', 3, 2, ['dmgElite 1', 'hp 1', 'statusDur 1', 'armor 1'],
-        ['Chosen Target', 'dmgElite 2', 'statusDur 1'], ['dmgElite 1', 'hp 1.5']),
+        B.band('crossbows', 'Crossbow Line', ['statusDur 1'], 'You can lead one more hireling. Your ranged hirelings attack 15% faster and deal 30% more damage to Marked enemies, and Banner Strike Marks what it hits for 3 s.', 1),
+        ['dmgElite 1', 'hp 1.5']),
 
       // ---- Row 4
       ring('spear_ranks', 'Ranks', 4, -2, ['dmgMelee 1', 'hp 1', 'orderPower 1', 'resAll 1'],
@@ -13373,7 +13403,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       ring('vanguard_lance', 'Lances', 4, 1, ['dmgMelee 1', 'hp 1', abil('Long Charge', ['moveSpeed 0.5'], 'charge_order', 'range', 0.12), 'armor 1'],
         ['Couched', 'dmgMelee 1.5', 'breakPower 1.5'], ['dmgMelee 1', 'hp 1.5']),
       ring('vanguard_hooves', 'Hooves', 4, 2, ['hp 1', 'poise 1', 'moveSpeed 1', 'resAll 1'],
-        ['Thunder of Hooves', 'poise 1.5', 'moveSpeed 1.5'], ['poise 1', 'hp 1.5']),
+        B.band('chargers', 'Chargers', ['moveSpeed 1'], 'Your rusher and ambusher hirelings deal 15% increased damage and move 20% faster, and for 5 s after your Charge Order they deal 25% more damage.'),
+        ['poise 1', 'hp 1.5']),
 
       // ---- Row 5 (mid ring road on lane +-2)
       ring('vanguard_wedge', 'The Wedge', 5, -2, ['breakPower 1', 'hp 1', 'moveSpeed 1', 'resAll 1'],
@@ -26912,6 +26943,40 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       { to: 40, goals: ['Colour Sergeant', 'cluster:bearer_lone', 'cluster:bearer_reach', 'cluster:bearer_pole', 'cluster:bearer_colours_mid'] },
       { to: 60, goals: ['Lone Standard', 'Army of One', 'cluster:bearer_honour', 'cluster:bearer_march', 'cluster:bearer_rally'] }
     ] });
+  // 7. the Warband (owner, Oct 16; docs/TREE_BANNERLORD.md section 7). `company`: the hirelings the build is meant to lead,
+  // tanks first (the bench, tools/build_bench.js, hires them for the build; the Builds tab lists them).
+  add({ id: 'full_company', name: 'Full Company', design: '7.1', difficulty: 3, start: 'rally_hirelings', arms: ['muster', 'phalanx'],
+    pitch: 'Lord of the Host: eight hirelings fight for you while you mark, rally, order and raise the fallen.',
+    tags: ['Hirelings', 'Company', 'Orders', 'Revive'],
+    company: ['shieldman', 'knight_errant', 'crossbowman', 'hedge_mage', 'lantern_acolyte', 'pikeman', 'field_medic', 'cult_flagellant'],
+    stages: [
+      { to: 10, goals: ['mut:rh_mend', 'mut:rh_quick', 'cluster:muster_pay'] },
+      { to: 25, goals: ['Lord of the Host', 'Muster Roll', 'Rally the Fallen', 'skill:recall', 'cluster:muster_sellswords'] },
+      { to: 40, goals: ['skill:phalanx', 'cluster:muster_warband', 'Shield Wall', 'mut:rl_heal', 'cluster:muster_quarter'] },
+      { to: 60, goals: ['Chaplains', 'cluster:muster_reinforce', 'cluster:phalanx_muster_mid', 'mut:ph_wide', 'cluster:muster_honour'] }
+    ] });
+
+  add({ id: 'crossbow_line', name: 'Crossbow Line', design: '7.2', difficulty: 2, start: 'strike_formation', arms: ['spear', 'horn'],
+    pitch: 'Paint targets with the pike and let the crossbows behind you do the rest.',
+    tags: ['Hirelings', 'Marks', 'Ranged company'],
+    company: ['crossbowman', 'shieldman', 'hedge_mage'],
+    stages: [
+      { to: 10, goals: ['mut:sf_long', 'mut:sf_cmd', 'cluster:spear_pikes'] },
+      { to: 25, goals: ['Crossbow Line', 'skill:battlefield_orders', 'cluster:spear_point', 'mut:bo_war', 'cluster:horn_orders'] },
+      { to: 40, goals: ['Company Drill', 'Mark of the King', 'cluster:spear_formation', 'cluster:horn_command', 'cluster:spear_horn_mid'] },
+      { to: 60, goals: ['skill:signal_horn', 'cluster:spear_giant', 'cluster:horn_mark', 'cluster:spear_thrust', 'cluster:horn_clarion'] }
+    ] });
+
+  add({ id: 'shield_wall_company', name: 'Shield Wall Company', design: '7.3', difficulty: 1, start: 'phalanx', arms: ['phalanx', 'muster'],
+    pitch: 'Sworn shields hold the line around you while your chaplains keep everyone standing.',
+    tags: ['Hirelings', 'Tank', 'Block', 'Healing'],
+    company: ['shieldman', 'knight_errant', 'lantern_acolyte', 'dawn_warden'],
+    stages: [
+      { to: 10, goals: ['mut:ph_iron', 'mut:ph_long', 'cluster:phalanx_interlock'] },
+      { to: 25, goals: ['Shield Wall', 'skill:rally_hirelings', 'cluster:phalanx_bronze', 'mut:rh_mend', 'cluster:phalanx_dug'] },
+      { to: 40, goals: ['Muster Roll', 'Field Surgeon', 'Rally the Fallen', 'cluster:phalanx_muster_mid', 'cluster:phalanx_testudo'] },
+      { to: 60, goals: ['Chaplains', 'Hold the Line', 'cluster:phalanx_line', 'cluster:muster_mess', 'cluster:phalanx_scars'] }
+    ] });
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -29356,6 +29421,49 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     { id: 'armor', name: 'Armour', icon: 'chest' },
     { id: 'trinket', name: 'Trinket', icon: 'sigil' }
   ];
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/46_run_warband.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  KD.data = KD.data || {};
+
+  /**
+   * THE WARBAND: the Bannerlord's mercenary company (owner request, Oct 16; docs/MERCENARIES.md section 10 and
+   * docs/TREE_BANNERLORD.md section 7). Every number the run (src/meta/41_run_kingdom.js), the sim
+   * (src/sim/57_bannerlord_warband.js), the HUD and the node texts use. Pure data.
+   *
+   *   Hireling slots   2 for everybody; Bannerlord tree nodes with flags.hirelingSlots add one each (Muster Roll,
+   *                    Shield Wall, Crossbow Line); the keystone Lord of the Host raises the company to COMPANY.
+   *   Field bodies     at most FIELD_MAX hireling bodies stand in one world; each hero fields up to
+   *                    floor(FIELD_MAX / heroes) at once (a party of four: 6 each). The rest wait in reserve and
+   *                    step in when one falls.
+   *   Field revive     a Bannerlord stands within REVIVE_R m of a fallen hireling's dropped colours for REVIVE_TIME s
+   *                    to stand it up again with REVIVE_HP of its Health (progress drains while away).
+   */
+  KD.data.warband = {
+    COMPANY: 8,                 // Lord of the Host: hirelings in the company
+    FIELD_MAX: 24,              // hireling bodies in one world, all heroes together
+    HOST_COST: 0.6,             // Lord of the Host: hirelings cost 40% less
+    HOST_OFFERS: 2,             // Lord of the Host: extra hireling offers at every camp
+    REVIVE_R: 2.5, REVIVE_TIME: 3, REVIVE_HP: 0.35, REVIVE_DRAIN: 1,
+    // keystone and theme numbers (the node texts quote them; tests/bannerlord_warband.test.js compares)
+    host: { ownDmg: 0.1, mercDmg: 0.3, mercTaken: 0.2, markDur: 4, markMore: 0.25 },
+    shieldWall: { taken: 0.2, block: 0.15, near: 4, heroTaken: 0.08 },
+    crossbows: { atkSpeed: 0.15, markMore: 0.3, markDur: 3 },
+    chargers: { dmg: 0.15, move: 0.2, chargeMore: 0.25, chargeDur: 5 },
+    chaplains: { heal: 0.3, taken: 0.1 },
+    drill: { atkSpeed: 0.1, dmg: 0.1 },
+    rallyFallen: { hp: 0.3, every: 40, hostEvery: 25 },
+    surgeon: { speed: 0.5, hp: 0.15 }
+  };
+  /** Hireling roles each theme strengthens (KD.data.hirelings[].role). */
+  KD.data.warband.ROLES = {
+    shieldWall: ['tank'], crossbows: ['ranged'], chargers: ['rusher', 'ambusher'], chaplains: ['support', 'summoner']
+  };
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -36144,6 +36252,13 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.92', date: '2026-10-16', title: 'The Bannerlord\'s Warband', notes: [
+      'The Bannerlord can lead a bigger company: Muster Roll, Shield Wall and Crossbow Line each add one more hireling',
+      'New keystone Lord of the Host: lead up to 8 hirelings, but your own attacks and skills deal 90% less damage',
+      'Fallen hirelings drop their colours: stand by them for 3 seconds to raise them, or call Rally the Fallen',
+      'Company themes for tanks, crossbows, chargers and chaplains, plus three new builds: Full Company, Crossbow Line and Shield Wall Company',
+      'The Bannerlord tree changed, so your spent tree points come back for free'
+    ] },
     { version: '0.7.91', date: '2026-10-16', title: 'Assassin animations', notes: [
       'The Gloamblade runs and strikes with new motion-captured animations',
       'Feet and knees now point forward when running'
@@ -49576,6 +49691,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   };
   var ROLE_LIMIT = { tank: 1, support: 1, summoner: 1, ambusher: 1, ranged: 2 };
   var ALLY_BY_ROLE = { tank: 'ref_ally_shieldman', ranged: 'ref_ally_archer', support: 'ref_ally_healer', rusher: 'ref_ally_blade', ambusher: 'ref_ally_blade', summoner: 'ref_ally_healer' };
+  Sp.ALLY_BY_ROLE = ALLY_BY_ROLE;
 
   /** Interactable types that attacks smash (as well as the interact key). */
   var BREAKABLE = { barrel: 1, breakable: 1, crystal: 1 };
@@ -49965,6 +50081,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         var has = false;
         for (var j = 0; j < world.hirelings.length; j++) if (world.hirelings[j].hireling === h) { has = true; break; }
         if (has) continue;
+        if (S.warband && !S.warband.room(world, p)) break;                // [warband] the field cap: the rest of a big company waits in reserve
         var hd = KD.data.hirelings && KD.data.hirelings[h.defId], id = (hd && hd.allyDef) || h.allyDef || h.defId;
         if (!Sp.allyDef(id)) id = ALLY_BY_ROLE[(hd && hd.role) || 'rusher'];
         if (!Sp.allyDef(id)) continue;
@@ -55815,6 +55932,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     onTick: function (c, eff, st) {
       var p = c.self, w = c.world, i;
       if (p.dead) return;
+      if (S.warband && S.warband.tick) S.warband.tick(w, p, c.dt);      // [warband] fallen colours, the field revive, theme boons (57_bannerlord_warband.js)
       // the HUD shows whether you stand under your own standard (zone auras themselves are silent): first application loud, refreshes quiet
       var under = inAura(w, p), cg = mul(p, 'commandGain');
       if (under) {
@@ -59549,6 +59667,278 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/sim/57_bannerlord_warband.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var U = KD.util;
+  var S = KD.sim = KD.sim || {};
+  var K = KD.skills = KD.skills || {};
+  if (!K.registerHook) return;
+
+  /**
+   * THE WARBAND: the Bannerlord's mercenary company in the sim (owner request, Oct 16; docs/MERCENARIES.md section 10,
+   * docs/TREE_BANNERLORD.md section 7). Numbers: KD.data.warband (src/data/46_run_warband.js).
+   *
+   *   Field revive     every Bannerlord: a hireling of yours that falls drops its colours where it fell; stand within
+   *                    REVIVE_R m of them for REVIVE_TIME s and it stands up with REVIVE_HP of its Health (the progress
+   *                    drains while you are away). Driven from the class hook (`class_bannerlord` onTick -> W.tick).
+   *   Field cap        at most FIELD_MAX hireling bodies in a world, floor(FIELD_MAX / heroes) per hero; the rest of a
+   *                    company waits in reserve and steps in when one falls (src/sim/28_spawn.js rosterHirelings asks
+   *                    W.room). Revived hirelings over the cap wait in reserve too.
+   *   Tree rules       `tree_bannerlord_<id>` hooks of the Warband nodes: themes that strengthen hirelings of a role
+   *                    (Shield Wall, Crossbow Line, Chargers, Chaplains), Company Drill, Rally the Fallen, Field Surgeon,
+   *                    and the keystone Lord of the Host. The +1 hireling slots are node flags (KD.run.warband).
+   *   Company hook     `warband_company` on the hireling bodies of a Bannerlord: their bonus against Marked enemies and
+   *                    after a Charge Order (the owner's knobs say which).
+   * Everything reads world state, world.time and the records only: lockstep co-op stays in step. Visuals (the dropped
+   * colours, the revive ring) are drawn from the `fx` events and W.info; nothing here depends on them.
+   */
+  var W = S.warband = {};
+  function D() { return KD.data.warband; }
+  var ROLES = null;
+  function roleIn(theme, role) { ROLES = ROLES || D().ROLES; return (ROLES[theme] || []).indexOf(role) >= 0; }
+  function st(p) { return p.hookState.bannerlord_warband || (p.hookState.bannerlord_warband = { fallen: [], prog: 0, chan: null, acc: 0, rallyNext: 0, chargeUntil: 0 }); }
+  function isBannerlord(p) { return !!(p && p.hero && p.hero.classId === 'bannerlord'); }
+  function knob(p, k) { return !!(p && p.knobs && p.knobs[k]); }
+
+  /** The hireling records of a hero (its own run in co-op). */
+  W.records = function (world, p) { return KD.mercs && KD.mercs.recordsOf ? KD.mercs.recordsOf(world, p) : []; };
+  /** Living hireling bodies a hero has on the field. */
+  W.bodies = function (world, p, out) {
+    out = out || [];
+    var hs = world.hirelings || [];
+    for (var i = 0; i < hs.length; i++) { var a = hs[i]; if (a.owner === p && !a.dead && !a.removed && a.hireling) out.push(a); }
+    return out;
+  };
+  /** How many hireling bodies one hero may field at once in this world. */
+  W.fieldCap = function (world) { var n = Math.max(1, (world.players || []).length); return Math.max(2, Math.floor(D().FIELD_MAX / n)); };
+  /** True while the hero may field one more hireling body (the reserve steps in when this turns true again). */
+  W.room = function (world, p) {
+    if (!D()) return true;
+    var hs = world.hirelings || [], n = 0, cap = W.fieldCap(world), run = world.runOf ? world.runOf(p) : null;
+    // a company bigger than the build now leads (Lord of the Host refunded) keeps the rest in reserve
+    if (run && run.hero === p.hero && run.hirelings && KD.run && KD.run.hirelingSlots) cap = Math.min(cap, KD.run.hirelingSlots(run));
+    for (var i = 0; i < hs.length; i++) { var a = hs[i]; if (a.owner === p && !a.dead && !a.removed) n++; }
+    return n < cap;
+  };
+  function recordById(world, p, id) { var r = W.records(world, p); for (var i = 0; i < r.length; i++) if (r[i] && r[i].id === id) return r[i]; return null; }
+
+  /** Makes a body for a hireling record at (x, z) (or beside the hero when that spot is not free). */
+  function spawnBody(world, p, h, x, z) {
+    var Sp = S.spawn, hd = KD.data.hirelings && KD.data.hirelings[h.defId], id = (hd && hd.allyDef) || h.allyDef || h.defId;
+    if (!Sp.allyDef(id) && Sp.ALLY_BY_ROLE) id = Sp.ALLY_BY_ROLE[(hd && hd.role) || 'rusher'];      // the roster's stand-ins
+    if (!Sp.allyDef(id)) return null;
+    var pos = x !== undefined && S.isFree(world, x, z, 0.5) ? { x: x, z: z } : S.nav.randomPoint(world, world.rng, p.x, p.z, 1, 2.5, 0.4, true);
+    var a = Sp.ally(world, id, p, pos.x, pos.z, { level: h.level || p.level, name: h.name, hireling: h, hp: h.hp, duration: 0, summoned: false, group: 'hireling' });
+    if (!a) return null;
+    if (KD.mercs) { KD.mercs.applyToBody(world, a); a.hp = a.hpMax * Math.min(1, h.hp > 0 ? h.hp : 0.1); }
+    a.hlOut = h.hp; world.hirelings.push(a);
+    return a;
+  }
+
+  /**
+   * revive(world, p, record, hp, x, z) -> { ok, body }: body is null when the record stands up in reserve (over the field
+   * cap). The record is alive again at once (its death was already counted); the old body leaves the roster.
+   */
+  W.revive = function (world, p, h, hp, x, z) {
+    if (!h || !h.dead || world.rulesOf(p).noHirelings) return { ok: false, body: null };
+    h.dead = false; h.counted = false; h.hp = Math.min(1, Math.max(0.05, hp));
+    var hs = world.hirelings;
+    for (var i = hs.length - 1; i >= 0; i--) { var o = hs[i]; if (o.dead && o.hireling && (o.hireling === h || o.hireling.id === h.id)) { o.hireling = null; hs.splice(i, 1); } }
+    var s = st(p);
+    s.fallen = s.fallen.filter(function (f) { return f.id !== h.id; });
+    var body = W.room(world, p) ? spawnBody(world, p, h, x, z) : null;
+    var at = body || p;
+    world.events.emit('areaEvent', { type: 'hirelingRevived', id: h.id, hireling: h, name: h.name, x: at.x, z: at.z, player: p, done: true });
+    world.events.emit('fx', { name: 'revive', x: at.x, y: 0.5, z: at.z, src: at, key: 'warband' });
+    return { ok: true, body: body };
+  };
+
+  // ---------------------------------------------------------------------------------------------
+  // The tick (from the class hook): fallen colours, the field revive, the theme boons on the company
+  // ---------------------------------------------------------------------------------------------
+  var BOD = [];
+  W.tick = function (world, p, dt) {
+    if (!D() || p.dead) return;
+    var s = st(p), T = D(), hs = world.hirelings || [], i;
+    // a hireling of ours fell: its colours stay where it fell
+    for (i = 0; i < hs.length; i++) {
+      var a = hs[i], h = a.hireling;
+      if (a.owner !== p || !a.dead || !h || !h.dead) continue;
+      var known = false;
+      for (var k = 0; k < s.fallen.length; k++) if (s.fallen[k].id === h.id) { known = true; break; }
+      if (!known) s.fallen.push({ id: h.id, name: h.name || a.name, x: U.round(a.x, 3), z: U.round(a.z, 3), t: world.time });
+    }
+    // forget colours whose hireling is up again (next room, Second Dawn) or gone
+    if (s.fallen.length) s.fallen = s.fallen.filter(function (f) { var r = recordById(world, p, f.id); return !!r && !!r.dead; });
+    // field revive: the nearest dropped colours within reach
+    var best = null, bd = Infinity, R = T.REVIVE_R;
+    for (i = 0; i < s.fallen.length; i++) { var f = s.fallen[i], d = U.dist2(p.x, p.z, f.x, f.z); if (d <= R * R && d < bd) { bd = d; best = f; } }
+    if (best) {
+      if (s.chan !== best.id) { s.chan = best.id; }
+      s.prog += dt * (1 + ((p.knobs && p.knobs.wbReviveSpeed) || 0));
+      if (s.prog >= T.REVIVE_TIME) {
+        var rec = recordById(world, p, best.id);
+        s.prog = 0; s.chan = null;
+        if (rec && W.revive(world, p, rec, T.REVIVE_HP + ((p.knobs && p.knobs.wbReviveHp) || 0), best.x, best.z).ok) {
+          world.events.emit('msg', { text: (rec.name || 'Your hireling') + ' is back on their feet.', kind: 'info', player: p });
+        }
+      }
+    } else if (s.prog > 0) { s.prog = Math.max(0, s.prog - dt * T.REVIVE_DRAIN); if (!s.prog) s.chan = null; }
+    // the theme boons, twice a second
+    s.acc += dt;
+    if (s.acc < 0.5) return;
+    s.acc = 0;
+    var bodies = W.bodies(world, p, (BOD.length = 0, BOD)), kb = p.knobs || {};
+    for (i = 0; i < bodies.length; i++) {
+      var b = bodies[i], role = b.role;
+      if (!b.wbHook) { b.effects.push({ key: 'warband_company', source: 'warband' }); b.wbHook = true; }
+      if (kb.wbHost) boon(world, p, b, 'wb_host', 'Lord of the Host', MODS.host);
+      if (kb.wbDrill) boon(world, p, b, 'wb_drill', 'Company Drill', MODS.drill);
+      if (kb.wbShieldWall && roleIn('shieldWall', role)) boon(world, p, b, 'wb_shieldwall', 'Shield Wall', MODS.shieldWall);
+      if (kb.wbCrossbows && roleIn('crossbows', role)) boon(world, p, b, 'wb_crossbows', 'Crossbow Line', MODS.crossbows);
+      if (kb.wbChargers && roleIn('chargers', role)) boon(world, p, b, 'wb_chargers', 'Chargers', MODS.chargers);
+      if (kb.wbChaplains && roleIn('chaplains', role)) boon(world, p, b, 'wb_chaplains', 'Chaplains', MODS.chaplains);
+    }
+  };
+  function boon(world, p, b, id, name, mods) { S.addBuff(world, b, { id: id, name: name, dur: 0.7, mods: mods, src: p, quiet: true, icon: 'banner', color: '#a8323a' }); }
+  var MODS = {};
+  function buildMods() {
+    var T = D(); if (!T) return;
+    MODS.host = [{ s: 'dmg', t: 'more', v: T.host.mercDmg }, { s: 'dmgTaken', t: 'more', v: -T.host.mercTaken }];
+    MODS.drill = [{ s: 'atkSpeed', t: 'inc', v: T.drill.atkSpeed }, { s: 'dmg', t: 'inc', v: T.drill.dmg }];
+    MODS.shieldWall = [{ s: 'dmgTaken', t: 'more', v: -T.shieldWall.taken }, { s: 'block', t: 'add', v: T.shieldWall.block }];
+    MODS.crossbows = [{ s: 'atkSpeed', t: 'inc', v: T.crossbows.atkSpeed }];
+    MODS.chargers = [{ s: 'dmg', t: 'inc', v: T.chargers.dmg }, { s: 'moveSpeed', t: 'inc', v: T.chargers.move }];
+    MODS.chaplains = [{ s: 'healPower', t: 'inc', v: T.chaplains.heal }, { s: 'dmgTaken', t: 'more', v: -T.chaplains.taken }];
+  }
+  buildMods();
+  W.rebuild = buildMods;
+
+  /**
+   * info(world, p) -> what the HUD shows of the hero's company: { records, alive, fallen, reserve, cap, chan: { name, pct }
+   * | null, rallyLeft (s, or -1 without Rally the Fallen) }. Pure.
+   */
+  W.info = function (world, p) {
+    var out = { records: 0, alive: 0, fallen: 0, reserve: 0, cap: 0, chan: null, rallyLeft: -1 };
+    if (!world || !p || !D()) return out;
+    var recs = W.records(world, p), bodies = W.bodies(world, p, []), s = p.hookState && p.hookState.bannerlord_warband;
+    out.records = recs.length; out.alive = bodies.length; out.cap = W.fieldCap(world);
+    for (var i = 0; i < recs.length; i++) if (recs[i] && (recs[i].dead || !(recs[i].hp > 0))) out.fallen++;
+    out.reserve = Math.max(0, recs.length - out.fallen - out.alive);
+    if (s && s.chan && s.prog > 0) {
+      var r = recordById(world, p, s.chan);
+      out.chan = { name: r ? r.name : 'Hireling', pct: Math.min(1, s.prog / D().REVIVE_TIME) };
+    }
+    if (knob(p, 'wbRally')) out.rallyLeft = s ? Math.max(0, (s.rallyNext || 0) - world.time) : 0;
+    out.colours = s ? s.fallen.map(function (f) { return { id: f.id, name: f.name, x: f.x, z: f.z }; }) : [];
+    return out;
+  };
+
+  // ---------------------------------------------------------------------------------------------
+  // The company's own hook (on hireling bodies): Marked targets, the charge
+  // ---------------------------------------------------------------------------------------------
+  K.registerHook('warband_company', {
+    onBeforeHit: function (c) {
+      var e = c.self, o = e.owner, t = c.target, kb = o && o.knobs;
+      if (!kb || !t || t.kind !== 'enemy' || (c.spec && c.spec.dot)) return;
+      var T = D(), more = 0;
+      if (S.hasStatus(t, 'mark')) {
+        if (kb.wbHost) more += T.host.markMore;
+        if (kb.wbCrossbows && roleIn('crossbows', e.role)) more += T.crossbows.markMore;
+      }
+      if (kb.wbChargers && roleIn('chargers', e.role)) {
+        var s = o.hookState && o.hookState.bannerlord_warband;
+        if (s && c.world.time < (s.chargeUntil || 0)) more += T.chargers.chargeMore;
+      }
+      if (more) c.mult *= 1 + more;
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // Tree rules (src/data/36_tree_bannerlord_*.js): `tree_bannerlord_<id>`
+  // ---------------------------------------------------------------------------------------------
+  function baseId(def) { var id = def && def.id; return typeof id === 'string' && id.indexOf('ref_') === 0 ? id.slice(4) : id; }
+  function isPrimary(p, def) {
+    var pr = p.hero && p.hero.skills ? p.hero.skills.primary : null;
+    return !!def && (def.slot === 'primary' || (!!pr && (pr === def.id || 'ref_' + pr === def.id)));
+  }
+  function primaryHit(c) {
+    var sp = c.spec;
+    if (!sp || sp.proc || sp.dot || !c.target || c.target.kind !== 'enemy' || c.target.dead) return false;
+    var id = sp.ability, pr = c.self.hero && c.self.hero.skills ? c.self.hero.skills.primary : 'banner_strike';
+    return !!id && (id === pr || id === 'ref_' + pr || String(id).indexOf('banner_strike') >= 0);
+  }
+  function markFor(c, dur) { S.applyStatus(c.world, c.target, 'mark', { src: c.self, dur: dur }); }
+
+  /**
+   * Rally Hirelings stands every fallen hireling up again (Rally the Fallen, and Lord of the Host): once every
+   * rallyFallen.every s, every hostEvery s with both. Both hooks call it; the first one in a cast does the work.
+   */
+  function rallyFallen(c) {
+    var p = c.self, w = c.world, s = st(p), T = D().rallyFallen, kb = p.knobs || {};
+    if (baseId(c.ability) !== 'rally_hirelings' || w.time < (s.rallyNext || 0)) return;
+    var recs = W.records(w, p).filter(function (h) { return h && h.dead; });
+    if (!recs.length) return;
+    s.rallyNext = w.time + (kb.wbHost && kb.wbRallyNode ? T.hostEvery : T.every);
+    for (var i = 0; i < recs.length; i++) {
+      var f = null;
+      for (var k = 0; k < s.fallen.length; k++) if (s.fallen[k].id === recs[i].id) f = s.fallen[k];
+      W.revive(w, p, recs[i], T.hp, f ? f.x : undefined, f ? f.z : undefined);
+    }
+    w.events.emit('msg', { text: recs.length === 1 ? 'A fallen hireling answers the rally.' : recs.length + ' fallen hirelings answer the rally.', kind: 'info', player: p });
+  }
+  /** Lord of the Host (keystone): a full company; your own hits deal 90% less (the node's mod); Banner Strike Marks for the company; Rally Hirelings raises the fallen. */
+  K.registerHook('tree_bannerlord_host', {
+    setup: function (p) { p.knobs.wbHost = true; p.knobs.wbRally = true; },
+    onHit: function (c) { if (primaryHit(c)) markFor(c, D().host.markDur); },
+    onCast: rallyFallen
+  });
+  /** Shield Wall (phalanx): tank hirelings tougher; you take less while one stands next to you. */
+  K.registerHook('tree_bannerlord_shieldwall', {
+    setup: function (p) { p.knobs.wbShieldWall = true; },
+    onBeforeDamaged: function (c) {
+      var p = c.self, T = D().shieldWall, hs = c.world.hirelings || [];
+      if (!(c.amount > 0)) return;
+      for (var i = 0; i < hs.length; i++) {
+        var a = hs[i];
+        if (a.owner === p && !a.dead && !a.removed && roleIn('shieldWall', a.role) && U.dist2(a.x, a.z, p.x, p.z) <= T.near * T.near) { c.amount *= 1 - T.heroTaken; return; }
+      }
+    }
+  });
+  /** Crossbow Line (spear): ranged hirelings faster and deadly on Marked targets; Banner Strike Marks. */
+  K.registerHook('tree_bannerlord_crossbows', {
+    setup: function (p) { p.knobs.wbCrossbows = true; },
+    onHit: function (c) { if (primaryHit(c) && !knob(c.self, 'wbHost')) markFor(c, D().crossbows.markDur); }
+  });
+  /** Chargers (vanguard): rushers and ambushers faster and harder; more after a Charge Order. */
+  K.registerHook('tree_bannerlord_chargers', {
+    setup: function (p) { p.knobs.wbChargers = true; },
+    onCast: function (c) { if (baseId(c.ability) === 'charge_order') st(c.self).chargeUntil = c.world.time + D().chargers.chargeDur; }
+  });
+  /** Muster Roll (muster): one more hireling slot (the node's flags; KD.run.warband). Nothing to do in a fight. */
+  K.registerHook('tree_bannerlord_muster_roll', { setup: function () {} });
+  /** Chaplains (muster): supports heal more and take less. */
+  K.registerHook('tree_bannerlord_chaplains', { setup: function (p) { p.knobs.wbChaplains = true; } });
+  /** Company Drill (horn): every hireling attacks faster and hits harder. */
+  K.registerHook('tree_bannerlord_drill', { setup: function (p) { p.knobs.wbDrill = true; } });
+  /** Field Surgeon (muster): the field revive is faster and stands them up healthier. */
+  K.registerHook('tree_bannerlord_surgeon', {
+    setup: function (p) { var T = D().surgeon; p.knobs.wbReviveSpeed = T.speed; p.knobs.wbReviveHp = T.hp; }
+  });
+  /** Rally the Fallen (muster): Rally Hirelings stands every fallen hireling up again (with a cooldown of its own). */
+  K.registerHook('tree_bannerlord_rally_fallen', {
+    setup: function (p) { p.knobs.wbRally = true; p.knobs.wbRallyNode = true; },
+    onCast: rallyFallen
+  });
+
+  /** Is this player a Bannerlord whose class hook should run the warband tick (tools and tests ask). */
+  W.active = function (p) { return isBannerlord(p); };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/sim/60_enemies_act1_fx.js
 (function (root) {
   'use strict';
@@ -63256,6 +63646,16 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     });
     return out;
   };
+  /**
+   * flagTotal(hero, run, key) -> the SUM of a numeric flag over the hero's live nodes (ruleFlags takes the maximum).
+   * The Bannerlord's tree adds hireling slots this way (flags.hirelingSlots, src/meta/41_run_kingdom.js R.warband).
+   */
+  web.flagTotal = function (hero, run, key) {
+    if (!hero || !KD.data.web) return 0;
+    var st = state(hero, run), w = st.w, n = 0;
+    st.ids.forEach(function (id) { var f = w.nodes[id].flags; if (st.live[id] && f && typeof f[key] === 'number') n += f[key]; });
+    return n;
+  };
   /** hasEffect(hero, run, key) -> boolean. */
   web.hasEffect = function (hero, run, key) { return web.heroEffects(hero, run).some(function (e) { return e.key === key; }); };
   /** Allocated nodes that currently give nothing (requirement unmet). */
@@ -66641,7 +67041,26 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   // ================================================================== HIRELINGS
   // [mercs] rarity, perks, levels, gear and revival: docs/MERCENARIES.md. Gear, the stash, the outfitter and XP live in
   // src/meta/44_run_mercs.js; the pure rules in KD.mercs (src/sim/29_mercs.js).
-  R.hirelingSlots = function (run) { var r = R.rules(run); return r.noHirelings ? 0 : T().HIRELING_SLOTS + (r.hirelingSlots || 0); };
+  R.hirelingSlots = function (run) {
+    var r = R.rules(run); if (r.noHirelings) return 0;
+    var n = T().HIRELING_SLOTS + (r.hirelingSlots || 0), wb = R.warband(run);
+    return wb.company ? Math.max(n + wb.slots, KD.data.warband.COMPANY) : n + wb.slots;
+  };
+  /**
+   * [warband] warband(run) -> { slots, company }: what the hero's own build adds to the company (docs/MERCENARIES.md section
+   * 10). `slots`: the sum of flags.hirelingSlots on the live nodes of its tree (the Bannerlord's Muster Roll, Shield Wall,
+   * Crossbow Line); `company`: the keystone Lord of the Host (a company of KD.data.warband.COMPANY, cheaper hirelings, more
+   * offers). Per hero, from its own run: a guest's build never changes the host's company.
+   */
+  R.warband = function (run) {
+    var out = { slots: 0, company: false }, hero = run && run.hero;
+    if (!hero || !KD.web || !KD.data.warband || !hero.web) return out;
+    try {
+      if (KD.web.flagTotal) out.slots = KD.web.flagTotal(hero, run, 'hirelingSlots') || 0;
+      out.company = KD.web.hasEffect(hero, run, 'tree_bannerlord_host');
+    } catch (err) { out.slots = 0; out.company = false; }
+    return out;
+  };
   function hirelingName(run, def, rng) {
     var names = KD.data.hirelingNames.filter(function (n) { return !run.hirelings.some(function (h) { return h.name.indexOf(n + ' ') === 0; }); });
     return rng.pick(names.length ? names : KD.data.hirelingNames) + ' the ' + def.name;
@@ -66656,6 +67075,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (rules.firstHirelingFree && !run.flags.freeHireUsed) return 0;
     if (!rarity) { var o = offerOf(run, defId); rarity = o && o.rarity; }
     var rm = KD.mercs ? KD.mercs.rarity(rarity || 'common').cost : 1;
+    if (R.warband(run).company) rm *= KD.data.warband.HOST_COST;           // [warband] Lord of the Host: hirelings cost less
     return Math.max(1, Math.round(R.goldAmount(run, d.cost) * rm * (1 - R.repDiscount(run, d.faction))));
   };
   /**
@@ -66669,9 +67089,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     rng = rng || R.rng(run, 'hirelings:' + run.area.slot + ':' + run.area.areaId);
     var home = (KD.data.areaRun[run.area.areaId] || {}).faction;
     var ok = KD.list('hirelings').filter(function (d) { return (run.factions[d.faction] ? run.factions[d.faction].rep : 0) >= d.repReq; });
-    var pool = rng.shuffle(ok), picked = [];
-    pool.forEach(function (d) { if (picked.length < T().CAMP.hirelingOffers && d.faction === home) picked.push(d); });
-    pool.forEach(function (d) { if (picked.length < T().CAMP.hirelingOffers && picked.indexOf(d) < 0) picked.push(d); });
+    var pool = rng.shuffle(ok), picked = [], max = T().CAMP.hirelingOffers + (R.warband(run).company ? KD.data.warband.HOST_OFFERS : 0);      // [warband] more offers for Lord of the Host
+    pool.forEach(function (d) { if (picked.length < max && d.faction === home) picked.push(d); });
+    pool.forEach(function (d) { if (picked.length < max && picked.indexOf(d) < 0) picked.push(d); });
     var mr = R.rng(run, 'mercRarity:' + run.area.slot + ':' + run.area.areaId), act = run.area.act || 1;
     run.camp.hirelings = picked.map(function (d) {
       var o = { defId: d.id, name: hirelingName(run, d, rng), hired: false, rarity: 'common', perks: [] };
@@ -128466,7 +128886,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    * Top-left column: the player frame (class glyph, name, level, Health with damage-lag and Ward overlay, class
    * resource, Momentum), the status row, the contract tracker and the hirelings' health bars.
    */
-  var MAX_STATUS = 14, MAX_CONTRACTS = 3, MAX_HIRELINGS = 3;
+  var MAX_STATUS = 14, MAX_CONTRACTS = 3, MAX_HIRELINGS = 8;      // [warband] a Bannerlord's full company
   var EMPOWERED = { id: 'hud_empowered', t: 0, dur: 0, stacks: 1, mods: null, def: { name: 'Empowered', kind: 'buff', icon: 'dash', color: '#b8860b', desc: 'Momentum is 50 or more: your next damaging skill deals 50% more damage.' } };
   var BLOOM = { id: 'hud_bloom', t: 0, dur: 0, stacks: 1, mods: null, def: { name: 'Hollow Bloom', kind: 'debuff', icon: 'bloom', color: '#8a3ad0', desc: 'Corruption rises while you stand in the Bloom. Loot inside is richer.' } };
   var P = { statusN: 0, stances: [], stanceSig: '', level: -1, title: '', classId: '', momOn: false, contractSig: '', hireSig: '' };
@@ -128565,7 +128985,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         h.node = el('div.hud-hire.kd-hidden', [UI.icon('banner', 12, '#9fc4ee'), h.name, h.bar]);
         P.hires.push(h);
       }
-      P.hireBox = el('div.kd-plate.hud-hires.kd-hidden', P.hires.map(function (x) { return x.node; }));
+      P.hireHead = el('div.hud-hire-head.kd-hidden', [UI.icon('banner', 12, '#e2b94a'), P.hireHeadText = el('span.hud-hire-head-text')]);
+      P.hireSub = el('div.hud-hire-sub.kd-hidden');
+      P.hireBox = el('div.kd-plate.hud-hires.kd-hidden', [P.hireHead, P.hireSub].concat(P.hires.map(function (x) { return x.node; })));
       ctx.left.appendChild(P.frame); ctx.left.appendChild(P.statusRow); ctx.left.appendChild(P.contractBox); ctx.left.appendChild(P.hireBox);
     },
     device: function (ctx) {
@@ -128635,7 +129057,14 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       var cs = shown ? 'on' : 'off';
       if (cs !== P.contractSig) { P.contractBox.classList.toggle('kd-hidden', !shown); P.contractSig = cs; }
       // hirelings
-      var hs = world && world.hirelings || [], hn = 0;
+      var hs0 = world && world.hirelings || [], me = ctx.player, hs = [], hn = 0;
+      for (i = 0; i < hs0.length; i++) if (!me || !hs0[i].owner || hs0[i].owner === me) hs.push(hs0[i]);      // [warband] your own company (co-op: each hero sees theirs)
+      var cl = [];
+      try { cl = H.companyLines ? H.companyLines(world, me, run && KD.run && KD.run.hirelingSlots ? KD.run.hirelingSlots(run) : 0) : []; } catch (err) { cl = []; }
+      var ht = cl[0] || '', hb = cl[1] || '';
+      if (ht !== P.hireHeadSig) { P.hireHeadText.textContent = ht; P.hireHead.classList.toggle('kd-hidden', !ht); P.hireHeadSig = ht; }
+      if (hb !== P.hireSubSig) { P.hireSub.textContent = hb; P.hireSub.classList.toggle('kd-hidden', !hb); P.hireSubSig = hb; }
+      P.hireBox.classList.toggle('hud-hires-big', hs.length > 4);
       for (i = 0; i < P.hires.length; i++) {
         var a = hs[i], h = P.hires[i];
         if (!a) { if (h.id !== null) { h.node.classList.add('kd-hidden'); h.id = null; } continue; }
@@ -128644,10 +129073,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         h.bar.set(a.dead ? 0 : H.hpInt(a.hp), Math.round(a.hpMax));
         if (h.dead !== !!a.dead) { h.node.classList.toggle('hud-hire-dead', !!a.dead); h.dead = !!a.dead; }
       }
-      var hsig = hn ? 'on' : 'off';
+      var hsig = hn || ht ? 'on' : 'off';
       if (hsig !== P.hireSig) { P.hireBox.classList.toggle('kd-hidden', !hn); P.hireSig = hsig; }
     },
-    world: function () { P.stanceSig = '?'; P.level = -1; for (var i = 0; i < P.hires.length; i++) { if (P.hires[i].id !== null) { P.hires[i].node.classList.add('kd-hidden'); P.hires[i].id = null; } } P.hireSig = ''; }
+    world: function () { P.stanceSig = '?'; P.level = -1; for (var i = 0; i < P.hires.length; i++) { if (P.hires[i].id !== null) { P.hires[i].node.classList.add('kd-hidden'); P.hires[i].id = null; } } P.hireSig = ''; P.hireHeadSig = null; P.hireSubSig = null; }
   });
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -128707,6 +129136,25 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     }
     return out;
   };
+  /**
+   * [warband] companyLines(world, player, slots) -> [] or [head, extra?]: the Bannerlord's company over his hirelings' bars
+   * (docs/MERCENARIES.md section 10). head: "Company 6 of 8, 2 fallen, 1 in reserve"; extra: the field revive in progress
+   * ("Raising Aldra: 60%") or the Rally the Fallen cooldown ("Rally the Fallen: 23s" / "ready"). Only for a Bannerlord. Pure.
+   */
+  H.companyLines = function (world, p, slots) {
+    var W = KD.sim && KD.sim.warband;
+    if (!world || !p || !W || !W.active(p)) return [];
+    var inf = W.info(world, p);
+    if (!inf.records && !(slots > 2)) return [];
+    var head = 'Company ' + (inf.records - inf.fallen) + ' of ' + Math.max(inf.records, slots || 0);
+    if (inf.fallen) head += ', ' + inf.fallen + ' fallen';
+    if (inf.reserve) head += ', ' + inf.reserve + ' in reserve';
+    var out = [head];
+    if (inf.chan) out.push('Raising ' + inf.chan.name + ': ' + Math.round(inf.chan.pct * 100) + '%');
+    else if (inf.fallen && inf.rallyLeft >= 0) out.push('Rally the Fallen: ' + (inf.rallyLeft > 0 ? Math.ceil(inf.rallyLeft) + 's' : 'ready'));
+    else if (inf.fallen) out.push('Stand at their colours to raise them');
+    return out;
+  };
   /** pursuit(e) -> the movement speed bonus (0.3 = +30%) of a pursuing boss or mini-boss (buff `boss_pursuit`), else 0. */
   H.pursuit = function (e) {
     var s = e && e.statuses;
@@ -128744,8 +129192,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
   if (typeof document === 'undefined') return;
 
-  var MAX_ROWS = 5, MAX_LEAPS = 2;
-  var C = { rows: [], box: null, sig: '', shown: false, leaps: [], leapN: 0 };
+  var MAX_ROWS = 5, MAX_LEAPS = 2, MAX_COLOURS = 4;
+  var C = { rows: [], box: null, sig: '', shown: false, leaps: [], leapN: 0, cols: [], colList: [], colN: 0 };
   var ICON = { minion: ['skull', '#bfe3a0'], device: ['gear', '#e8c070'], trap: ['target', '#e0a070'], order: ['banner', '#9fc4ee'] };
 
   (H.parts = H.parts || []).push({
@@ -128763,6 +129211,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         var l = { a: el('div.hud-leap.hud-leap-strike.kd-hidden', 'Strike'), b: el('div.hud-leap.hud-leap-slow.kd-hidden', 'Slows'), shown: false };
         ctx.worldRoot.appendChild(l.a); ctx.worldRoot.appendChild(l.b);
         C.leaps.push(l);
+      }
+      // [warband] the colours a fallen hireling of yours dropped: stand there to raise it (visual only)
+      for (i = 0; i < MAX_COLOURS; i++) {
+        var cn = { node: el('div.hud-leap.hud-colours.kd-hidden'), shown: false, text: '' };
+        ctx.worldRoot.appendChild(cn.node); C.cols.push(cn);
       }
     },
     world: function () {
@@ -128782,9 +129235,28 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         if (t !== r.t) { r.time.textContent = t < 0 ? '' : t + 's'; r.time.classList.toggle('hud-sum-soon', t >= 0 && t <= 3); r.t = t; }
       }
       if ((n > 0) !== C.shown) { C.box.classList.toggle('kd-hidden', !n); C.shown = n > 0; }
+      // [warband] dropped colours of fallen hirelings, with the field revive's progress
+      var W = KD.sim && KD.sim.warband, inf = null;
+      try { inf = W && ctx.world && ctx.player && !ctx.player.dead && W.active(ctx.player) ? W.info(ctx.world, ctx.player) : null; } catch (err) { inf = null; }
+      C.colList = (inf && inf.colours || []).slice(0, MAX_COLOURS).map(function (f) {
+        var t = f.name + ' fell here';
+        if (inf.chan && inf.chan.name === f.name) t = 'Raising ' + f.name + ': ' + Math.round(inf.chan.pct * 100) + '%';
+        return { x: f.x, z: f.z, text: t };
+      });
     },
     frame: function (ctx) {
       var world = ctx.world, list = world && world.telegraphs, zs = list && list.length > 1 ? H.leapZones(list) : null, n = zs ? Math.min(zs.length, MAX_LEAPS) : 0, pr = ctx.proj, r = ctx.renderer;
+      if (C.colList.length || C.colN) {
+        for (var ci = 0; ci < MAX_COLOURS; ci++) {
+          var cn = C.cols[ci], cf = C.colList[ci], con = false;
+          if (cf && r) {
+            r.project(cf.x, 0.4, cf.z, pr);
+            if (pr.visible) { con = true; cn.node.style.transform = 'translate3d(' + Math.round(pr.x) + 'px,' + Math.round(pr.y) + 'px,0) translate(-50%,-50%)'; if (cn.text !== cf.text) { cn.node.textContent = cf.text; cn.text = cf.text; } }
+          }
+          if (con !== cn.shown) { cn.node.classList.toggle('kd-hidden', !con); cn.shown = con; }
+        }
+        C.colN = C.colList.length;
+      }
       if (!n && !C.leapN) return;
       for (var i = 0; i < MAX_LEAPS; i++) {
         var l = C.leaps[i], z = i < n ? zs[i] : null, on = false;
@@ -128804,7 +129276,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       }
       C.leapN = n;
     },
-    end: function () { for (var i = 0; i < C.leaps.length; i++) { var l = C.leaps[i]; if (l.shown) { l.a.classList.add('kd-hidden'); l.b.classList.add('kd-hidden'); l.shown = false; } } C.leapN = 0; }
+    end: function () { for (var j = 0; j < C.cols.length; j++) if (C.cols[j].shown) { C.cols[j].node.classList.add('kd-hidden'); C.cols[j].shown = false; } C.colList = []; C.colN = 0; for (var i = 0; i < C.leaps.length; i++) { var l = C.leaps[i]; if (l.shown) { l.a.classList.add('kd-hidden'); l.b.classList.add('kd-hidden'); l.shown = false; } } C.leapN = 0; }
   });
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -142063,6 +142535,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     out.push(el('p.tr-pitch', b.pitch));
     out.push(el('div.tr-tags', b.tags.map(function (t) { return el('span.tr-tag', t); })));
     out.push(el('div.tr-bmeta', [el('span', 'Start skill: ' + TR.abilityName(b.start)), el('span', WU.pts(p.total) + ' in all, ' + WU.pts(p.left) + ' still to spend')]));
+    if (b.company && b.company.length) {       // [warband] the hirelings the build is meant to lead
+      var cn = {}; b.company.forEach(function (d) { var hd = KD.has('hirelings', d) ? KD.get('hirelings', d) : null; if (hd) cn[hd.name] = (cn[hd.name] || 0) + 1; });
+      out.push(el('p.tr-note', 'Hire: ' + Object.keys(cn).map(function (k) { return cn[k] > 1 ? cn[k] + ' ' + (/man$/.test(k) ? k.slice(0, -3) + 'men' : k + 's') : k; }).join(', ') + '.'));
+    }
     var words = startWords(S, b, p);
     if (words) out.push(el('p.tr-note', words));
     out.push(el('div.tr-bacts', [fid === b.id ? el('span.tr-following', 'Following') : UI.button('Follow this build', { kind: 'primary', small: !H.compact(), className: mb(H), disabled: !can, onClick: H.guard(function () { WU.api.follow(b.id); }) }),
