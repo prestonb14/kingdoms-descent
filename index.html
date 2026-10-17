@@ -4009,7 +4009,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.101';
+  KD.VERSION = '0.7.102';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -36806,6 +36806,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.102', date: '2026-10-17', title: 'Gloamblade rig fix', notes: [
+      'Fixed the Gloamblade sometimes freezing with one foot raised behind him after he stops running',
+      'The Gloamblade\'s legs now bend at his real hips and knees, so his run has a longer, more natural stride',
+      'His arms are no longer pulled back into his shoulders'
+    ] },
     { version: '0.7.101', date: '2026-10-17', title: 'No more health potions', notes: [
       'Health potions are gone for good: one life, and in a fight your healing comes from your build',
       'Gear that used to work with potions now does something new, like healing allies when you kill an elite or bandage up',
