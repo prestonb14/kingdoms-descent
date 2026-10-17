@@ -3889,7 +3889,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.94';
+  KD.VERSION = '0.7.95';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -35861,6 +35861,312 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/data/67_boss_moves.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+
+  /**
+   * BOSSES ON THE MOVE (owner: "make bosses move around a little more ... some leap away, throw things at you, or
+   * whatever fits them, or other neat events"). docs/BOSSES_LOOK.md "Bosses on the move".
+   * This file adds a small kit of movement to the boss and mini-boss definitions of 60_bosses_act1.js ..
+   * 65_bosses_act4.js and 64_bosses_roaming_nemesis.js after they are registered (load order: data files run in name
+   * order, so they already exist). Every added attack carries `always: true` (it survives a phase's own attack list)
+   * and `moved: true` (tests and docs find them). The shared footwork (circling between attacks, the crowd and kite
+   * clocks) and the `boss_hop` effect live in src/sim/26_boss_moves.js.
+   *
+   * Templates:
+   *   hop     the disengage: when its target has crowded it for a few seconds ({ custom: 'boss_hugged' }) it hops,
+   *           vaults, glides or rolls back (or to the side, or up to a perch), keeping its face to you, then
+   *           lands (a beat of `comboGap` 0.4 s) and does its `then` move: a throw, a lunge or a leap back in. Nothing
+   *           it does in the hop hurts.
+   *   toss    a lobbed throw (sack, rock, barrel, bottle, bell...): a red circle where it lands. Range 4.5..16 m.
+   *   hurl    a straight throw (axe, spear, knives): a red lane along it.
+   *   leap    a gap-closing jump at where you stand: a red circle at the landing (follows you during the first part
+   *           of the wind-up, then stays), the body rises (arc) and lands with a blast.
+   * Melee stays as each boss had it; areas (landings, throws) show red, like every other area attack.
+   */
+  var D = KD.data = KD.data || {};
+  var LIST = D.bossMoves = {};
+  // every throw and leap hits this much harder than its listed `mult` (bench, docs/BOSSES_LOOK.md "Bosses on the move":
+  // a boss on the move spends time on its feet, its throws pay that back)
+  var DMG = 1.15;
+
+  function hop(boss, o) {
+    var a = { id: boss + '_' + (o.id || 'hop'), name: o.name, anim: o.anim || 'leap', windup: o.windup || 0.45, recover: o.recover || 0.3, range: [0, o.reach || 3.4],
+      cooldown: o.cd || 11, weight: o.w || 7, cond: { custom: 'boss_hugged' }, telegraph: false, noHold: true, noGlint: true, disengage: true, always: true, moved: true, los: false, comboGap: 0.4,
+      effects: [{ type: 'custom', fn: 'boss_hop', aimed: true, to: o.to || 'back', dist: o.dist || 6.5, time: o.time || 0.5, arc: o.arc === undefined ? 1.2 : o.arc, anim: o.hopAnim, fx: o.fx, onEnd: o.onEnd }] };
+    if (o.set) a.set = o.set;
+    if (o.then) a.combo = [boss + '_' + o.then];
+    return a;
+  }
+  function toss(boss, o) {
+    var ex = { radius: o.radius || 2.4, mult: (o.mult || 0.9) * DMG };
+    ['status', 'zone', 'fx', 'knockback', 'elem'].forEach(function (k) { if (o[k] !== undefined) ex[k] = o[k]; });
+    var a = { id: boss + '_' + o.id, name: o.name, anim: o.anim || 'throw', windup: o.windup || 0.8, recover: o.recover || 0.6, range: o.range || [4.5, 16],
+      cooldown: o.cd || 9, weight: o.w || 2, always: true, moved: true, delivery: 'ranged', lead: o.lead === undefined ? 0.4 : o.lead,
+      effects: [{ type: 'projectile', lob: o.lob || 3, speed: o.speed || 12, range: o.reach || 17, model: o.model, count: o.count || 1, lobScatter: o.scatter || 0, explode: ex }] };
+    if (o.elem) { a.elem = o.elem; a.effects[0].elem = o.elem; }
+    if (o.cond) a.cond = o.cond;
+    if (o.set) a.set = o.set;
+    return a;
+  }
+  function hurl(boss, o) {
+    var fx = { type: 'projectile', speed: o.speed || 22, range: o.reach || 18, mult: (o.mult || 0.9) * DMG, model: o.model, count: o.count || 1 };
+    if (o.spread) fx.spread = o.spread;
+    if (o.status) fx.status = o.status;
+    if (o.elem) fx.elem = o.elem;
+    if (o.knockback) fx.knockback = o.knockback;
+    var a = { id: boss + '_' + o.id, name: o.name, anim: o.anim || 'throw', windup: o.windup || 0.75, recover: o.recover || 0.55, range: o.range || [4.5, 16],
+      cooldown: o.cd || 8, weight: o.w || 2, always: true, moved: true, delivery: 'ranged', track: 0.6, lead: o.lead === undefined ? 0.3 : o.lead, effects: [fx] };
+    if (o.elem) a.elem = o.elem;
+    if (o.cond) a.cond = o.cond;
+    if (o.set) a.set = o.set;
+    return a;
+  }
+  function leap(boss, o) {
+    var land = [{ type: 'aoe', radius: o.radius || 3, mult: (o.mult || 1.1) * DMG, knockback: o.knockback === undefined ? 2 : o.knockback, fx: o.fx || 'ground_slam' }];
+    if (o.elem) land[0].elem = o.elem;
+    if (o.status) land[0].status = o.status;
+    if (o.zone) land[0].zone = o.zone;
+    var a = { id: boss + '_' + o.id, name: o.name, anim: o.anim || 'leap', windup: o.windup || 0.95, recover: o.recover || 0.75, range: o.range || [5, 14],
+      cooldown: o.cd || 10, weight: o.w || 2, armor: true, track: 0.5, los: false, always: true, moved: true,
+      effects: [{ type: 'dash', dir: 'aimPoint', dist: o.dist || 15, speed: o.speed || 20, arc: o.arc === undefined ? 2.2 : o.arc, onEnd: land }],
+      telegraph: { shape: 'circle', radius: o.radius || 3, at: 'aim' } };
+    if (o.cond) a.cond = o.cond;
+    if (o.set) a.set = o.set;
+    return a;
+  }
+  function zone(name, r, dur, mult, elem, extra) {
+    var z = { name: name, radius: r, duration: dur, tick: 0.5, mult: mult, fx: name };
+    if (elem) z.elem = elem;
+    for (var k in extra) z[k] = extra[k];
+    return z;
+  }
+  var KITED = { custom: 'boss_kited' };
+
+  /** boss id -> { moves: [attack records], hazards: [{ phase, set?, rec }], footwork?: { press, hugAfter } } */
+  function kit(boss, moves, hazards, footwork) { LIST[boss] = { moves: moves, hazards: hazards || [], footwork: footwork || null }; }
+
+  // =============================================================================================
+  // ACT I
+  // =============================================================================================
+  kit('scarecrow_reeve', [
+    hop('scarecrow_reeve', { name: 'Pole Spring', anim: 'leap', dist: 6.5, arc: 1.8, then: 'scythe_toss' }),
+    hurl('scarecrow_reeve', { id: 'scythe_toss', name: 'Scythe Throw', model: 'scythe', mult: 0.9, speed: 18, range: [4.5, 14], cd: 10, status: { id: 'bleed', chance: 0.4 } }),
+    leap('scarecrow_reeve', { id: 'pounce', name: 'Harvest Leap', anim: 'leap', range: [6, 14], cd: 12, radius: 2.8, mult: 1.0, cond: KITED })
+  ], [
+    { phase: 1, rec: { every: 10, first: 4, at: 'random', count: 2, spread: 7, effects: [{ type: 'aoe', radius: 2.4, delay: 1.3, mult: 0.6, elem: 'fire', persist: true, fx: 'fire_ground', zone: zone('stubble_fire', 2.4, 4, 0.16, 'fire', { fx: 'fire_ground' }) }] } }
+  ]);
+  kit('webmothers_brood', [
+    hop('webmothers_brood', { name: 'Up the Thread', anim: 'pounce', dist: 7, arc: 2.6, time: 0.6, then: 'web_glob' }),
+    toss('webmothers_brood', { id: 'web_glob', name: 'Web Glob', anim: 'spit', model: 'web', radius: 2.6, mult: 0.7, elem: 'poison', status: { id: 'slow', dur: 2.5, power: 0.45 }, cd: 9 })
+  ]);
+  kit('hollow_treant', [
+    hop('hollow_treant', { name: 'Uprooting Stride', anim: 'slam', to: 'side', dist: 5, arc: 0.6, time: 0.85, w: 4, cd: 12,
+      onEnd: [{ type: 'aoe', at: 'self', radius: 3.6, delay: 0.55, mult: 0.8, knockback: 3, persist: true, fx: 'roots' }] }),
+    toss('hollow_treant', { id: 'boulder', name: 'Mossy Boulder', anim: 'overhead', model: 'boulder', windup: 1.0, radius: 3.0, mult: 1.1, knockback: 2, fx: 'rock_burst', range: [6, 18], cd: 10, lob: 4 })
+  ]);
+  kit('leech_queen', [
+    hop('leech_queen', { name: 'Slither Back', anim: 'burrow', dist: 6, arc: 0.4, time: 0.55, then: 'bile' }),
+    toss('leech_queen', { id: 'bile', name: 'Bile Spit', anim: 'spit', model: 'glob', elem: 'poison', radius: 2.4, mult: 0.8, cd: 9, zone: zone('black_water', 2.4, 5, 0.14, 'poison', { slow: 0.2, fx: 'poison_pool' }) })
+  ]);
+  kit('bog_mother', [
+    hop('bog_mother', { name: 'Ooze Away', set: 'A', anim: 'charge', dist: 6.5, arc: 1.6, time: 0.7, then: 'roll' }),
+    hop('bog_mother', { id: 'hop_b', name: 'Ooze Away', set: 'B', anim: 'charge', dist: 6.5, arc: 1.6, time: 0.7, then: 'bile_lob' }),
+    toss('bog_mother', { id: 'bile_lob', name: 'Bile Lob', set: 'B', anim: 'spit', model: 'sludge', elem: 'poison', count: 2, scatter: 2.2, radius: 2.4, mult: 0.75, cd: 9, zone: zone('black_water', 2.4, 6, 0.14, 'poison', { slow: 0.2, fx: 'poison_pool' }) }),
+    leap('bog_mother', { id: 'belly_flop', name: 'Belly Flop', anim: 'slam', radius: 3.6, mult: 1.2, arc: 2.6, windup: 1.1, range: [6, 14], cd: 13, cond: KITED, elem: 'poison', fx: 'splash' })
+  ]);
+  kit('hookjaw', [
+    hop('hookjaw', { name: 'Back Off!', anim: 'leap', dist: 5.5, arc: 0.9, then: 'parting_gift' }),
+    toss('hookjaw', { id: 'parting_gift', name: 'Parting Gift', model: 'bomb', elem: 'fire', count: 2, scatter: 2, radius: 2.2, mult: 0.8, cd: 11, status: { id: 'burn', chance: 0.4 } })
+  ]);
+  kit('captain_redtooth', [
+    hop('captain_redtooth', { id: 'backstep', name: 'Backstep', set: 'A', anim: 'dodge', dist: 5, arc: 0.5, time: 0.4, then: 'fleche' }),
+    hop('captain_redtooth', { id: 'backstep_b', name: 'Backstep', set: 'B', anim: 'dodge', dist: 5.5, arc: 0.5, time: 0.4, then: 'snap_shot' }),
+    hurl('captain_redtooth', { id: 'snap_shot', name: 'Snap Shot', set: 'B', anim: 'shoot_gun', model: 'shot', speed: 30, mult: 0.9, range: [4, 16], cd: 9 }),
+    hurl('captain_redtooth', { id: 'dirk', name: 'Thrown Dirk', set: 'A', model: 'knife', mult: 0.8, speed: 24, range: [5, 15], cd: 8, status: { id: 'bleed', chance: 0.5 }, cond: KITED })
+  ]);
+  kit('millers_shade', [
+    hop('millers_shade', { name: 'Drift Back', anim: 'cast_hand', dist: 7, arc: 1.4, time: 0.6, then: 'flour_sack' }),
+    toss('millers_shade', { id: 'flour_sack', name: 'Flour Sack', model: 'sack', radius: 2.8, mult: 0.8, cd: 10, status: { id: 'slow', dur: 2, power: 0.35 }, fx: 'dust_cloud' })
+  ]);
+  kit('grindwell', [
+    hop('grindwell', { name: 'Chaff Burst', set: 'A', anim: 'shout', dist: 6.5, arc: 1.3, time: 0.6, then: 'bolts', onEnd: [{ type: 'fx', name: 'dust_cloud' }] }),
+    hop('grindwell', { id: 'hop_b', name: 'Chaff Burst', set: 'B', anim: 'shout', dist: 6.5, arc: 1.3, time: 0.6, then: 'roll', onEnd: [{ type: 'fx', name: 'dust_cloud' }] }),
+    toss('grindwell', { id: 'sack_hurl', name: 'Sack Hurl', anim: 'overhead', model: 'sack', count: 2, scatter: 2.4, radius: 2.5, mult: 0.85, cd: 10, cond: KITED, zone: zone('rotten_floor', 2.4, 6, 0, null, { slow: 0.4, fx: 'broken_boards' }) })
+  ]);
+  kit('toll_warden', [
+    hop('toll_warden', { name: 'Halberd Vault', anim: 'leap', dist: 7, arc: 2.0, time: 0.6, then: 'charge' }),
+    toss('toll_warden', { id: 'coin_purse', name: 'Toll Purse', model: 'coin', count: 3, scatter: 2.6, radius: 2.0, mult: 0.7, cd: 11, range: [5, 15], cond: KITED })
+  ]);
+  kit('crowned_stag', [
+    hop('crowned_stag', { id: 'rear_spring', name: 'Rearing Spring', set: 'A', anim: 'pounce', dist: 7.5, arc: 2.2, time: 0.6, then: 'leap' }),
+    hop('crowned_stag', { id: 'rear_spring_b', name: 'Rearing Spring', set: 'B', anim: 'pounce', dist: 7.5, arc: 2.2, time: 0.6, then: 'bolts' }),
+    hop('crowned_stag', { id: 'sidestep', name: 'Royal Sidestep', anim: 'pounce', to: 'around', arc: 1.0, time: 0.5, w: 3, cd: 9, reach: 4.5 })
+  ]);
+
+  // =============================================================================================
+  // ACT II
+  // =============================================================================================
+  kit('rockjaw', [
+    hop('rockjaw', { name: 'Rolling Retreat', anim: 'charge', dist: 6.5, arc: 0.4, time: 0.6, then: 'spit' })
+  ], [
+    { phase: 1, rec: { every: 9, first: 3, at: 'random', count: 3, spread: 8, effects: [{ type: 'aoe', radius: 2.3, delay: 1.3, mult: 0.8, persist: true, fx: 'rockfall' }] } }
+  ]);
+  kit('gale_matriarch', [
+    hop('gale_matriarch', { id: 'take_wing', name: 'Take Wing', anim: 'swoop', to: 'perch', dist: 10, arc: 4.5, time: 0.9, then: 'dive' }),
+    leap('gale_matriarch', { id: 'dive', name: 'Diving Talons', anim: 'swoop', radius: 3.2, mult: 1.2, arc: 3.5, dist: 20, speed: 26, windup: 0.9, range: [7, 18], cd: 12, w: 2, cond: KITED, status: { id: 'bleed', chance: 0.5 } }),
+    toss('gale_matriarch', { id: 'stone_drop', name: 'Stone Drop', set: 'B', anim: 'swoop', model: 'stone', radius: 2.6, mult: 0.9, count: 2, scatter: 2.5, lob: 5, cd: 10 })
+  ]);
+  kit('drowned_ferryman', [
+    hop('drowned_ferryman', { name: 'Pole Push', anim: 'cast_staff', dist: 6.5, arc: 1.0, time: 0.55, then: 'light' })
+  ]);
+  kit('tide_wyrm', [
+    hop('tide_wyrm', { id: 'submerge', name: 'Slip Away', set: 'A', anim: 'burrow', dist: 7, arc: 0.3, time: 0.6, then: 'lunge' }),
+    hop('tide_wyrm', { id: 'submerge_b', name: 'Slip Away', set: 'B', anim: 'burrow', dist: 7, arc: 0.3, time: 0.6, then: 'jet' }),
+    toss('tide_wyrm', { id: 'stone_spit', name: 'River Stone', anim: 'spit', model: 'stone', radius: 2.4, mult: 0.85, cd: 9, cond: KITED, status: { id: 'soak', dur: 6 } })
+  ]);
+  kit('frostbitten_sergeant', [
+    hop('frostbitten_sergeant', { name: 'Fall Back', anim: 'leap', dist: 5.5, arc: 0.6, then: 'thrust' }),
+    hurl('frostbitten_sergeant', { id: 'javelin', name: 'Frozen Javelin', model: 'spear', elem: 'cold', mult: 0.9, speed: 22, range: [5, 16], cd: 9, status: { id: 'chill', dur: 3 } })
+  ], [
+    { phase: 1, rec: { every: 11, first: 5, at: 'random', count: 3, spread: 7, effects: [{ type: 'aoe', radius: 2.0, delay: 1.3, mult: 0.7, elem: 'cold', persist: true, fx: 'ice_shards', status: { id: 'chill', dur: 3 } }] } }
+  ]);
+  kit('ice_warden', [
+    hop('ice_warden', { id: 'ice_slide', name: 'Ice Slide', set: 'A', anim: 'charge', dist: 7.5, arc: 0, time: 0.55, then: 'charge' }),
+    hop('ice_warden', { id: 'ice_slide_b', name: 'Ice Slide', set: 'B', anim: 'charge', dist: 7.5, arc: 0, time: 0.55, then: 'orbs' }),
+    toss('ice_warden', { id: 'ice_block', name: 'Hurled Ice Block', anim: 'overhead', model: 'stone', elem: 'cold', radius: 2.8, mult: 1.0, windup: 0.95, cd: 10, range: [6, 17], status: { id: 'chill', dur: 3 }, fx: 'frost_burst' })
+  ]);
+  kit('pass_marshal', [
+    hop('pass_marshal', { name: 'Give Ground', anim: 'leap', dist: 5.5, arc: 0.6, then: 'skewer' })
+  ]);
+  kit('general_varr', [
+    hop('general_varr', { id: 'banner_vault', name: 'Banner Vault', set: 'A', anim: 'leap', dist: 7.5, arc: 2.0, time: 0.6, then: 'rush' }),
+    hop('general_varr', { id: 'banner_vault_b', name: 'Banner Vault', set: 'B', anim: 'leap', dist: 7.5, arc: 2.0, time: 0.6, then: 'firepots' }),
+    hurl('general_varr', { id: 'standard_throw', name: 'Hurl the Standard', set: 'A', anim: 'overhead', model: 'spear', speed: 24, mult: 1.1, windup: 0.95, range: [6, 18], cd: 11, knockback: 3, cond: KITED }),
+    leap('general_varr', { id: 'warlords_drop', name: 'Warlord\'s Drop', set: 'B', radius: 3.2, mult: 1.15, range: [6, 14], cd: 13, cond: KITED })
+  ]);
+
+  // =============================================================================================
+  // ACT III
+  // =============================================================================================
+  kit('gutter_king', [hop('gutter_king', { name: 'Gutter Roll', anim: 'dodge', dist: 6, arc: 0.4, then: 'offal' })]);
+  kit('beggar_prince', [hop('beggar_prince', { name: 'Tumble Away', anim: 'dodge', dist: 6, arc: 0.8, then: 'alms' })]);
+  kit('auctioneer', [hop('auctioneer', { name: 'Step Down', anim: 'leap', dist: 6, arc: 1.0, then: 'lot' })]);
+  kit('madam_silverhand', [
+    hop('madam_silverhand', { name: 'Silver Pirouette', anim: 'dodge', to: 'side', dist: 6, arc: 0.6, time: 0.4, then: 'stiletto' }),
+    hurl('madam_silverhand', { id: 'stiletto', name: 'Thrown Stiletto', model: 'knife', count: 3, spread: 24, mult: 0.6, speed: 24, range: [4, 15], cd: 9, status: { id: 'bleed', chance: 0.4 } })
+  ]);
+  kit('plague_alchemist', [hop('plague_alchemist', { name: 'Hop Back', anim: 'leap', dist: 6, arc: 1.0, then: 'flask' })]);
+  kit('ooze_sovereign', [
+    hop('ooze_sovereign', { id: 'ooze_hop', name: 'Ooze Hop', set: 'A', anim: 'slam', dist: 7, arc: 2.4, time: 0.7, then: 'spout' }),
+    hop('ooze_sovereign', { id: 'ooze_hop_b', name: 'Ooze Hop', set: 'B', anim: 'slam', dist: 7, arc: 2.4, time: 0.7, then: 'rain' }),
+    leap('ooze_sovereign', { id: 'crash', name: 'Sovereign Crash', anim: 'slam', radius: 3.8, mult: 1.2, arc: 3.0, windup: 1.1, range: [6, 15], cd: 13, cond: KITED, elem: 'poison', fx: 'splash',
+      zone: zone('sludge_pool', 3, 5, 0.12, 'poison', { slow: 0.25, fx: 'poison_pool' }) })
+  ]);
+  kit('smuggler_admiral', [hop('smuggler_admiral', { name: 'Rope Swing', anim: 'leap', to: 'side', dist: 6.5, arc: 1.8, then: 'keg' })]);
+  kit('maw_of_the_deep', [
+    hop('maw_of_the_deep', { id: 'sink', name: 'Sink Back', set: 'A', anim: 'burrow', dist: 7, arc: 0, time: 0.7, then: 'surge' }),
+    hop('maw_of_the_deep', { id: 'sink_b', name: 'Sink Back', set: 'B', anim: 'burrow', dist: 7, arc: 0, time: 0.7, then: 'spines' }),
+    toss('maw_of_the_deep', { id: 'gout', name: 'Bilge Gout', anim: 'spit', model: 'glob', elem: 'poison', radius: 2.8, mult: 0.9, range: [6, 17], cd: 10, cond: KITED,
+      zone: zone('bilge', 2.6, 5, 0.12, 'poison', { fx: 'poison_pool' }) })
+  ]);
+  kit('gargoyle_pair', [
+    hop('gargoyle_pair', { id: 'take_wing', name: 'Take Wing', anim: 'swoop', to: 'perch', dist: 9, arc: 4.0, time: 0.8, then: 'stone_dive' }),
+    leap('gargoyle_pair', { id: 'stone_dive', name: 'Stone Dive', anim: 'swoop', radius: 2.8, mult: 1.1, arc: 3.2, dist: 18, speed: 26, windup: 0.9, range: [7, 16], cd: 12, cond: KITED, fx: 'rock_burst' })
+  ]);
+  kit('bell_ringer', [
+    hop('bell_ringer', { id: 'rope_swing', name: 'Bell-Rope Swing', set: 'A', anim: 'leap', to: 'side', dist: 7, arc: 2.6, time: 0.65, then: 'bell_toss' }),
+    hop('bell_ringer', { id: 'rope_swing_b', name: 'Bell-Rope Swing', set: 'B', anim: 'leap', to: 'side', dist: 7, arc: 2.6, time: 0.65, then: 'bell_toss' }),
+    toss('bell_ringer', { id: 'bell_toss', name: 'Handbell Toss', model: 'bell', radius: 2.6, mult: 0.9, cd: 9, status: { id: 'stun', dur: 0.4, chance: 0.4 }, fx: 'toll' })
+  ]);
+  kit('siege_foreman', [hop('siege_foreman', { name: 'Clear Out', anim: 'leap', dist: 6, arc: 0.8, then: 'keg' })]);
+  kit('iron_warden', [
+    hop('iron_warden', { id: 'iron_stride', name: 'Iron Stride', set: 'A', anim: 'charge', dist: 6.5, arc: 0.7, time: 0.65, then: 'charge',
+      onEnd: [{ type: 'aoe', at: 'self', radius: 3.4, delay: 0.5, mult: 0.7, knockback: 2, persist: true, fx: 'ground_slam' }] }),
+    hop('iron_warden', { id: 'iron_stride_b', name: 'Iron Stride', set: 'B', anim: 'charge', dist: 6.5, arc: 0.7, time: 0.65, then: 'bombard' }),
+    toss('iron_warden', { id: 'rubble', name: 'Wall Rubble', anim: 'overhead', model: 'stone', count: 2, scatter: 2.6, radius: 2.7, mult: 0.9, range: [6, 17], cd: 11, cond: KITED, fx: 'rockfall' })
+  ]);
+  kit('marble_sentinel', [
+    hop('marble_sentinel', { name: 'Marble Step', anim: 'slam', dist: 5.5, arc: 0.5, time: 0.6, then: 'chunk' }),
+    toss('marble_sentinel', { id: 'chunk', name: 'Marble Chunk', anim: 'overhead', model: 'stone', radius: 2.6, mult: 0.9, cd: 10, fx: 'rock_burst' })
+  ]);
+  kit('houndmaster_orsk', [
+    hop('houndmaster_orsk', { id: 'step_back', name: 'Step Back', set: 'A', anim: 'dodge', dist: 5.5, arc: 0.4, then: 'bolas' }),
+    hop('houndmaster_orsk', { id: 'step_back_b', name: 'Step Back', set: 'B', anim: 'dodge', dist: 5.5, arc: 0.4, then: 'feed' })
+  ]);
+  kit('haunted_plate', [hop('haunted_plate', { name: 'Clatter Back', anim: 'leap', dist: 5.5, arc: 0.8, then: 'gauntlets' })]);
+  kit('captain_valdric', [
+    hop('captain_valdric', { id: 'withdraw', name: 'Withdraw', set: 'A', anim: 'leap', dist: 6, arc: 0.6, then: 'advance' }),
+    hop('captain_valdric', { id: 'withdraw_b', name: 'Withdraw', set: 'B', anim: 'leap', dist: 6, arc: 0.6, then: 'axes' })
+  ]);
+  kit('ink_archivist', [hop('ink_archivist', { name: 'Page Scatter', anim: 'cast_hand', dist: 7, arc: 1.2, time: 0.5, then: 'bolt', fx: 'blink' })]);
+  kit('archmagus_seln', [hop('archmagus_seln', { name: 'Blink Away', anim: 'cast_hand', to: 'side', dist: 7.5, arc: 0.8, time: 0.35, then: 'bolt' })]);
+  kit('choir_master', [hop('choir_master', { name: 'Rest', anim: 'cast_hand', dist: 7, arc: 1.0, time: 0.5, then: 'baton' })]);
+  kit('high_priest_ombre', [
+    hop('high_priest_ombre', { name: 'Shadow Glide', anim: 'cast_hand', dist: 7, arc: 1.4, time: 0.6, then: 'censer' }),
+    toss('high_priest_ombre', { id: 'censer', name: 'Hurled Censer', model: 'censer', elem: 'shadow', radius: 2.6, mult: 0.85, cd: 10, zone: zone('censer_smoke', 2.4, 4, 0.12, 'shadow', { fx: 'smoke' }) })
+  ]);
+  kit('executioner', [hop('executioner', { name: 'Step Off the Block', anim: 'leap', dist: 5.5, arc: 0.8, then: 'haul' })]);
+  kit('jailer_marrow', [
+    hop('jailer_marrow', { name: 'Lumber Back', set: 'A', anim: 'slam', dist: 6, arc: 0.6, time: 0.65, then: 'hook' }),
+    hop('jailer_marrow', { id: 'hop_b', name: 'Lumber Back', set: 'B', anim: 'slam', dist: 6, arc: 0.6, time: 0.65, then: 'spikes' }),
+    toss('jailer_marrow', { id: 'shackles', name: 'Hurled Shackles', model: 'weight', radius: 2.4, mult: 0.85, cd: 10, status: { id: 'root', dur: 1.0 }, fx: 'shackles', cond: KITED })
+  ]);
+  kit('wyvern_rider', [
+    hop('wyvern_rider', { id: 'take_wing', name: 'Take Wing', anim: 'swoop', to: 'perch', dist: 10, arc: 4.5, time: 0.9, then: 'dive' }),
+    leap('wyvern_rider', { id: 'dive', name: 'Lance Dive', anim: 'swoop', radius: 3.0, mult: 1.15, arc: 3.6, dist: 20, speed: 26, windup: 0.9, range: [7, 18], cd: 12, cond: KITED })
+  ]);
+  kit('windlord_caul', [
+    hop('windlord_caul', { id: 'updraft', name: 'Updraft', set: 'A', anim: 'leap', dist: 7.5, arc: 3.2, time: 0.7, then: 'lunge' }),
+    hop('windlord_caul', { id: 'updraft_b', name: 'Updraft', set: 'B', anim: 'leap', dist: 7.5, arc: 3.2, time: 0.7, then: 'javelin' })
+  ]);
+
+  // =============================================================================================
+  // ACT IV, HIDDEN, ROAMING
+  // =============================================================================================
+  kit('royal_guard_gauntlet', [hop('royal_guard_gauntlet', { name: 'Guard Step', anim: 'dodge', dist: 5.5, arc: 0.5, then: 'rush' })]);
+  kit('hollow_king', [
+    hop('hollow_king', { id: 'withdraw', name: 'Kingly Withdrawal', set: 'A', anim: 'leap', dist: 7, arc: 1.4, time: 0.55, then: 'road' }),
+    hop('hollow_king', { id: 'withdraw_b', name: 'Kingly Withdrawal', set: 'B', anim: 'leap', dist: 7, arc: 1.4, time: 0.55, then: 'bolts' }),
+    leap('hollow_king', { id: 'kingsfall', name: 'Kingsfall', radius: 3.6, mult: 1.25, arc: 3.0, windup: 1.0, range: [6, 16], cd: 12, cond: KITED, elem: 'shadow', fx: 'kings_justice' })
+  ]);
+  kit('plague_saint', [
+    hop('plague_saint', { id: 'retreat', name: 'Pilgrim\'s Retreat', set: 'A', anim: 'leap', dist: 6, arc: 0.8, then: 'doves' }),
+    hop('plague_saint', { id: 'retreat_b', name: 'Pilgrim\'s Retreat', set: 'B', anim: 'leap', dist: 6, arc: 0.8, then: 'censer' })
+  ]);
+  kit('the_barker', [
+    hop('the_barker', { name: 'Showman\'s Flip', anim: 'leap', dist: 6.5, arc: 2.2, time: 0.6, then: 'juggle' }),
+    hurl('the_barker', { id: 'juggle', name: 'Juggler\'s Knives', model: 'knife', count: 3, spread: 30, mult: 0.6, speed: 22, range: [4, 15], cd: 9 })
+  ]);
+  kit('warlord_drog', [
+    hop('warlord_drog', { id: 'stomp_back', name: 'Stomp Back', set: 'A', anim: 'slam', dist: 6, arc: 0.6, time: 0.6, then: 'leap' }),
+    hop('warlord_drog', { id: 'stomp_back_b', name: 'Stomp Back', set: 'B', anim: 'slam', dist: 6, arc: 0.6, time: 0.6, then: 'javelins' })
+  ]);
+  kit('pale_rider', [hop('pale_rider', { name: 'Rear Away', anim: 'pounce', dist: 7, arc: 1.4, time: 0.55, then: 'ride' })]);
+  kit('carrion_knight', [hop('carrion_knight', { name: 'Shield Step', anim: 'leap', dist: 5.5, arc: 0.6, then: 'thrust' })]);
+
+  // ---------------------------------------------------------------------------------------------
+  // apply: append the moves to each definition, add the phase hazards
+  // ---------------------------------------------------------------------------------------------
+  Object.keys(LIST).forEach(function (id) {
+    if (!KD.has('enemies', id)) return;
+    var def = KD.get('enemies', id), k = LIST[id];
+    def.attacks = (def.attacks || []).concat(k.moves);
+    if (k.footwork && def.boss) def.boss.footwork = k.footwork;
+    k.hazards.forEach(function (h) {
+      var b = def.boss; if (!b) return;
+      var lists = [];
+      if (b.sets) Object.keys(b.sets).forEach(function (s) { if (!h.set || h.set === s) lists.push(b.sets[s].phases); });
+      if (b.phases) lists.push(b.phases);
+      lists.forEach(function (ph) { var p = ph && ph[h.phase]; if (p) p.hazards = (p.hazards || []).concat([h.rec]); });
+    });
+  });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/data/70_story_lines.js
 (function (root) {
   'use strict';
@@ -36252,6 +36558,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.95', date: '2026-10-17', title: 'Livelier bosses', notes: [
+      'Bosses move more: crowd one and it hops, vaults or slithers back, then throws, charges or leaps back in',
+      'Run away and bosses punish it with thrown weapons, sacks, rocks and leaps, each with a red mark where it lands',
+      'Flyers climb up and dive, and a few arenas now rain fire, rocks or ice in the second phase'
+    ] },
     { version: '0.7.94', date: '2026-10-17', title: 'Smarter enemies', notes: [
       'Enemies now work together: they take turns, spread out around you and come at your flanks instead of queueing in a line',
       'Archers look for a clear shot and never fire through their friends, and shield bearers step in to guard them',
@@ -43442,10 +43753,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (e.removed) return;
     if (e.dead) { e.vx = e.vz = 0; e.spd = 0; return; }
     var dx = 0, dz = 0, px = e.x, pz = e.z, m = e.motion, ex = 0, ez = 0;     // ex, ez: displacement not caused by the character itself
+    if (!m && e.y) e.y = 0;                                                   // a leap cut short lands at once
     if (m) {
       var step = Math.min(dt, m.dur - m.t);
       dx = m.vx * step; dz = m.vz * step; m.t += dt;
       e.vx = m.vx; e.vz = m.vz;
+      if (m.arc) { var af = Math.min(1, m.t / m.dur); e.y = m.arc * 4 * af * (1 - af); }      // a leap's height (visual only)
     } else if (e.wx === 0 && e.wz === 0 && e.vx === 0 && e.vz === 0) {
       // at rest
     } else {
@@ -43476,7 +43789,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     }
     var sp = Math.sqrt(avx * avx + avz * avz);
     e.spd += (sp - e.spd) * Math.min(1, dt * 12);
-    if (m && m.t >= m.dur - 1e-6) { e.motion = null; e.vx *= 0.25; e.vz *= 0.25; if (m.onEnd) m.onEnd(world, e); }
+    if (m && m.t >= m.dur - 1e-6) { e.motion = null; e.vx *= 0.25; e.vz *= 0.25; if (m.arc) e.y = 0; if (m.onEnd) m.onEnd(world, e); }
     // facing
     if (e.faceYaw !== null && !(e.stunned || e.broken > 0)) {
       var rate = (e.kind === 'player' ? S.TUNE.turnRate : (e.turnRate || S.TUNE.enemyTurn)) * dt;
@@ -44577,6 +44890,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
           if (fx.type === 'melee') { if (!((fx.arc || 100) >= 360)) r = true; }
           else if (fx.type === 'dash') r = true;                    // a lunge, a leap, a spring back: all along the aim
           else if (fx.type === 'projectile' || fx.type === 'hook' || fx.type === 'blink') r = true;
+          else if (fx.type === 'custom' && fx.aimed) r = true;      // a custom move that goes by its target (a boss's hop, 26_boss_moves.js)
           else if (fx.type === 'aoe' || fx.type === 'zone') { if ((fx.at && fx.at !== 'self') || fx.shape === 'cone' || fx.shape === 'line') r = true; }
           if (fx.effects) walk(fx.effects);
         });
@@ -46301,7 +46615,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var hitIds = [], width = fx.width || (src.r + 0.7) * 2;
     var m = S.startMotion(world, src, Math.sin(yaw), Math.cos(yaw), dist, time, { through: fx.through !== false, iframes: fx.iframes ? (fx.iframes === true ? time : fx.iframes) : 0, kind: 'dash',
       onEnd: function () { if (fx.onEnd && !src.dead) K.runEffects(K.sub(ctx, { x: src.x, z: src.z, depth: ctx.depth + 1, cast: null }), fx.onEnd); } });
-    m.anim = fx.anim || null; m.cast = ctx.cast || null;
+    m.anim = fx.anim || null; m.cast = ctx.cast || null; if (fx.arc) m.arc = fx.arc;      // arc: the height of a leap (visual, e.y)
     if (fx.mult !== undefined || fx.status || fx.onHit) {
       m.onStep = function () {
         var list = world.queryCircle(src.x, src.z, width / 2);
@@ -49219,7 +49533,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       var jx = lx - e.x, jz = lz - e.z, jd = Math.sqrt(jx * jx + jz * jz), dist = jd - e.r - 0.5;
       if (dist < 0.6) return;
       e.yaw = Math.atan2(jx, jz);
-      S.startMotion(w, e, jx, jz, dist, PU.leapTime, { through: true, kind: 'leap' });
+      var lm = S.startMotion(w, e, jx, jz, dist, PU.leapTime, { through: true, kind: 'leap' });
+      lm.anim = 'leap'; lm.arc = Math.min(2.2, 0.6 + dist * 0.08);      // seen as a jump (e.y, visual only; 10_world.js moveChar)
       w.events.emit('fx', { name: 'dash', x: e.x, y: 0.5, z: e.z, src: e });
     });
   }
@@ -49375,8 +49690,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   function setAttacks(e, ph) {
     var b = e.boss, want = ph.attacks, ai = e.ai;
     var list = b.all.filter(function (a) {
-      if (a.always) return true;
       if (a.def.set && a.def.set !== b.set) return false;
+      if (a.always) return true;
       if (!want) return true;
       return want.indexOf(a.id) >= 0 || want.some(function (w) { return a.id === e.defId + '_' + w; });
     });
@@ -49467,6 +49782,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     for (i = 0; i < b.timers.length; i++) { var tm = b.timers[i]; tm.t -= dt; if (tm.t <= 0) { tm.t += tm.rec.every || 10; Bs.fire(world, e, tm); } }
     for (i = 0; i < b.twistTimers.length; i++) { var tw = b.twistTimers[i]; tw.t -= dt; if (tw.t <= 0) { tw.t += tw.rec.every || 10; Bs.fire(world, e, tw); } }
     pursue(world, e, dt);
+    if (Bs.footwork) Bs.footwork(world, e, dt);      // circling between attacks, crowd and kite clocks (26_boss_moves.js)
     events(world, e, dt);
     var en = b.script.enrage;
     if (en && !b.enraged && world.time - b.engagedAt >= en.time * (world.rules.bossEnrageMult || 1)) {
@@ -49480,7 +49796,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   /** The fight was abandoned (leash): restore the boss and remove what it summoned. */
   Bs.reset = function (world, e) {
     var b = e.boss;
-    b.engagedAt = -1; b.phase = -1; b.enraged = false; b.timers = []; b.twistTimers = []; b.farT = 0; b.leapCd = 0; b.hasteV = 0;
+    b.engagedAt = -1; b.phase = -1; b.enraged = false; b.timers = []; b.twistTimers = []; b.farT = 0; b.leapCd = 0; b.hasteV = 0; b.hugT = 0; b.spNext = undefined; if (e.ai) e.ai.spaceUntil = 0;
     b.evT = undefined; b.desperate = false; b.reborn = false;
     if (S.hasStatus(e, 'boss_desperate')) S.removeStatus(world, e, 'boss_desperate', 'reset');
     if (S.hasStatus(e, 'boss_unbound')) S.removeStatus(world, e, 'boss_unbound', 'reset');
@@ -49600,6 +49916,165 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       return;
     }
     return step.call(this, dt);
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/sim/26_boss_moves.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var U = KD.util;
+  var S = KD.sim = KD.sim || {};
+  var K = KD.skills = KD.skills || {};
+  var Bs = S.boss = S.boss || {};
+  K.custom = K.custom || {};
+
+  /**
+   * BOSSES ON THE MOVE (owner: "for boss fights make bosses move around a little more: a lot of them end up with the
+   * boss just sitting in one spot and you hitting it unless you have to run. Nothing too crazy, but maybe some leap
+   * away, throw things at you, or whatever fits them"). docs/BOSSES_LOOK.md "Bosses on the move".
+   *
+   * Shared footwork for every boss and mini-boss that walks (speed > 0.5) and has no attack strings of its own
+   * (Greymaw keeps his `press` and chains):
+   *   - BETWEEN ATTACKS it circles in close instead of standing (`press`, src/sim/24_ai.js), at `press` of its speed;
+   *   - CROWDED: it counts the seconds its target (a hero) spends within `hug.near` m of its body (falling again at `hug.decay`
+   *     times the rate while the target keeps away); after `hug.after` seconds the condition `{ custom: 'boss_hugged' }`
+   *     holds, which its kit's disengage move (a hop or leap back, a vault, a glide, src/data/67_boss_moves.js) waits
+   *     for. The move resets the count;
+   *   - KITED: `{ custom: 'boss_kited' }` holds while its target has stayed out of reach for `kited` seconds (the
+   *     pursuit clock of 26_boss.js), for throws and leaps that punish running.
+   *   - SPACING: a boss whose current attacks include ranged ones (shortest reach `space.min` m or more) now and then
+   *     (every `space.every` s, chance `space.chance`, while one of those is off cooldown) gives ground for up to
+   *     `space.dur` s, circling `space.r` m off its target instead of in close, so its throws and bolts come into play
+   *     and it is not always under your blade. Its throw or bolt ends it.
+   * The moves themselves are ordinary attacks (data) with one new effect:
+   *   { type: 'custom', fn: 'boss_hop', to: 'back' | 'side' | 'perch' | 'around', dist, time, arc, anim, onEnd: [...] }
+   *     a jump that carries no damage: `back` away from the target, `side` across it, `perch` to the free spot furthest
+   *     from the target (a flyer climbing before a dive), `around` round the target to its flank. The body keeps facing
+   *     the target; `arc` is the height of the jump in metres (visual only: `e.y`). Blocked directions are skipped, and
+   *     so are spots more than `homeR` m from its post or within `packR` m of a pack that is not fighting; with no
+   *     room at all nothing happens.
+   * Everything is decided from world.rng and the sim's own clocks (lockstep safe).
+   */
+  var MV = Bs.MOVES = {
+    on: true,
+    press: [0.3, 0.32],              // share of its speed a mini-boss / boss circles at between attacks
+    hug: { near: 2.8, after: [5.5, 4.5], decay: 1.5 },
+    kited: 1.2,
+    homeR: 14,                       // a hop never lands further than this from its post (unless it is already further)
+    packR: 12,                       // nor within this of a pack that is not fighting
+    space: { min: 3, every: [3.5, 5.5], chance: 0.45, dur: [1.6, 2.8], r: [4.2, 6] },
+    gcd: 0.9                         // its pause between attacks is multiplied by this (paying back the time it spends moving)
+  };
+  var DIRS = [0, 0.45, -0.45, 0.9, -0.9, 1.35, -1.35];
+
+  function rankK(e) { return S.bossRank(e.tier) === 2 ? 1 : 0; }
+  function edge(a, b) { return U.dist(a.x, a.z, b.x, b.z) - a.r - b.r; }
+
+  /** Per step from KD.sim.boss.update while the boss fights. */
+  Bs.footwork = function (world, e, dt) {
+    var b = e.boss, ai = e.ai; if (!MV.on || !ai) return;
+    if (!b.fwSet) {
+      b.fwSet = true;
+      var fw = b.script.footwork;
+      if (fw !== false && ai.o.press === undefined && e.speed > 0.5 && !b.script.strings && !ai.o.keepRange) { ai.o.press = (fw && fw.press) || MV.press[rankK(e)]; b.fwPress = true; }
+    }
+    var t = ai.target, near = t && t.kind === 'player' && !t.dead && !t.removed && edge(e, t) < MV.hug.near;      // a hero crowding it (not summons)
+    if (near) b.hugT = (b.hugT || 0) + dt; else if (b.hugT > 0) b.hugT = Math.max(0, b.hugT - dt * MV.hug.decay);
+    var c = e.cast;
+    if (c && c !== b.fwCast) { b.fwCast = c; if (c.inst.def.disengage) b.hugT = 0; }
+    if (!ai.o.press || b.script.strings) return;      // Greymaw keeps his own pacing (27_boss_strings.js)
+    // spacing: only with ranged attacks in the current list (cached per list: phases swap ai.attacks), and only while
+    // one of them is off cooldown (it gives ground to use it, never to idle); a cast ends it
+    if (b.spList !== ai.attacks) {
+      b.spList = ai.attacks; b.spRanged = [];
+      for (var i = 0; i < ai.attacks.length; i++) { var a = ai.attacks[i]; if (a.use === 'attack' && a.weight > 0 && !a.def.disengage && a.min >= MV.space.min && !a.cond) b.spRanged.push(a.def.id); }
+    }
+    if (c && ai.spaceUntil > world.time && b.spRanged.indexOf(c.inst.def.id) >= 0) ai.spaceUntil = 0;      // it got its throw off
+    var SP = MV.space;
+    if (b.spNext === undefined) b.spNext = world.time + SP.every[0];
+    if (world.time >= b.spNext && !c && !e.motion && b.spRanged.length && readyAny(world, e, b.spRanged)) {      // decided between attacks
+      var rng = world.rng;
+      b.spNext = world.time + SP.every[0] + rng.next() * (SP.every[1] - SP.every[0]);
+      if (rng.next() < SP.chance) { ai.spaceUntil = world.time + SP.dur[0] + rng.next() * (SP.dur[1] - SP.dur[0]); ai.spaceR = SP.r[0] + rng.next() * (SP.r[1] - SP.r[0]); }
+    }
+  };
+  function readyAny(world, e, ids) { for (var i = 0; i < ids.length; i++) { var cd = e.cds[ids[i]]; if (!cd || cd.ready <= world.time) return true; } return false; }
+  // the pause between attacks of a boss on the move (Bs.gcdAfter, 26_boss.js: later phases press harder)
+  var baseGcd = Bs.gcdAfter;
+  Bs.gcdAfter = function (world, e, gcd) {
+    var g = baseGcd ? baseGcd(world, e, gcd) : gcd, b = e.boss;
+    return (MV.on && b && b.fwSet && b.fwPress) ? g * MV.gcd : g;
+  };
+  /** cond { custom: 'boss_hugged', after?: s }: its target has crowded it for long enough. */
+  K.custom.boss_hugged = function (ctx, c) {
+    var e = ctx.src, b = e.boss; if (!b) return false;
+    var need = (c && c.after) || (b.script.footwork && b.script.footwork.hugAfter) || MV.hug.after[rankK(e)];
+    return (b.hugT || 0) >= need;
+  };
+  /** cond { custom: 'boss_kited', after?: s }: its target has kept out of reach for a while. */
+  K.custom.boss_kited = function (ctx, c) {
+    var b = ctx.src.boss; return !!b && (b.farT || 0) >= ((c && c.after) || MV.kited);
+  };
+
+  /** The hop: a jump with no damage, away, across, to a perch or round the target; see the header. */
+  K.custom.boss_hop = function (ctx, fx) {
+    var world = ctx.world, e = ctx.src, t = ctx.target && !ctx.target.removed ? ctx.target : (e.ai && e.ai.target);
+    if (e.rooted || e.dead || e.removed) return;
+    var to = fx.to || 'back', dist = fx.dist || 6, base = t ? Math.atan2(e.x - t.x, e.z - t.z) : e.yaw + Math.PI, best = null, i, j;
+    var sgn = world.rng.next() < 0.5 ? 1 : -1, home = e.ai && e.ai.home;
+    // a landing spot: free, reachable on foot, within MV.homeR of where it stands guard (its arena), and not among the
+    // idle members of another pack (it never springs into a fight that is not its own)
+    function okSpot(px, pz) {
+      if (!S.isFree(world, px, pz, e.r + 0.1) || !S.walkLine(world, e.x, e.z, px, pz, e.r * 0.9)) return false;
+      if (home && U.dist2(px, pz, home.x, home.z) > MV.homeR * MV.homeR && U.dist2(px, pz, home.x, home.z) > U.dist2(e.x, e.z, home.x, home.z)) return false;
+      var list = world.packList;
+      for (var k = 0; k < list.length; k++) {
+        var pk = list[k]; if (pk.cleared || pk.id === e.spawnId || pk.kind === 'boss') continue;
+        if (U.dist2(px, pz, pk.x, pk.z) < MV.packR * MV.packR && pk.members.some(function (m) { return !m.dead && m.ai && m.ai.state !== 'combat'; })) return false;
+      }
+      return true;
+    }
+    function tryAt(a, d) {
+      var px = e.x + Math.sin(a) * d, pz = e.z + Math.cos(a) * d;
+      if (!okSpot(px, pz)) return null;
+      return { x: px, z: pz, d: d };
+    }
+    if (to === 'around' && t) {
+      var rr = Math.max(edge(e, t), 1.5) + e.r + t.r, a0 = Math.atan2(e.x - t.x, e.z - t.z);
+      for (i = 0; i < 4 && !best; i++) {
+        var a1 = a0 + sgn * (i % 2 ? -1 : 1) * (1.1 + 0.25 * Math.floor(i / 2)), px = t.x + Math.sin(a1) * rr, pz = t.z + Math.cos(a1) * rr;
+        if (okSpot(px, pz)) best = { x: px, z: pz, d: U.dist(e.x, e.z, px, pz) };
+      }
+    } else if (to === 'perch') {
+      var far = -1;
+      for (i = 0; i < 12; i++) {
+        var ap = base + (i / 12) * Math.PI * 2;
+        for (j = 0; j < 3; j++) {
+          var q = tryAt(ap, dist * (1 - j * 0.3)); if (!q) continue;
+          var fd = t ? U.dist(q.x, q.z, t.x, t.z) : q.d;
+          if (fd > far + 0.5) { far = fd; best = q; }
+          break;
+        }
+      }
+    } else {
+      var offs = to === 'side' ? [1.35 * sgn, -1.35 * sgn, 0.9 * sgn, -0.9 * sgn, 1.8 * sgn, -1.8 * sgn] : DIRS;
+      for (j = 0; j < 3 && !best; j++) for (i = 0; i < offs.length && !best; i++) best = tryAt(base + offs[i], dist * (1 - j * 0.3));
+    }
+    if (!best || best.d < 0.8) return;
+    var time = Math.max(0.15, (fx.time || best.d / 14) / (fx.fixedTime ? 1 : ((e.stats && e.stats.atkSpeed) || 1)));
+    var m = S.startMotion(world, e, best.x - e.x, best.z - e.z, best.d, time, { through: true, kind: 'leap',
+      onEnd: function (w, who) {
+        w.events.emit('fx', { name: fx.landFx || 'boss_land', x: who.x, y: 0.1, z: who.z, r: Math.max(1.2, who.r * 1.4), src: who });
+        if (fx.onEnd && !who.dead) K.runEffects(K.sub(ctx, { x: who.x, z: who.z, depth: ctx.depth + 1, cast: null }), fx.onEnd);
+      } });
+    m.anim = fx.anim || (ctx.def && ctx.def.anim) || 'dodge'; m.arc = fx.arc || 0; m.cast = ctx.cast || null;
+    if (t) e.faceYaw = Math.atan2(t.x - e.x, t.z - e.z);
+    if (ctx.cast && ctx.depth === 0) ctx.cast.dur = Math.max(ctx.cast.dur, ctx.cast.t + time);
+    world.events.emit('fx', { name: fx.fx || 'dash', x: e.x, y: 0.1, z: e.z, yaw: Math.atan2(best.x - e.x, best.z - e.z), len: best.d, src: e });
+    world.events.emit('bossMove', { e: e, move: ctx.def ? ctx.def.id : 'hop', to: to, x: e.x, z: e.z, x2: best.x, z2: best.z, time: time });
   };
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -52010,7 +52485,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
           effects: [{ type: 'summon', enemy: 'ref_grub', count: 2, cap: 3, tier: 'minion', spread: 4 }] },
         { id: 'ref_miniboss_ring', name: 'Shockwave', anim: 'slam', windup: 1.2, recover: 0.8, range: 6, cooldown: 10, weight: 2, armor: true, los: false,
           effects: [{ type: 'aoe', at: 'self', shape: 'ring', radius: 6.5, inner: 2.6, mult: 1.2 }] }],
-      boss: { phaseInvuln: 1.0, enrage: { time: 120 }, phases: [
+      // footwork: false: the test kit's mini-boss stands between its blows as it always did (src/sim/26_boss_moves.js; the
+      // hireling and class baselines of tests/mercs.test.js are measured against it)
+      boss: { phaseInvuln: 1.0, enrage: { time: 120 }, footwork: false, phases: [
         { at: 1, name: 'The Toll', attacks: ['ref_miniboss_cleave', 'ref_miniboss_slam', 'ref_miniboss_charge'], gcd: 1.0 },
         { at: 0.5, name: 'Blood Toll', gcd: 0.8, mods: [{ s: 'atkSpeed', t: 'inc', v: 0.12 }], msg: 'The Toll Brute bellows for its brood!',
           onEnter: [{ type: 'aoe', at: 'self', radius: 4.5, delay: 1.0, mult: 1.0, knockback: 4, persist: true }] }] } },
