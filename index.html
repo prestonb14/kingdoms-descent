@@ -4009,7 +4009,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.102';
+  KD.VERSION = '0.7.103';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -36806,6 +36806,13 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.103', date: '2026-10-17', title: 'Challenges, Endless Descent and the Bestiary', notes: [
+      'New Challenges menu: a Daily Run and a Weekly Run with fixed seeds, scores and result codes',
+      'Endless Descent unlocks after the Hollow King and keeps going deeper',
+      'A Bestiary fills in as you fight, with attack hints after a few kills',
+      'A short guided First Run for new players, skippable any time',
+      'Archers now loose arrows from the bow and turn to face the shot while drawing'
+    ] },
     { version: '0.7.102', date: '2026-10-17', title: 'Gloamblade rig fix', notes: [
       'Fixed the Gloamblade sometimes freezing with one foot raised behind him after he stops running',
       'The Gloamblade\'s legs now bend at his real hips and knees, so his run has a longer, more natural stride',
