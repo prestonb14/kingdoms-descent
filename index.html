@@ -3889,7 +3889,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.95';
+  KD.VERSION = '0.7.96';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -36558,6 +36558,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.96', date: '2026-10-17', title: 'Archers fire past their friends', notes: [
+      'Enemy archers no longer hold their shots or shuffle aside when a friend is in the way. They keep firing past their allies, so watch the back line.'
+    ] },
     { version: '0.7.95', date: '2026-10-17', title: 'Livelier bosses', notes: [
       'Bosses move more: crowd one and it hops, vaults or slithers back, then throws, charges or leaps back in',
       'Run away and bosses punish it with thrown weapons, sacks, rocks and leaps, each with a red mark where it lands',
@@ -48839,8 +48842,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    *     those in melee). The rest wait their turn a step out of reach, circling and now and then feinting in.
    *   - SURROUND: melee rushers spread round their target in an arc (up to `arc` degrees, never a full ring) instead of
    *     queueing in a line; ambushers take the flanks and the back. Tanks hold the front.
-   *   - RANGED keep their distance, walk to a spot that sees their target when a wall or a friend is in the way (they
-   *     never shoot through a friend: `friendlyFire`), and fall back to the group when badly hurt (`regroup`).
+   *   - RANGED keep their distance, walk to a spot that sees their target when a wall is in the way, and fall back to
+   *     the group when badly hurt (`regroup`). They shoot straight past their friends (owner: holding fire for a friend
+   *     in the line does not suit this game); `holdFire: true` brings back the old rule (hold the shot, step aside).
    *   - GUARDS: a tank with a hurt or ranged friend close to the fight steps in between that friend and its attacker.
    *   - SUPPORT stays behind the friends it heals, never alone in front.
    *   - CALLS: a scout (ranged, support, summoner or ambusher, or `ai.call`) that spots you may shout once; the
@@ -48854,6 +48858,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var T = A.TEAM = {
     on: true,
+    holdFire: false,                           // true: a straight shot that would cross a friend first is held back
     slots: 3,                                  // attackers (any attack) on one target at once, of the light tiers and elites
     rangedHold: 0.15,                          // seconds a ranged attacker holds its token past the wind-up
     ring: [0.5, 1.1],                          // a waiting melee enemy holds this far beyond its reach (m, by id)
@@ -48940,7 +48945,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   T.allow = function (world, e, ai, a, t) {
     if (e.kind !== 'enemy' || !t) return true;
     if (!T.free(world, e, t, a.melee)) return false;
-    if (T.on && member(e) && !a.melee && lineShot(a.def) && T.blocker(world, e, t)) { ai.ffT = world.time + 0.9; return false; }
+    if (T.on && T.holdFire && member(e) && !a.melee && lineShot(a.def) && T.blocker(world, e, t)) { ai.ffT = world.time + 0.9; return false; }
     return true;
   };
 
@@ -49035,7 +49040,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     for (var i = 0; i < offs.length; i++) {
       var a = base + offs[i], px = t.x + Math.sin(a) * dist, pz = t.z + Math.cos(a) * dist;
       if (!S.isFree(world, px, pz, e.r + 0.15) || !S.los(world, px, pz, t.x, t.z)) continue;
-      if (!wall && T.blocker(world, { x: px, z: pz, r: e.r, team: e.team, id: e.id }, t)) continue;
+      if (!wall && T.holdFire && T.blocker(world, { x: px, z: pz, r: e.r, team: e.team, id: e.id }, t)) continue;
       var dd = U.dist2(e.x, e.z, px, pz); if (dd < bd) { bd = dd; best = { x: px, z: pz }; }
     }
     return best;
