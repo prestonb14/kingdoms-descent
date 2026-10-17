@@ -2080,6 +2080,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 .coop-down { display: flex; align-items: center; gap: calc(9 * var(--u)); padding: calc(6 * var(--u)) calc(16 * var(--u)); font-size: calc(14 * var(--u)); color: #f6dcc4; white-space: nowrap;
   box-shadow: inset 0 0 0 var(--u) rgba(240, 112, 92, .55), 0 calc(3 * var(--u)) calc(10 * var(--u)) rgba(0, 0, 0, .6); }
 
+.coop-pull { display: flex; align-items: center; gap: calc(9 * var(--u)); padding: calc(6 * var(--u)) calc(14 * var(--u)); font-size: calc(14 * var(--u)); color: #f6dcc4; white-space: nowrap; margin-top: calc(6 * var(--u));
+  box-shadow: inset 0 0 0 var(--u) rgba(236, 208, 138, .6), 0 calc(3 * var(--u)) calc(10 * var(--u)) rgba(0, 0, 0, .6); }      /* [downed] hold interact to pull a friend up */
+.coop-pull-bar { display: block; width: calc(70 * var(--u)); height: calc(6 * var(--u)); border-radius: calc(3 * var(--u)); background: rgba(0, 0, 0, .55); overflow: hidden; }
+.coop-pull-fill { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #c99a48, #f3d991); }
+
 /* ---- phones and tablets (docs/MOBILE.md): .kd-touch = fingers, .kd-compact = a phone (860 x 460 units). A PC matches neither. ---- */
 .coop-copy.kd-btn { flex: none; }
 .kd-touch .coop-choice:hover { transform: none; }      /* a finger leaves "hover" stuck on the last thing it touched */
@@ -3889,7 +3894,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.99';
+  KD.VERSION = '0.7.100';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -36562,6 +36567,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.100', date: '2026-10-17', title: 'Downed, not dead (co-op)', notes: [
+      'Playing together, a hero who falls is now down, not dead: a friend can hold Use beside them to pull them back up',
+      'You have 20 seconds the first time, less each time after, and enemies can still finish you',
+      'If nobody pulls you up in time, or everyone is down, that hero is gone for good'
+    ] },
     { version: '0.7.99', date: '2026-10-17', title: 'Gloamblade simulated cloak (test)', notes: [
       'Gloamblade cloak test: a new Simulated option in Settings, Graphics, Art style lets the Gloamblade\'s cape swing with real cloth physics made in Blender',
       'It is off by default, so nothing changes unless you turn it on, and Classic brings the old cape straight back'
@@ -47861,6 +47871,222 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       default: break;
     }
   };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/sim/23_downed.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var U = KD.util;
+  var S = KD.sim = KD.sim || {};
+  if (!S.kill || !S.player || !S.player.update) return;
+
+  /**
+   * CO-OP DOWNED STATE (owner request, Oct 17; docs/COOP.md section 1 "Downed", docs/SIM.md "Downed").
+   *
+   * With one life, a hero in a world of two or more heroes who reaches 0 Health falls DOWN instead of dying: it lies
+   * where it fell for a bleed-out window. A standing ally who HOLDS interact within PULL_R m of it for PULL_TIME s pulls
+   * it up with PULL_HP of its Health (and INVULN s of invulnerability). The window shrinks with every fall in the same
+   * world (WINDOW[0], WINDOW[1], ...); a fall past the last entry is death at once. Enemies may keep hitting a downed
+   * hero: every direct hit takes HIT_COST s off its window. The pull is interrupted (progress back to 0) when the
+   * rescuer takes a hit; letting go or stepping away drains it at DRAIN per second, like the Bannerlord's field revive of
+   * a fallen hireling (src/sim/57_bannerlord_warband.js: same reach and the same 3 s), so the two read the same.
+   * The window does not run while someone is pulling. When the window runs out, or when no hero is left standing,
+   * the hero DIES FOR GOOD (`hero.flags.fallen`): a normal `death`, and in a later world of the same run it starts dead
+   * and watches.
+   *
+   * Solo play is untouched (one hero: the old death path). Everything reads world state, world.time, the inputs and the
+   * player order only, so lockstep co-op stays in step. The visuals read `p.downed` and `p.pullT` (the HUD).
+   * The module wraps S.kill, S.damage, S.heal, S.tickChar, S.player.update and S.player.useBandage at load time, so the
+   * files that own them stay as they are.
+   */
+  var D = S.downed = {};
+  D.TUNE = {
+    WINDOW: [20, 12, 6],        // seconds of bleed-out for the 1st, 2nd and 3rd fall in one world; a 4th fall is death
+    HIT_COST: 3,                // seconds a direct enemy hit takes off the window
+    PULL_R: 2.5,                // m, the reach of a pull (the Bannerlord's field revive uses the same)
+    PULL_TIME: 3,               // s of holding interact (the Bannerlord's field revive uses the same)
+    PULL_HP: 0.25,              // of maximum Health after a pull
+    DRAIN: 1,                   // progress lost per second while nobody holds
+    INVULN: 1.5                 // s of invulnerability after standing up
+  };
+
+  /** True when this world uses the downed rule (two or more heroes). */
+  D.on = function (world) { return !!(world && world.players && world.players.length > 1); };
+  /** A hero who is standing: alive and not down. */
+  D.standing = function (p) { return !!(p && !p.dead && !p.removed && !p.downed); };
+  /** The bleed-out window of the n-th fall (1-based) in this world, or 0 when that fall is death at once. */
+  D.windowFor = function (n) { var W = D.TUNE.WINDOW; return n >= 1 && n <= W.length ? W[n - 1] : 0; };
+  function anyStanding(world, except) {
+    for (var i = 0; i < world.players.length; i++) { var o = world.players[i]; if (o !== except && D.standing(o)) return true; }
+    return false;
+  }
+
+  /** p goes down. Returns true when it did (S.kill then stops). */
+  D.intercept = function (world, p, src, info) {
+    if (!D.on(world) || p.kind !== 'player' || p.dead || p.downed) return false;
+    if (info && (info.left || info.bleed)) return false;
+    var falls = (p.downs || 0) + 1, win = D.windowFor(falls);
+    if (!win || !anyStanding(world, p)) return false;
+    var K = KD.skills;
+    p.downs = falls;
+    var killer = src && src.owner ? src.owner : src;
+    p.downed = { t: 0, left: win, win: win, falls: falls, by: killer ? (killer.name || killer.defId || null) : null, killer: killer || null };
+    p.pullT = 0; p.pullBy = null;
+    p.hp = 1; p.ward = 0; p.hero.hp = p.hpOut = 1;
+    if (K && K.interrupt) K.interrupt(world, p, 'downed');
+    p.cast = null; p.motion = null; p.wx = p.wz = 0; p.kx = p.kz = 0; p.sprinting = false; p.combo = null;
+    if (p.hots) p.hots.length = 0;
+    if (p.statuses.length) { p.statuses.length = 0; S.refreshDerived(world, p); }
+    p.act.state = 'downed'; p.act.skill = null; p.act.t = 0; p.act.dur = win;
+    p.anim.clip = 'death'; p.anim.t = 0; p.anim.speed = 1;
+    world.events.emit('downed', { player: p, killer: killer || null, window: win, falls: falls, x: p.x, z: p.z });
+    world.events.emit('msg', { text: (p.name || 'A hero') + ' is down. Hold interact beside them to pull them up.', kind: 'warn', player: p });
+    return true;
+  };
+
+  /** The hero dies for good (window over, everyone down, or a fall past the last window). */
+  D.fall = function (world, p, why) {
+    if (p.dead) return;
+    var killer = p.downed ? p.downed.killer : null;
+    p.downed = null; p.pullT = 0; p.pullBy = null;
+    p.hero.flags = p.hero.flags || {};
+    p.hero.flags.fallen = true;
+    p.fallen = true;
+    world.events.emit('bleedOut', { player: p, why: why, x: p.x, z: p.z });
+    S.kill(world, p, killer && !killer.removed ? killer : null, { bleed: true });
+  };
+
+  /** A rescuer pulled p up. */
+  D.pullUp = function (world, p, by) {
+    p.downed = null; p.pullT = 0; p.pullBy = null;
+    p.hp = Math.max(1, p.hpMax * D.TUNE.PULL_HP); p.hero.hp = p.hpOut = p.hp;
+    p.invuln = Math.max(p.invuln || 0, D.TUNE.INVULN);
+    p.act.state = 'idle'; p.act.t = 0; p.anim.clip = 'idle'; p.anim.t = 0;
+    p.poise = p.poiseMax;
+    world.events.emit('pulledUp', { player: p, by: by, x: p.x, z: p.z });
+    world.events.emit('fx', { name: 'revive', x: p.x, y: 0.5, z: p.z, src: p, key: 'downed' });
+    world.events.emit('msg', { text: (p.name || 'A hero') + ' is back on their feet.', kind: 'info', player: p });
+  };
+
+  /** Every hero who is down dies when nobody stands (player order, so every client does the same). */
+  D.checkAllDown = function (world) {
+    if (!D.on(world) || anyStanding(world, null)) return false;
+    var any = false;
+    for (var i = 0; i < world.players.length; i++) { var o = world.players[i]; if (o.downed && !o.dead) { D.fall(world, o, 'all'); any = true; } }
+    return any;
+  };
+
+  /** The rescuer for a downed hero this step: the nearest standing hero holding interact within reach, free to act. */
+  function rescuerOf(world, p) {
+    var best = null, bd = Infinity, R = D.TUNE.PULL_R;
+    for (var i = 0; i < world.players.length; i++) {
+      var o = world.players[i];
+      if (o === p || !D.standing(o) || !o.held || !o.held.interact || o.cast || o.motion) continue;
+      if (o.stunned || o.feared || o.broken > 0 || o.hitstun > 0) continue;
+      var d = U.dist2(o.x, o.z, p.x, p.z);
+      if (d <= R * R && d < bd) { bd = d; best = o; }
+    }
+    return best;
+  }
+
+  /** One step of a downed hero (from S.tickChar). */
+  D.tick = function (world, p, dt) {
+    var d = p.downed, T = D.TUNE;
+    d.t += dt; p.anim.t += dt; p.act.t += dt;
+    if (p.invuln > 0) p.invuln -= dt;
+    if (p.fx.flash > 0) p.fx.flash = Math.max(0, p.fx.flash - dt * 7);
+    var r = rescuerOf(world, p);
+    if (r && p.pullBy !== r.id) { p.pullBy = r.id; p.pullHp = r.hp + (r.ward || 0); }      // a new rescuer starts where the last one left off
+    if (r) {
+      var life = r.hp + (r.ward || 0);                           // any hit the rescuer takes (Health or Ward) interrupts
+      if (life < p.pullHp - 1e-9) { p.pullT = 0; p.pullHp = life; world.events.emit('msg', { text: 'The pull was interrupted.', kind: 'warn', player: r }); }
+      else { p.pullHp = life; p.pullT += dt; }
+      if (p.pullT >= T.PULL_TIME) { D.pullUp(world, p, r); return; }
+    } else {
+      p.pullBy = null;
+      if (p.pullT > 0) p.pullT = Math.max(0, p.pullT - dt * T.DRAIN);
+      d.left -= dt;                                              // the window only runs while nobody pulls
+    }
+    if (d.left <= 0) D.fall(world, p, 'window');
+  };
+
+  /** A hit on a downed hero: no Health, but a direct hit from a foe takes HIT_COST s off the window. */
+  D.hit = function (world, src, tgt, spec, info) {
+    var direct = !spec.dot && !spec.reaction && !spec.thorns;
+    if (!direct || !src || !S.hostile(src, tgt) || tgt.invuln > 0) { info.immune = !!(tgt.invuln > 0); return info; }
+    info.hit = true;
+    tgt.downed.left -= D.TUNE.HIT_COST;
+    tgt.fx.flash = 1;
+    world.events.emit('damage', info);
+    if (tgt.downed.left <= 0 && !tgt.dead) D.fall(world, tgt, 'hit');
+    return info;
+  };
+
+  /** What the HUD shows: { left (s), win, falls, pull (0..1), by (rescuer id) } or null. Pure read. */
+  D.info = function (p) {
+    if (!p || !p.downed) return null;
+    return { left: Math.max(0, p.downed.left), win: p.downed.win, falls: p.downed.falls, pull: U.clamp((p.pullT || 0) / D.TUNE.PULL_TIME, 0, 1), by: p.pullBy || null };
+  };
+  /** The downed ally a standing hero could pull up from where it stands (nearest within reach), or null. */
+  D.pullable = function (world, p) {
+    if (!D.on(world) || !D.standing(p)) return null;
+    var best = null, bd = Infinity, R = D.TUNE.PULL_R;
+    for (var i = 0; i < world.players.length; i++) {
+      var o = world.players[i];
+      if (o === p || !o.downed || o.dead) continue;
+      var d = U.dist2(o.x, o.z, p.x, p.z);
+      if (d <= R * R && d < bd) { bd = d; best = o; }
+    }
+    return best;
+  };
+
+  // ---------------------------------------------------------------------------------------------
+  // The wrappers (installed once)
+  // ---------------------------------------------------------------------------------------------
+  if (S._downedWrapped) return;
+  S._downedWrapped = true;
+  var kill0 = S.kill;
+  S.kill = function (world, tgt, src, info) {
+    if (tgt && tgt.kind === 'player' && !tgt.dead && D.intercept(world, tgt, src, info)) { D.checkAllDown(world); return; }
+    var wasPlayer = tgt && tgt.kind === 'player' && !tgt.dead;
+    if (wasPlayer && D.on(world) && !(info && (info.left || info.bleed))) { tgt.hero.flags = tgt.hero.flags || {}; tgt.hero.flags.fallen = true; tgt.fallen = true; }   // a fall past the last window
+    kill0(world, tgt, src, info);
+    if (wasPlayer && tgt.dead) D.checkAllDown(world);
+  };
+  var damage0 = S.damage;
+  S.damage = function (world, src, tgt, spec) {
+    if (tgt && tgt.downed && !tgt.dead) {
+      var info = { src: src || null, target: tgt, srcId: src ? src.id : 0, targetId: tgt.id, amount: 0, absorbed: 0, total: 0, raw: 0, crit: false, elem: spec.elem || 'phys',
+        blocked: false, evaded: false, dodged: false, immune: false, kill: false, hit: false, weak: false, resisted: false, dot: !!spec.dot, ability: spec.ability || null,
+        reaction: spec.reaction || null, status: spec.status || null, x: tgt.x, y: tgt.h * 0.7, z: tgt.z, broke: false, poise: 0, overkill: 0, proc: !!spec.proc, downed: true };
+      return D.hit(world, src, tgt, spec, info);
+    }
+    return damage0(world, src, tgt, spec);
+  };
+  var heal0 = S.heal;
+  S.heal = function (world, tgt, amount, src, opts) { if (tgt && tgt.downed) return 0; return heal0(world, tgt, amount, src, opts); };
+  var tick0 = S.tickChar;
+  S.tickChar = function (world, e, dt) { if (e.downed && !e.dead && !e.removed) { D.tick(world, e, dt); return; } return tick0(world, e, dt); };
+  var update0 = S.player.update;
+  S.player.update = function (world, p, dt) {
+    if (p.downed && !p.dead) {                                    // no actions, no movement; the buttons still clear so a held key is not a fresh press later
+      p.wx = p.wz = 0;
+      var held = p.held || (p.held = {}), prev = p.prev || (p.prev = {});
+      for (var k in held) { held[k] = false; prev[k] = false; }
+      return;
+    }
+    if (!p.dead && D.on(world) && p.hero.flags && p.hero.flags.fallen) {      // fell for good in an earlier world of this run: it watches
+      p.fallen = true;
+      S.kill(world, p, null, { bleed: true, quiet: true });
+      return;
+    }
+    return update0(world, p, dt);
+  };
+  var bandage0 = S.player.useBandage;
+  S.player.useBandage = function (world, p) { if (p && p.downed) return false; return bandage0(world, p); };
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -79594,6 +79820,15 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       else mix(out, LEP_AIR, LEP_H, easeIn((q0 - 0.85) / 0.15), base);
       c.w = min(1, q0 / 0.08 + 0.4); return;
     }
+    // [bow release] an archer's leap that looses arrows (Leap Shot): aim and draw the bow through the wind-up, loose at
+    // the release, then drop into the leap's crouched landing while the dash carries the body away
+    var ec = c.e && c.e.cast;
+    if (c.hold === 'bow' && ec && ec.inst && KD.models && KD.models.shotCast && KD.models.shotCast(ec.inst.def)) {
+      if (c.state !== 'recover') { CLIPS.shoot_bow(c); return; }
+      var lq = c.p / 0.35;
+      if (lq < 1) { mix(out, BOW_F, LEP_F, smooth(lq), base); c.w = 1; } else { resolve(out, LEP_F, base); c.w = 1 - smooth((c.p - 0.35) / 0.65 * 1.1); }
+      out[CH.PULL] = 0; c.arrow = false; return;
+    }
     if (c.state === 'windup') {
       var p = c.p, j = 0.45;
       if (p < j) { resolve(out, LEP_C, base); c.w = easeOut(p / j / 0.7); }
@@ -79954,7 +80189,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         mToEuler(MA);
         var leg = J[side === 0 ? JLR : JLL], shinN = J[side === 0 ? JSR : JSL], foot = J[side === 0 ? JTR : JTL];
         rot3(leg, EU, 0);
-        shinN.rot[0] = bend;
+        // the whole shin rotation, not only its hinge angle: a layer applied after this one (the Gloamblade's mocap,
+        // 32_anim_gloamblade_mocap.js) writes all three Euler angles, and a knee bent past 90 degrees comes back from
+        // its quaternion as (180 - bend, 180, 180); a stale (.., 180, 180) under a fresh hinge angle flipped the shin
+        // and left one foot up behind the hero after a stop (owner, Oct 17: "leaves 1 foot up weirdly")
+        shinN.rot[0] = bend; shinN.rot[1] = 0; shinN.rot[2] = 0;
         // foot: world orientation Ry(fy) * Rx(fp)  ->  local = (MH * MA * Rx(bend))^T * F
         mulM(MB, MH, MA);
         var cb = cos(bend), sb = sin(bend);
@@ -135661,16 +135900,31 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       if (i === localIdx || !p || p.removed || (gone && gone[i])) continue;
       var classId = (p.hero && p.hero.classId) || r.classId || (p.cls && p.cls.id) || '';
       out.push({ idx: i, e: p, name: r.name || p.name || (p.hero && p.hero.name) || 'Player ' + (i + 1), classId: classId, level: (p.hero && p.hero.level) || p.level || 1,
-        hp: p.hp > 0 ? Math.max(1, Math.round(p.hp)) : 0, hpMax: Math.max(1, Math.round(p.hpMax || 1)), dead: !!p.dead, x: p.x || 0, z: p.z || 0, color: CU.mateColor(i) });
+        hp: p.hp > 0 && !p.downed ? Math.max(1, Math.round(p.hp)) : 0, hpMax: Math.max(1, Math.round(p.hpMax || 1)), dead: !!p.dead, x: p.x || 0, z: p.z || 0, color: CU.mateColor(i),
+        downed: !!(p.downed && !p.dead), left: p.downed ? Math.max(0, Math.ceil(p.downed.left)) : 0, pull: p.downed && p.pullT > 0 ? Math.min(1, p.pullT / CU.pullTime()) : 0 });      // [downed] src/sim/23_downed.js
     }
     return out;
   };
   /** The banner of a fallen local hero. watching: the name of the living hero the camera follows (may be empty). */
-  CU.downText = function (watching) { return 'You are down. You stand up again at the next gate.' + (watching ? ' Watching ' + watching + '.' : ''); };
+  // [downed] (src/sim/23_downed.js) a hero at 0 Health in co-op is DOWN for a short window: a friend can pull it up; when the
+  // window runs out it has FALLEN for good and watches the others.
+  CU.pullTime = function () { return KD.sim && KD.sim.downed ? KD.sim.downed.TUNE.PULL_TIME : 3; };
+  /** The banner of the local hero. watching: the hero the camera follows. down: null (fallen for good) or { left, pull } while down. */
+  CU.downText = function (watching, down) {
+    if (down) return down.pull > 0 ? 'A friend is pulling you up: ' + Math.round(down.pull * 100) + '%.' : 'You are down. A friend can pull you up: ' + Math.max(0, Math.ceil(down.left)) + ' s left.';
+    return 'You have fallen for good.' + (watching ? ' Watching ' + watching + '.' : '');
+  };
+  /** The prompt over a downed friend for the local hero (key: the interact key or button, '' on a touch screen). */
+  CU.pullText = function (name, pull, key) {
+    if (pull > 0) return 'Pulling ' + name + ' up: ' + Math.round(pull * 100) + '%';
+    return (key ? 'Hold ' + key : 'Hold Use') + ' to pull ' + name + ' up';
+  };
+  /** The toast when a friend goes down / falls for good. */
+  CU.allyDownText = function (name, fallen) { return fallen ? name + ' has fallen for good.' : name + ' is down. Hold interact beside them to pull them up.'; };
   /** The living hero the camera follows when the local hero is down (the first living one, as in KD.game). */
   CU.watched = function (world, roster) {
     if (!world || !world.players) return null;
-    for (var i = 0; i < world.players.length; i++) if (!world.players[i].dead) return { idx: i, name: (roster && roster[i] && roster[i].name) || world.players[i].name || 'a friend' };
+    for (var i = 0; i < world.players.length; i++) if (!world.players[i].dead && !world.players[i].downed) return { idx: i, name: (roster && roster[i] && roster[i].name) || world.players[i].name || 'a friend' };
     return null;
   };
   /** Words of the pause menu's way out and its confirmation, by role. */
@@ -136142,7 +136396,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    * The minimap (10_hud_map.js) and the map window (41_map.js) draw the teammates from CU.matesOf(game).
    */
   var MAX = 3;
-  var P = { box: null, frames: [], labels: [], down: null, downText: null, downSig: '', shown: false, game: null, demo: null };
+  var P = { box: null, frames: [], labels: [], down: null, downText: null, downSig: '', shown: false, game: null, demo: null, pull: null, pullText: null, pullKey: null, pullSig: '', pullLit: false };
   /**
    * Layout checks without a second player (tools/hud_touch_check.py, screenshots): KD.coopui.hud.demo = { mates: [the
    * objects CU.mates returns: { name, classId, level, hp, hpMax, dead, color, e: { x, y, z, h } }], down: name | '' }
@@ -136193,6 +136447,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     end: function () { if (P.box) { P.shown = true; hideAll(); } },
     frame: function (ctx) {
       var s = session(), w = ctx.world, demo = P.demo;
+      try { pullPrompt(ctx); } catch (e) { if (!P.pullErr) { P.pullErr = true; console.error('KD.coopui: pull prompt', e); } }
       if (!demo && (!s || !w || w.players.length < 2)) { hideAll(); return; }
       var mates = demo ? demo.mates : CU.mates(w, w.viewIndex || 0, s.roster, s.gone), i, m, pr = ctx.proj, r = ctx.renderer;
       if (!P.shown) { P.shown = true; P.box.classList.remove('kd-hidden'); }
@@ -136214,15 +136469,18 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
           f.level.nodeValue = String(m.level);
           f.node.setAttribute('aria-label', m.name + ', ' + CU.className(m.classId) + ' level ' + m.level);
         }
-        if (m.dead !== f.dead) { f.dead = m.dead; f.node.classList.toggle('coop-pf-dead', m.dead); }
+        var fd = m.dead || m.downed;
+        if (fd !== f.dead) { f.dead = fd; f.node.classList.toggle('coop-pf-dead', fd); }
+        var dw = m.downed ? 'DOWN ' + m.left + ' s' : 'FALLEN';      // [downed] the bleed-out seconds of a friend who is down
+        if (dw !== f.dw) { f.dw = dw; f.down.textContent = dw; }
         f.hp.set(m.hp, m.hpMax);
         // name label over the hero
         var e = m.e;
         r.project(e.x, (e.y || 0) + (e.h || 1.8) + 0.62, e.z, pr);
         if (!pr.visible) { if (l.on) { l.on = false; l.node.classList.add('kd-hidden'); } continue; }
-        var text = m.dead ? m.name + ' (down)' : m.name;
+        var text = m.downed ? m.name + ' (down, ' + m.left + ' s)' : (m.dead ? m.name + ' (fallen)' : m.name);
         if (KD.wardrobe && KD.wardrobe.plate) KD.wardrobe.plate(l, m);      // [cosmetics] the nameplate this player wears (render only)
-        if (text !== l.text) { l.text = text; l.node.textContent = text; l.node.style.color = m.dead ? '#b9b2a4' : m.color; }
+        if (text !== l.text) { l.text = text; l.node.textContent = text; l.node.style.color = m.downed ? '#ff9d8c' : (m.dead ? '#b9b2a4' : m.color); }
         var x = Math.round(pr.x), y = Math.round(pr.y);
         if (x !== l.x || y !== l.y) { l.x = x; l.y = y; l.node.style.transform = 'translate3d(' + x + 'px,' + y + 'px,0) translate(-50%,-100%)'; }
         if (!l.on) { l.on = true; l.node.classList.remove('kd-hidden'); }
@@ -136230,6 +136488,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       // the local hero is down
       var me = ctx.player, dsig = '';
       if (demo) dsig = demo.down ? CU.downText(demo.down) : '';
+      else if (me && me.downed && !me.dead && KD.sim.downed) dsig = CU.downText('', KD.sim.downed.info(me));      // [downed] the bleed-out countdown
       else if (me && me.dead) { var wt = CU.watched(w, s.roster); if (wt) dsig = CU.downText(wt.name); }
       if (dsig !== P.downSig) {
         P.downSig = dsig;
@@ -136244,6 +136503,34 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     }
   });
 
+  /** [downed] "Hold V to pull Mara up" over a downed friend within reach of the local hero, with the progress. */
+  function pullPrompt(ctx) {
+    var s = session(), w = ctx.world, me = ctx.player, D = KD.sim && KD.sim.downed, el = KD.ui.el;
+    var o = s && w && me && D ? D.pullable(w, me) : null, sig = '';
+    if (o) {
+      var r = s.roster && s.roster[o.playerIndex], name = (r && r.name) || o.name || 'your friend', inf = D.info(o);
+      var key = ctx.touch ? '' : (KD.input && KD.input.label ? KD.input.label('interact') : 'V');
+      sig = CU.pullText(name, inf.pull, key);
+      if (!P.pull) {
+        P.pullText = el('span'); P.pullBar = el('span.coop-pull-fill');
+        P.pull = el('div.kd-plate.coop-pull.kd-hidden', { attrs: { role: 'status' } }, [KD.ui.icon('heart_plus', 16, '#f0c9a0'), P.pullText, el('span.coop-pull-bar', [P.pullBar])]);
+        ctx.top.appendChild(P.pull);
+      }
+      P.pullBar.style.width = Math.round(inf.pull * 100) + '%';
+    }
+    if (sig !== P.pullSig) {
+      P.pullSig = sig;
+      if (P.pull) { P.pull.classList.toggle('kd-hidden', !sig); if (sig) P.pullText.textContent = sig; }
+    }
+    // a touch screen: the Use button lights up while a pull is possible (12_touch.js lights it for the world prompt)
+    var use = ctx.touch ? document.querySelector('.tc-btn.tc-interact') : null;
+    if (use && !!o !== P.pullLit) {
+      P.pullLit = !!o;
+      var pr = document.querySelector('.hud-prompt'), worldOn = !!(pr && !pr.classList.contains('kd-hidden'));
+      use.classList.toggle('tc-off', !o && !worldOn);
+    } else if (use && o && use.classList.contains('tc-off')) use.classList.remove('tc-off');
+  }
+
   function nameOf(s, e) {
     if (!e) return 'A friend';
     var r = s && s.roster && s.roster[e.playerIndex];
@@ -136255,7 +136542,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       try {
         var who = ev.data && ev.data.player, left = !!(who && ev.session && ev.session.gone && ev.session.gone[who.playerIndex]);      // a player who left is taken out of the world as fallen: the lobby toast says "left"
         if (ev.type === 'allyDown' && left) return;
-        if (ev.type === 'allyDown') KD.ui.toast(nameOf(ev.session, ev.data && ev.data.player) + ' is down. They stand up again at the next gate.', { kind: 'bad', icon: 'skull' });
+        if (ev.type === 'allyDown' || ev.type === 'allyFallen') KD.ui.toast(CU.allyDownText(nameOf(ev.session, ev.data && ev.data.player), ev.type === 'allyFallen'), { kind: 'bad', icon: 'skull' });
+        else if (ev.type === 'allyUp') KD.ui.toast(nameOf(ev.session, ev.data && ev.data.player) + ' is back on their feet.', { kind: 'good', icon: 'heart_plus' });
         else if (ev.type === 'resync') KD.ui.toast('The world was re-synced.', { kind: 'info', icon: 'hourglass' });
       } catch (e) { console.error('KD.coopui: toast', e); }
     });
@@ -145212,6 +145500,7 @@ P['wildmask_tripo'] = 'Z2xURgIAAACQjQcAYBgAAEpTT057ImFzc2V0Ijp7InZlcnNpb24iOiIyL
     } else run = G.savedRun || G.run;
     if (!run) return false;
     G.run = run; G.savedRun = null;
+    if (!coS() && run.coop && run.hero && run.hero.flags && run.hero.flags.fallen && KD.run.inPlay && (KD.run.inPlay(run) || run.phase === 'route')) KD.run.die(run, { cause: 'bled out', now: now(), noRevive: true });      // [downed] fell for good in a shared world: alone, that run is over
     G.events.emit('run', { run: run });
     if (run.phase === 'oath') setState('setup');
     else if (run.phase === 'route') setState('route');
@@ -145299,6 +145588,7 @@ P['wildmask_tripo'] = 'Z2xURgIAAACQjQcAYBgAAEpTT057ImFzc2V0Ijp7InZlcnNpb24iOiIyL
   G.finishRun = function () {
     var run = G.run;
     if (!run) return null;
+    if (run.phase === 'won' && run.coop && run.hero && run.hero.flags && run.hero.flags.fallen) { run.phase = 'arena'; KD.run.die(run, { cause: 'bled out', now: now(), noRevive: true }); }      // [downed] a hero who fell for good shares no victory
     var res = null;
     try { res = KD.save.endRun(G.account, run, now()); } catch (e) { console.error(e); }
     lastSummary = res;
@@ -145338,6 +145628,10 @@ P['wildmask_tripo'] = 'Z2xURgIAAACQjQcAYBgAAEpTT057ImFzc2V0Ijp7InZlcnNpb24iOiIyL
     world.events.on('spawn', function (p) { addVisual(p.e); });
     world.events.on('remove', function (p) { removeVisual(p.id); });
     world.events.on('death', function (d) { if (d.e && d.e.kind === 'player') { if (co) onCoopDeath(d); else onPlayerDeath(d); } });
+    if (co) {      // [downed] src/sim/23_downed.js: a hero went down / was pulled up (HUD banners and toasts listen to 'coop')
+      world.events.on('downed', function (d) { var me = world.players[world.viewIndex || 0]; G.events.emit('coop', { type: d.player === me ? 'down' : 'allyDown', data: { player: d.player, killer: d.killer || null, window: d.window }, session: coS() }); });
+      world.events.on('pulledUp', function (d) { var me = world.players[world.viewIndex || 0]; G.events.emit('coop', { type: d.player === me ? 'up' : 'allyUp', data: { player: d.player, by: d.by }, session: coS() }); });
+    }
     world.events.on('levelup', function (d) { if (!co) G.events.emit('pending', { run: G.run, levelup: d }); });
     world.events.on('areaEvent', function (ev) {
       if (ev.type === 'bossDead') { G.bossDead = true; G.events.emit('bossDead', ev); if (G.run && G.run.phase === 'won') world.schedule(6, function () { G.finishRun(); }); }
@@ -145669,10 +145963,15 @@ P['wildmask_tripo'] = 'Z2xURgIAAACQjQcAYBgAAEpTT057ImFzc2V0Ijp7InZlcnNpb24iOiIyL
     setState('route');
     G.events.emit('route', { offer: G.run.offer });
   }
-  /** In a shared world a fallen hero is only down: he stands up again in the next area or arena. The run ends when everyone is down. */
+  /**
+   * [downed] In a shared world a hero at 0 Health is first DOWN (src/sim/23_downed.js: a friend can pull it up). A death
+   * is for good: the hero has FALLEN (`hero.flags.fallen`, also on the live run) and watches; in later worlds of the run
+   * it starts dead. The run ends for everyone when every hero has fallen.
+   */
   function onCoopDeath(d) {
     var w = G.world, me = w.players[w.viewIndex || 0];
-    G.events.emit('coop', { type: d.e === me ? 'down' : 'allyDown', data: { player: d.e, killer: d.killer || null }, session: coS() });
+    if (d.e === me && G.run && G.run.hero && d.e.hero && d.e.hero.flags && d.e.hero.flags.fallen) { G.run.hero.flags = G.run.hero.flags || {}; G.run.hero.flags.fallen = true; }
+    G.events.emit('coop', { type: d.e === me ? 'fallen' : 'allyFallen', data: { player: d.e, killer: d.killer || null }, session: coS() });
     if (!w.players.every(function (p) { return p.dead; })) return;
     var cause = d.killer ? (d.killer.name || d.killer.defId || 'the kingdom') : 'the kingdom';
     w.schedule(2.5, function () {
