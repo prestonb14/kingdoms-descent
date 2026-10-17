@@ -3889,7 +3889,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.93';
+  KD.VERSION = '0.7.94';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -36252,6 +36252,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.94', date: '2026-10-17', title: 'Smarter enemies', notes: [
+      'Enemies now work together: they take turns, spread out around you and come at your flanks instead of queueing in a line',
+      'Archers look for a clear shot and never fire through their friends, and shield bearers step in to guard them',
+      'A scout may shout for a nearby pack, badly hurt casters fall back to their friends, and some enemies sidestep your marked blasts'
+    ] },
     { version: '0.7.93', date: '2026-10-17', title: 'New hero models', notes: [
       'All heroes now have new models: Ironbound, Hexblade, Thornwarden, Emberscribe, Lanternbearer, Bannerlord, Wildmask and Clockwright',
       'Switch any hero back to the classic look in Settings'
@@ -47693,6 +47698,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var use = hint.use || 'attack';
     var out = { def: def, id: def.id, min: min, max: max, weight: hint.weight === undefined ? 1 : hint.weight, use: use, cond: hint.cond || null,
       los: hint.los !== false, gcd: hint.gcd, combo: hint.combo || null, melee: use === 'attack' && max <= 4.5, lead: hint.lead || 0, allyHpBelow: hint.allyHpBelow, self: !!hint.self };
+    if (hint.always) out.always = true;                // kept through a boss phase's own attack list (src/data/67_boss_moves.js)
     if (use === 'summon' && !(out.cond && out.cond.minionsBelow !== undefined)) {
       var sfx = (def.effects || []).filter(function (f) { return f && f.type === 'summon'; })[0];
       out.cond = U.assign({ minionsBelow: sfx ? (sfx.cap || sfx.count || 1) : 1 }, out.cond);
@@ -47909,7 +47915,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (ai.mode === 'chase') {
       if (!t || t.removed) { setNone(ai); return; }
       tx = t.x; tz = t.z;
-      if (ai.o.packTactics && e.kind === 'enemy') {
+      if ((ai.o.packTactics || (ai.teamSlot !== undefined && ai.teamSlot !== null)) && e.kind === 'enemy') {
         var d0 = U.dist(e.x, e.z, tx, tz);
         if (d0 < 7 && d0 > ai.stop + 1.2) {            // fan out around the target instead of queueing
           var ring = t.r + e.r + ai.stop * 0.8, ox = tx + Math.sin(ai.slotAng) * ring, oz = tz + Math.cos(ai.slotAng) * ring;
@@ -47979,7 +47985,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (gd <= ai.stop || (ai.arrived && gd <= ai.stop + 0.5)) { ai.arrived = true; e.wx = 0; e.wz = 0; ai.moving = false; if (!c) e.faceYaw = face; return; }
     ai.arrived = false;
     var tx, tz;
-    if (ai.direct) { if (ai.mode === 'chase' && !ai.o.packTactics) { tx = gx; tz = gz; } else { tx = ai.tx; tz = ai.tz; } }
+    if (ai.direct) { if (ai.mode === 'chase' && !ai.o.packTactics && (ai.teamSlot === undefined || ai.teamSlot === null)) { tx = gx; tz = gz; } else { tx = ai.tx; tz = ai.tz; } }
     else { tx = ai.sx; tz = ai.sz; }
     dx = tx - e.x; dz = tz - e.z; d = Math.sqrt(dx * dx + dz * dz);
     if (d < 0.3 && !ai.direct) { navigate(world, e, ai); dx = ai.sx - e.x; dz = ai.sz - e.z; d = Math.sqrt(dx * dx + dz * dz); }
@@ -48062,7 +48068,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       for (i = 0; i < list.length; i++) if (list[i].id === id || list[i].id === e.defId + '_' + id) { a = list[i]; break; }
       if (!a || !t) { ai.comboQ = null; return false; }
       if (e.cds[a.def.id]) delete e.cds[a.def.id];
-      if (startAttack(world, e, ai, a, t)) { ai.comboQ.shift(); return true; }
+      var q0 = ai.comboQ;
+      if (startAttack(world, e, ai, a, t)) { if (ai.comboQ === q0) q0.shift(); return true; }      // a step with a combo of its own goes on with that one (a boss's hop, then a hook and its crush)
       return false;
     }
     for (i = 0; i < list.length; i++) {
@@ -48074,7 +48081,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       if (a.use === 'attack') {
         if (!t || d < a.min || d > a.max) continue;
         if (a.los && !los) continue;
-        if (a.melee && light && e.kind === 'enemy' && !tokenFree(world, e, t)) continue;
+        if (A.TEAM ? !A.TEAM.allow(world, e, ai, a, t) : (a.melee && light && e.kind === 'enemy' && !tokenFree(world, e, t))) continue;      // turns and friendly fire (24_ai_team.js)
       } else if (a.use === 'ally') { tgt = findAlly(world, e, a); if (!tgt) continue; }
       else if (a.use === 'far') { if (!t || d < a.min) continue; }
       else if (!t) continue;
@@ -48110,7 +48117,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var rank = S.bossRank(e.tier);
     ai.gcdNext = a.gcd !== undefined ? a.gcd : (rank > 0 ? (e.boss && e.boss.gcd !== undefined ? e.boss.gcd : 0.8) : S.TUNE.enemyGcd + world.rng.next() * S.TUNE.enemyGcdRand);
     if (e.boss && S.boss && S.boss.gcdAfter) ai.gcdNext = S.boss.gcdAfter(world, e, ai.gcdNext);      // later phases press harder and chain attacks
-    if (a.melee && tgt && e.kind === 'enemy') takeToken(world, e, tgt, a.def.windup + a.def.recover + 0.5);
+    if (A.TEAM) { if (a.use === 'attack' && tgt && tgt !== e) A.TEAM.take(world, e, tgt, a.def, a.melee); }      // turns (24_ai_team.js)
+    else if (a.melee && tgt && e.kind === 'enemy') takeToken(world, e, tgt, a.def.windup + a.def.recover + 0.5);
     if (a.combo) ai.comboQ = a.combo.slice();
     e.wx = 0; e.wz = 0;
     return true;
@@ -48139,6 +48147,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   /** Combat movement when no attack was started this think. */
   function combatMove(world, e, ai, t, d, los) {
     var o = ai.o, T = S.TUNE, rng = world.rng, kr = o.keepRange;
+    if (A.TEAM && !(ai.fleeT > 0 || ai.retreatT > 0) && A.TEAM.move(world, e, ai, t, d, los)) return;      // teamwork (24_ai_team.js)
     if (ai.fleeT > 0 || ai.retreatT > 0) {
       if (retreatPoint(world, e, t, 4)) setGoto(ai, P.x, P.z, 0.3, ai.fleeT > 0 ? 1.15 : 1); else { ai.fleeT = 0; ai.retreatT = 0; setNone(ai); }
       return;
@@ -48163,6 +48172,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var stop = Math.max(0.2, ai.engage * 0.75);
     // `press`: close but with no line of sight (a haystack corner between): circle round it instead of standing there
     if (o.press && !los && d <= stop + 0.4) { if (orbitOk(world, e, ai, t)) setOrbit(ai, t, Math.max(0.5, ai.engage * 0.45), 1); else setChase(ai, t, 0.2, 1); return; }
+    // `press` with spacing (bosses with throws and bolts, src/sim/26_boss_moves.js): for a moment it gives ground and
+    // circles a few metres off instead of in close
+    if (o.press && los && ai.spaceUntil > world.time && d < ai.spaceR + 2.5) { if (orbitOk(world, e, ai, t)) setOrbit(ai, t, ai.spaceR, Math.max(o.press, 0.45)); else setNone(ai); return; }
     if (d > stop + 0.4 || !los) { setChase(ai, t, stop, 1); return; }
     // `press` (any tier; Greymaw, docs/BOSSES_LOOK.md "Fourth test"): between attacks (and between the links of a boss
     // string) it stays on you, circling in close (the orbit pulls it to `engage` x 0.45) at `press` of its speed instead
@@ -48201,7 +48213,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       var notice = o.aggro;
       if (e.spawnId && otherPackFighting(world, e)) notice = Math.min(notice, Math.max(4.5, o.aggro * T.otherPackAggro));
       var n = S.nearest(world, e, notice, true, { los: true }) || S.nearest(world, e, 4.5, true, null);
-      if (n) A.aggro(world, e, n);
+      if (n) { A.aggro(world, e, n); if (A.TEAM && ai.state === 'combat') A.TEAM.onNotice(world, e, n); }
       else {
         if (U.dist2(e.x, e.z, home.x, home.z) > 2.25) setGoto(ai, home.x, home.z, 0.6, 0.6); else { setNone(ai); if (!e.cast) e.faceYaw = null; }
         return;
@@ -48228,6 +48240,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         ai.retT = 1.0;
         var nn = S.nearest(world, e, t ? o.aggro : o.aggro * 1.7, true, null);
         if (nn && (!t || (nn !== t && U.dist2(e.x, e.z, nn.x, nn.z) < U.dist2(e.x, e.z, t.x, t.z) * 0.4))) t = nn;
+        if (A.TEAM && t && world.players.length > 1) t = A.TEAM.focusPick(world, e, ai, t);      // co-op: now and then the badly hurt hero
       }
     }
     ai.target = t;
@@ -48256,6 +48269,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     }
     var d = U.dist(e.x, e.z, t.x, t.z) - e.r - t.r, los = S.los(world, e.x, e.z, t.x, t.z);
     if (o.flee && typeof o.flee === 'number' && ai.fleeCd <= 0 && e.hp < e.hpMax * o.flee && d < 6) { ai.fleeT = 2.5; ai.fleeCd = 10; }
+    if (A.TEAM) { if (!e.cast && A.TEAM.dodgeStep(world, e, ai)) return; A.TEAM.think(world, e, ai, t, d); if (ai.regroupT > world.time) { combatMove(world, e, ai, t, d, los); return; } }      // teamwork (24_ai_team.js)
     if (!e.cast && ai.gcd <= 0 && ai.fleeT <= 0 && !e.feared) {
       if (tryAttack(world, e, ai, t, d, los)) return;
     }
@@ -48332,7 +48346,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
   /** [mercs] Internals the hireling brain (src/sim/25_merc_ai.js) builds on. */
   A._h = { setNone: setNone, setGoto: setGoto, setChase: setChase, setOrbit: setOrbit, tryAttack: tryAttack, startAttack: startAttack, condOk: condOk,
-    findAlly: findAlly, combatMove: combatMove, retreatPoint: retreatPoint, allyThink: allyThink, P: P };
+    findAlly: findAlly, combatMove: combatMove, retreatPoint: retreatPoint, allyThink: allyThink, orbitOk: orbitOk, P: P };
 
   // ---------------------------------------------------------------------------------------------
   // Per-step update
@@ -48356,7 +48370,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     } else if (ai.state === 'return' && e.hp < e.hpMax) e.hp = Math.min(e.hpMax, e.hp + e.hpMax * 0.2 * dt);
     // end of a cast: global cooldown, hit and run, guard
     if (ai.casting && !e.cast) {
-      ai.casting = false; ai.gcd = ai.comboQ && ai.comboQ.length ? 0.15 : ai.gcdNext;
+      ai.casting = false; ai.gcd = ai.comboQ && ai.comboQ.length ? ((ai.lastAtk && ai.lastAtk.def.comboGap) || 0.15) : ai.gcdNext;      // comboGap: a boss lands from a hop before it throws (67_boss_moves.js)
       if (ai.o.hitAndRun && ai.lastAtk && ai.lastAtk.use === 'attack' && !(ai.comboQ && ai.comboQ.length)) ai.retreatT = ai.o.hitAndRun;
     }
     if (e.boss && S.boss) { S.boss.update(world, e, dt); if (e.dead) return; }
@@ -48491,6 +48505,364 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (e.model) { e.model = U.assign({}, e.model, { affixes: e.affixes.slice(), affixColors: e.affixes.map(function (id) { return KD.data.eliteAffixes[id].color; }) }); }
     e.name = e.affixes.map(function (id) { return KD.data.eliteAffixes[id].name; }).join(' ') + ' ' + e.name;
   };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/sim/24_ai_team.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var U = KD.util;
+  var S = KD.sim = KD.sim || {};
+  var A = S.ai = S.ai || {};
+
+  /**
+   * ENEMY TEAMWORK (owner: "increase enemy intelligence so they work together better"). docs/SIM.md "Teamwork".
+   * Regular enemies (tier normal / minion; elites take part but never wait) fight as a group, and each archetype in its
+   * own way, while every attack keeps its own telegraph and the old cast rules (aim lock, wind-ups) are untouched:
+   *   - TURNS: at most `slots` of them attack one target at once (melee and ranged together; at most TUNE.meleeSlots of
+   *     those in melee). The rest wait their turn a step out of reach, circling and now and then feinting in.
+   *   - SURROUND: melee rushers spread round their target in an arc (up to `arc` degrees, never a full ring) instead of
+   *     queueing in a line; ambushers take the flanks and the back. Tanks hold the front.
+   *   - RANGED keep their distance, walk to a spot that sees their target when a wall or a friend is in the way (they
+   *     never shoot through a friend: `friendlyFire`), and fall back to the group when badly hurt (`regroup`).
+   *   - GUARDS: a tank with a hurt or ranged friend close to the fight steps in between that friend and its attacker.
+   *   - SUPPORT stays behind the friends it heals, never alone in front.
+   *   - CALLS: a scout (ranged, support, summoner or ambusher, or `ai.call`) that spots you may shout once; the
+   *     nearest other pack within `call.range` m that is awake and idle answers (one pack per call, answering packs
+   *     never call again; a sleeping pack sleeps on).
+   *   - FOCUS: in co-op an enemy now and then turns on a badly hurt hero near it.
+   *   - DODGE: some step out of a hero's marked area (a red warning of the heroes' own delayed blasts) once per
+   *     warning, by archetype (`dodge`).
+   * Everything draws from world.rng (lockstep safe) and is decided on the AI's think ticks. `TEAM.on = false` restores
+   * the old behaviour (two melee tokens, everyone else closes in).
+   */
+  var T = A.TEAM = {
+    on: true,
+    slots: 3,                                  // attackers (any attack) on one target at once, of the light tiers and elites
+    rangedHold: 0.15,                          // seconds a ranged attacker holds its token past the wind-up
+    ring: [0.5, 1.1],                          // a waiting melee enemy holds this far beyond its reach (m, by id)
+    arc: [160, 230],                           // degrees of the arc a surrounding group spreads over (up to 3 / 4 and more)
+    space: 62,                                 // degrees between neighbours at most
+    feint: 0.05,                               // chance per think that a waiting enemy feints in
+    feintTime: 0.45,
+    call: { range: 18, delay: 0.55, chance: { ranged: 0.4, support: 0.5, summoner: 0.4, ambusher: 0.3 } },
+    focus: { below: 0.35, gap: 0.2, chance: { rusher: 0.25, ambusher: 0.55, ranged: 0.3, tank: 0.1, support: 0, summoner: 0.2 } },
+    dodge: { lead: 0.3, speed: 9, chance: { ambusher: 0.65, rusher: 0.4, ranged: 0.5, support: 0.5, summoner: 0.4, tank: 0.12 }, minion: 0.5, elite: 1.0 },
+    regroup: { below: 0.35, near: 6.5, time: 2.4, roles: { ranged: 1, support: 1, summoner: 1 } },
+    guard: { range: 10, threat: 7.5 }
+  };
+  var TAU = Math.PI * 2, RAD = Math.PI / 180;
+  var Q = [], GRP = [];
+
+  function light(e) { return e.tier === 'normal' || e.tier === 'minion'; }
+  // the wolves Greymaw calls (a boss with named strings, docs/BOSSES_LOOK.md "Body language") keep the pack rules his
+  // fight was tuned with
+  function member(e) { return e.kind === 'enemy' && (light(e) || e.tier === 'elite') && !!e.ai && !(e.owner && e.owner.boss && e.owner.boss.script.strings); }
+  A.teamMember = member;
+
+  // ---------------------------------------------------------------------------------------------
+  // Turns (attack tokens): `t.attackers` holds { id, until, melee } for every attack wound up at t
+  // ---------------------------------------------------------------------------------------------
+  /** May `e` start this attack at `t` now? (melee: TUNE.meleeSlots; any: TEAM.slots). Elites and bosses never wait. */
+  T.free = function (world, e, t, melee) {
+    var list = t.attackers; if (!list) return true;
+    var nm = 0, n = 0, k = 0;
+    for (var i = 0; i < list.length; i++) { var q = list[i]; if (q.until > world.time) { list[k++] = q; if (q.id !== e.id) { if (!q.boss) n++; if (q.melee !== false) nm++; } } }      // a boss's blow holds a melee turn, never one of the `slots`
+    list.length = k;
+    if (!light(e) || e.kind !== 'enemy') return true;
+    if (melee && nm >= S.TUNE.meleeSlots) return false;
+    return !T.on || n < T.slots;
+  };
+  /** Records an attack: melee as before (wind-up + recovery + 0.5 s), ranged while it winds up (TEAM.rangedHold more). */
+  T.take = function (world, e, t, def, melee) {
+    if (!t || e.kind !== 'enemy' || (S.bossRank(e.tier) > 0 && !melee)) return;      // a boss's melee takes a turn too (as before)
+    if (!melee && !T.on) return;
+    var dur = melee ? def.windup + def.recover + 0.5 : def.windup + T.rangedHold;
+    var list = t.attackers || (t.attackers = []), boss = S.bossRank(e.tier) > 0;
+    for (var i = 0; i < list.length; i++) if (list[i].id === e.id) { list[i].until = world.time + dur; list[i].melee = melee; list[i].boss = boss; return; }
+    list.push({ id: e.id, until: world.time + dur, melee: melee, boss: boss });
+  };
+  /** Number of other attackers holding a turn on t (tests, tools). */
+  T.count = function (world, t, meleeOnly) {
+    var list = t.attackers, n = 0;
+    for (var i = 0; list && i < list.length; i++) if (list[i].until > world.time && (!meleeOnly || list[i].melee !== false)) n++;
+    return n;
+  };
+
+  // ---------------------------------------------------------------------------------------------
+  // Friendly fire: a straight shot or lane that would cross a friend first is held back
+  // ---------------------------------------------------------------------------------------------
+  var LINE = { projectile: 1, hook: 1 };
+  function lineShot(def) {
+    if (def._line !== undefined) return def._line;
+    var r = false, list = def.effects || [];
+    for (var i = 0; i < list.length && !r; i++) {
+      var fx = list[i]; if (!fx) continue;
+      if (LINE[fx.type] && !fx.lob && !fx.homing) r = true;
+      else if (fx.type === 'aoe' && fx.shape === 'line' && (!fx.at || fx.at === 'self') && !(fx.delay > 0)) r = true;
+      if (fx.type === 'melee' || fx.type === 'dash' || fx.type === 'blink') break;
+    }
+    try { Object.defineProperty(def, '_line', { value: r, enumerable: false, writable: true }); } catch (err) { /* frozen */ }
+    return r;
+  }
+  /** The friend standing in the line of fire from e to t, or null. */
+  T.blocker = function (world, e, t) {
+    var dx = t.x - e.x, dz = t.z - e.z, L = Math.sqrt(dx * dx + dz * dz); if (L < 1e-3) return null;
+    dx /= L; dz /= L;
+    var n = S.qCircle(world, (e.x + t.x) / 2, (e.z + t.z) / 2, L / 2 + 1, Q);
+    for (var i = 0; i < n; i++) {
+      var o = Q[i]; if (o === e || o.id === e.id || o === t || o.team !== e.team || o.dead || o.hidden || o.kind === 'proj') continue;
+      if (S.bossRank(o.tier) > 0) continue;                     // a boss towers over the line: its archers shoot past it
+      var rx = o.x - e.x, rz = o.z - e.z, along = rx * dx + rz * dz;
+      if (along < e.r + 0.2 || along > L - t.r - 0.2) continue;
+      var side = Math.abs(rx * dz - rz * dx);
+      if (side < o.r + 0.3) return o;
+    }
+    return null;
+  };
+  /** Gate for KD.sim.ai tryAttack: false when this attack must wait (turns) or would hit a friend first. */
+  T.allow = function (world, e, ai, a, t) {
+    if (e.kind !== 'enemy' || !t) return true;
+    if (!T.free(world, e, t, a.melee)) return false;
+    if (T.on && member(e) && !a.melee && lineShot(a.def) && T.blocker(world, e, t)) { ai.ffT = world.time + 0.9; return false; }
+    return true;
+  };
+
+  // ---------------------------------------------------------------------------------------------
+  // Surround: an arc of slots round each target, recomputed once per tick per target
+  // ---------------------------------------------------------------------------------------------
+  function surrounds(e) { var o = e.ai.o; return !o.keepRange && e.role !== 'tank' && e.speed > 0.5 && !e.boss && S.bossRank(e.tier) === 0; }
+  /** The angle (around t, world yaw from t) of e's place in the group surrounding t. */
+  T.slot = function (world, e, t) {
+    var cache = t._team;
+    if (!cache || cache.tick !== world.tick) {
+      cache = t._team = { tick: world.tick, ang: {} };
+      var n = S.qCircle(world, t.x, t.z, 14, Q), cx = 0, cz = 0, i, q;
+      GRP.length = 0;
+      for (i = 0; i < n; i++) { q = Q[i]; if (q.kind === 'enemy' && member(q) && !q.dead && q.ai.target === t && q.ai.state === 'combat' && surrounds(q)) { GRP.push(q); cx += q.x; cz += q.z; } }
+      if (GRP.length) {
+        cx /= GRP.length; cz /= GRP.length;
+        var anchor = (Math.abs(cx - t.x) + Math.abs(cz - t.z) > 0.05) ? Math.atan2(cx - t.x, cz - t.z) : t.yaw;
+        var amb = [], rest = [];
+        for (i = 0; i < GRP.length; i++) (GRP[i].role === 'ambusher' ? amb : rest).push(GRP[i]);
+        // rushers: an arc centred where they come from, in the order they stand (nobody crosses)
+        var key = function (q2) { return U.wrapAngle(Math.atan2(q2.x - t.x, q2.z - t.z) - anchor); };
+        rest.sort(function (a, b) { return key(a) - key(b) || a.id - b.id; });
+        var m = rest.length, arc = (m >= 4 ? T.arc[1] : T.arc[0]) * RAD, sp = m > 1 ? Math.min(T.space * RAD, arc / (m - 1)) : 0;
+        for (i = 0; i < m; i++) cache.ang[rest[i].id] = anchor + (i - (m - 1) / 2) * sp;
+        // ambushers: the flanks and the back of the target, alternating sides
+        amb.sort(function (a, b) { return a.id - b.id; });
+        for (i = 0; i < amb.length; i++) cache.ang[amb[i].id] = t.yaw + Math.PI + (i % 2 ? 1 : -1) * (0.75 + 0.35 * Math.floor(i / 2));
+      }
+    }
+    var a0 = cache.ang[e.id];
+    return a0 === undefined ? null : a0;
+  };
+
+  // ---------------------------------------------------------------------------------------------
+  // Combat movement (called first by combatMove for enemies; true = it set the goal)
+  // ---------------------------------------------------------------------------------------------
+  T.move = function (world, e, ai, t, d, los) {
+    if (!T.on || e.kind !== 'enemy' || !member(e) || !t) return false;
+    var H = A._h, o = ai.o, rng = world.rng;
+    // fall back to the group (ranged, support, summoner): once, when badly hurt with the foe close
+    if (ai.regroupT > world.time && ai.regroupX !== undefined) {
+      H.setGoto(ai, ai.regroupX, ai.regroupZ, 0.6, 1.1);
+      return true;
+    }
+    if (o.keepRange) return rangedMove(world, e, ai, t, d, los);
+    if (e.role === 'tank' && guardMove(world, e, ai, t, d)) return true;
+    if (!surrounds(e)) return false;
+    var ang = T.slot(world, e, t);
+    ai.teamSlot = ang;
+    if (ang === null) return false;
+    ai.slotAng = ang;                                         // the approach fans out along it (navigate, packTactics)
+    var stop = Math.max(0.2, ai.engage * 0.75), waiting = light(e) && !T.free(world, e, t, true);
+    if (!waiting) { ai.feintT = 0; return false; }            // its turn: close in and strike (the ordinary rules)
+    if (!los) return false;
+    // waiting for a turn: hold a place a step out of reach, circle a little, and now and then feint in
+    var ring = t.r + e.r + stop + T.ring[0] + (e.id % 5) / 4 * (T.ring[1] - T.ring[0]);
+    if (ai.feintT > world.time) { H.setChase(ai, t, stop + 0.3, 1.2); return true; }
+    if (d < stop + 0.9 && rng.next() < T.feint && ai.gcd <= 0) { ai.feintT = world.time + T.feintTime; H.setChase(ai, t, stop + 0.3, 1.2); return true; }
+    var px = t.x + Math.sin(ang) * ring, pz = t.z + Math.cos(ang) * ring;
+    if (!S.isFree(world, px, pz, e.r + 0.1)) { px = t.x + (e.x - t.x) / Math.max(0.01, d + e.r + t.r) * ring; pz = t.z + (e.z - t.z) / Math.max(0.01, d + e.r + t.r) * ring; }
+    var gd = U.dist(e.x, e.z, px, pz);
+    if (gd > 1.1) { H.setGoto(ai, px, pz, 0.5, gd > 4 ? 1 : 0.8); return true; }
+    if (ai.strafeT <= 0) { ai.strafeT = 0.8 + rng.next() * 0.9; ai.strafing = rng.next() < 0.55; if (rng.next() < 0.35) ai.strafeDir = -ai.strafeDir; }
+    if (ai.strafing && H.orbitOk(world, e, ai, t)) { H.setOrbit(ai, t, ring - t.r - e.r, 0.32); return true; }
+    H.setNone(ai);
+    return true;
+  };
+
+  /** Ranged and support: a spot that sees the target when it is hidden, a step aside when a friend blocks the shot, support behind its friends. */
+  function rangedMove(world, e, ai, t, d, los) {
+    var H = A._h, kr = ai.o.keepRange;
+    if (!los || (ai.ffT > world.time)) {
+      if (!ai.losPt || ai.losT <= world.time) { ai.losPt = seeSpot(world, e, t, kr, !los); ai.losT = world.time + 1.2; }
+      var p = ai.losPt;
+      if (p) { if (U.dist(e.x, e.z, p.x, p.z) > 0.6) { H.setGoto(ai, p.x, p.z, 0.4, 1); return true; } ai.losPt = null; }
+      if (!los) return false;                                 // nowhere better: the old rule (walk up to it)
+    }
+    if (e.role === 'support') {
+      var f = frontFriend(world, e, t);
+      if (f) {
+        var fx = f.x - t.x, fz = f.z - t.z, fl = Math.sqrt(fx * fx + fz * fz) || 1, gx = f.x + fx / fl * 2.6, gz = f.z + fz / fl * 2.6;
+        if (U.dist(e.x, e.z, gx, gz) > 2.4 && S.isFree(world, gx, gz, e.r + 0.1)) { H.setGoto(ai, gx, gz, 0.8, 0.9); return true; }
+      }
+    }
+    return false;
+  }
+  /** A free point at keep range from t, nearest to e, with a line of sight to t (and no friend across it). */
+  function seeSpot(world, e, t, kr, wall) {
+    var base = Math.atan2(e.x - t.x, e.z - t.z), dist = U.clamp(U.dist(e.x, e.z, t.x, t.z), kr[0] + 0.8, kr[1] - 0.5), best = null, bd = 1e9;
+    var offs = [0.3, -0.3, 0.6, -0.6, 0.95, -0.95, 1.3, -1.3, 0];
+    for (var i = 0; i < offs.length; i++) {
+      var a = base + offs[i], px = t.x + Math.sin(a) * dist, pz = t.z + Math.cos(a) * dist;
+      if (!S.isFree(world, px, pz, e.r + 0.15) || !S.los(world, px, pz, t.x, t.z)) continue;
+      if (!wall && T.blocker(world, { x: px, z: pz, r: e.r, team: e.team, id: e.id }, t)) continue;
+      var dd = U.dist2(e.x, e.z, px, pz); if (dd < bd) { bd = dd; best = { x: px, z: pz }; }
+    }
+    return best;
+  }
+  function frontFriend(world, e, t) {
+    var n = S.qCircle(world, e.x, e.z, 14, Q), best = null, bd = 1e9;
+    for (var i = 0; i < n; i++) {
+      var q = Q[i]; if (q === e || q.team !== e.team || q.kind !== 'enemy' || q.dead || q.role === 'support' || !q.ai || q.ai.state !== 'combat') continue;
+      var dd = U.dist2(q.x, q.z, t.x, t.z); if (dd < bd) { bd = dd; best = q; }
+    }
+    return best;
+  }
+  /** A tank steps between its attacker and a ranged, support or hurt friend that the attacker is close to. */
+  function guardMove(world, e, ai, t, d) {
+    if (d <= ai.engage) return false;                         // in reach: it fights
+    var n = S.qCircle(world, e.x, e.z, T.guard.range, Q), ward = null, bd = 1e9;
+    for (var i = 0; i < n; i++) {
+      var q = Q[i]; if (q === e || q.team !== e.team || q.kind !== 'enemy' || q.dead || q.hidden || !q.ai) continue;
+      var weak = q.ai.o.keepRange || q.role === 'support' || q.hp < q.hpMax * 0.4;
+      if (!weak) continue;
+      var dd = U.dist(q.x, q.z, t.x, t.z); if (dd < T.guard.threat && dd < bd) { bd = dd; ward = q; }
+    }
+    if (!ward) return false;
+    var wx = t.x - ward.x, wz = t.z - ward.z, wl = Math.sqrt(wx * wx + wz * wz) || 1, step = Math.min(2.2, Math.max(0.6, wl - t.r - e.r - 0.6));
+    var gx = ward.x + wx / wl * step, gz = ward.z + wz / wl * step;
+    if (!S.isFree(world, gx, gz, e.r + 0.1)) return false;
+    ai.guarding = ward.id;
+    A._h.setGoto(ai, gx, gz, 0.4, 1.1);
+    return true;
+  }
+
+  /** Before deciding: a badly hurt ranged / support / summoner falls back to its friends once. */
+  T.think = function (world, e, ai, t, d) {
+    if (!T.on || e.kind !== 'enemy' || !member(e) || !t || ai.regrouped) return;
+    var R = T.regroup;
+    if (!R.roles[e.role] && !(ai.o.regroup)) return;
+    if (ai.o.regroup === false || !(e.hp < e.hpMax * R.below) || d > R.near || !(e.speed > 0.5)) return;
+    ai.regrouped = true;
+    var n = S.qCircle(world, e.x, e.z, 16, Q), best = null, bd = -1e9;
+    for (var i = 0; i < n; i++) {
+      var q = Q[i]; if (q === e || q.team !== e.team || q.kind !== 'enemy' || q.dead || q.hidden || !q.ai) continue;
+      var score = (q.hp / q.hpMax) + (q.role === 'tank' || q.role === 'support' ? 0.6 : 0) + U.dist(q.x, q.z, t.x, t.z) / 12 - U.dist(q.x, q.z, e.x, e.z) / 16;
+      if (score > bd) { bd = score; best = q; }
+    }
+    var gx, gz;
+    if (best) { var fx = best.x - t.x, fz = best.z - t.z, fl = Math.sqrt(fx * fx + fz * fz) || 1; gx = best.x + fx / fl * 2.2; gz = best.z + fz / fl * 2.2; }
+    if (!best || !S.isFree(world, gx, gz, e.r + 0.1)) {
+      var P = A._h.P; if (!A._h.retreatPoint(world, e, t, 5)) return; gx = P.x; gz = P.z;
+    }
+    ai.regroupX = gx; ai.regroupZ = gz; ai.regroupT = world.time + R.time;
+    world.events.emit('teamwork', { e: e, kind: 'regroup', x: e.x, z: e.z, to: best ? best.id : null });
+  };
+
+  // ---------------------------------------------------------------------------------------------
+  // Focus a badly hurt hero (co-op)
+  // ---------------------------------------------------------------------------------------------
+  T.focusPick = function (world, e, ai, t) {
+    if (!T.on || world.players.length < 2 || !member(e) || !t || t.kind !== 'player') return t;
+    var F = T.focus, ch = F.chance[e.role] || 0; if (!(ch > 0)) return t;
+    var best = null, bf = Math.min(F.below, t.hp / t.hpMax - F.gap), r2 = ai.o.aggro * ai.o.aggro * 1.4;
+    for (var i = 0; i < world.players.length; i++) {
+      var p = world.players[i]; if (p === t || !A.validTarget(e, p) || U.dist2(e.x, e.z, p.x, p.z) > r2) continue;
+      var f = p.hp / p.hpMax; if (f < bf) { bf = f; best = p; }
+    }
+    if (!best || world.rng.next() >= ch) return t;
+    world.events.emit('teamwork', { e: e, kind: 'focus', target: best, x: e.x, z: e.z });
+    return best;
+  };
+
+  // ---------------------------------------------------------------------------------------------
+  // Calls for help
+  // ---------------------------------------------------------------------------------------------
+  /** An enemy noticed `tgt` on its own (not through its pack): a scout may shout for the nearest other idle pack. */
+  T.onNotice = function (world, e, tgt) {
+    if (!T.on || e.kind !== 'enemy' || !member(e) || !tgt || tgt.kind !== 'player' || e.summoned) return;
+    var pk = e.spawnId && world.packs[e.spawnId]; if (!pk || pk.called || pk.answered) return;
+    var ch = (e.ai.o.call === true ? 1 : (typeof e.ai.o.call === 'number' ? e.ai.o.call : T.call.chance[e.role])) || 0;
+    pk.called = true;                                          // one chance per pack
+    if (!(ch > 0) || world.rng.next() >= ch) return;
+    world.schedule(T.call.delay, function (w) {
+      if (e.dead || e.removed || e.stunned || e.broken > 0 || w.over) return;
+      var best = null, bd = T.call.range * T.call.range, list = w.packList;
+      for (var i = 0; i < list.length; i++) {
+        var q = list[i]; if (q === pk || q.cleared || q.kind !== 'pack' || q.answered || q.called) continue;
+        var dd = U.dist2(q.x, q.z, e.x, e.z); if (dd >= bd) continue;
+        var idle = false; for (var j = 0; j < q.members.length; j++) { var m = q.members[j]; if (!m.dead && m.ai && m.ai.state === 'idle') { idle = true; break; } }      // awake and idle: a sleeping pack sleeps on
+        if (idle) { bd = dd; best = q; }
+      }
+      w.events.emit('fx', { name: 'alert_call', x: e.x, y: (e.h || 1.8) + 0.4, z: e.z, src: e });
+      if (!best) return;
+      best.answered = true;
+      var victim = A.validTarget(e, tgt) ? tgt : (e.ai && e.ai.target);
+      if (!victim) return;
+      for (var k = 0; k < best.members.length; k++) { var o = best.members[k]; if (!o.dead && o.ai && o.ai.state !== 'combat' && o.ai.state !== 'return') A.aggro(w, o, victim, true); }
+      w.events.emit('teamwork', { e: e, kind: 'call', pack: best.id, from: pk.id, x: e.x, z: e.z });
+    });
+  };
+
+  // ---------------------------------------------------------------------------------------------
+  // Stepping out of the heroes' marked areas
+  // ---------------------------------------------------------------------------------------------
+  /** true when e hopped out of a hero's warning this think. */
+  T.dodgeStep = function (world, e, ai) {
+    if (!T.on || !member(e) || e.cast || e.motion || e.rooted || e.stunned || e.broken > 0 || e.hitstun > 0 || !(e.speed > 0.5)) return false;
+    var list = world.telegraphs, D = T.dodge;
+    for (var i = 0; i < list.length; i++) {
+      var tg = list[i]; if (tg.team === e.team || tg.team === 2 || tg.done) continue;
+      var left = tg.dur - tg.t; if (left < D.lead) continue;
+      if (!S.inShape(tg, e.x, e.z, e.r)) continue;
+      var seen = ai.seenTele || (ai.seenTele = {});
+      if (seen[tg.id] !== undefined) continue;
+      var ch = (D.chance[e.role] || 0.3) * (e.tier === 'minion' ? D.minion : (e.tier === 'elite' ? D.elite : 1));
+      seen[tg.id] = world.rng.next() < ch;
+      var keys = Object.keys(seen); if (keys.length > 12) delete seen[keys[0]];
+      if (!seen[tg.id]) continue;
+      var out = exitDir(tg, e); if (!out) continue;
+      var dist = Math.min(4.5, out.d + e.r + 0.5), px = e.x + out.x * dist, pz = e.z + out.z * dist;
+      if (!S.isFree(world, px, pz, e.r) || !S.walkLine(world, e.x, e.z, px, pz, e.r * 0.9)) { out.x = -out.x; out.z = -out.z; px = e.x + out.x * dist; pz = e.z + out.z * dist; if (!S.isFree(world, px, pz, e.r) || !S.walkLine(world, e.x, e.z, px, pz, e.r * 0.9)) continue; }
+      var m = S.startMotion(world, e, out.x, out.z, dist, Math.max(0.2, dist / D.speed), { kind: 'dodge' });
+      m.anim = 'dodge';
+      e.faceYaw = null;
+      world.events.emit('teamwork', { e: e, kind: 'dodge', tele: tg.id, x: e.x, z: e.z });
+      return true;
+    }
+    return false;
+  };
+  /** Unit direction and distance that take a point out of a telegraph shape the quickest way. */
+  function exitDir(tg, e) {
+    var dx = e.x - tg.x, dz = e.z - tg.z, l = Math.sqrt(dx * dx + dz * dz);
+    if (tg.shape === 'line') {
+      var fx = Math.sin(tg.yaw), fz = Math.cos(tg.yaw), side = dx * fz - dz * fx, s = side >= 0 ? 1 : -1;
+      return { x: fz * s, z: -fx * s, d: tg.wid / 2 - Math.abs(side) };
+    }
+    if (tg.shape === 'ring') {
+      var mid = (tg.r + tg.inner) / 2, inward = l < mid;
+      if (l < 1e-3) return null;
+      return inward ? { x: -dx / l, z: -dz / l, d: l - tg.inner } : { x: dx / l, z: dz / l, d: tg.r - l };
+    }
+    if (l < 1e-3) { var a = (e.id % 8) / 8 * TAU; return { x: Math.sin(a), z: Math.cos(a), d: tg.r }; }
+    return { x: dx / l, z: dz / l, d: tg.r - l };
+  }
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -84356,6 +84728,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    * payload's own non-physical `elem` wins.
    */
   FX.ALIAS = {
+    // [teamwork] a scout shouting for the next pack (src/sim/24_ai_team.js); a boss landing from a hop (src/sim/26_boss_moves.js)
+    alert_call: 'reinforce', boss_land: 'slam',
     // earth, wood, iron
     jaw_crush: 'slam', pole_quake: 'slam', drum_quake: 'slam', coil: 'slam', statue_wake: 'rock_burst', beam_fall: ['rockfall', null, 'wood'],
     broken_boards: 'boards_break', ballista_bolt: 'bolt_strike', thrown_axe: 'bolt_strike', ballista_strike: 'bolt_fall', mud: ['burst_up', null, 'mud'],
