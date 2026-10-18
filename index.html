@@ -4163,7 +4163,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.106';
+  KD.VERSION = '0.7.107';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -37372,6 +37372,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.107', date: '2026-10-18', title: 'Graves in Hearthmoor', notes: [
+      'Fallen heroes now rest in a small graveyard beside the Hearthmoor chapel',
+      'Tap the Graves sign to see who fell, where, and what they carried'
+    ] },
     { version: '0.7.106', date: '2026-10-18', title: 'Phone tuning and Android prep', notes: [
       'Smoother on phones: characters you cannot see are animated less often'
     ] },
@@ -71860,8 +71864,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   };
   V.SCENE2.work = WORK;
 
-  V.sceneLayoutV2 = function (levels) {
-    levels = levels || {};
+  V.sceneLayoutV2 = function (levels, opts) {
+    levels = levels || {}; opts = opts || {};
     var G = KD.gen, S = G.SURF, total = 0, id;
     for (id in levels) total += levels[id] || 0;
     var b = new G.Builder({ id: 'hearthmoor', archetype: 'village', theme: 'farmland', size: [SC2.w, SC2.d] }, 4243, {}, 'arena');
@@ -71925,6 +71929,17 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     add('brazier', gt.x - 3.4, gt.z - 3.2, 0, { style: 'iron' });
     add('brazier', gt.x + 3.4, gt.z - 3.2, 0, { style: 'iron' });
     hub.signs.push({ id: 'gate', building: null, x: gt.x, y: 9.4, z: gt.z });
+    // ---- the graves of fallen heroes (src/meta/55_legend.js): a plot beside the chapel, inside the palisade, newest in front.
+    // Up to 8 stones; the plot and its sign appear once the first hero has fallen.
+    var graves = Math.max(0, Math.min(8, opts.graves | 0));
+    hub.graves = graves;
+    if (graves) {
+      for (var gi = 0; gi < graves; gi++) {
+        add('grave', 14.6 + (gi % 3) * 2.8, 55 - Math.floor(gi / 3) * 3, 0, { w: 1, d: 2, style: gi % 3 === 1 ? 'cross' : 'stone' });
+      }
+      add('brazier', 21.6, 55.4, 0, { style: 'candles' });
+      hub.signs.push({ id: 'graves', building: null, x: 17.4, y: 4.2, z: 53.5 });
+    }
     // the palisade round the back of the village (west to east), cut by the gate
     add('wall', 19, D - 3.5, 0, { len: 26, h: 3.6, thick: 0.8, style: 'palisade' });
     add('wall', 52.75, D - 3.5, 0, { len: 17.5, h: 3.6, thick: 0.8, style: 'palisade' });
@@ -71973,7 +71988,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   };
   V.sceneSpec = function () { return V.sceneName() === 'classic' ? V.SCENE : V.SCENE2; };
   /** sceneLayout(levels) -> the village as a layout. Deterministic for the levels. */
-  V.sceneLayout = function (levels) { return V.sceneName() === 'classic' ? V.sceneLayoutClassic(levels) : V.sceneLayoutV2(levels); };
+  V.sceneLayout = function (levels, opts) { return V.sceneName() === 'classic' ? V.sceneLayoutClassic(levels) : V.sceneLayoutV2(levels, opts); };
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -122934,15 +122949,15 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   }
 
   // ------------------------------------------------------------------ show / hide
-  HS.show = function (game, levels) {
+  HS.show = function (game, levels, opts) {
     if (!game || !game.renderer || !V || !V.sceneLayout || !E || !E.build) return false;
     try {
-      var key = JSON.stringify(levels || {});
+      var key = JSON.stringify(levels || {}) + JSON.stringify(opts || {});
       if (st.key === key && game.layout === HS.layout && game.backdropView === view && game.env) return true;
       if (game.teardownWorld) game.teardownWorld();
       var v2 = !(V.sceneName && V.sceneName() === 'classic');
       if (v2) presetV2(); else preset();
-      var layout = V.sceneLayout(levels || {});
+      var layout = V.sceneLayout(levels || {}, opts || {});
       game.layout = layout; game.backdrop = true;
       var env = E.build(layout, game.renderer, { backdrop: true, game: game, mood: v2 ? 'hearthmoor_v2' : 'hearthmoor' });
       st.npcs = (layout.hub.npcs || []).map(figure).filter(Boolean);
@@ -137822,9 +137837,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   function helpText() {
     return [
       'Every run brings ' + cur() + ' home to ' + V.name() + ', win or lose. The deeper you get, the more you bring: areas cleared, bosses, mini-bosses, kills and a share for the road itself.',
-      cur() + ' only rebuild the village. Renown still buys Chronicle unlocks, and Crowns buy looks in the Wardrobe.',
-      'Each building gives a small gift to every new run: coin, supplies, a better weapon, a blessing, a Relic, trained hirelings. Nothing you find on the road comes home: each run still starts fresh.',
-      'Choices (blessing, Relic, weapon) are made on the road screen when a run begins. A run keeps the village it set out from.'
+      cur() + ' are the only thing you spend, and only here. Your Legend (deeds, ranks, class mastery) is earned, never bought. Crowns buy looks in the Wardrobe.',
+      'Each building gives every new run a choice, not a bigger number: a weapon of your class, a temper or a mark from the Smithy, a blessing from the Shrine, a kit, a Relic, hirelings, or what the Map Room knows. Nothing you find on the road comes home: each run still starts fresh.',
+      'You make those choices when a run begins. A run keeps the village it set out from. Fallen heroes rest in the graves beside the chapel.'
     ];
   }
   H.openHelp = function () {
@@ -137892,6 +137907,16 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       el('span.hub-sign-txt', [el('span.hub-sign-name', { text: 'The Road Down' }), el('span.hub-sign-sub', { text: 'New Run' })])
     ]);
     signs.map.gate = gate; layer.appendChild(gate);
+    // the graves plot beside the chapel (src/meta/55_legend.js): opens the Graves page of Your Legend
+    var nGraves = graveCount(game);
+    if (nGraves && F.legend && F.legend.open) {
+      var gv = el('div.hub-sign.hub-sign-graves', { data: { id: 'graves' }, attrs: { role: 'button', tabindex: '-1', 'aria-label': 'The Graves: your fallen heroes' },
+        on: { click: function (e) { if (e) e.stopPropagation(); F.sound('ui_click'); F.legend.open(game, 'graves'); } } }, [
+        F.medallion('candle', compact ? 18 : 20, '#b9c8d8'),
+        el('span.hub-sign-txt', [el('span.hub-sign-name', { text: 'The Graves' }), el('span.hub-sign-sub', { text: nGraves === 1 ? '1 fallen hero' : nGraves + ' fallen heroes' })])
+      ]);
+      signs.map.graves = gv; layer.appendChild(gv);
+    }
     if (KD.hubScene) KD.hubScene.onFrame = placeSigns;
     return layer;
   }
@@ -137947,8 +137972,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (!KD.hubScene || !game || game.state !== 'menu') return;
     setTimeout(function () {
       if (F.current !== 'hub') return;
-      try { KD.hubScene.show(game, V.state(game.account).levels); if (focus) KD.hubScene.focus(focus); } catch (e) { console.error('hub scene', e); }
+      try { KD.hubScene.show(game, V.state(game.account).levels, { graves: graveCount(game) }); if (focus) KD.hubScene.focus(focus); } catch (e) { console.error('hub scene', e); }
     }, 30);
+  }
+  /** How many graves stand in the village (the Legend keeps the last few heroes who fell). */
+  function graveCount(game) {
+    try { return KD.legend && KD.legend.graves && game && game.account ? KD.legend.graves(game.account).length : 0; } catch (e) { return 0; }
   }
   function unscene(game) { if (KD.hubScene) { try { KD.hubScene.hide(game); } catch (e) { console.error('hub scene', e); } } }
   H.open = function (game) {
