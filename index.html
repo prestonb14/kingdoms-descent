@@ -4167,7 +4167,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.116';
+  KD.VERSION = '0.7.117';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -32142,6 +32142,44 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     garrote: [c('backstab', 'the payoff on the Stunned target'), c('caltrops', 'keeps the rest of the pack off you while you choke')],
     mirror_shade: [c('backstab', 'enemies chasing the double turn their backs to you'), c('shadow_step', 'gets behind the distracted enemy')]
   };
+  T.ironbound = {
+    bulwark_stance: [c('riposte', 'turns the blocks the stance invites into counter blows'), c('shield_throw', 'something to do at range while you hold the line')],
+    shield_throw: [c('chain_hook', 'drags the target in and leaves it Vulnerable for the next throw'), c('lance_charge', 'closes the gap after the throw comes back')],
+    rally_cry: [c('warcry_of_iron', 'pulls the enemies onto you so the allies you rallied are spared'), c('shield_throw', 'a cheap filler between cries')],
+    ground_slam: [c('chain_hook', 'brings a target in front of you for the slam'), c('riposte', 'a Stun from the other side: parry, then slam')],
+    chain_hook: [c('ground_slam', 'Stuns the enemy you just dragged in'), c('shield_throw', 'hits the hooked target again before it reaches you')],
+    fortify: [c('riposte', 'pays off the hits you choose to stand in'), c('lance_charge', 'carries the Ward into the middle of the pack')],
+    riposte: [c('chain_hook', 'pulls an enemy close so it swings into your parry'), c('shield_throw', 'reaches enemies that will not come to you')],
+    warcry_of_iron: [c('ground_slam', 'hits the taunted crowd while it gathers in front of you'), c('riposte', 'counters the attacks the taunt draws')],
+    lance_charge: [c('ground_slam', 'a finisher once the charge has scattered them'), c('chain_hook', 'drags in what the charge missed')],
+    anchor_point: [c('warcry_of_iron', 'draws enemies into the standard'), c('shield_throw', 'a filler from inside the standard')]
+  };
+
+  T.hexblade = {
+    mark_of_frailty: [c('blink_cut', 'always crits a Marked enemy'), c('spectral_blade', 'cheap seeking damage on the Marked pack')],
+    siphon_edge: [c('mark_of_frailty', 'Marks the target so the drinking cut hits harder'), c('veil_step', 'gets you to the next enemy to drink from')],
+    spectral_blade: [c('curse_chain', 'Marks the whole pack for the blades'), c('veil_step', 'repositions between volleys')],
+    curse_chain: [c('blink_cut', 'jumps to a chained, Marked enemy for a sure crit'), c('spectral_blade', 'quick damage on everything the chain Marked')],
+    blink_cut: [c('mark_of_frailty', 'the Mark that makes every blink a crit'), c('veil_step', 'a second way in or out')],
+    binding_sigil: [c('mark_of_frailty', 'Marks the rooted enemies'), c('spectral_blade', 'hits rooted enemies from safety')],
+    soul_rend: [c('mark_of_frailty', 'Marked enemies take much more from the rend'), c('blink_cut', 'closes in for the heavy blow')],
+    veil_step: [c('blink_cut', 'a second gap closer on the enemies you Marked passing through'), c('siphon_edge', 'heals you once you are in')],
+    hex_nova: [c('curse_chain', 'Marks several enemies so the nova bursts again'), c('veil_step', 'slips into the middle of the pack before the nova')],
+    black_parry: [c('siphon_edge', 'heals the hits the parry misses'), c('blink_cut', 'chases the attacker the parry Marked')]
+  };
+
+  T.thornwarden = {
+    snare_trap: [c('hunters_mark', 'marks the rooted quarry'), c('leap_shot', 'springs you back to your traps')],
+    barbed_volley: [c('leap_shot', 'gets distance again after a close volley'), c('hunters_mark', 'more damage on the target the volley focuses')],
+    vine_wall: [c('rain_of_thorns', 'arrows on the enemies stuck at the wall'), c('leap_shot', 'jump back behind your wall')],
+    beast_call: [c('hunters_mark', 'your beast goes for the marked quarry'), c('snare_trap', 'roots the target for the hound')],
+    rain_of_thorns: [c('snare_trap', 'roots enemies under the rain'), c('leap_shot', 'keeps you out of reach while it falls')],
+    hunters_mark: [c('barbed_volley', 'unloads on the quarry'), c('leap_shot', 'keeps the quarry at bow range')],
+    poison_bloom: [c('snare_trap', 'holds enemies in the toxic patch'), c('hunters_mark', 'more damage on the poisoned quarry')],
+    leap_shot: [c('snare_trap', 'something waiting where they chase you'), c('hunters_mark', 'a quarry for the arrows you loose')],
+    bramble_armor: [c('snare_trap', 'pins enemies close to your thorns'), c('barbed_volley', 'a close-range volley while the brambles hold')],
+    spore_cloud: [c('poison_bloom', 'more Poison on the choking crowd'), c('snare_trap', 'holds them in the cloud')]
+  };
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -37411,6 +37449,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.117', date: '2026-10-18', title: 'More companion skills', notes: [
+      'Ironbound, Hexblade and Thornwarden starting skills now bring two light companion skills too'
+    ] },
     { version: '0.7.116', date: '2026-10-18', title: 'Companion skills', notes: [
       'Your starting skill now brings two light companion skills that fit it, so you have more to press than one attack',
       'Companions are marked with a dashed outline and deal half damage. A skill you learn later takes their slot',
