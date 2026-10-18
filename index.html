@@ -4163,7 +4163,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.114';
+  KD.VERSION = '0.7.115';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -37372,6 +37372,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.115', date: '2026-10-18', title: 'Shared towns in co-op', notes: [
+      'Playing together: your friends now stand in the town with you, at the start of a run and between acts',
+      'Friends who join late or come back after a dropped connection arrive in the same town as the host',
+      'Walking out of the town gate keeps the party in town until the host picks the road'
+    ] },
     { version: '0.7.113', date: '2026-10-18', title: 'Cloth that moves', notes: [
       'Capes, robes and coat tails now sway as you run, turn, strike and dodge',
       'The Gloamblade\'s winged cloak streams behind him and settles when he stops',
@@ -72216,14 +72221,39 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    * client builds the identical world from it.
    */
   C.buildWorld = function (cmd) {
-    var layout = cmd.kind === 'arena' ? KD.gen.arena(cmd.bossId, {}) : KD.gen.area(cmd.areaId, cmd.seed, U.deepClone(cmd.gen || {}));
+    // [coop towns] kind 'town': the run's town (docs/TOWNS.md section 4), one shared world like an area, with no enemies
+    var town = cmd.kind === 'town';
+    var layout = cmd.kind === 'arena' ? KD.gen.arena(cmd.bossId, {}) : (town ? KD.gen.town(cmd.townId, cmd.seed) : KD.gen.area(cmd.areaId, cmd.seed, U.deepClone(cmd.gen || {})));
     var replicas = cmd.party.map(function (p) { return JSON.parse(p.blob); });
     var world = new KD.sim.World({
       layout: layout, seed: cmd.seed, slot: cmd.slot, heroes: replicas.map(function (r) { return r.hero; }), runs: replicas, run: replicas[0] || null,
-      rules: cmd.rules || {}, playerRules: replicas.map(function (r) { return KD.run.rules(r); }), party: replicas.length,
+      rules: cmd.rules || {}, playerRules: replicas.map(function (r) { return KD.run.rules(r); }), party: replicas.length, noSpawns: town || undefined,
       areaState: U.deepClone(cmd.areaState), bossVariant: cmd.variant || { set: 'A', twist: null }      // hirelings: every hero's own, from its run (world.runs)
     });
     return { layout: layout, world: world, replicas: replicas };
+  };
+  /**
+   * [coop towns] The town a run stands in on the road (open, phase 'route'), or null. The host's open town is the
+   * party's town: everyone walks it together in one shared world (each player still shops in their own stalls).
+   */
+  C.townOf = function (run) { return run && KD.towns && KD.towns.current ? KD.towns.current(run) : null; };
+  C.townSeed = function (run, townId) { return U.hash(run.seed + ':town:' + townId) >>> 0; };
+  /**
+   * [coop towns] A guest's copy is brought to the host's town (the world command `cmd` of kind 'town'): on the road,
+   * that town open and stood in. A copy that already has it open keeps its stalls; a late joiner (whose new copy opened
+   * the first town) gets the party's town and road slot instead.
+   */
+  C.followTown = function (run, cmd) {
+    var T = KD.towns;
+    if (!run || !T || run.phase === 'dead' || run.phase === 'won') return;
+    var t = run.town;
+    if (!(t && t.open && t.id === cmd.townId && run.phase === 'route')) {
+      run.phase = 'route';
+      if (cmd.nextSlot || cmd.slot) run.nextSlot = cmd.nextSlot || cmd.slot;
+      T.open(run, cmd.act);
+      if (KD.run.routeOffer) run.offer = KD.run.routeOffer(run);
+    }
+    if (run.town && run.town.id === cmd.townId) run.town.left = false;
   };
 
   /**
@@ -72545,10 +72575,16 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    * needs info { bossId, variant, areaState }. `keep` reuses the current world's state (resync, a player joining).
    */
   SP.makeWorldCmd = function (kind, info, keep) {
-    var self = this, run = this.live(), a = run.area, roster = this.makeRoster();
-    var cmd = { n: ++this.seq, kind: kind, areaId: a.areaId, slot: a.slot, rules: KD.run.rules(run) };
-    if (run.coop && run.coop.rid) cmd.rev = (run.coop.rev || 0) + (keep ? 0 : 1);      // shared worlds entered: how far each copy got
-    if (kind === 'arena') {
+    var self = this, run = this.live(), a = run.area, roster = this.makeRoster(), town = kind === 'town' ? C.townOf(run) : null;
+    if (kind === 'town' && !town) return null;
+    var cmd = town ? { n: ++this.seq, kind: kind, areaId: town.id, townId: town.id, act: town.act, slot: town.slot, nextSlot: run.nextSlot, rules: KD.run.rules(run) }
+      : { n: ++this.seq, kind: kind, areaId: a.areaId, slot: a.slot, rules: KD.run.rules(run) };
+    if (run.coop && run.coop.rid && !town) cmd.rev = (run.coop.rev || 0) + (keep ? 0 : 1);      // shared worlds entered: how far each copy got (a town is not one)
+    if (town) {
+      // [coop towns] the same walkable town for everybody, from the host's run (KD.gen.town is deterministic)
+      cmd.seed = C.townSeed(run, town.id);
+      cmd.areaState = { areaId: town.id, seed: cmd.seed, slot: town.slot, inArena: false, cleared: { spawns: {}, interact: {} }, pos: null, minibossDead: true, bossDead: true, events: {} };
+    } else if (kind === 'arena') {
       cmd.bossId = info.bossId; cmd.variant = info.variant; cmd.seed = (a.seed ^ 0x0A7E7A) >>> 0;
       cmd.areaState = info.areaState || { areaId: a.areaId, seed: cmd.seed, slot: a.slot, inArena: true, cleared: { spawns: {}, interact: {} }, pos: null, minibossDead: true, bossDead: false, events: {} };
     } else {
@@ -72573,7 +72609,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   /** Host: build the next world for everyone. */
   SP.hostWorld = function (kind, info, keep) {
     if (this.role !== 'host') return null;
-    var cmd = JSON.parse(JSON.stringify(this.makeWorldCmd(kind, info || {}, keep)));      // exactly what the guests receive
+    var made = this.makeWorldCmd(kind, info || {}, keep);
+    if (!made) return null;
+    var cmd = JSON.parse(JSON.stringify(made));      // exactly what the guests receive
     this.send('*', { t: 'world', cmd: cmd });
     this.enterWorld(cmd);
     this.pushLobby();
@@ -72592,12 +72630,14 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   SP.request = function (what) { if (this.role === 'guest') this.send('h', { t: 'req', w: what }); };
   /** Host: a ready player who is not in the world yet joins at once while the party is still at camp. */
   SP.maybeBringIn = function () {
-    if (this.role !== 'host' || !this.world || !this.cmd || this.cmd.kind !== 'area') return false;
+    if (this.role !== 'host' || !this.world || !this.cmd || (this.cmd.kind !== 'area' && this.cmd.kind !== 'town')) return false;
     var self = this, run = this.live();
-    if (!run || run.phase !== 'camp') return false;
+    if (!run) return false;
+    if (this.cmd.kind === 'area' && run.phase !== 'camp') return false;
+    if (this.cmd.kind === 'town' && !C.townOf(run)) return false;          // [coop towns] the party's town: a player who gets ready comes in at once
     var waiting = this.lobby.players.some(function (p) { return p.id !== self.id && p.blob && READY_PHASES[p.phase] && self.idxOf(p.id) < 0; });
     if (!waiting || this.roster.length >= C.MAX_PLAYERS) return false;
-    this.hostWorld('area', {}, true);
+    this.hostWorld(this.cmd.kind, {}, true);
     return true;
   };
   SP.onWorldCmd = function (cmd) {
@@ -72610,7 +72650,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   SP.followRun = function (cmd) {
     var run = this.live();
     if (!run || this.role === 'host' || !KD.run) return;
-    var here = run.area && run.area.areaId === cmd.areaId && run.area.slot === cmd.slot && KD.run.inPlay(run);
+    if (cmd.kind === 'town') { C.followTown(run, cmd); return; }
+    var here =run.area && run.area.areaId === cmd.areaId && run.area.slot === cmd.slot && KD.run.inPlay(run);
     if (!here && !(cmd.kind === 'arena' && run.area && run.area.areaId === cmd.areaId && run.phase === 'route')) {
       var vi = run.visited.indexOf(cmd.areaId); if (vi >= 0) run.visited.splice(vi, 1);
       run.nextSlot = cmd.slot;
@@ -138785,12 +138826,29 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       if (!r || !T.on() || !T.here(r)) return false;
       if (G.botOn || Q.autoplay || Q.notown || (Q.auto && Q.flow !== '1')) return false;            // bots and the dev harness walk straight on
       if (F && F.setup && F.setup.needsSkills && F.setup.needsSkills(r) && r.phase !== 'oath') return false;      // the starting skills come first
-      try { G.enterTown(); return true; } catch (e) { console.error('KD.towns: the town could not be built', e); G.inTown = null; return false; }
+      try { return G.enterTown(); } catch (e) { console.error('KD.towns: the town could not be built', e); G.inTown = null; return false; }
     };
+    function coop() { var s = KD.coop && KD.coop.session; return s && s.role ? s : null; }
+    function sharedTown(s) { return !!(s && s.world && s.cmd && s.cmd.kind === 'town' && s.localIdx >= 0); }
+    /**
+     * [coop towns] In a shared run the town is ONE world for the whole party, built by the host through the session like
+     * an area (KD.coop: world command kind 'town'), so every player stands in the host's town with the host. A guest
+     * never builds a town of its own: until the host's town world reaches it, it waits on the road screen. Walking out
+     * of the gate shows the road screen over the town (the shared world goes on; the hero waits at the gate) and
+     * "Back to <town>" steps in again.
+     */
+    function enterCoopTown(s) {
+      if (sharedTown(s) && G.world === s.world) { G.setState('play'); var p = G.player; if (p && G.camera) G.camera.update(0, { x: p.x, y: 0, z: p.z }, { snap: true }); return true; }
+      if (s.role !== 'host') return false;
+      var w = s.hostWorld('town', {}, sharedTown(s));
+      return !!w && G.state === 'play';
+    }
     G.enterTown = function () {
       var r = run(), town = T.here(r);
       if (!town) return false;
       T.stock(r);
+      var s = coop();
+      if (s) return enterCoopTown(s);
       G.teardownWorld();
       var seed = KD.util.hash(r.seed + ':town:' + town.id) >>> 0;
       var layout = KD.gen.town(town.id, seed);
@@ -138808,8 +138866,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       var r = run();
       if (!r || !G.inTown) return false;
       T.leave(r);
-      G.teardownWorld();
-      G.inTown = null;
+      var s = coop();
+      if (!(sharedTown(s) && G.world === s.world)) { G.teardownWorld(); G.inTown = null; }      // [coop towns] a shared town stays up behind the road screen
       G.saveNow();
       G.setState('route');
       G.events.emit('route', { offer: r.offer });
@@ -138826,6 +138884,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var area0 = G.area;
     G.area = function () { return G.inTown ? townRec() : area0.apply(G, arguments); };
     G.events.on('worldEnd', function () { G.inTown = null; people.forEach(function (p) { try { p.v.dispose(); } catch (e) { /* ignore */ } }); people = []; });
+    // [coop towns] a shared town world (built by KD.game's onCoopWorld) gets its keepers and townsfolk too
+    G.events.on('town', function (e) { if (e && e.coop && e.town && e.layout) { try { dressPeople(e.layout, e.town); } catch (err) { console.error('KD.towns: people', err); } } });
 
     /** The keepers behind their counters and a few townsfolk: drawn figures, not simulated (nobody walks through them). */
     function dressPeople(layout, town) {
@@ -138848,7 +138908,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       var r = run(), res = T.heal(r);
       if (!res.ok) return;
       G.refreshHero();
-      if (G.player && !G.player.dead) { G.player.hp = G.player.hpMax; }
+      // alone the world is ours to change; a shared world gets the new Health as a sync from the run (KD.coop mirror)
+      if (G.player && !G.player.dead && !coop()) { G.player.hp = G.player.hpMax; }
       if (F && F.sound) F.sound('ui_confirm');
       KD.ui.toast('You rest a while. Health restored' + ((r.hirelings || []).length ? ', and your company is back on its feet.' : '.'), { kind: 'good', icon: 'heart_plus' });
     }
@@ -139399,7 +139460,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   CU.mateColor = function (i) { return CU.COLORS[((i | 0) % CU.COLORS.length + CU.COLORS.length) % CU.COLORS.length]; };
   CU.MODES = ['standard', 'relaxed', 'hardcore'];
 
-  function areaName(areaId) { return areaId && KD.has && KD.has('areas', areaId) ? KD.get('areas', areaId).name : ''; }
+  function areaName(areaId) {
+    if (areaId && KD.has && KD.has('areas', areaId)) return KD.get('areas', areaId).name;
+    return areaId && KD.has && KD.has('towns', areaId) ? KD.get('towns', areaId).name : '';      // [coop towns] the party may stand in a town
+  }
   function cls(classId) { return KD.has && KD.has('classes', classId) ? KD.get('classes', classId) : null; }
   CU.className = function (classId) { var c = cls(classId); return c ? c.name : 'Hero'; };
   CU.classColor = function (classId) { var c = cls(classId); return c ? c.color : '#bd9440'; };
@@ -150428,16 +150492,22 @@ P['wildmask_tripo'] = 'Z2xURgIAAAAojgcA+BgAAEpTT057ImFzc2V0Ijp7InZlcnNpb24iOiIyL
     else if (what === 'leave' && G.inArena && (G.bossDead || G.run.phase !== 'arena')) G.leaveArena();
   }
   function onCoopWorld(e) {
-    var cmd = e.cmd, rec = KD.get('areas', cmd.areaId);
+    // [coop towns] kind 'town': the party's town is a shared world like an area (docs/TOWNS.md section 4, src/ui/23_towns.js)
+    var cmd = e.cmd, town = cmd.kind === 'town', here = town && KD.towns && G.run ? KD.towns.current(G.run) : null;
+    var rec = town ? (here ? KD.towns.areaRec(here) : { id: cmd.townId, name: '', town: true, act: cmd.act, features: [], hazards: [] }) : KD.get('areas', cmd.areaId);
+    var again = G._coopArea === cmd.areaId + ':' + cmd.kind;
     teardownWorld();
     G.backdrop = false;
     G.inArena = cmd.kind === 'arena'; G.arenaState = G.inArena ? e.world.areaState : null;
     G.bossDead = !!(G.inArena && cmd.areaState && cmd.areaState.bossDead);
     attachWorld(e.layout, e.world, true);
+    G.inTown = town ? cmd.townId : null;
     setState('play');
+    var cs = coS(); if (cs && cs.role === 'host') cs.reportPhase(true);      // the lobby shows where the host is (it may come straight from the setup screen into its town)
     G.saveNow();
-    G.events.emit('area', { area: rec, layout: e.layout, arena: G.inArena, bossId: cmd.bossId, variant: cmd.variant, run: G.run, coop: true, resync: G._coopArea === cmd.areaId + ':' + cmd.kind });
+    G.events.emit('area', { area: rec, layout: e.layout, arena: G.inArena, bossId: cmd.bossId, variant: cmd.variant, run: G.run, coop: true, town: town, resync: again });
     G._coopArea = cmd.areaId + ':' + cmd.kind;
+    if (town && here) G.events.emit('town', { town: here, layout: e.layout, coop: true });
   }
   /** Guest: the host closed the shared world (the party is back on the road). */
   function onCoopEnd() {
