@@ -1981,6 +1981,75 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 /* the run-over panel scrolls rather than squeezing its rows when the Spoils block is added */
 .flow-over-xp:has(.hub-over) > * { flex-shrink: 0; }
 
+/* =====================================================================================================
+   [hub v2] Hearthmoor v2 (docs/HUB.md section 9): signs hang over the buildings in the 3D village, the tiles
+   are one row shorter so more of the village shows, and every target is 40 units on a touch screen.
+   KD.config.hubLayout = 'classic' drops the hub-v2 class and the signs (the classic rules above still apply).
+   ===================================================================================================== */
+.flow-hub.hub-v2 > :not(.hub-shade):not(.hub-signs) { position: relative; z-index: 1; }
+.flow-hub.hub-v2 .hub-scene { pointer-events: none; }
+.hub-v2 .hub-shade { background: linear-gradient(180deg, rgba(8, 5, 3, .62) 0%, rgba(8, 5, 3, .08) 17%, rgba(8, 5, 3, 0) 30%, rgba(8, 5, 3, 0) 54%, rgba(8, 5, 3, .55) 64%, rgba(8, 5, 3, .88) 100%); }
+.hub-signs { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.hub-sign { --hub-c: #bd9440; position: absolute; left: 0; top: 0; transform: translate(-9999px, 0); pointer-events: auto; cursor: pointer; display: inline-flex; align-items: center; gap: calc(6 * var(--u));
+  padding: calc(3 * var(--u)) calc(9 * var(--u)) calc(3 * var(--u)) calc(4 * var(--u)); white-space: nowrap; user-select: none; -webkit-tap-highlight-color: transparent;
+  background: linear-gradient(180deg, rgba(52, 36, 20, .94), rgba(30, 20, 11, .94)); border: var(--u) solid rgba(216, 178, 90, .42); border-radius: calc(4 * var(--u));
+  box-shadow: 0 calc(2 * var(--u)) calc(6 * var(--u)) rgba(0, 0, 0, .6); transition: border-color .15s, opacity .15s; }
+.hub-sign::before { content: ''; position: absolute; inset: calc(-6 * var(--u)) calc(-3 * var(--u)); }      /* a bigger finger target than the board */
+.hub-sign::after { content: ''; position: absolute; left: 50%; bottom: calc(-7 * var(--u)); margin-left: calc(-6 * var(--u)); border: calc(6 * var(--u)) solid transparent; border-bottom: 0; border-top-color: rgba(216, 178, 90, .55); }
+.hub-sign-txt { display: inline-flex; flex-direction: column; align-items: flex-start; gap: calc(1 * var(--u)); line-height: 1; }
+.hub-sign-name { font-family: var(--kd-font-display); font-variant: small-caps; font-weight: 700; letter-spacing: .04em; font-size: calc(14 * var(--u)); color: var(--kd-parch-100); text-shadow: 0 var(--u) calc(2 * var(--u)) #000; }
+.hub-sign .hub-pips { gap: calc(2 * var(--u)); }
+.hub-sign .hub-pip { width: calc(6 * var(--u)); height: calc(6 * var(--u)); }
+.hub-sign-lock { display: inline-flex; }
+.hub-sign-sub { font-size: calc(10.5 * var(--u)); letter-spacing: .06em; text-transform: uppercase; color: #f0b27a; }
+.hub-sign-up { display: inline-flex; align-items: center; justify-content: center; width: calc(17 * var(--u)); height: calc(17 * var(--u)); border-radius: 50%; background: #f2c14e; box-shadow: 0 0 calc(8 * var(--u)) #f2c14e; animation: hub-sign-beat 1.6s ease-in-out infinite; }
+@keyframes hub-sign-beat { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.18); } }
+.hub-sign-ready { border-color: rgba(242, 193, 78, .9); }
+.hub-sign-ruin, .hub-sign-locked { opacity: .8; background: linear-gradient(180deg, rgba(34, 28, 22, .9), rgba(20, 16, 12, .9)); border-color: rgba(150, 130, 100, .35); }
+.hub-sign-ruin .hub-sign-name, .hub-sign-locked .hub-sign-name { color: #b9ab92; }
+.hub-sign-done .hub-sign-name { color: #f3dfa4; }
+.hub-sign-gate { border-color: rgba(240, 130, 70, .8); background: linear-gradient(180deg, rgba(70, 30, 16, .95), rgba(38, 16, 9, .95)); }
+.hub-sign-gate::after { border-top-color: rgba(240, 130, 70, .7); }
+.hub-sign:hover, .hub-sign-hot { border-color: var(--hub-c); opacity: 1; }
+.hub-sign-sel { border-color: #f3dfa4; box-shadow: 0 0 0 var(--u) #f3dfa4, 0 0 calc(12 * var(--u)) rgba(243, 223, 164, .5); opacity: 1; }
+.hub-sign-gate:hover { border-color: #ffb07a; }
+.kd-touch .hub-sign::before { inset: calc(-8 * var(--u)) calc(-4 * var(--u)); }
+
+/* the tiles: one head row (badge, name, cost and button), what it gives now, what it gives next */
+.hub-tile.hub-tile2 { min-height: 0; gap: calc(4 * var(--u)); padding: calc(7 * var(--u)) calc(10 * var(--u)) calc(8 * var(--u)); cursor: pointer; }
+.hub-tile2 .hub-tile-head { gap: calc(8 * var(--u)); min-width: 0; }
+.hub-tile2 .hub-tile-id { flex: 0 1 auto; overflow: hidden; }
+.hub-tile2 .hub-tile-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hub-tile-act { flex: none; display: inline-flex; align-items: center; gap: calc(7 * var(--u)); }
+.hub-tile2 .hub-tile-now { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hub-tile2 .hub-tile-next { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.hub-tile2:hover { border-color: rgba(216, 178, 90, .6); }
+.hub-tile.hub-tile2.hub-sel { border-color: #f3dfa4; box-shadow: inset 0 0 0 var(--u) rgba(0, 0, 0, .6), 0 0 0 var(--u) #f3dfa4, 0 0 calc(14 * var(--u)) rgba(243, 223, 164, .35); }
+.hub-tile.hub-flash { animation: hub-pop .5s ease-out; }
+.hub-v2 .hub-grid { gap: calc(8 * var(--u)); }
+
+/* a touch screen (tablet or phone): every target at least 40 units */
+.kd-touch .hub-v2 .hub-tile .kd-btn, .kd-touch .hub-v2 .hub-tile .kd-badge { min-height: calc(40 * var(--u)); }
+.kd-touch .hub-v2 .hub-tile .hub-up { min-width: calc(76 * var(--u)); }
+.kd-touch .hub-v2 .flow-qbtn { min-width: calc(40 * var(--u)); min-height: calc(40 * var(--u)); }
+.kd-touch .hub-v2 .flow-foot .kd-btn { min-height: calc(42 * var(--u)); }
+
+/* a phone (844 x 390): a shorter tile row, smaller signs (names only) */
+.kd-compact .hub-v2 .hub-row .hub-tile2 { flex: 0 0 calc(256 * var(--u)); height: auto; }
+.kd-compact .hub-v2 .hub-tile2 .hub-tile-now { display: none; }
+.kd-compact .hub-v2 .hub-tile2 .hub-tile-next { font-size: calc(12 * var(--u)); }
+.kd-compact .hub-sign { padding: calc(2 * var(--u)) calc(7 * var(--u)) calc(2 * var(--u)) calc(3 * var(--u)); gap: calc(4 * var(--u)); }
+.kd-compact .hub-sign-name { font-size: calc(12 * var(--u)); }
+.kd-compact .hub-sign-sub { display: none; }
+.hub-v2 .hub-top, .hub-v2 .flow-foot { pointer-events: none; }
+.hub-v2 .hub-top > :not(.flow-grow), .hub-v2 .flow-foot > :not(.flow-grow) { pointer-events: auto; }
+/* a phone: badge-only signs (the badge is the tile's), the name only on the selected sign and on the Road Down */
+.kd-compact .hub-sign:not(.hub-sign-gate):not(.hub-sign-sel) .hub-sign-txt { display: none; }
+.kd-compact .hub-sign:not(.hub-sign-gate):not(.hub-sign-sel) { padding: calc(2 * var(--u)); gap: calc(2 * var(--u)); border-radius: 50%; }
+.kd-compact .hub-sign:not(.hub-sign-gate):not(.hub-sign-sel) .hub-sign-up { position: absolute; right: calc(-7 * var(--u)); top: calc(-7 * var(--u)); width: calc(14 * var(--u)); height: calc(14 * var(--u)); }
+.kd-compact .hub-sign:not(.hub-sign-gate):not(.hub-sign-sel) .hub-sign-lock { position: absolute; right: calc(-6 * var(--u)); top: calc(-6 * var(--u)); }
+.kd-compact .hub-sign::before { inset: calc(-9 * var(--u)); }
+
 /* [w8 towns] the towns on the road map and the way back (src/ui/23_towns.js) */
 .town-map-node { position: absolute; transform: translate(-50%, -50%); display: flex; align-items: center; gap: calc(3 * var(--u)); padding: calc(2 * var(--u)) calc(6 * var(--u)) calc(2 * var(--u)) calc(4 * var(--u));
   border-radius: calc(10 * var(--u)); background: rgba(42, 28, 14, .82); border: calc(1 * var(--u)) solid #120a04; box-shadow: 0 0 0 calc(1.5 * var(--u)) rgba(189, 148, 64, .55);
@@ -4094,7 +4163,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.104';
+  KD.VERSION = '0.7.105';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -37225,7 +37294,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         'A warm fire, a cold meal and a village that still believes in you.',
         'The village waits. It always waits. That is what villages are for.',
         'Home, such as it is. The walls are new. The fear is not.',
-        'Rest. The road will be just as cruel tomorrow.'
+        'Rest. The road will be just as cruel tomorrow.',
+        'The hearth fire is still burning. Somebody kept it fed while you were gone.',
+        'The Road Down waits past the gate. It is in no hurry. Neither are you.'
       ],
       afterDeath: [
         'They carried what was left of your spoils home. The rest stayed in the ditch.',
@@ -37301,6 +37372,12 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.105', date: '2026-10-18', title: 'Hearthmoor rebuilt', notes: [
+      'Hearthmoor is rebuilt as a real village: a square round the hearth fire, every building in sight, and the Road Down through the gate',
+      'Signs hang over every building: tap one to look at it and find its upgrade',
+      'Keepers work, villagers walk the paths, embers rise from the fire, and the village has its own sounds',
+      'Bigger buttons on tablets and phones'
+    ] },
     { version: '0.7.104', date: '2026-10-18', title: 'Your Legend', notes: [
       'Your Legend replaces account levels, Prestige and the Renown shop: deeds, Legend ranks, class mastery, a codex of uniques and the graves of the fallen',
       'Hearthmoor gives choices now: tempers and makes for your weapon, blessings that change how you fight, field kits, map knowledge',
@@ -71672,8 +71749,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
   function toWorld(s, lx, lz) { var c = Math.cos(s.rot), n = Math.sin(s.rot); return [s.x + lx * c + lz * n, s.z - lx * n + lz * c]; }
 
-  /** sceneLayout(levels) -> the village as a layout. Deterministic for the levels. */
-  V.sceneLayout = function (levels) {
+  /** The first Hearthmoor (v0.7.52): a 60 x 52 m square with the buildings round its edge. KD.config.hubLayout = 'classic' brings it back. */
+  V.sceneLayoutClassic = function (levels) {
     levels = levels || {};
     var G = KD.gen, S = G.SURF, total = 0, id;
     for (id in levels) total += levels[id] || 0;
@@ -71741,6 +71818,159 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     layout.hub = hub;
     return layout;
   };
+
+  // ================================================================================================ Hearthmoor v2 (docs/HUB.md section 9)
+  /**
+   * The village at the lip of the descent: a flagstone square with the great hearth fire in the middle (the fire never
+   * goes out, it is what the village is named for), the eight buildings in a horseshoe round it, all facing the fire and
+   * all in sight of the camera, the road home coming in from the south and the Road Down leaving through the timber
+   * gatehouse in the palisade at the back, under the cartographer's watch tower. Crags and dark pines behind the palisade
+   * give it height; lamps, braziers and banners come as it grows. Same building looks per level as the classic village.
+   *
+   *   layout.hub.signs   [{ id, building | null, x, y, z }]  where the floating name signs hang (renderer, src/gfx/68_env_hub.js)
+   *   layout.hub.walks   [[x, z], ...] loops the villagers walk once the village is waking up
+   *   layout.hub.npcs    keepers (with a `work` motion), refugees round the fire, villagers on the walks
+   */
+  var SC2 = V.SCENE2 = {
+    w: 68, d: 62, plaza: { x: 34, z: 27, r: 7 },
+    // framed so the whole horseshoe sits in the open band above the building tiles (PC) or between the title and the tiles (phone)
+    camera: { eye: [34, 24, -10], at: [34, -6, 32], compactEye: [34, 27, -16], compactAt: [34, -2, 32], sway: 2.4,
+      focus: { back: 21, up: 15, ahead: 3, down: -8, compactDown: 2 } },
+    gate: { x: 38, z: 57.5, rot: 0 },
+    slots: {
+      smithy: { x: 21, z: 20, rot: PI / 2 }, market: { x: 47, z: 20, rot: -PI / 2 },
+      apothecary: { x: 16, z: 30, rot: PI / 2 }, barracks: { x: 52, z: 30, rot: -PI / 2 },
+      yard: { x: 16, z: 43, rot: PI }, shrine: { x: 27, z: 47, rot: PI },
+      maproom: { x: 47, z: 47, rot: PI }, relichouse: { x: 56, z: 41, rot: PI }
+    }
+  };
+  /** How high each building's sign hangs (m above the ground), by level 0..4. */
+  var SIGN_Y = {
+    smithy: [3.4, 4.6, 5, 5, 5.4], apothecary: [3.6, 4.4, 6.6, 6.6, 6.6], yard: [2.8, 3.6, 3.8, 4.2, 4.2], shrine: [3.6, 4.4, 11.6, 11.6, 11.6],
+    relichouse: [3.6, 4, 6.4, 6.4, 6.4], maproom: [6, 4.4, 6.8, 10, 10], barracks: [3.6, 4.4, 6.2, 6.2, 6.2], market: [3, 3.6, 4.2, 4.2, 7.4]
+  };
+  /** The keepers' little work, played now and then (clip of the humanoid rig, seconds between). */
+  var WORK = {
+    smithy: { clip: 'overhead', every: 1.6 }, yard: { clip: 'swing_r', every: 2.4 }, shrine: { clip: 'channel', every: 7 },
+    apothecary: { clip: 'cast_hand', every: 6 }, market: { clip: 'shout', every: 9 }, barracks: { clip: 'shout', every: 11 },
+    maproom: { clip: 'cast_hand', every: 8 }, relichouse: { clip: 'channel', every: 10 }
+  };
+  V.SCENE2.work = WORK;
+
+  V.sceneLayoutV2 = function (levels) {
+    levels = levels || {};
+    var G = KD.gen, S = G.SURF, total = 0, id;
+    for (id in levels) total += levels[id] || 0;
+    var b = new G.Builder({ id: 'hearthmoor', archetype: 'village', theme: 'farmland', size: [SC2.w, SC2.d] }, 4243, {}, 'arena');
+    var pz = SC2.plaza, gt = SC2.gate, W = SC2.w, D = SC2.d;
+    var hub = { npcs: [], focus: {}, total: total, signs: [], walks: [], v: 2 };
+    var add = function (kind, x, z, rot, params, extra) {
+      var p = b.add(kind, x, z, rot, params);
+      if (p && extra) for (var k in extra) p[k] = extra[k];
+      return p;
+    };
+    // ---- ground: trodden mud round the village, a flagstone square, the road home from the south and the Road Down
+    b.fillSurf(S.grass);
+    b.disc(pz.x, pz.z + 3, 15, S.dirt);
+    b.disc(pz.x, pz.z, pz.r + 1.6, S.cobble);
+    b.disc(pz.x, pz.z, pz.r, S.plaza);
+    b.strip([[pz.x, 0], [pz.x, pz.z - pz.r]], 4, S.road_dirt);
+    b.strip([[pz.x + 1, pz.z + pz.r], [gt.x, gt.z - 3], [gt.x, D]], 3.6, S.road_dirt);
+    Object.keys(SC2.slots).forEach(function (k) { var s = SC2.slots[k], f = toWorld(s, 0, 3.5); b.strip([[f[0], f[1]], [pz.x, pz.z]], 2, S.path); });
+    // ---- the buildings, each with its sign and its keeper
+    KD.data.villageBuildings.forEach(function (bd) {
+      var s = SC2.slots[bd.id], L = Math.min(levels[bd.id] || 0, bd.levels.length);
+      if (!s) return;
+      hub.focus[bd.id] = { x: s.x, z: s.z, level: L };
+      (LOOKS[bd.id](L) || []).forEach(function (e) {
+        var w = toWorld(s, e[1], e[2]);
+        add(e[0], w[0], w[1], s.rot + (e[3] || 0), e[4], e[5]);
+      });
+      var sy = (SIGN_Y[bd.id] || [4])[L] || 4;
+      hub.signs.push({ id: bd.id, building: bd.id, x: s.x, y: sy, z: s.z });
+      if (L > 0) {
+        var kp = KEEPER[bd.id], kw = toWorld(s, kp[0], kp[1]), wk = WORK[bd.id];
+        hub.npcs.push({ id: 'keeper_' + bd.id, x: kw[0], z: kw[1], yaw: s.rot, building: bd.id, kind: 'keeper', level: L, color: bd.color, work: wk ? wk.clip : null, every: wk ? wk.every : 0 });
+      }
+    });
+    // ---- the heart: the hearth fire on the square, log seats round it, the well, the notice board
+    add('campfire', pz.x, pz.z, 0, {});
+    [0.55, 2.1, 3.65, 5.2].forEach(function (a) { add('log', pz.x + Math.sin(a) * 3.1, pz.z + Math.cos(a) * 3.1, a + PI / 2, { len: 1.8 }); });
+    add('well', pz.x - 5.6, pz.z + 4, 0, {});
+    add('notice_board', pz.x + 5.4, pz.z + 3.6, PI + 0.5, { w: 2, d: 1 });
+    var refugees = Math.max(1, Math.min(4, 4 - Math.floor(total / 7)));
+    for (var r = 0; r < refugees; r++) {
+      var a = r * 1.57 + 0.2;
+      hub.npcs.push({ id: 'refugee_' + r, x: pz.x + Math.sin(a) * 1.8, z: pz.z + Math.cos(a) * 1.8, yaw: a + PI, kind: 'refugee', level: 0 });
+    }
+    // the refugees' tents on the edge of the square, struck as the village rebuilds
+    var tents = [[pz.x - 6, pz.z - 11.5, 0.5], [pz.x + 6.2, pz.z - 12, -0.6], [pz.x - 9.4, pz.z + 6.2, 2.2]];
+    tents.slice(0, Math.max(0, 3 - Math.floor(total / 6))).forEach(function (t) { add('tent', t[0], t[1], t[2], { w: 3, d: 3, style: 'camp' }); });
+    // ---- the road home: a milestone and lamps, more lamps along it as the village grows
+    add('sign', pz.x - 3, 2.4, 0, { style: 'milestone' });
+    add('lamp_post', pz.x + 3, 8, 0, { style: 'wood' });
+    var lamps = Math.min(3, Math.floor(total / 6));
+    for (var l = 0; l < lamps; l++) { add('lamp_post', pz.x - 2.9, 12 - l * 4.6 + 4.6, 0, { style: 'iron' }); if (l) add('lamp_post', pz.x + 2.9, 12 - l * 4.6 + 4.6 + 2.3, 0, { style: 'iron' }); }
+    // ---- the square grows: lamps on its rim, banners, benches, the king's statue behind the fire at the end
+    if (total >= 4) { add('lamp_post', pz.x - 5.4, pz.z - 5.6, 0, { style: 'iron' }); add('lamp_post', pz.x + 5.4, pz.z - 5.6, 0, { style: 'iron' }); }
+    if (total >= 10) { add('banner_pole', pz.x - 7.4, pz.z + 2, 0, { style: 'crown' }); add('banner_pole', pz.x + 7.4, pz.z + 0.6, 0, { style: 'lantern' }); }
+    if (total >= 14) { add('bench', pz.x - 3.4, pz.z - 6.2, 0, { w: 2, d: 0.8 }); add('bench', pz.x + 3.6, pz.z - 6.2, 0, { w: 2, d: 0.8 }); }
+    if (total >= 18) { add('banner_pole', pz.x - 2.2, pz.z + 8.2, 0, { style: 'choir' }); add('banner_pole', pz.x + 4.4, pz.z + 8.2, 0, { style: 'crown' }); add('trough', pz.x - 7.4, pz.z - 1.2, PI / 2, { w: 2, d: 0.8 }); }
+    if (total >= 28) add('statue', pz.x, pz.z + 5.4, PI, { w: 2, d: 2, style: 'king' });
+    // ---- the Road Down: the timber gatehouse in the palisade, braziers either side, the descent beyond it
+    add('gatehouse', gt.x, gt.z, gt.rot, { w: 11, d: 3, gap: 4.4, h: 7.5, style: 'timber' });
+    add('brazier', gt.x - 3.4, gt.z - 3.2, 0, { style: 'iron' });
+    add('brazier', gt.x + 3.4, gt.z - 3.2, 0, { style: 'iron' });
+    hub.signs.push({ id: 'gate', building: null, x: gt.x, y: 9.4, z: gt.z });
+    // the palisade round the back of the village (west to east), cut by the gate
+    add('wall', 19, D - 3.5, 0, { len: 26, h: 3.6, thick: 0.8, style: 'palisade' });
+    add('wall', 52.75, D - 3.5, 0, { len: 17.5, h: 3.6, thick: 0.8, style: 'palisade' });
+    add('wall', 4, 44, PI / 2, { len: 22, h: 3.4, thick: 0.8, style: 'palisade' });
+    add('wall', W - 4, 44.5, PI / 2, { len: 21, h: 3.4, thick: 0.8, style: 'palisade' });
+    add('tower', 4.4, D - 4, 0, { w: 3, d: 3, h: 7, style: 'watch' });
+    add('tower', W - 4.4, D - 4, 0, { w: 3, d: 3, h: 7, style: 'watch' });
+    // ---- the land: dark pines and dead wood behind the palisade (the edge of the descent), pines and dead trees on the flanks, fields to the south
+    // (single pines, not groves: the area backdrop already rings the village with forest, and a grove costs ten times more)
+    [[1.8, 12], [2.2, 27], [1.6, 36], [W - 1.8, 13], [W - 2, 28], [W - 1.6, 37], [10, D - 1.6], [27, D - 1.4], [50, D - 1.5]].forEach(function (t, i) {
+      add('tree', t[0], t[1], i * 0.7, { species: i % 4 === 3 ? 'dead' : 'pine', size: 2 + (i % 2) });
+    });
+    [[8, 36, 0, 'dead', 3], [60, 33, 0.5, 'dead', 2], [8, 9, 0.3, 'oak', 3], [61, 10, -0.2, 'pine', 3], [23.5, 39, 0, 'oak', 2], [43, 37, 0.4, 'dead', 2]].forEach(function (t) {
+      add('tree', t[0], t[1], t[2], { species: t[3], size: t[4] });
+    });
+    [[9, 18, 0], [9, 20.5, 0], [58.5, 14, 0], [58.5, 16.5, 0]].forEach(function (c) { add('crop_row', c[0], c[1], c[2], { len: 6, crop: total >= 8 ? 'cabbage' : 'blight' }); });
+    [[24, 3.5, 0], [44, 3.5, 0], [9, 23.5, 0], [58.5, 19.5, 0]].forEach(function (f) { add('fence', f[0], f[1], f[2], { len: 6, style: total >= 8 ? 'wattle' : 'rail' }); });
+    add('scarecrow', 12.5, 16.5, 0, {});
+    add('haybale', 61, 23, 0, { size: 1 });
+    if (total < 6) { add('cart', pz.x - 8, 9.5, 0.4, { w: 2, d: 3.4, style: 'broken' }); add('pile', pz.x + 6.5, 9.5, 0, { r: 0.8, style: 'rubble' }); }
+    else add('cart', pz.x - 8, 9.5, 0.4, { w: 2, d: 3.4, style: 'hay' });
+    // ---- the villagers' walks (the renderer puts 0 to 4 people on them as the village grows)
+    hub.walks = [
+      [[pz.x - 4.6, pz.z - 4.6], [pz.x + 4.6, pz.z - 4.6], [pz.x + 5.6, pz.z + 1], [pz.x + 1.6, pz.z + 5.8], [pz.x - 3.4, pz.z + 5.6], [pz.x - 5.8, pz.z]],
+      [[pz.x - 1.4, 3], [pz.x - 1.4, pz.z - 7.6], [pz.x - 6, pz.z - 6.4], [toWorld(SC2.slots.smithy, 0.4, 4.4)[0], toWorld(SC2.slots.smithy, 0.4, 4.4)[1]], [pz.x - 1.4, pz.z - 9]],
+      [[pz.x + 3.8, pz.z + 7.8], [gt.x - 0.8, gt.z - 5.2], [gt.x + 0.8, gt.z - 5.8], [pz.x + 5.6, pz.z + 6]],
+      [[pz.x + 6.4, pz.z - 5.4], [toWorld(SC2.slots.market, -0.4, 4.6)[0], toWorld(SC2.slots.market, -0.4, 4.6)[1]], [toWorld(SC2.slots.barracks, 0, 5.2)[0], toWorld(SC2.slots.barracks, 0, 5.2)[1]], [pz.x + 7.6, pz.z]]
+    ];
+    var walkers = Math.min(4, Math.floor(total / 5));
+    for (var wi = 0; wi < walkers; wi++) hub.npcs.push({ id: 'villager_' + wi, x: hub.walks[wi][0][0], z: hub.walks[wi][0][1], yaw: 0, kind: 'villager', walk: wi, level: 0 });
+    b.points.spawn = { x: pz.x, z: 2.5, yaw: 0 }; b.points.exit = { x: gt.x, z: gt.z, yaw: 0 }; b.points.camp = { x: pz.x, z: pz.z };
+    b.path = [[pz.x, 2.5], [pz.x, pz.z], [gt.x, gt.z]];
+    var layout = b.finish();
+    layout.kind = 'area';
+    layout.hub = hub;
+    // the hearth fire lights the whole square (and is always among the lights the renderer picks: it is the nearest and widest)
+    (layout.lights || []).forEach(function (l) { if (Math.abs(l.x - pz.x) < 0.01 && Math.abs(l.z - pz.z) < 0.01) { l.r = 15; l.y = 1.8; l.intensity = 1.5; l.flicker = 0.5; } });
+    return layout;
+  };
+
+  /** Which Hearthmoor is drawn: 'v2' (the default) or 'classic' (KD.config.hubLayout = 'classic', or ?hub=classic). */
+  V.sceneName = function () {
+    var c = KD.config && KD.config.hubLayout;
+    if (!c && root.location && /[?&]hub=classic\b/.test(root.location.search || '')) c = 'classic';
+    return c === 'classic' ? 'classic' : 'v2';
+  };
+  V.sceneSpec = function () { return V.sceneName() === 'classic' ? V.SCENE : V.SCENE2; };
+  /** sceneLayout(levels) -> the village as a layout. Deterministic for the levels. */
+  V.sceneLayout = function (levels) { return V.sceneName() === 'classic' ? V.sceneLayoutClassic(levels) : V.sceneLayoutV2(levels); };
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -122496,12 +122726,18 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    *   KD.hubScene.focus(buildingId)    glide the camera to a building for a few seconds
    *   KD.hubScene.hide(game)           back to the fly-over of the main menu
    *   KD.hubScene.active               true while it is on screen
+   *   KD.hubScene.signs(out)           the floating signs on screen this frame: [{ id, building, x, y, visible }] (CSS px)
+   *   KD.hubScene.onFrame              fn(hubScene) called every drawn frame while it is on screen (the village screen's signs)
+   *
+   * Hearthmoor v2 (docs/HUB.md section 9; KD.config.hubLayout = 'classic' draws the first village): its own camera framing,
+   * keepers at work (the smith's hammer, the sergeant's sword, the keeper's prayer), villagers walking the paths as the
+   * village wakes, embers and smoke over the hearth fire and the forge, and the village's own ambience bed.
    */
   var HS = KD.hubScene = KD.hubScene || {};
   var V = KD.village, E = KD.env;
   var sin = Math.sin, cos = Math.cos, max = Math.max;
   HS.active = false;
-  var st = { npcs: [], focus: null, focusAt: 0, t: 0, view: null, key: '' };
+  var st = { npcs: [], focus: null, focusAt: 0, t: 0, view: null, key: '', puff: 0, amb: false, proj: [] };
 
   // ------------------------------------------------------------------ the mood: the grim farm palette at dusk
   var LIT = { house: 1, inn: 1, chapel: 1, barn: 1, shed: 1 };
@@ -122513,6 +122749,20 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       var r0 = col[i * 3], g0 = col[i * 3 + 1], b0 = col[i * 3 + 2];
       if (r0 > 0.2 && r0 < 0.42 && b0 > 0 && r0 / b0 > 1.9 && g0 / r0 > 0.62 && g0 / r0 < 0.86) { aux[i * 4] = max(aux[i * 4], 0.7); col[i * 3] = r0 * 1.2; }
     }
+  }
+  /** v2: the same dusk, a touch darker in the shadows so the fires, lamps and windows carry the picture. */
+  var V2_ENV = {
+    sunDir: [0.42, 0.27, 0.86], sunColor: [1.0, 0.6, 0.36], sunIntensity: 0.84,
+    skyColor: [0.32, 0.34, 0.6], skyIntensity: 0.4, zenith: [0.07, 0.07, 0.15], horizon: [0.66, 0.4, 0.3],
+    fogDensity: 0.0052, fogStart: 34, mist: 0.07, mistStart: 44, mistColor: [0.42, 0.38, 0.44],
+    exposure: 1.14, vignette: 0.42, gradeHigh: [1.08, 0.97, 0.84]
+  };
+  function presetV2() {
+    if (E.mood.PRESETS.hearthmoor_v2) return E.mood.PRESETS.hearthmoor_v2;
+    var H = preset();
+    if (!H) return null;
+    return E.mood.register('hearthmoor_v2', { env: copy(H.env, V2_ENV), palette: H.palette, look: H.look, piece: null, post: H.post, dress: H.dress, runtime: H.runtime,
+      life: copy(H.life || {}, { critters: { birds: 0, crows: 0.7, moths: 1.2, rats: 0.3, frogs: 0.2, butterflies: 0 } }) });
   }
   function preset() {
     if (E.mood.PRESETS.hearthmoor) return E.mood.PRESETS.hearthmoor;
@@ -122547,18 +122797,90 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     barracks: { build: 'heavy', head: 'helm', armor: 'mail', weapon: 'spear', offhand: 'shield', extras: ['pauldrons'] },
     market: { build: 'normal', head: 'hat', armor: 'cloth', weapon: 'none', extras: ['backpack', 'apron'] }
   };
+  var VILLAGER_LOOK = [
+    { build: 'normal', head: 'bare', armor: 'cloth', weapon: 'none', extras: ['backpack'] },
+    { build: 'thin', head: 'hood', armor: 'cloth', weapon: 'none', extras: [] },
+    { build: 'heavy', head: 'hat', armor: 'leather', weapon: 'none', extras: ['apron'] },
+    { build: 'normal', head: 'hood', armor: 'robe', weapon: 'staff', extras: [] }
+  ];
   function figure(n, i) {
     var M = KD.models;
     if (!(M && M.Visual && M.has && M.has('humanoid') && KD.gfx && KD.gfx.Actor)) return null;
-    var look = n.kind === 'keeper' ? (KEEPER_LOOK[n.building] || {}) : { build: i % 2 ? 'thin' : 'normal', head: 'hood', armor: 'cloth', weapon: 'none', extras: i % 2 ? [] : ['backpack'] };
-    var main = n.kind === 'keeper' ? n.color : ['#5a4c3e', '#4a4a52', '#5e4a3a', '#3e4a40'][i % 4];
+    var look = n.kind === 'keeper' ? (KEEPER_LOOK[n.building] || {}) : (n.kind === 'villager' ? VILLAGER_LOOK[i % VILLAGER_LOOK.length]
+      : { build: i % 2 ? 'thin' : 'normal', head: 'hood', armor: 'cloth', weapon: 'none', extras: i % 2 ? [] : ['backpack'] });
+    var main = n.kind === 'keeper' ? n.color : (n.kind === 'villager' ? ['#6a5a44', '#4e5560', '#6b4a3c', '#55603f'][i % 4] : ['#5a4c3e', '#4a4a52', '#5e4a3a', '#3e4a40'][i % 4]);
     var spec = { plan: 'humanoid', species: 'human', build: look.build || 'normal', head: look.head || 'bare', armor: look.armor || 'cloth',
       weapon: look.weapon || 'none', offhand: look.offhand || 'none', colors: { main: main, alt: '#4a3c30', skin: '#d8ad86', metal: '#8f98a6' },
       extras: look.extras || [], seed: KD.util.hash('hub:' + n.id) };
     var e = { id: -5000 - i, kind: 'npc', team: 2, defId: 'npc_hub', name: n.id, model: spec, x: n.x, z: n.z, y: 0, yaw: n.yaw, yaw0: n.yaw, r: 0.45, h: 1.8, vx: 0, vz: 0, speed: 0,
       scale: n.kind === 'refugee' ? 0.94 : 1, level: 1, tier: 'normal', role: 'support', hp: 1, hpMax: 1, dead: false, hidden: false, removed: false, broken: 0, guarding: false,
       stealthed: false, statuses: [], anim: { clip: 'idle', t: i * 0.9, speed: n.kind === 'refugee' ? 0.7 : 1 }, act: { state: 'idle', skill: null, t: 0, dur: 0 }, fx: { flash: 0, alpha: 1, tint: null } };
-    try { return { e: e, v: new M.Visual(e), n: n }; } catch (err) { return null; }
+    if (n.kind === 'villager') { e.vx = 0; e.vz = 0; e.speed = 2.6; }
+    try { return { e: e, v: new M.Visual(e), n: n, next: 1.5 + (i % 5) * 0.9, leg: 0, legT: 0, pause: 0 }; } catch (err) { return null; }
+  }
+
+  // ------------------------------------------------------------------ life: keepers at work, villagers on the walks
+  var WORK_T = { windup: 0.34, active: 0.14, recover: 0.42 };
+  function work(np, dt) {
+    var e = np.e, n = np.n, a = e.act;
+    if (!n.work) return;
+    if (a.state === 'idle') {
+      np.next -= dt;
+      if (np.next <= 0) { a.state = 'windup'; a.t = 0; a.dur = WORK_T.windup; e.anim.clip = n.work; e.anim.t = 0; }
+      return;
+    }
+    a.t += dt;
+    if (a.t < a.dur) return;
+    if (a.state === 'windup') { a.state = 'active'; a.t = 0; a.dur = WORK_T.active; }
+    else if (a.state === 'active') { a.state = 'recover'; a.t = 0; a.dur = WORK_T.recover; }
+    else { a.state = 'idle'; a.t = 0; a.dur = 0; e.anim.clip = 'idle'; np.next = n.every * (0.75 + 0.5 * ((np.leg++ * 0.618) % 1)); }
+  }
+  function walk(np, dt, walks) {
+    var e = np.e, path = walks && walks[np.n.walk];
+    if (!path || path.length < 2) return;
+    if (np.pause > 0) { np.pause -= dt; e.vx = 0; e.vz = 0; if (np.pause <= 0) e.anim.clip = 'walk'; else e.anim.clip = 'idle'; return; }
+    var tgt = path[(np.leg + 1) % path.length], dx = tgt[0] - e.x, dz = tgt[1] - e.z, d = Math.sqrt(dx * dx + dz * dz), sp = 1.15;
+    if (d < 0.15) { np.leg = (np.leg + 1) % path.length; if (np.leg % 2 === 0) np.pause = 2 + (np.leg % 3); return; }
+    var want = Math.atan2(dx, dz), dy = want - e.yaw;
+    while (dy > Math.PI) dy -= Math.PI * 2; while (dy < -Math.PI) dy += Math.PI * 2;
+    e.yaw += dy * Math.min(1, dt * 5);
+    var step = Math.min(d, sp * dt);
+    e.vx = dx / d * sp; e.vz = dz / d * sp; e.x += dx / d * step; e.z += dz / d * step;
+    e.anim.clip = 'walk';
+  }
+
+  // ------------------------------------------------------------------ embers and smoke (v2): the hearth fire, the forge, the gate braziers
+  function puffs(r, dt) {
+    var P = r && r.particles, L = HS.layout;
+    if (!P || !P.emit || !L || !L.hub || L.hub.v !== 2) return;
+    st.puff += dt;
+    if (st.puff < 0.12) return;
+    var k = st.puff; st.puff = 0;
+    var pz = V.SCENE2.plaza;
+    if (Math.random() < k * 2.2) P.emit({ x: pz.x, y: 0.9, z: pz.z, count: 1, speed: [0.3, 0.8], spread: 0.5, dir: [0, 1, 0], life: [3.5, 5.5], size: [0.6, 0.9], sizeEnd: [2.4, 3.4], color: '#4a4038', color2: '#2a2622', gravity: -0.35, drag: 0.4, shape: 'smoke' });
+    if (Math.random() < k * 5) P.emit({ x: pz.x + (Math.random() - 0.5) * 0.6, y: 0.7, z: pz.z + (Math.random() - 0.5) * 0.6, count: 1, speed: [0.8, 1.8], spread: 0.35, dir: [0, 1, 0], life: [1.2, 2.4], size: [0.06, 0.1], sizeEnd: 0.02, color: '#ffb35a', color2: '#ff5a1a', gravity: -0.6, drag: 0.6, additive: true, shape: 'spark' });
+    var f = L.hub.focus.smithy;
+    if (f && f.level > 0 && Math.random() < k * 1.6) {
+      var s = V.SCENE2.slots.smithy, c = Math.cos(s.rot), n = Math.sin(s.rot), lx = 0.9, lz = 0.6;
+      P.emit({ x: s.x + lx * c + lz * n, y: 3.4, z: s.z - lx * n + lz * c, count: 1, speed: [0.3, 0.6], spread: 0.3, dir: [0, 1, 0], life: [3, 4.5], size: [0.4, 0.6], sizeEnd: [1.6, 2.4], color: '#3e3832', color2: '#24211f', gravity: -0.3, drag: 0.4, shape: 'smoke' });
+    }
+  }
+
+  // ------------------------------------------------------------------ ambience (v2): wind, the fire, and the village's sounds as it grows
+  function ambience(levels, on) {
+    var A = KD.audio && KD.audio.amb;
+    if (!A || !A.set) return;
+    try {
+      if (!on) { if (st.amb) { A.set(null, { fade: 1.2 }); st.amb = false; } return; }
+      var L = levels || {}, tot = 0, k;
+      for (k in L) tot += L[k] || 0;
+      if (A.BEDS) A.BEDS.hearthmoor = {
+        layers: [['wind', 0.42, 360], ['fire', 0.2]].concat(tot >= 10 ? [['murmur', 0.05 + Math.min(0.05, tot / 560), 0.85]] : []),
+        ev: { crow: 2.2, crackle: 3, creak: 0.8, owl: 0.7, hammer: (L.smithy || 0) > 0 ? 2.4 : 0, coins: (L.market || 0) >= 2 ? 1 : 0, bell: (L.shrine || 0) >= 3 ? 0.35 : 0, flap: tot >= 10 ? 1 : 0.3, chain: (L.barracks || 0) > 0 ? 0.5 : 0 },
+        trim: 0.62
+      };
+      A.set('hearthmoor', { fade: 1.5 }); st.amb = true;
+    } catch (e) { /* audio is optional */ }
   }
 
   // ------------------------------------------------------------------ the camera
@@ -122566,19 +122888,20 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   var FOCUS_S = 4.2;
   function now() { return root.performance && root.performance.now ? root.performance.now() : Date.now(); }
   function view(cam, t, dt) {
-    var C = V.SCENE.camera, F = KD.flow, compact = F && F.isCompact && F.isCompact();
+    var spec = V.sceneSpec ? V.sceneSpec() : V.SCENE, C = spec.camera, F = KD.flow, compact = F && F.isCompact && F.isCompact();
+    if (C.compactEye && compact) C = { eye: C.compactEye, at: C.compactAt, focus: C.focus };
     st.t += dt || 0;
     var left = st.focus ? FOCUS_S - (now() - st.focusAt) / 1000 : 0;      // wall-clock: a slow frame never stretches the glide
     var w = left > 0 ? Math.min(1, left / 0.8, (FOCUS_S - left) / 1.2) : 0;
     w = w * w * (3 - 2 * w);
-    var sway = sin(st.t * 0.07) * 4.5, bob = sin(st.t * 0.11) * 0.6;
+    var swing = C.sway == null ? 4.5 : C.sway, sway = sin(st.t * 0.07) * swing, bob = sin(st.t * 0.11) * 0.6;
     var ex = C.eye[0] + sway, ey = C.eye[1] + bob, ez = C.eye[2];
-    var ax = C.at[0] + sway * 0.3, ay = C.at[1] + (compact ? -1.5 : 0), az = C.at[2];
+    var ax = C.at[0] + sway * 0.3, ay = C.at[1] + (compact && !C.compactAt ? -1.5 : 0), az = C.at[2];
     if (w > 0) {
-      var f = st.focus;
+      var f = st.focus, G = C.focus || { back: 18, up: 11, ahead: 2, down: -4.5 };
       // closer and turned toward the building, still looking a little below it so it stands above the tiles
-      ex = lerp(ex, f.x * 0.6 + C.eye[0] * 0.4, w); ez = lerp(ez, f.z - 18, w); ey = lerp(ey, 11, w);
-      ax = lerp(ax, f.x * 0.85 + C.at[0] * 0.15, w); az = lerp(az, f.z + 2, w); ay = lerp(ay, -4.5 + (compact ? -1.5 : 0), w);
+      ex = lerp(ex, f.x * 0.6 + C.eye[0] * 0.4, w); ez = lerp(ez, f.z - G.back, w); ey = lerp(ey, G.up, w);
+      ax = lerp(ax, f.x * 0.85 + C.at[0] * 0.15, w); az = lerp(az, f.z + G.ahead, w); ay = lerp(ay, G.down + (compact ? (G.compactDown || -1.5) : 0), w);
     }
     cam.lookAt([ex, ey, ez], [ax, ay, az]);
   }
@@ -122590,23 +122913,31 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       var key = JSON.stringify(levels || {});
       if (st.key === key && game.layout === HS.layout && game.backdropView === view && game.env) return true;
       if (game.teardownWorld) game.teardownWorld();
-      preset();
+      var v2 = !(V.sceneName && V.sceneName() === 'classic');
+      if (v2) presetV2(); else preset();
       var layout = V.sceneLayout(levels || {});
       game.layout = layout; game.backdrop = true;
-      var env = E.build(layout, game.renderer, { backdrop: true, game: game, mood: 'hearthmoor' });
+      var env = E.build(layout, game.renderer, { backdrop: true, game: game, mood: v2 ? 'hearthmoor_v2' : 'hearthmoor' });
       st.npcs = (layout.hub.npcs || []).map(figure).filter(Boolean);
       st.key = key;
       game.env = {
         __proto__: env,
         update: function (dt, world, r) {
           if (env.update) env.update(dt, world, r);
+          var walks = layout.hub.walks;
           for (var i = 0; i < st.npcs.length; i++) {
             var np = st.npcs[i]; np.e.anim.t += dt;
-            try { np.v.update(np.e, dt); np.v.submit(r); } catch (err) { /* a figure is never worth a frame */ }
+            try {
+              if (np.n.kind === 'villager') walk(np, dt, walks); else if (np.n.work) work(np, dt);
+              np.v.update(np.e, dt); np.v.submit(r);
+            } catch (err) { /* a figure is never worth a frame */ }
           }
+          try { puffs(r, dt); } catch (err) { /* nor is a puff of smoke */ }
+          if (HS.onFrame) { try { HS.onFrame(HS); } catch (err) { /* the signs are the screen's business */ } }
         },
         dispose: function () { st.npcs.forEach(function (np) { try { np.v.dispose(); } catch (err) { /* ignore */ } }); st.npcs = []; if (env.dispose) env.dispose(); }
       };
+      if (v2) ambience(levels, true);
       HS.env = env;
       if (game.camera && game.camera.setBlocker) game.camera.setBlocker(null);
       game.renderer.env.seeRadius = 0;
@@ -122621,7 +122952,24 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (!f) return;
     st.focus = f; st.focusAt = now();
   };
+  /** The floating signs projected for this frame (CSS px of the canvas). Empty for the classic village. */
+  var SIGNS = [];
+  HS.signs = function () {
+    var L = HS.layout, g = KD.game, r = g && g.renderer;
+    SIGNS.length = 0;
+    if (!HS.active || !L || !L.hub || !L.hub.signs || !r || !r.project) return SIGNS;
+    for (var i = 0; i < L.hub.signs.length; i++) {
+      var s = L.hub.signs[i], o = st.proj[i] || (st.proj[i] = { x: 0, y: 0, visible: false, depth: 0 });
+      r.project(s.x, s.y, s.z, o);
+      o.id = s.id; o.building = s.building;
+      SIGNS.push(o);
+    }
+    return SIGNS;
+  };
+  HS.npcCount = function () { return st.npcs.length; };
+  HS.layoutName = function () { return V.sceneName ? V.sceneName() : 'classic'; };
   HS.hide = function (game) {
+    ambience(null, false);
     if (!(game && game.backdropView === view)) { HS.active = false; return; }
     HS.active = false; st.key = ''; st.focus = null;
     if (game) { game.backdropView = null; if (game.state === 'menu' && game.loadBackdrop) game.loadBackdrop(); }
@@ -137401,21 +137749,36 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var el = KD.ui.el, a = game.account;
     var btn;
     if (!r.next) btn = KD.ui.badge('Complete', { kind: 'good', icon: 'check' });
-    else if (r.locked) btn = KD.ui.badge('Needs ' + r.req + ' upgrades', { kind: 'warn', icon: 'lock' });
+    else if (r.locked) btn = KD.ui.badge(H.v2() ? 'Locked' : 'Needs ' + r.req + ' upgrades', { kind: 'warn', icon: 'lock' });
     else btn = KD.ui.button(r.level ? 'Upgrade' : 'Rebuild', { small: true, kind: 'primary', disabled: !r.can, className: 'hub-up',
       tip: r.can ? null : (r.need ? r.need + ' more ' + cur() + ' needed' : null),
       onClick: function (e) { if (e) e.stopPropagation(); H.upgrade(game, r.id); } });
-    var now = r.current ? r.current.text : (r.locked ? 'In ruins.' : 'Not rebuilt yet.');
-    return el('div.hub-tile.kd-tip-tap' + (r.level ? '.hub-built' : '') + (r.locked ? '.hub-locked' : '') + (r.can ? '.hub-ready' : '') + (view.sel === r.id ? '.hub-sel' : ''),
-      { style: { '--hub-c': r.color }, data: { id: r.id }, tip: function () { return tileTip(r); } }, [
+    var now = r.current ? r.current.text : (r.locked ? (H.v2() ? 'In ruins. Rebuild ' + r.req + ' other upgrades first.' : 'In ruins.') : 'Not rebuilt yet.');
+    var cost = r.next ? el('span.hub-cost.kd-num' + (r.can ? '' : '.hub-short'), [spoilsIcon(13), el('span', { text: F.num(r.cost) })]) : null;
+    var cls = 'div.hub-tile.kd-tip-tap' + (r.level ? '.hub-built' : '') + (r.locked ? '.hub-locked' : '') + (r.can ? '.hub-ready' : '') + (view.sel === r.id ? '.hub-sel' : '');
+    var props = { style: { '--hub-c': r.color }, data: { id: r.id }, tip: function () { return tileTip(r); },
+      // [hub v2] a tile and its building are one: click the tile and the camera looks at the building, point at it and its sign lights up
+      on: { click: function (e) { if (e && e.target && e.target.closest && e.target.closest('.kd-btn')) return; H.select(game, r.id, 'tile'); },
+        mouseenter: function () { hot(r.id, true); }, mouseleave: function () { hot(r.id, false); } } };
+    if (!H.v2()) return el(cls, props, [
         el('div.hub-tile-head', [
           F.medallion(r.glyph, 34, r.locked ? '#5b5145' : r.color),
           el('div.hub-tile-id', [el('div.hub-tile-name', { text: r.name }), el('div.hub-tile-sub', [pips(r.level, r.max), el('span.kd-dim', { text: r.level ? ' ' + (r.current.name || '') : '' })])])
         ]),
         el('div.hub-tile-now', { text: now }),
         r.next ? el('div.hub-tile-next', [el('span.hub-tile-nlab', { text: r.level ? 'Next: ' : 'Rebuild: ' }), el('span', { text: r.next.text })]) : el('div.hub-tile-next.kd-dim', { text: 'Fully rebuilt.' }),
-        el('div.hub-tile-foot', [r.next ? el('span.hub-cost.kd-num' + (r.can ? '' : '.hub-short'), [spoilsIcon(13), el('span', { text: F.num(r.cost) })]) : null, el('span.flow-grow'), btn])
+        el('div.hub-tile-foot', [cost, el('span.flow-grow'), btn])
       ]);
+    // v2: one head row (badge, name and level, cost and button), then what it gives now and what it gives next
+    return el(cls + '.hub-tile2', props, [
+      el('div.hub-tile-head', [
+        F.medallion(r.glyph, 30, r.locked ? '#5b5145' : r.color),
+        el('div.hub-tile-id', [el('div.hub-tile-name', { text: r.name }), el('div.hub-tile-sub', [pips(r.level, r.max), el('span.kd-dim', { text: r.level ? ' ' + (r.current.name || '') : '' })])]),
+        el('span.flow-grow'), el('div.hub-tile-act', [cost, btn])
+      ]),
+      el('div.hub-tile-now', { text: now }),
+      r.next ? el('div.hub-tile-next', [el('span.hub-tile-nlab', { text: r.level ? 'Next: ' : 'Rebuild: ' }), el('span', { text: r.next.text })]) : el('div.hub-tile-next.kd-dim', { text: 'Fully rebuilt.' })
+    ]);
   }
   function carryPanel(a) {
     var el = KD.ui.el, lines = V.carryLines(V.state(a).levels);
@@ -137461,18 +137824,97 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var back = KD.ui.button(compact ? 'Back' : 'Back to the menu', { icon: 'arrow_left', onClick: function () { H.close(game); } });
     var go = KD.ui.button('New Run', { kind: 'primary', icon: 'sword', className: 'flow-big-btn', onClick: function () { unscene(game); F.menu.openNewRun(game); } });
     s.appendChild(el('div.hub-shade'));
+    s.classList.toggle('hub-v2', H.v2());
+    if (H.v2()) s.appendChild(signLayer(game, rows));
     s.appendChild(el('div.hub-top', [
       el('div.hub-titles', [el('div.flow-head-title.hub-title', { text: V.name() }), el('div.flow-head-sub', { text: compact ? 'The village that grows' : 'The village that grows with every run' }),
-        compact ? null : carryPanel(a)]),
+        compact || H.v2() ? null : carryPanel(a)]),
       el('div.flow-grow'),
       plate
     ]));
     s.appendChild(el('div.flow-grow.hub-scene', { attrs: { 'aria-hidden': 'true' } }));
     s.appendChild(grid);
-    s.appendChild(el('div.flow-foot', [back, compact ? KD.ui.button('You set out with', { small: true, onClick: function () { H.openCarry(game); } }) : null, el('div.flow-grow'), go]));
+    s.appendChild(el('div.flow-foot', [back, compact || H.v2() ? KD.ui.button('You set out with' + (compact ? '' : ' (' + V.carryLines(st.levels).length + ')'), { small: !H.v2() || compact, icon: H.v2() && !compact ? 'camp' : null, className: 'hub-carry-btn', onClick: function () { H.openCarry(game); } }) : null, el('div.flow-grow'), go]));
     H.events.emit('build', { game: game, levels: st.levels });
     return s;
   };
+  // ------------------------------------------------------------------------------------------ [hub v2] the signs over the village
+  /** True while the v2 village is drawn (KD.config.hubLayout = 'classic' brings back the first one, docs/HUB.md section 9). */
+  H.v2 = function () { return !(V.sceneName && V.sceneName() === 'classic'); };
+  var signs = { layer: null, map: {}, game: null };
+  function hot(id, on) { var n = signs.map[id]; if (n) n.classList.toggle('hub-sign-hot', !!on); }
+  function signLayer(game, rows) {
+    var el = KD.ui.el, compact = F.isCompact();
+    var layer = el('div.hub-signs', { attrs: { 'aria-label': 'Buildings of ' + V.name() } });
+    signs.map = {}; signs.layer = layer; signs.game = game;
+    rows.forEach(function (r) {
+      var state = !r.next ? 'done' : (r.locked ? 'locked' : (r.can ? 'ready' : (r.level ? 'built' : 'ruin')));
+      var n = el('div.hub-sign.hub-sign-' + state + (view.sel === r.id ? '.hub-sign-sel' : ''), {
+        style: { '--hub-c': r.color }, data: { id: r.id }, attrs: { role: 'button', tabindex: '-1', 'aria-label': r.name + (r.level ? ', level ' + r.level : ', in ruins') + (r.can ? ', can be rebuilt now' : '') },
+        on: { click: function (e) { if (e) e.stopPropagation(); H.select(game, r.id, 'sign'); } }
+      }, [
+        F.medallion(r.glyph, compact ? 24 : 22, r.locked ? '#5b5145' : r.color),
+        el('span.hub-sign-txt', [el('span.hub-sign-name', { text: r.name }), compact ? null : pips(r.level, r.max)]),
+        state === 'ready' ? el('span.hub-sign-up', [KD.ui.icon('arrow_up', compact ? 11 : 12, '#2a1a08')]) : (state === 'locked' ? el('span.hub-sign-lock', [KD.ui.icon('lock', 12, '#9a8a70')]) : null)
+      ]);
+      signs.map[r.id] = n; layer.appendChild(n);
+    });
+    var gate = el('div.hub-sign.hub-sign-gate', { data: { id: 'gate' }, attrs: { role: 'button', tabindex: '-1', 'aria-label': 'The Road Down: start a new run' },
+      on: { click: function (e) { if (e) e.stopPropagation(); F.sound('ui_click'); unscene(game); F.menu.openNewRun(game); } } }, [
+      F.medallion('sword', compact ? 20 : 22, '#e0703c'),
+      el('span.hub-sign-txt', [el('span.hub-sign-name', { text: 'The Road Down' }), el('span.hub-sign-sub', { text: 'New Run' })])
+    ]);
+    signs.map.gate = gate; layer.appendChild(gate);
+    if (KD.hubScene) KD.hubScene.onFrame = placeSigns;
+    return layer;
+  }
+  var placed = [];
+  /** Every drawn frame: each sign hangs over its building; signs that would overlap are nudged apart (upward first). */
+  function placeSigns(HS) {
+    var layer = signs.layer;
+    if (!layer || !layer.isConnected || F.current !== 'hub') return;
+    var list = HS.signs(), host = layer.getBoundingClientRect(), i, j;
+    placed.length = 0;
+    for (i = 0; i < list.length; i++) {
+      var p = list[i], n = signs.map[p.id];
+      if (!n) continue;
+      if (!n._w) { n._w = n.offsetWidth || 120; n._h = n.offsetHeight || 30; }
+      placed.push({ n: n, x: p.x - host.left, y: p.y - host.top, w: n._w, h: n._h, ok: p.visible && p.depth > 0 });
+    }
+    placed.sort(function (a, b) { return a.y - b.y; });
+    for (i = 0; i < placed.length; i++) {
+      var a = placed[i];
+      for (j = 0; j < i; j++) {
+        var b = placed[j];
+        if (b.ok && (a.w + b.w) / 2 + 4 > Math.abs(a.x - b.x) && a.y - b.y < b.h + 3) a.y = b.y + b.h + 3;      // sorted by height: a is never above b
+      }
+    }
+    for (i = 0; i < placed.length; i++) {
+      var q = placed[i], tx = Math.round(q.x - q.w / 2), ty = Math.round(q.y - q.h);
+      var key = q.ok ? tx + ',' + ty : 'off';
+      if (q.n._k === key) continue;
+      q.n._k = key;
+      q.n.style.transform = q.ok ? 'translate(' + tx + 'px,' + ty + 'px)' : 'translate(-9999px,0)';
+    }
+  }
+  /** Picks a building from its sign or its tile: the camera glides to it, its tile and its sign light up. */
+  H.select = function (game, id, from) {
+    game = game || view.game;
+    view.sel = id;
+    var s = F.screenRoot('hub');
+    if (s) {
+      Array.prototype.forEach.call(s.querySelectorAll('.hub-tile'), function (t) { t.classList.toggle('hub-sel', t.getAttribute('data-id') === id); });
+      var tile = s.querySelector('.hub-tile[data-id="' + id + '"]');
+      if (tile && from === 'sign') {
+        tile.classList.remove('hub-flash'); void tile.offsetWidth; tile.classList.add('hub-flash');
+        if (tile.scrollIntoView) { try { tile.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }); } catch (e) { tile.scrollIntoView(); } }
+      }
+    }
+    Object.keys(signs.map).forEach(function (k) { var n = signs.map[k]; n.classList.toggle('hub-sign-sel', k === id); n._w = 0; n._k = ''; });      // re-measured: a phone sign shows its name when picked
+    if (from === 'sign') F.sound('ui_click');
+    if (KD.hubScene && KD.hubScene.focus) KD.hubScene.focus(id);
+  };
+
   /** The 3D village behind the screen (src/gfx/68_env_hub.js): built after the screen has painted. */
   function scene(game, focus) {
     if (!KD.hubScene || !game || game.state !== 'menu') return;
