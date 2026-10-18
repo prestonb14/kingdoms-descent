@@ -946,6 +946,8 @@ html.kd-pad-nav .win-hints > :not(.kd-badge) { display: none; }
 .kd-compact .coop-pf-down { flex: none; font-size: calc(11 * var(--u)); letter-spacing: .1em; }
 .kd-compact .coop-label { font-size: calc(12 * var(--u)); }
 .kd-compact .coop-down { max-width: calc(320 * var(--u)); white-space: normal; text-align: left; font-size: calc(12 * var(--u)); line-height: 1.2; padding: calc(4 * var(--u)) calc(10 * var(--u)); gap: calc(7 * var(--u)); }
+/* a companion (minor) skill: src/sim/59_companions.js */
+.hud-slot-minor { --kd-slot-color: #9a8c6e; outline: 1px dashed rgba(240, 231, 210, .45); outline-offset: -3px; }
 
 /* [combat juice] critical hit numbers: a hard pop with a small tilt, a settle, and a warm glow (src/ui/10_hud_juice.js) */
 .kd-float.kd-float-crit {
@@ -1053,6 +1055,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 .kd-root.kd-touch .kd-key { display: none; }                                   /* key names are for keyboards */
 .kd-root.kd-touch .kd-scroll { overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior: contain; }
 .kd-root.kd-touch .kd-interactive, .kd-root.kd-touch .kd-btn, .kd-root.kd-touch .kd-slot, .kd-root.kd-touch .kd-tab, .kd-root.kd-touch .kd-card, .kd-root.kd-touch .kd-row { touch-action: manipulation; }
+/* a companion (minor) skill: src/sim/59_companions.js */
+.tc-btn.hud-h-minor { border-style: dashed; }
 
 /* =====================================================================================================
    Kingdom's Descent: menus and flow screens (KD.flow).   Owner: ui_flow.   Documented in docs/FLOW.md.
@@ -4163,7 +4167,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.115';
+  KD.VERSION = '0.7.116';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -32107,6 +32111,41 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 
 </script>
 <script>
+//# sourceURL=src/data/57_companions.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var D = KD.data = KD.data || {};
+
+  /**
+   * Companion skills (src/sim/59_companions.js, docs/COMPANIONS.md): for each start skill of a class, the two skills of the
+   * same kit the hero also gets at the start of a run, at the minor rank. Pick moves that set up or pay off the start skill
+   * (a gap closer, a mark the main skill exploits, a defensive tool of the build, a quick filler); keep them light.
+   *   D.companions[classId][startSkillId] = [{ id, why }, { id, why }]
+   *   D.COMPANION_RANK = { dmg, cd }: a companion deals dmg x its damage, its cooldown is cd x as long.
+   *   D.companionRank[abilityId] = { dmg?, cd? }: a per-skill override (a companion that is too strong or too weak at the rank).
+   */
+  D.COMPANION_RANK = { dmg: 0.5, cd: 1.3 };
+  D.companionRank = D.companionRank || {};
+  var T = D.companions = D.companions || {};
+  function c(id, why) { return { id: id, why: why }; }
+
+  T.gloamblade = {
+    shadow_step: [c('backstab', 'lands the follow-up stab behind the target the step puts you behind'), c('smoke_bomb', 'a way out after the step commits you into a pack')],
+    smoke_bomb: [c('backstab', 'blinded enemies take guaranteed backstab crits'), c('shadow_step', 'a gap closer into the smoke')],
+    backstab: [c('garrote', 'stuns the target so every hit is a backstab'), c('caltrops', 'pins the pack so you can work behind one target')],
+    vanish: [c('backstab', 'the opener out of Stealth'), c('shadow_step', 'gets behind a target before Stealth runs out')],
+    poison_edge: [c('backstab', 'a quick heavy hit that keeps the coated blades busy'), c('caltrops', 'holds enemies in place while the Poison stacks')],
+    pickpocket: [c('shadow_step', 'reaches the elite with the purse'), c('smoke_bomb', 'the getaway after the theft')],
+    caltrops: [c('poison_edge', 'stacks Poison on enemies stuck on the spikes'), c('smoke_bomb', 'blinds the pack you have pinned')],
+    cloak_of_dusk: [c('backstab', 'the stab out of the Stealth the cloak ends in'), c('shadow_step', 'brings the cloak to the fight')],
+    garrote: [c('backstab', 'the payoff on the Stunned target'), c('caltrops', 'keeps the rest of the pack off you while you choke')],
+    mirror_shade: [c('backstab', 'enemies chasing the double turn their backs to you'), c('shadow_step', 'gets behind the distracted enemy')]
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 //# sourceURL=src/data/60_bosses_act1.js
 (function (root) {
   'use strict';
@@ -37372,6 +37411,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.116', date: '2026-10-18', title: 'Companion skills', notes: [
+      'Your starting skill now brings two light companion skills that fit it, so you have more to press than one attack',
+      'Companions are marked with a dashed outline and deal half damage. A skill you learn later takes their slot',
+      'Gloamblade first: the other classes follow soon'
+    ] },
     { version: '0.7.115', date: '2026-10-18', title: 'Shared towns in co-op', notes: [
       'Playing together: your friends now stand in the town with you, at the start of a run and between acts',
       'Friends who join late or come back after a dropped connection arrive in the same town as the host',
@@ -61927,6 +61971,195 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       return e;
     };
   }
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/sim/59_companions.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var C = KD.classes = KD.classes || {};
+  var K = KD.skills;
+
+  /**
+   * COMPANION SKILLS (owner: "builds end up pressing one attack all game"). docs/COMPANIONS.md.
+   * When the start pick(s) of a run are complete, the hero gets each start skill's two companions (KD.data.companions,
+   * src/data/48_companions.js) for free: other skills of the class kit at a MINOR rank (KD.data.COMPANION_RANK: less
+   * damage, a slightly longer cooldown), put into empty skill slots. They are ordinary skills of the kit in every other way
+   * (same id, animation, mastery version, tree mutations), so the sim, the bot, the pad / touch bar and co-op need nothing new.
+   *
+   *   hero.skills.minor = { abilityId: startId }   the companions the hero holds (part of the run JSON: saves, co-op replicas).
+   *                                                Missing on an old run: it simply has none.
+   *   KD.config.companions                         false: nothing is granted and held companions leave the hero at sync.
+   *   isCompanion(hero, id)  companionsFor(classId, startId)  grantCompanions(hero, run?)  dropCompanions(hero)
+   *
+   * A companion becomes a real skill when it is learned for real (a level-up pick, a tree skill node): it keeps its slot.
+   * A new real skill with no empty slot takes a companion's slot (the companion stays known: slot it again at camp).
+   * Deterministic: everything is a pure function of the hero record; no RNG, no clock.
+   */
+  if (KD.config && KD.config.companions === undefined) KD.config.companions = true;
+  function on() { return !KD.config || KD.config.companions !== false; }
+  function heroOf(x) { return x && x.hero && x.hero.skills ? x.hero : x; }
+  function minorOf(hero) { return hero && hero.skills && hero.skills.minor && typeof hero.skills.minor === 'object' ? hero.skills.minor : null; }
+
+  C.isCompanion = function (hero, id) { var m = minorOf(heroOf(hero)); return !!(m && id && Object.prototype.hasOwnProperty.call(m, id)); };
+  /** The companion ids of a start skill (valid skills of the class only; never the primary or an Ultimate). */
+  C.companionsFor = function (classId, startId) {
+    var t = KD.data.companions && KD.data.companions[classId], list = (t && t[startId]) || [], ids = C.abilityIds ? C.abilityIds(classId) : null;
+    return list.map(function (c) { return typeof c === 'string' ? c : c.id; }).filter(function (id) { return !ids || (ids.skills.indexOf(id) >= 0 && id !== startId); });
+  };
+  function startIds(hero, run) {
+    var ids = C.abilityIds(hero.classId), sk = hero.skills;
+    var src = C.usesTree(hero) ? (sk.start || []) : sk.known;
+    return src.filter(function (id) { return ids.skills.indexOf(id) >= 0 && !C.isCompanion(hero, id); });
+  }
+  /**
+   * grantCompanions(hero, run?) -> [ids granted]. Once per run (hero.skills.minor is set, even when empty). Companions of
+   * the start skills in pick order, at most one entry per id, into empty slots (a companion with no empty slot is still
+   * known: it can be slotted at camp).
+   */
+  C.grantCompanions = function (hero, run) {
+    hero = heroOf(hero);
+    if (!on() || !hero || !hero.skills || minorOf(hero)) return [];
+    var sk = hero.skills, minor = sk.minor = {}, got = [], starts = startIds(hero, run);
+    var slots = sk.slots || (sk.slots = []);
+    starts.forEach(function (s) {
+      C.companionsFor(hero.classId, s).forEach(function (id) {
+        if (sk.known.indexOf(id) >= 0 || minor[id]) return;
+        minor[id] = s; sk.known.push(id); got.push(id);
+        var at = slots.indexOf(null); if (at >= 0) slots[at] = id;
+      });
+    });
+    return got;
+  };
+  /** Takes every companion away (KD.config.companions turned off): known, slots, the minor table. */
+  C.dropCompanions = function (hero) {
+    hero = heroOf(hero); var m = minorOf(hero); if (!m) return 0;
+    var sk = hero.skills, n = 0;
+    Object.keys(m).forEach(function (id) {
+      var k = sk.known.indexOf(id); if (k >= 0) sk.known.splice(k, 1);
+      var s = (sk.slots || []).indexOf(id); if (s >= 0) sk.slots[s] = null;
+      n++;
+    });
+    sk.minor = {};
+    return n;
+  };
+  function promote(hero, id) { var m = minorOf(hero); if (m && m[id]) delete m[id]; }
+  function startDone(hero, run) {
+    if (!run || run.hero !== hero) return false;
+    if (C.usesTree(hero)) return (hero.skills.start || []).length >= C.startPicks(hero);
+    var picked = run.picks && run.picks.skills ? Object.keys(run.picks.skills).length : 0;
+    return picked === 0 && startIds(hero, run).length >= C.startPicks(hero);
+  }
+
+  // ------------------------------------------------------------------------------------------- the kit functions, wrapped
+  var learn0 = C.learn;
+  C.learn = function (hero, abilityId, run) {
+    hero = heroOf(hero);
+    var wasMinor = C.isCompanion(hero, abilityId), at = -1;
+    if (wasMinor) {       // learned for real: it stops being a companion and is learned like a new skill (the pick is recorded)
+      promote(hero, abilityId);
+      var k = hero.skills.known.indexOf(abilityId); if (k >= 0) hero.skills.known.splice(k, 1);
+      at = hero.skills.slots.indexOf(abilityId);
+    }
+    var out = learn0.apply(this, arguments);
+    if (!out || !out.ok) {
+      if (wasMinor) { hero.skills.minor[abilityId] = '?'; if (hero.skills.known.indexOf(abilityId) < 0) hero.skills.known.push(abilityId); }
+      return out;
+    }
+    if (out.slot === -1) {       // no empty slot: a new real skill takes a companion's slot
+      var slots = hero.skills.slots, ids = C.abilityIds(hero.classId);
+      if (ids.skills.indexOf(abilityId) >= 0) for (var i = 0; i < slots.length; i++) if (slots[i] && C.isCompanion(hero, slots[i])) { out.replaced = slots[i]; slots[i] = abilityId; out.slot = i; break; }
+    }
+    if (wasMinor) out.promoted = true;
+    if (startDone(hero, run)) out.companions = C.grantCompanions(hero, run);
+    return out;
+  };
+
+  var treeSync0 = C.treeSync;
+  C.treeSync = function (hero, run) {
+    hero = heroOf(hero);
+    var m = minorOf(hero);
+    if (!m || !hero || !hero.skills || !C.usesTree(hero)) return treeSync0.apply(this, arguments);
+    var sk = hero.skills;
+    if (!on()) { C.dropCompanions(hero); return treeSync0.apply(this, arguments); }
+    // a companion the tree now grants (or the start pick) is a real skill from here on: it keeps its place
+    var grants = KD.web && KD.web.heroGrants ? (KD.web.heroGrants(hero, run || null) || []) : [];
+    Object.keys(m).forEach(function (id) { if (grants.indexOf(id) >= 0 || (sk.start || []).indexOf(id) >= 0) delete m[id]; });
+    // the rest step aside while the tree rebuilds known / slots (so it neither drops them nor returns their Sigils), then come back
+    var held = Object.keys(m), was = {};
+    held.forEach(function (id) {
+      var k = sk.known.indexOf(id); if (k >= 0) sk.known.splice(k, 1);
+      var s = (sk.slots || []).indexOf(id); was[id] = s; if (s >= 0) sk.slots[s] = null;
+    });
+    var out = treeSync0.apply(this, arguments);
+    var slots = sk.slots;
+    held.forEach(function (id) { if (sk.known.indexOf(id) < 0) sk.known.push(id); });
+    held.forEach(function (id) { if (was[id] >= 0 && slots[was[id]] === null) slots[was[id]] = id; else if (was[id] >= 0) was[id] = -2; });
+    held.forEach(function (id) { if (was[id] === -2) { var f = slots.indexOf(null); if (f >= 0) slots[f] = id; } });
+    // (a slot that a new skill took is not a change of the tree: the slot list says it)
+    out.cleared = out.cleared.filter(function (x) { return typeof x !== 'number' || held.indexOf(slots[x]) < 0; });
+    return out;
+  };
+
+  var treeLoadout0 = C.treeLoadout;
+  C.treeLoadout = function (hero, run) {
+    hero = heroOf(hero);
+    var res = treeLoadout0.apply(this, arguments), m = minorOf(hero);
+    if (!m || !hero || !hero.skills || !C.usesTree(hero)) return res;
+    // real skills first (in the loadout's order), companions only in what is left
+    var sk = hero.skills, ids = C.abilityIds(hero.classId), slots = sk.slots;
+    var real = slots.filter(function (id) { return id && !C.isCompanion(hero, id); });
+    sk.known.forEach(function (id) { if (ids.skills.indexOf(id) >= 0 && !C.isCompanion(hero, id) && real.indexOf(id) < 0) real.push(id); });
+    var minor = sk.known.filter(function (id) { return C.isCompanion(hero, id); }), list = real.concat(minor);
+    for (var i = 0; i < slots.length; i++) slots[i] = list[i] || null;
+    return res;
+  };
+
+  var sync0 = C.sync;
+  C.sync = function (hero, run) {
+    hero = heroOf(hero);
+    if (!on() && minorOf(hero)) C.dropCompanions(hero);
+    return sync0.apply(this, arguments);
+  };
+
+  // a level-up offer never shows a companion as "known": it can be picked for real (and keeps its slot)
+  var offer0 = C.skillOffer;
+  C.skillOffer = function (run) {
+    var hero = heroOf(run), m = minorOf(hero);
+    if (!m || !Object.keys(m).length) return offer0.apply(this, arguments);
+    var sk = hero.skills, keep = sk.known.slice();
+    sk.known = sk.known.filter(function (id) { return !C.isCompanion(hero, id); });
+    try { return offer0.apply(this, arguments); } finally { sk.known = keep; }
+  };
+
+  // the minor rank: less damage and a slightly longer cooldown (minions a companion summons hit softer too)
+  if (K && K.instance) {
+    var inst0 = K.instance;
+    K.instance = function (world, e, def, slotId) {
+      var inst = inst0.apply(this, arguments), h = e && e.hero, m = h && minorOf(h);
+      if (m && def && Object.prototype.hasOwnProperty.call(m, def.id)) {
+        var R = KD.data.COMPANION_RANK || { dmg: 0.5, cd: 1.2 }, o = (KD.data.companionRank || {})[def.id] || {};
+        var dm = o.dmg !== undefined ? o.dmg : R.dmg, cm = o.cd !== undefined ? o.cd : R.cd;
+        inst.mult *= dm; inst.abilDmg = (inst.abilDmg === undefined ? 1 : inst.abilDmg) * dm; inst.cooldown *= cm; inst.minor = true;
+      }
+      return inst;
+    };
+  }
+
+  // tooltips: say it is a companion, what it comes with and how to replace it
+  var describe0 = C.describe;
+  C.describe = function (ability, hero, stats, opts) {
+    var spec = describe0.apply(this, arguments), h = heroOf(hero), a = typeof ability === 'string' ? ability : ability && ability.id;
+    if (!spec || !h || !C.isCompanion(h, a)) return spec;
+    var R = KD.data.COMPANION_RANK || { dmg: 0.5, cd: 1.2 }, from = h.skills.minor[a], fa = from && KD.skills.get(from);
+    spec = Object.assign({}, spec);
+    spec.title = (spec.title || '') + ' (minor)';
+    spec.lines = [{ text: 'Minor skill' + (fa && fa.name ? ', comes with ' + fa.name : '') + ': ' + Math.round(R.dmg * 100) + '% damage, ' + Math.round((R.cd - 1) * 100) + '% longer cooldown.', kind: 'fate' },
+      { text: 'A skill you learn takes this slot. You can swap it at camp.', kind: 'dim' }].concat(spec.lines || []);
+    return spec;
+  };
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -132448,6 +132681,8 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         hold(rec, 'empty', !rec.def); hold(rec, 'off', false); hold(rec, 'sel', false);
         if (!rec.def) { hold(rec, 'emp', false); hold(rec, 'cast', false); hold(rec, 'cd', false); if (rec.empowered) { rec.empowered = false; rec.node.classList.remove('hud-empowered'); } if (rec.casting) { rec.casting = false; rec.node.classList.remove('hud-casting'); } rec.node.setCooldown(0); }
       } else if (hot !== rec.hot) { rec.node.set({ hotkey: hot, disabled: rec.disabled, selected: rec.selected }); rec.hot = hot; }
+      var minor = !!(rec.def && KD.classes && KD.classes.isCompanion && KD.classes.isCompanion(ctx.hero, id));      // a companion skill (src/sim/59_companions.js)
+      if (minor !== !!rec.minor) { rec.minor = minor; rec.node.classList.toggle('hud-slot-minor', minor); hold(rec, 'minor', minor); }
       // the hero's own version of the ability (its tree mutations applied): its price, charges and cooldown are what the bar shows
       if (rec.def) { var vd = K.defFor ? K.defFor(p, id) : null; rec.vdef = vd || rec.def; if ((rec.vdef.charges > 1) !== (rec.charges > 1) && rec.charges !== -1) rec.charges = -1; } else rec.vdef = null;
       rec.cost = rec.def ? costOf(ctx, rec.vdef, id) : 0;
@@ -137007,7 +137242,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (arm) footer = [el('span.flow-arm', { style: { '--flow-arm': arm.color } }, [el('i.flow-arm-dot'), el('span.flow-arm-name', { text: arm.name })]), tags.length ? el('span.flow-arm-tags', { text: tags.slice(0, 2).join(' · ') }) : null];
     return { id: ab.id, title: ab.name || ab.id, sub: cost || (ab.slot === 'ultimate' ? 'Ultimate' : 'No cost'), icon: F.abilityIcon(ab, small ? 30 : 42),
       color: color, small: !!small, arm: arm, className: arm ? 'flow-armcard' : null,
-      lines: [ab.desc && !ab.generic ? ab.desc : { text: 'Details arrive with the class kit.', kind: 'dim' }], footer: footer,
+      lines: [ab.desc && !ab.generic ? ab.desc : { text: 'Details arrive with the class kit.', kind: 'dim' }].concat(F.companionLine(ab, run)), footer: footer,
       tip: function () {
         try { stats = stats || KD.hero.stats(run.hero, run); } catch (e) { stats = null; }
         var spec = F.abilityTip(ab, run.hero, stats);
@@ -137015,6 +137250,13 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
         spec = U.assign({}, spec); spec.lines = (spec.lines || []).concat([{ kind: 'sep' }, { text: arm.name + ', an arm of your tree', kind: 'head', color: arm.color }, arm.focus ? { text: arm.focus + '.', kind: 'dim' } : null]).filter(Boolean);
         return spec;
       }, ability: ab };
+  };
+  /** On a start-skill card: the minor skills that come with it (src/sim/59_companions.js), while the hero has picked nothing yet. */
+  F.companionLine = function (ab, run) {
+    var C = KD.classes, h = run && run.hero;
+    if (!C || !C.companionsFor || !h || KD.config.companions === false || h.skills.known.length > 1) return [];
+    var list = C.companionsFor(h.classId, ab.id).map(function (id) { var a = KD.skills.get(id); return a && a.name; }).filter(Boolean);
+    return list.length ? [{ text: 'Comes with minor skills: ' + list.join(' and ') + '.', kind: 'fate' }] : [];
   };
   /** Card spec for an Oath. */
   F.oathCard = function (oathId) {
