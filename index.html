@@ -4167,7 +4167,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.118';
+  KD.VERSION = '0.7.119';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -32131,6 +32131,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   D.companionRank.corpse_burst = { dmg: 0.35, cd: 2 };
   D.companionRank.spirit_drain = { cd: 1.6 };
   D.companionRank.inscribe_rune = { dmg: 0.4, cd: 1.5 };
+  D.companionRank.rend = { dmg: 0.4, cd: 1.5 };
   var T = D.companions = D.companions || {};
   function c(id, why) { return { id: id, why: why }; }
 
@@ -32227,6 +32228,47 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     sanctuary_circle: [c('sunburst', 'pushes enemies out of the circle'), c('candle_shield', 'holds the front of the circle')],
     dawnbreaker_strike: [c('guiding_light', 'Marks the target for the blow'), c('candle_shield', 'a parry between heavy swings')],
     candle_shield: [c('dawnbreaker_strike', 'the heavy answer after a parry'), c('sunburst', 'clears space after you turn hits aside')]
+  };
+  // (no team-wide buffs, toggles, summons or heals as companions)
+  T.bannerlord = {
+    plant_banner: [c('strike_formation', 'a thrust from inside the banner aura'), c('charge_order', 'carries the fight back to the banner')],
+    rally_hirelings: [c('strike_formation', 'points the rallied allies at one target'), c('charge_order', 'leads them in')],
+    charge_order: [c('strike_formation', 'Marks the target the allies were ordered onto'), c('phalanx', 'locks shields once you have charged in')],
+    phalanx: [c('strike_formation', 'a thrust from behind the shield wall'), c('charge_order', 'breaks the line open again')],
+    signal_horn: [c('strike_formation', 'a heavy thrust through the Broken'), c('charge_order', 'charges the staggered line')],
+    battlefield_orders: [c('strike_formation', 'a thrust to spend the faster cooldowns on'), c('charge_order', 'leads the empowered allies in')],
+    standard_bearer: [c('strike_formation', 'a thrust while the standard rides on your back'), c('charge_order', 'carries the aura into the enemy')],
+    strike_formation: [c('charge_order', 'a gap closer that sets up the next thrust'), c('plant_banner', 'a place to hold while the thrusts line up')],
+    war_drum: [c('strike_formation', 'thrusts through the Slowed line'), c('charge_order', 'takes the fight to the drum')],
+    recall: [c('strike_formation', 'a thrust once your allies are back'), c('phalanx', 'the shield wall for the regrouped warband')]
+  };
+
+  // (no Masks as companions: a Mask is the whole build, not a minor skill)
+  T.wildmask = {
+    wolf_mask: [c('pounce', 'a throat bite that Bleeds in the Wolf'), c('rend', 'three stacks of Bleed for the Wolf to feed on')],
+    bear_mask: [c('rend', 'a heavy maul in the Bear'), c('howl', 'a crowd tool for the slow Bear')],
+    raven_mask: [c('moonlit_dash', 'keeps the Raven at range'), c('feral_leap', 'an escape that lands on the pack')],
+    pounce: [c('rend', 'the follow-up once you land'), c('moonlit_dash', 'the way out after the leap')],
+    howl: [c('rend', 'a cheap hit on the enemies the howl hurt'), c('pounce', 'gets you to them first')],
+    rend: [c('pounce', 'a gap closer to the next target'), c('moonlit_dash', 'cuts through the pack between rends')],
+    feral_leap: [c('rend', 'the hit after you land'), c('howl', 'Instinct for the next leap')],
+    thorn_hide: [c('rend', 'something to do while the thorns lash back'), c('howl', 'draws the hits onto your thorns')],
+    moonlit_dash: [c('pounce', 'a second way in'), c('rend', 'the hit at the end of the dash')],
+    shed_skin: [c('rend', 'a quick filler between sheds'), c('moonlit_dash', 'gets you out of trouble before the shed is ready')]
+  };
+
+  // (no Golem and no Overclock as companions; the devices come only from the start pick)
+  T.clockwright = {
+    deploy_turret: [c('grapple_hook', 'reels enemies into turret range'), c('steam_vent', 'pushes enemies back off you while the turrets shoot')],
+    tesla_coil: [c('steam_vent', 'Soaks enemies so the coil\'s Shock Overloads them'), c('grapple_hook', 'pulls a target onto the coil')],
+    gear_mine: [c('grapple_hook', 'reels enemies onto your mines'), c('steam_vent', 'pushes the pack back over them')],
+    steam_vent: [c('grapple_hook', 'pulls a target in front of the vent'), c('gear_mine', 'a mine where the steam pushes them')],
+    grapple_hook: [c('steam_vent', 'blasts the enemy you reeled in'), c('repair_wrench', 'knocks it back again')],
+    repair_wrench: [c('grapple_hook', 'brings an enemy to the wrench'), c('gear_mine', 'a device for the wrench to repair')],
+    overclock: [c('gear_mine', 'a device to overclock'), c('repair_wrench', 'keeps the overclocked devices running')],
+    spring_trap: [c('grapple_hook', 'reels the target onto your trap'), c('gear_mine', 'a second trap on the same path')],
+    pressure_burst: [c('steam_vent', 'builds the pressure for the burst'), c('grapple_hook', 'pulls the target into the blast')],
+    brass_golem: [c('repair_wrench', 'repairs the Golem'), c('grapple_hook', 'pulls enemies to the Golem')]
   };
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -37497,6 +37539,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.119', date: '2026-10-18', title: 'Companions for every class', notes: [
+      'Every class now gets two light companion skills with its starting skill',
+      'Bannerlord, Wildmask and Clockwright join the rest'
+    ] },
     { version: '0.7.118', date: '2026-10-18', title: 'More companion skills', notes: [
       'Gravecaller, Emberscribe and Lanternbearer starting skills now bring two light companion skills too'
     ] },
