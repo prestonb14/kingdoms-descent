@@ -4163,7 +4163,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.105';
+  KD.VERSION = '0.7.106';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -37372,6 +37372,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.106', date: '2026-10-18', title: 'Phone tuning and Android prep', notes: [
+      'Smoother on phones: characters you cannot see are animated less often'
+    ] },
     { version: '0.7.105', date: '2026-10-18', title: 'Hearthmoor rebuilt', notes: [
       'Hearthmoor is rebuilt as a real village: a square round the hearth fire, every building in sight, and the Road Down through the gate',
       'Signs hang over every building: tap one to look at it and find its upgrade',
@@ -80375,14 +80378,28 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   };
   Visual.prototype.update = function (e, dt) {
     this.time += dt;
-    var a = this.actor, fx = e.fx || {};
+    var a = this.actor;
     if (this.built.refresh) {
       this.refreshT -= dt;
       if (this.refreshT <= 0) { this.refreshT = 0.5; if (this.built.refresh(this, e)) this.rebuild(e); a = this.actor; }
     }
     a.visible = !e.hidden;
     if (e.hidden) return;
+    // [release perf] a character the renderer culled last frame (outside the view and the shadow volume) is posed only
+    // about 6 times a second, with the time it skipped (drawing only: the simulation never reads a pose; bosses, heroes
+    // and anything just drawn are posed every frame). docs/RELEASE.md section 5.
+    if (this._seen === false && M.OFFSCREEN_STEP > 0 && e.kind !== 'player' && !e.boss) {
+      this._skipT = (this._skipT || 0) + dt;
+      if (this._skipT < M.OFFSCREEN_STEP) { this._posed = false; this._e = e; return this._place(e, dt); }
+      dt = Math.min(this._skipT, 0.25); this._skipT = 0;
+    } else if (this._skipT) { dt = Math.min(dt + this._skipT, 0.25); this._skipT = 0; }
+    this._posed = true;
     try { this.built.animate(this, e, dt); } catch (err) { if (!this._warned && typeof console !== 'undefined') { this._warned = true; console.error('KD.models: animate failed for', this.spec && this.spec.plan, err); } }
+    this._place(e, dt);
+  };
+  /** Position, death sink, flash, alpha and tint: every frame, posed or not. */
+  Visual.prototype._place = function (e, dt) {
+    var a = this.actor, fx = e.fx || {};
     var sink = 0, alpha = fx.alpha === undefined ? 1 : fx.alpha;
     if (e.dead) {
       this.deadT += dt;
@@ -80417,7 +80434,17 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     var f = (c.t / c.dur - 0.25) / 0.45; f = f <= 0 ? 0 : (f >= 1 ? 1 : f * f * (3 - 2 * f));
     return y + d * f;
   };
-  Visual.prototype.submit = function (renderer) { return this.actor.submit(renderer); };
+  /** Seconds between poses of a character the renderer did not draw last frame (0 = every frame). [release perf] */
+  M.OFFSCREEN_STEP = 0.16;
+  Visual.prototype.submit = function (renderer) {
+    var a = this.actor;
+    if (this._posed === false && this._e && a.visible && renderer.sphereVisible && renderer.sphereVisible(a.x, a.y + a.centerY * a.scale, a.z, a.radius * a.scale)) {
+      // it walked into view between two poses: pose it now, so it is never drawn in an old pose
+      var dt = Math.min(this._skipT || 0, 0.25); this._skipT = 0; this._posed = true;
+      try { this.built.animate(this, this._e, dt); } catch (err) { /* reported by update */ }
+    }
+    var r = a.submit(renderer); this._seen = r !== false; return r;
+  };
   Visual.prototype.dispose = function () { this.actor = null; };
   /** World position of the weapon tip / muzzle / chest for effects. names: 'weapon', 'hand_r', 'hand_l', 'head', 'chest'. */
   Visual.prototype.point = function (name, out) {
