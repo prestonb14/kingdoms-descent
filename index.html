@@ -4163,7 +4163,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.108';
+  KD.VERSION = '0.7.109';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -4366,16 +4366,16 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     atkSpeed: { base: 1, label: 'Attack and Cast Speed', fmt: 'mult', group: 'off', cap: 3 },
     meleeSpeed: { base: 1, label: 'Melee Attack Speed', fmt: 'mult', group: 'off', cap: 3 },      // [atk pace] melee attacks only, on top of atkSpeed (KD.attackPace.isMelee)
     critChance: { base: 0.05, label: 'Critical Chance', fmt: 'pct', group: 'off', cap: 0.95 },
-    critMult: { base: 1.5, label: 'Critical Damage', fmt: 'mult', group: 'off' },
+    critMult: { base: 1.5, label: 'Critical Damage', fmt: 'mult', group: 'off', cap: 4 },      // gear review v0.8: a guard rail on stacked crit multipliers
     aoe: { base: 1, label: 'Area of Effect', fmt: 'mult', group: 'off', cap: 3 },
     projSpeed: { base: 1, label: 'Projectile Speed', fmt: 'mult', group: 'off', cap: 3 },
     projCount: { base: 0, label: 'Additional Projectiles', fmt: 'int', group: 'off', cap: 6 },
-    cdr: { base: 1, label: 'Cooldown Recovery', fmt: 'mult', group: 'off', cap: 3 },
+    cdr: { base: 1, label: 'Cooldown Recovery', fmt: 'mult', group: 'off', cap: 2.5 },
     breakPower: { base: 1, label: 'Poise Break Power', fmt: 'mult', group: 'off' },
     momentumGain: { base: 1, label: 'Momentum Gain', fmt: 'mult', group: 'off' },
     statusChance: { base: 1, label: 'Status Chance', fmt: 'mult', group: 'off' },
     statusDur: { base: 1, label: 'Status Duration', fmt: 'mult', group: 'off' },
-    lifesteal: { base: 0, label: 'Life Steal', fmt: 'pct', group: 'off', cap: 0.25 },
+    lifesteal: { base: 0, label: 'Life Steal', fmt: 'pct', group: 'off', cap: 0.20 },      // one life: leech may not carry a fight on its own
     resOnHit: { base: 0, label: 'Resource on Hit', fmt: 'flat', group: 'off' },
     // defense
     hp: { base: 0, label: 'Health', fmt: 'flat', group: 'def', min: 1 },
@@ -4383,7 +4383,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     armor: { base: 0, label: 'Armor', fmt: 'flat', group: 'def' },
     ward: { base: 0, label: 'Ward', fmt: 'flat', group: 'def' },
     evasion: { base: 0, label: 'Evasion', fmt: 'flat', group: 'def' },
-    block: { base: 0, label: 'Block Chance', fmt: 'pct', group: 'def', cap: 0.75 },
+    block: { base: 0, label: 'Block Chance', fmt: 'pct', group: 'def', cap: 0.65 },
     resFire: { base: 0, label: 'Fire Resistance', fmt: 'pct', group: 'def', cap: 0.75, min: -1 },
     resCold: { base: 0, label: 'Cold Resistance', fmt: 'pct', group: 'def', cap: 0.75, min: -1 },
     resShock: { base: 0, label: 'Shock Resistance', fmt: 'pct', group: 'def', cap: 0.75, min: -1 },
@@ -4399,7 +4399,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     moveSpeed: { base: 1, label: 'Movement Speed', fmt: 'mult', group: 'util', cap: 2, min: 0.2 },
     resMax: { base: 100, label: 'Maximum Resource', fmt: 'flat', group: 'util' },
     resRegen: { base: 1, label: 'Resource Generation', fmt: 'mult', group: 'util' },
-    dodgeCdr: { base: 1, label: 'Dodge Recovery', fmt: 'mult', group: 'util', cap: 2.5 },
+    dodgeCdr: { base: 1, label: 'Dodge Recovery', fmt: 'mult', group: 'util', cap: 2 },      // owner: dodges a bit less often
     xpGain: { base: 1, label: 'Experience Gain', fmt: 'mult', group: 'util' },
     goldFind: { base: 1, label: 'Gold Find', fmt: 'mult', group: 'util' },
     itemFind: { base: 1, label: 'Item Find', fmt: 'mult', group: 'util' },
@@ -6064,7 +6064,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   // ---- sword1h
   S('reeves_promise', "The Reeve's Promise", 'sword1h/arming_sword', 'Sworn at a toll gate, kept on a battlefield.',
     [['block', 'add', 0.072], ['dmgMelee', 'inc', 0.38]],
-    ['block_empower', 'onBlock', 'buff', { mods: [B('dmg', 'more', 0.60)], dur: 4, hits: 1 }, 'After you block, your next hit within 4 s deals 60% more damage.']);
+    ['block_empower', 'onBlock', 'buff', { mods: [B('dmg', 'more', 0.40)], dur: 4, hits: 1 }, 'After you block, your next hit within 4 s deals 40% more damage.']);
   S('fourth_bell', 'Fourth Bell', 'sword1h/shortsword', 'The chapel rang three times. The fourth was his sword.',
     [['atkSpeed', 'inc', 0.12], ['momentumGain', 'inc', 0.30]],
     ['fourth_hit_twice', 'onHit', 'repeat', { every: 4, mult: 1.0 }, 'Every 4th hit strikes a second time for 100% of its damage.']);
@@ -6140,7 +6140,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     ['crit_gold', 'onCrit', 'gold', { chance: 0.20, cd: 1, mult: 1 }, '20% chance on critical hit: the target drops gold worth one normal kill (1 s cooldown).']);
   S('sixteen_stitches', 'Sixteen Stitches', 'daggers/stilettos', 'The tailor counted. The victim could not.',
     [['atkSpeed', 'inc', 0.14], ['dodgeCdr', 'inc', 0.20]],
-    ['eighth_hit_dodge_reset', 'onHit', 'cooldown', { every: 8, which: 'dodge', sec: 99 }, 'Every 8th hit resets your dodge cooldown.']);
+    ['eighth_hit_dodge_reset', 'onHit', 'cooldown', { every: 8, which: 'dodge', sec: 2.75 }, 'Every 8th hit gives back the stamina of one dodge.']);
   // ---- mace1h
   S('honest_hour', 'The Honest Hour', 'mace1h/bell_hammer', 'One hour a day the kingdom told the truth.',
     [['corruptionGain', 'inc', -0.25], ['dmgHoly', 'inc', 0.40]],
@@ -6197,7 +6197,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   // =================================================================================== STORIED: OFFHANDS
   S('door_of_the_old_keep', 'Door of the Old Keep', 'shield/tower_shield', 'The keep fell. The door did not.',
     [['hp', 'inc', 0.18], ['block', 'add', 0.096]],
-    ['block_heal', 'onBlock', 'heal', { cd: 0.5, pct: 0.02 }, 'Blocking heals you for 2% of your Health (0.5 s cooldown).']);
+    ['block_heal', 'onBlock', 'heal', { cd: 1.5, pct: 0.015 }, 'Blocking heals you for 1.5% of your Health (1.5 s cooldown).']);
   S('stormwall', 'Stormwall', 'shield/round_shield', 'Lightning never strikes the same shield twice. It does not need to.',
     [['block', 'add', 0.096], ['resShock', 'add', 0.25]],
     ['block_shock_nova', 'onBlock', 'nova', { cd: 1.5, at: 'self', radius: 4, mult: 0.8, elem: 'shock', status: 'shock', statusDur: 3 }, 'Blocked hits reflect a 4 m shock nova for 80% weapon damage that Shocks for 3 s (1.5 s cooldown).']);
@@ -6261,7 +6261,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     ['heavy_hit_ward', 'onDamaged', 'ward', { filter: 'heavy', cd: 10, pct: 0.12 }, 'Taking a heavy hit grants Ward equal to 12% of your Health (10 s cooldown).']);
   S('kingsguards_shame', "Kingsguard's Shame", 'plate/body', 'He lived. That was the shame.',
     [['hp', 'inc', 0.22], ['armor', 'inc', 0.32]],
-    ['lowlife_ward', 'onLowLife', 'ward', { cd: 45, pct: 0.30 }, 'Dropping below 35% Health grants Ward equal to 30% of your Health (45 s cooldown).']);
+    ['lowlife_ward', 'onLowLife', 'ward', { cd: 60, pct: 0.20 }, 'Dropping below 35% Health grants Ward equal to 20% of your Health (60 s cooldown).']);
   S('anvil_hands', 'Anvil Hands', 'plate/hands', 'Whatever they touch becomes a nail.',
     [['breakPower', 'inc', 0.39], ['dmgMelee', 'inc', 0.29]],
     ['broken_hit_momentum', 'onHit', 'momentum', { filter: 'broken', amount: 3 }, 'Hitting a Broken enemy grants 3 extra Momentum.']);
@@ -6306,7 +6306,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     ['stealth_kill_cooldowns', 'onKill', 'cooldown', { cond: 'stealth', which: 'all', sec: 2 }, 'Kills made while hidden reduce all your cooldowns by 2 s.']);
   S('rooftop_runners', 'Rooftop Runners', 'leather/feet', 'The street is for people who can fall.',
     [['moveSpeed', 'inc', 0.10], ['dodgeCdr', 'inc', 0.20]],
-    ['dodge_again', 'onDodge', 'cooldown', { chance: 0.35, which: 'dodge', sec: 99 }, '35% chance that a dodge does not start its cooldown.']);
+    ['dodge_again', 'onDodge', 'cooldown', { chance: 0.30, which: 'dodge', sec: 2.75 }, '30% chance that a dodge gives back its stamina.']);
   S('thiefs_second_skin', "Thief's Second Skin", 'leather/body', 'It fits better than the first.',
     [['evasion', 'inc', 0.48], ['hp', 'inc', 0.12]],
     ['lowlife_vanish', 'onLowLife', 'stealth', { cd: 40, dur: 3 }, 'Dropping below 35% Health hides you for 3 s (40 s cooldown).']);
@@ -6346,7 +6346,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     ['crit_fear', 'onCrit', 'status', { chance: 0.10, cd: 3, status: 'fear', dur: 2, at: 'target' }, '10% chance on critical hit to Fear a non-boss target for 2 s (3 s cooldown).']);
   S('midwifes_thread', "Midwife's Thread", 'charm/bee_in_amber', 'It has tied more beginnings than endings.',
     [['hpRegen', 'add', 0.016], ['healTaken', 'inc', 0.20]],
-    ['lowlife_heal', 'onLowLife', 'heal', { cd: 60, pct: 0.25 }, 'Dropping below 35% Health heals you for 25% of your Health (60 s cooldown).']);
+    ['lowlife_heal', 'onLowLife', 'heal', { cd: 90, pct: 0.20 }, 'Dropping below 35% Health heals you for 20% of your Health (90 s cooldown).']);
   S('millers_black_grain', "Miller's Black Grain", 'charm/toad_stone', 'Do not bake with it.',
     [['dmgPoison', 'inc', 0.40], ['dmgDot', 'inc', 0.32]],
     ['hit_poison', 'onHit', 'status', { chance: 0.10, status: 'poison', dur: 5, stacks: 1, at: 'target' }, '10% chance on hit to Poison the target for 5 s.']);
@@ -6366,7 +6366,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     ['burn_kill_stack', 'onKill', 'buff', { filter: 'status:burn', mods: [B('dmgFire', 'more', 0.05)], dur: 6, maxStacks: 4 }, 'Killing a Burning enemy grants 5% more Fire Damage for 6 s, stacking 4 times.']);
   S('marrow_dice', 'Marrow Dice', 'charm/hawk_feather', 'Roll them and somebody dies.',
     [['critChance', 'add', 0.078], ['critMult', 'add', 0.30]],
-    ['crit_gamble', 'onCrit', 'repeat', { chance: 0.15, mult: 1.0 }, '15% chance for a critical hit to land a second time for 100% of its damage.']);
+    ['crit_gamble', 'onCrit', 'repeat', { chance: 0.10, mult: 1.0 }, '10% chance for a critical hit to land a second time for 100% of its damage.']);
   S('sigil_cutters_thumb', "Sigil-Cutter's Thumb", 'charm/sigil_chisel', 'He kept the rest of his fingers. Barely.',
     [['sigilPower', 'inc', 0.18], ['cdr', 'inc', 0.06]], null);
 
@@ -6391,7 +6391,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     ['fifth_cast_pyre', 'onCast', 'nova', { every: 5, filter: 'skill', at: 'self', radius: 5, mult: 1.5, elem: 'fire' }, 'Every 5th skill wreathes you in a 5 m pyre for 150% weapon damage as Fire.'],
     [F('resFire', 'add', -0.40)], null, 6);
   X('twin_betrayals', 'Twin Betrayals', 'daggers/twin_knives', 'One for the friend in front. One for the friend behind.',
-    [['critChance', 'add', 0.13], ['dmg', 'inc', 0.80, 'stealth']],
+    [['critChance', 'add', 0.13], ['dmg', 'inc', 0.60, 'stealth']],
     ['crit_execute', 'onCrit', 'execute', { below: 0.15 }, 'Critical hits kill non-boss enemies that are below 15% Health.'],
     [F('dmgTaken', 'more', 0.20)], null, 6);
   X('snuffed_candle', 'The Snuffed Candle', 'mace1h/scepter', 'The light went out. Something else came on.',
@@ -6404,7 +6404,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   X('rot_mothers_fingers', "Rot-Mother's Fingers", 'claws/barbs', 'She only wanted to hold you.',
     [F('dmgPoison', 'more', 0.40), ['lifesteal', 'add', 0.03]],
     ['hit_poison_often', 'onHit', 'status', { chance: 0.20, status: 'poison', dur: 6, stacks: 1, at: 'target' }, '20% chance on hit to Poison the target for 6 s.'],
-    [F('healTaken', 'more', -0.25)], null, 7);
+    [F('hp', 'more', -0.10)], null, 7);      // a curse on Healing Received did nothing to its own Life Steal
   X('the_overpressure', 'The Overpressure', 'pistol/hand_cannon', 'Rated for half of this.',
     [F('dmg', 'more', 0.40), ['aoe', 'inc', 0.30]], null,
     [F('atkSpeed', 'more', -0.10)], ['cast_backfire', 'onCast', 'dmg_self', { chance: 0.08, filter: 'skill', pct: 0.10 }, '8% chance on skill use to backfire for 10% of your maximum Health.'], 5);
@@ -6417,7 +6417,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     [F('cdr', 'more', 0.25), F('dmgSpell', 'more', 0.20)], null,
     [F('xpGain', 'more', -0.25)], ['ultimate_corrupts', 'onCast', 'corruption', { filter: 'ultimate', amount: 2 }, 'Using your Ultimate adds 2 Corruption.'], 8);
   X('skull_of_the_false_heir', 'Skull of the False Heir', 'skull/thrall_skull', 'He still expects to be crowned.',
-    [F('minionCount', 'add', 2), F('dmgMinion', 'more', 0.20)], null,
+    [F('minionCount', 'add', 1), F('dmgMinion', 'more', 0.30)], null,
     [F('hp', 'more', -0.20)], ['periodic_tithe', 'periodic', 'dmg_self', { interval: 5, pct: 0.02 }, 'Every 5 s in combat your minions take 2% of your maximum Health from you.'], 10);
   X('black_lantern', 'The Black Lantern', 'lantern/hand_lantern', 'It does not give light. It takes it.',
     [F('dmgShadow', 'more', 0.25), F('dmg', 'more', 0.25, 'corrupt50')],
@@ -37372,6 +37372,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.109', date: '2026-10-18', title: 'Gear balance pass', notes: [
+      'Gear review: a few items that made a single life too easy are toned down, like endless dodge rolls and fast block healing',
+      'Block, dodge recovery, life steal, crit damage and cooldowns now have sensible caps'
+    ] },
     { version: '0.7.108', date: '2026-10-18', title: 'Cleaner hero and boss rigs', notes: [
       'Every hero and Act I boss model now bends at its own shoulders, hips and knees instead of being stretched onto a generic skeleton',
       'Hexblade carries his greatsword on his shoulder when running instead of swinging it across his face',
