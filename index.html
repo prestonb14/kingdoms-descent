@@ -4167,7 +4167,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.117';
+  KD.VERSION = '0.7.118';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -32127,6 +32127,10 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   D.COMPANION_RANK = { dmg: 0.5, cd: 1.3 };
   D.companionRank = D.companionRank || {};
+  // (measured with tools/build_bench.js, docs/COMPANIONS.md: cheap, short-cooldown hitters and sustain need a lighter rank)
+  D.companionRank.corpse_burst = { dmg: 0.35, cd: 2 };
+  D.companionRank.spirit_drain = { cd: 1.6 };
+  D.companionRank.inscribe_rune = { dmg: 0.4, cd: 1.5 };
   var T = D.companions = D.companions || {};
   function c(id, why) { return { id: id, why: why }; }
 
@@ -32179,6 +32183,50 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     leap_shot: [c('snare_trap', 'something waiting where they chase you'), c('hunters_mark', 'a quarry for the arrows you loose')],
     bramble_armor: [c('snare_trap', 'pins enemies close to your thorns'), c('barbed_volley', 'a close-range volley while the brambles hold')],
     spore_cloud: [c('poison_bloom', 'more Poison on the choking crowd'), c('snare_trap', 'holds them in the cloud')]
+  };
+  // (no summons and no heals as companions: a minion or a heal at a minor rank would not be minor)
+  T.gravecaller = {
+    raise_thrall: [c('corpse_burst', 'your Thralls leave corpses to detonate'), c('spirit_drain', 'brings back Souls for the next Thrall')],
+    corpse_burst: [c('wither_touch', 'a cheap filler that makes the corpses'), c('grave_chill', 'Chills enemies so the burst Shatters them')],
+    soul_tether: [c('spirit_drain', 'keeps you alive while the minions take the hits'), c('bone_cage', 'roots enemies in front of your minions')],
+    bone_cage: [c('grave_chill', 'Chills the pack so the cage Shatters it'), c('corpse_burst', 'detonates the dead inside the cage')],
+    wither_touch: [c('contagion', 'spreads more Poison to the Weakened pack'), c('spirit_drain', 'a Soul and a little Health between touches')],
+    ghoul_swarm: [c('wither_touch', 'makes the swarm\'s targets Vulnerable'), c('spirit_drain', 'Souls for the next swarm')],
+    grave_chill: [c('bone_cage', 'the heavy hit that Shatters the Chilled'), c('corpse_burst', 'a second way to Shatter them')],
+    spirit_drain: [c('soul_lance', 'spends the Souls the drain brings back'), c('wither_touch', 'a filler between drains')],
+    marrow_shield: [c('bone_cage', 'holds enemies where the plates will burst'), c('spirit_drain', 'heals what the Ward did not stop')],
+    dread_whisper: [c('deaths_decree', 'Marks the enemies fleeing in Fear'), c('wither_touch', 'Weakens the ones that stay')],
+    raise_knight: [c('deaths_decree', 'Marks the enemies your Knight is fighting'), c('spirit_drain', 'Souls for the next Knight')],
+    deaths_decree: [c('soul_lance', 'a heavy hit on the Marked enemies'), c('wither_touch', 'a cheap filler on the Marked')],
+    bloodletting: [c('spirit_drain', 'heals back the Health the needles cost'), c('contagion', 'more damage over time on the bleeding pack')],
+    soul_lance: [c('spirit_drain', 'brings back the Souls the lance spends'), c('deaths_decree', 'Marks the line of enemies for the lance')],
+    contagion: [c('wither_touch', 'more Poison and Vulnerable on the infected'), c('corpse_burst', 'detonates what the pox kills')]
+  };
+
+  T.emberscribe = {
+    inscribe_rune: [c('chain_glyph', 'a quick rune for your line'), c('ink_blink', 'steps out of reach while the glyph erupts')],
+    chain_glyph: [c('inscribe_rune', 'another rune in the line'), c('ink_blink', 'keeps the range the chain needs')],
+    flame_wall: [c('rune_trap', 'waits on your side of the wall'), c('ink_blink', 'jump back behind the fire')],
+    frost_script: [c('inscribe_rune', 'erupts on the Chilled crowd'), c('ink_blink', 'Soaks enemies so the frost Freezes them')],
+    arc_scroll: [c('chain_glyph', 'more Shock between scrolls'), c('ink_blink', 'lines the pack up for the scroll')],
+    rune_trap: [c('gale_sigil', 'drags enemies onto your traps'), c('ink_blink', 'leads the chase over the traps')],
+    ink_blink: [c('frost_script', 'Freezes the enemies your blot Soaked'), c('inscribe_rune', 'a rune where you just were')],
+    gale_sigil: [c('rune_trap', 'a trap at the centre of the pull'), c('inscribe_rune', 'a glyph on the gathered pack')],
+    overwrite: [c('inscribe_rune', 'fills your line for the Overwrite'), c('chain_glyph', 'a quick Arc rune for the line')],
+    quill_storm: [c('arc_scroll', 'more Arc runes and Shock'), c('ink_blink', 'gets you out after the storm')]
+  };
+
+  T.lanternbearer = {
+    beacon: [c('guiding_light', 'Marks enemies near the second lantern'), c('sunburst', 'knocks them back into its light')],
+    mending_flame: [c('candle_shield', 'turns aside the hits you are healing'), c('guiding_light', 'damage from range between heals')],
+    ward_of_dawn: [c('sunburst', 'Weakens what the Ward has to stop'), c('guiding_light', 'a filler while the Ward holds')],
+    purge_corruption: [c('sunburst', 'something to press while the Purge waits'), c('guiding_light', 'a light filler from range')],
+    sunburst: [c('dawnbreaker_strike', 'the heavy blow on the dazzled'), c('candle_shield', 'turns aside the ones that push through')],
+    guiding_light: [c('dawnbreaker_strike', 'a heavy hit on the Marked'), c('sunburst', 'keeps the Marked pack off you')],
+    searing_ray: [c('guiding_light', 'Marks the line before the ray'), c('candle_shield', 'answers whatever reaches you')],
+    sanctuary_circle: [c('sunburst', 'pushes enemies out of the circle'), c('candle_shield', 'holds the front of the circle')],
+    dawnbreaker_strike: [c('guiding_light', 'Marks the target for the blow'), c('candle_shield', 'a parry between heavy swings')],
+    candle_shield: [c('dawnbreaker_strike', 'the heavy answer after a parry'), c('sunburst', 'clears space after you turn hits aside')]
   };
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -37449,6 +37497,9 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.118', date: '2026-10-18', title: 'More companion skills', notes: [
+      'Gravecaller, Emberscribe and Lanternbearer starting skills now bring two light companion skills too'
+    ] },
     { version: '0.7.117', date: '2026-10-18', title: 'More companion skills', notes: [
       'Ironbound, Hexblade and Thornwarden starting skills now bring two light companion skills too'
     ] },
