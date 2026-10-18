@@ -4163,7 +4163,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.109';
+  KD.VERSION = '0.7.110';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -37372,6 +37372,11 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
    */
   var NOTES = [
     // @@SHIP-NOTES-INSERT@@ (tools/ship.sh adds new entries here, newest first. Do not remove this line.)
+    { version: '0.7.110', date: '2026-10-18', title: 'New gear icons', notes: [
+      'Gear icons got a makeover: helmets, armour, gloves and boots now look like plate, mail, leather or cloth',
+      'Swords, daggers, bows, staves, charms and relics come in several shapes',
+      'Rarity frames: studs for Rare, a gilded frame and a spark for Storied, thorns for Cursed, and every unique wears a coloured gem'
+    ] },
     { version: '0.7.109', date: '2026-10-18', title: 'Gear balance pass', notes: [
       'Gear review: a few items that made a single life too easy are toned down, like endless dodge rolls and fast block healing',
       'Block, dodge recovery, life steal, crit damage and cooldowns now have sensible caps'
@@ -128573,6 +128578,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   var DROP = 'M12 2 C15 7 18.5 10.6 18.5 15 C18.5 19 15.6 22 12 22 C8.4 22 5.5 19 5.5 15 C5.5 10.6 9 7 12 2Z';
   var FLAME = 'M12.6 1.5 C13.4 6 18.6 8.6 18.6 14.6 C18.6 19 15.6 22.5 12 22.5 C8.4 22.5 5.4 19.4 5.4 15 C5.4 12 6.9 10 8.5 8.4 C8.7 10.4 9.5 11.6 10.6 12.1 C10 8 10.9 4 12.6 1.5Z';
   var FLAME_IN = 'M12 22.5 C10 22.5 8.8 20.9 8.8 19.1 C8.8 16.9 10.6 15.9 11.6 13.6 C13.5 15.1 15.2 16.9 15.2 19.1 C15.2 21 13.9 22.5 12 22.5Z';
+  var FLAME_SMALL = 'M12.2 -3.6 C12.8 -1 15.6 0 15.6 2.4 C15.6 4 14 5 12 5 C10 5 8.4 4 8.4 2.4 C8.4 1 9.4 0 10.2 -0.4 C10.4 0.6 10.8 1 11.2 1.2 C11 -0.6 11.4 -2.4 12.2 -3.6Z';
   var HEART = 'M12 21.5 C5 16 2 12.5 2 8.3 C2 5.2 4.4 3 7.2 3 C9.2 3 10.9 4 12 5.8 C13.1 4 14.8 3 16.8 3 C19.6 3 22 5.2 22 8.3 C22 12.5 19 16 12 21.5Z';
   var SKULL = 'M12 2 C6.5 2 3.5 5.8 3.5 10.5 C3.5 13.5 5 15.6 7 16.8 V20 C7 21 7.8 21.5 8.6 21.5 H15.4 C16.2 21.5 17 21 17 20 V16.8 C19 15.6 20.5 13.5 20.5 10.5 C20.5 5.8 17.5 2 12 2Z';
   var HEX = 'M12 1.5 L21 6.75 V17.25 L12 22.5 L3 17.25 V6.75Z';
@@ -129053,6 +129059,36 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   shape('flask', function (q) { q.r(9.6, 1.2, 4.8, 2.6, 0.7, 'a'); q.f('M10.2 3.6 H13.8 V9 L18.4 19 C19 20.6 18 21.8 16.6 21.8 H7.4 C6 21.8 5 20.6 5.6 19 L10.2 9Z', 'k'); q.f('M8.4 13.6 H15.6 L18 19 C18.4 20.2 17.8 20.8 16.6 20.8 H7.4 C6.2 20.8 5.6 20.2 6 19Z'); q.s('M8.6 18.4 L9.8 15.6', 1.1, 'h'); });
   shape('ash', function (q) { q.f('M2.4 20.6 C5 15 8 12.4 12 12.4 C16 12.4 19 15 21.6 20.6Z'); q.f('M12 12.4 C16 12.4 19 15 21.6 20.6 H12Z', 'k'); q.s('M8.6 9.4 C7 7.2 10.2 6 8.6 3.4 M14.6 9.8 C13 7.6 16.2 6.4 14.6 3.8', 1.4, 'a'); q.c(9, 17.4, 1, 'h'); q.c(13.4, 16, 0.8, 'a'); q.c(15.6, 18.6, 0.9, 'i'); });
   shape('ember', function (q) { q.f(FLAME); q.f(FLAME_IN, 'e'); q.c(12, 19.6, 1.2, 'p'); });
+  // ---- variants (gear review v0.8): several shapes per slot and family, picked by the item's base, armour class or name
+  function broadBladeV(q) { q.f('M12 -4.4 L15.8 -0.4 V15.8 H8.2 V-0.4 Z'); q.f('M12 -4.4 L15.8 -0.4 V15.8 H12 Z', 'h'); q.r(11.3, 0.6, 1.4, 13.4, 0.7, 'k'); q.r(3.6, 15.4, 16.8, 3, 1.4, 'a'); q.c(3.8, 16.9, 1.6, 'a'); q.c(20.2, 16.9, 1.6, 'a'); q.r(10.6, 18.4, 2.8, 5.4, 0.6, 'g'); q.c(12, 25.1, 2.3, 'a'); }
+  shape('sword_broad', function (q) { q.rot(45, function () { broadBladeV(q); }); });
+  shape('sword_curve', function (q) { q.rot(45, function () { q.f('M9.4 15.6 V3 C9.4 -0.6 12 -3 16 -3.6 C14.6 0 14.8 6 14.6 15.6 Z'); q.f('M12.4 15.6 V2 C13 -0.6 14.2 -2.4 16 -3.6 C14.6 0 14.8 6 14.6 15.6 Z', 'h'); q.f('M5.6 15.2 H18.4 C18.4 17.6 16.6 18.2 15 17.8 H5.6Z', 'a'); q.r(10.6, 18, 2.8, 5, 0.6, 'g'); q.c(12, 24.8, 2, 'a'); }); });
+  shape('dagger_curved', function (q) { q.rot(45, function () { q.at(-2.4, -2.6, 1.2, function () { q.f('M12 0.6 C14.4 3 11.4 5 13.8 7.6 C15.2 9.4 13.4 11.6 14.4 14.6 H9.6 C10.4 12 8.8 10 10.2 8 C11.6 6 10 3 12 0.6Z'); q.f('M12 0.6 C14.4 3 11.4 5 13.8 7.6 C15.2 9.4 13.4 11.6 14.4 14.6 H12Z', 'h'); q.f('M6.6 14.4 H17.4 L15.4 17 H8.6Z', 'a'); q.r(10.7, 17, 2.6, 4.6, 0.6, 'g'); q.c(12, 23.2, 1.8, 'a'); }); }); });
+  shape('bow_long', function (q) { q.rot(45, function () { q.s('M7.4 -1.4 V25.4', 0.8, 'p'); q.s('M7.4 -1.4 C14.6 4.6 14.6 19.4 7.4 25.4', 2.4); q.s('M12.6 9.6 C13 11 13 13 12.6 14.4', 3.2, 'g'); q.s('M12.9 10.2 V13.8', 1, 'a'); q.c(7.4, -1.4, 1.3, 'a'); q.c(7.4, 25.4, 1.3, 'a'); }); });
+  shape('staff_crook', function (q) { q.rot(45, function () { q.r(11.1, 6, 1.8, 21, 0.9, 'w'); q.s('M12 6.4 C12 1 18 0 18.4 4.6 C18.6 7.2 15.6 7.8 15 6', 2.2, 'w'); q.c(15.2, 6.4, 1.8, 'e'); q.c(15, 6, 0.7, 'p'); q.r(10.4, 8.4, 3.2, 1.6, 0.6, 'a'); q.r(10.4, 19, 3.2, 1.6, 0.6, 'a'); q.c(12, 27, 1.3, 'a'); }); });
+  shape('staff_brazier', function (q) { q.rot(45, function () { q.r(11.1, 7, 1.8, 20, 0.9, 'w'); q.f('M6.8 3.4 H17.2 L15.6 7.6 H8.4Z', 'a'); q.f(FLAME_SMALL, 'e'); q.r(10.2, 8.4, 3.6, 1.8, 0.6, 'a'); q.c(12, 27, 1.3, 'a'); }); });
+  // armour by class: plate is the old helm / cuirass / gauntlet / boot, these are mail, leather and cloth
+  shape('helm_kettle', function (q) { q.f('M5.4 11 C5.4 5 8.4 2.4 12 2.4 C15.6 2.4 18.6 5 18.6 11Z'); q.f('M12 2.4 C15.6 2.4 18.6 5 18.6 11 H12Z', 'k'); q.f('M5.8 12 H18.2 V18.4 C18.2 21 15.6 22.4 12 22.4 C8.4 22.4 5.8 21 5.8 18.4Z', 'k'); q.f('M8.4 12.6 H15.6 V17 C15.6 18.6 14 19.6 12 19.6 C10 19.6 8.4 18.6 8.4 17Z', 'i'); q.r(1.4, 10.2, 21.2, 2.8, 1.4, 'a'); q.r(11.2, 11.4, 1.6, 6.6, 0.6, 'a'); q.s('M7.4 6.4 C8.4 4.6 10 3.8 11.6 3.6', 1, 'h'); });
+  shape('hood', function (q) { q.f('M12 1.6 C6.4 1.6 3.8 6.4 3.8 12 C3.8 16.6 4.8 19.8 3 22.4 H21 C19.2 19.8 20.2 16.6 20.2 12 C20.2 6.4 17.6 1.6 12 1.6Z'); q.f('M12 1.6 C17.6 1.6 20.2 6.4 20.2 12 C20.2 16.6 19.2 19.8 21 22.4 H12Z', 'k'); q.f('M12 6.6 C8.8 6.6 7.2 9.4 7.2 13 C7.2 16.8 9.4 19.6 12 19.6 C14.6 19.6 16.8 16.8 16.8 13 C16.8 9.4 15.2 6.6 12 6.6Z', 'i'); q.c(10, 13, 0.8, 'e'); q.c(14, 13, 0.8, 'e'); q.s('M5.6 9 C6.4 5.6 8.6 3.4 11.4 3', 1, 'h'); q.s('M3.4 22 H20.6', 1.4, 'a'); });
+  shape('hood_masked', function (q) { SHAPES.hood(q); q.r(7, 14.6, 10, 3.6, 1.4, 'a'); q.s('M8.2 16.4 H15.8', 0.7, 'b'); });
+  shape('mail', function (q) { q.f('M6.4 3.2 L9.6 2.2 C10.6 3.8 13.4 3.8 14.4 2.2 L17.6 3.2 L21.6 9.4 L18.6 10.8 V21.6 H5.4 V10.8 L2.4 9.4Z'); q.f('M12 3.4 C13 3.4 13.8 3 14.4 2.2 L17.6 3.2 L21.6 9.4 L18.6 10.8 V21.6 H12Z', 'k'); for (var y = 6; y < 20; y += 2.6) for (var x = 7.4 + (y % 5.2 ? 1.3 : 0); x < 17.4; x += 2.6) q.o(x, y, 0.9, 0.55, 'i'); q.r(5.4, 13.4, 13.2, 2.2, 0.5, 'a'); q.c(12, 14.5, 1.1, 'e'); });
+  shape('jerkin', function (q) { q.f('M7.6 2.4 L10.4 3.4 H13.6 L16.4 2.4 L19.6 5 L18.4 9.6 V21.4 H5.6 V9.6 L4.4 5Z'); q.f('M12 3.4 H13.6 L16.4 2.4 L19.6 5 L18.4 9.6 V21.4 H12Z', 'k'); q.s('M12 4 V21', 0.8, 'i'); q.s('M10.6 7 L13.4 8.6 M13.4 7 L10.6 8.6 M10.6 11 L13.4 12.6 M13.4 11 L10.6 12.6 M10.6 15 L13.4 16.6 M13.4 15 L10.6 16.6', 0.8, 'p'); q.r(5.6, 18.4, 12.8, 1.8, 0.4, 'a'); q.s('M6.8 6.4 L8.4 9.6', 1, 'h'); });
+  shape('robe', function (q) { q.f('M8.4 1.8 H15.6 L17.6 6 L21 22.4 H3 L6.4 6Z'); q.f('M12 1.8 H15.6 L17.6 6 L21 22.4 H12Z', 'k'); q.f('M8.4 1.8 C9 4.6 10.4 6 12 6 C13.6 6 15 4.6 15.6 1.8Z', 'i'); q.s('M6.8 9.4 L17.2 13.4', 2, 'a'); q.s('M3.4 21.6 H20.6', 1.2, 'a'); q.s('M12 13.6 V21.6', 0.8, 'i'); q.s('M7.4 8 L5 19', 1, 'h'); });
+  shape('wraps', function (q) { q.rot(180, function () { q.f('M6.6 11 H15.4 V19.6 C15.4 21.2 14.4 22 13 22 H9 C7.6 22 6.6 21.2 6.6 19.6Z'); q.f('M14.6 8.4 C17 9 18.8 10.4 19.4 12.4 L17.8 13.8 L15.4 12.2Z'); q.f('M6.6 3 H15.4 V11 H6.6Z', 'k'); q.s('M6.6 4.6 L15.4 6.6 M6.6 7.6 L15.4 9.6 M6.6 10.6 L15.4 12.4', 1, 'p'); q.s('M9.6 15.6 V21.4 M12 15.6 V21.6 M14 15.6 V21.2', 0.8, 'i'); }); });
+  shape('gauntlet', function (q) { SHAPES.gloves(q); q.c(8.4, 9.4, 0.8, 'p'); q.c(11, 9.4, 0.8, 'p'); q.c(13.6, 9.4, 0.8, 'p'); });
+  shape('shoes', function (q) { q.f('M7.4 6.6 H14.6 V12.6 C14.6 14 15.4 14.6 16.8 15 L19.6 15.8 C21 16.2 21.8 17.2 21.8 18.6 V19.8 H7.4Z'); q.f('M11 6.6 H14.6 V12.6 C14.6 14 15.4 14.6 16.8 15 L19.6 15.8 C21 16.2 21.8 17.2 21.8 18.6 V19.8 H11Z', 'k'); q.f('M6.2 3 H15.4 L14.6 7.4 H7.4Z', 'a'); q.s('M8.6 9.6 L12.6 11 M8.6 12 L12.6 13.4', 0.9, 'p'); q.r(7, 19.8, 15.2, 1.8, 0.6, 'i'); });
+  // charms and relics by what they are
+  shape('ring', function (q) { q.o(12, 14.4, 6.2, 2.8, 'a'); q.s('M7.8 11.2 C9 9.8 10.4 9.2 12 9.2', 1, 'e'); q.f('M12 1.6 L16 5.2 L12 9.6 L8 5.2Z'); q.f('M12 1.6 L16 5.2 H12Z', 'h'); q.f('M12 5.2 H16 L12 9.6Z', 'k'); q.r(9, 8.2, 6, 2.2, 0.8, 'b'); });
+  shape('amulet', function (q) { q.s('M4.4 1.4 C4.4 7 8 10.4 12 11 C16 10.4 19.6 7 19.6 1.4', 1.1, 'b'); q.c(12, 16, 6, 'a'); q.c(12, 16, 4.4); q.f('M12 11.6 A4.4 4.4 0 0 1 16.4 16 H12Z', 'h'); q.f('M12 16 H16.4 A4.4 4.4 0 0 1 12 20.4Z', 'k'); q.c(12, 16, 1.5, 'e'); q.c(12, 10.4, 1.4, 'a'); });
+  shape('charm_tooth', function (q) { q.s('M5 2 C7 6 17 6 19 2', 1.1, 'b'); q.f('M9.6 5.8 C11 5.2 13.4 5.2 14.6 5.8 C15.4 11 14.6 17 11.4 22.6 C11.6 17 10 12 9.6 5.8Z', 'p'); q.f('M12.4 5.4 C13.4 5.4 14 5.6 14.6 5.8 C15.4 11 14.6 17 11.4 22.6 C12.6 17 13 11 12.4 5.4Z', 'k'); q.r(8.8, 4.6, 6.6, 2.6, 1, 'a'); });
+  shape('charm_feather', function (q) { q.rot(35, function () { q.f('M12 1 C16.6 4.6 16.8 12 12.6 19 H11.4 C7.2 12 7.4 4.6 12 1Z'); q.f('M12 1 C16.6 4.6 16.8 12 12.6 19 H12Z', 'k'); q.s('M12 3 V23', 0.9, 'p'); q.s('M12 7 L9.4 5.6 M12 10 L9 8.6 M12 13 L9.2 11.8 M12 8 L14.8 6.6 M12 11 L15 9.8 M12 14 L14.6 13', 0.6, 'h'); q.c(12, 22.8, 1.2, 'a'); }); });
+  shape('charm_vial', function (q) { q.s('M6 2.4 C8 5 16 5 18 2.4', 1, 'b'); q.r(9.8, 4, 4.4, 2.4, 0.6, 'a'); q.r(9.2, 6.2, 5.6, 2, 0.6, 'b'); q.r(7.4, 8, 9.2, 13.4, 3.6, 'k'); q.r(8.4, 11.6, 7.2, 9, 2.8); q.c(12, 15.6, 1.9, 'e'); q.s('M9.6 10.6 V14', 1, 'h'); });
+  shape('relic_box', function (q) { q.f('M3.6 9 L12 3.4 L20.4 9Z', 'a'); q.r(4.6, 9, 14.8, 11.6, 0.8); q.r(12, 9, 7.4, 11.6, 0.4, 'k'); q.r(3.6, 19.4, 16.8, 2.6, 0.8, 'a'); q.o(12, 14.8, 3, 1.2, 'e'); q.c(12, 14.8, 1, 'e'); q.s('M12 10.2 V11.2 M12 18.4 V19.4 M7.4 14.8 H8.4 M15.6 14.8 H16.6', 1, 'b'); q.c(12, 3.6, 1.2, 'e'); });
+  shape('relic_crown', function (q) { q.f('M3 8.4 L7.4 12 L12 4.4 L16.6 12 L21 8.4 L19.4 18.6 H4.6Z'); q.f('M12 4.4 L16.6 12 L21 8.4 L19.4 18.6 H12Z', 'k'); q.r(4, 18, 16, 3.6, 1, 'a'); q.c(12, 4.2, 1.4, 'e'); q.c(3, 8.2, 1.2, 'e'); q.c(21, 8.2, 1.2, 'e'); q.c(12, 19.8, 1.2, 'e'); q.c(7.6, 19.8, 0.8, 'b'); q.s('M10.6 15.2 L13.4 15.2', 1, 'i'); q.s('M5 16.6 L6 11', 1, 'h'); });
+  shape('relic_horn', function (q) { q.f('M3 6.4 C8 6.4 14.4 9.6 17.6 15.4 L21.6 13.2 C21.4 18.6 18 21.8 13.8 21.4 L15.6 17.8 C12 13 7.2 9.6 3 9.4Z'); q.f('M3 9.4 C7.2 9.6 12 13 15.6 17.8 L13.8 21.4 C18 21.8 21.4 18.6 21.6 13.2 Z', 'k'); q.s('M7 7.4 L6.8 9.6 M10.6 8.6 L10 11 M13.8 10.8 L12.8 13', 1.2, 'a'); q.c(3, 7.9, 1.6, 'a'); q.s('M17.4 15.2 C18.8 16.6 19.6 18 19.8 19.6', 0.9, 'h'); });
+  shape('relic_bone', function (q) { q.rot(-40, function () { q.r(10.4, 3.6, 3.2, 16.8, 1.4, 'p'); q.c(10.4, 3.4, 2.4, 'p'); q.c(13.6, 3.4, 2.4, 'p'); q.c(10.4, 20.6, 2.4, 'p'); q.c(13.6, 20.6, 2.4, 'p'); q.r(12.2, 4.2, 1.4, 15.6, 0.6, 'k'); q.r(9.6, 9.4, 4.8, 1.6, 0.4, 'a'); q.r(9.6, 12, 4.8, 1.6, 0.4, 'a'); q.r(9.6, 14.6, 4.8, 1.6, 0.4, 'a'); }); });
+  shape('relic_eye', function (q) { q.c(12, 12, 9.6, 'a'); q.c(12, 12, 8.2); q.f('M3.8 12 C7 7 17 7 20.2 12 C17 17 7 17 3.8 12Z', 'p'); q.c(12, 12, 3.4, 'e'); q.c(12, 12, 1.5, 'i'); q.c(10.8, 10.8, 0.7, 'p'); q.s('M12 2.4 V0.4 M12 21.6 V23.6 M2.4 12 H0.4 M21.6 12 H23.6', 1.2, 'a'); });
+  shape('relic_coin', function (q) { q.c(12, 12, 9.6, 'b'); q.c(12, 12, 8.6, 'a'); q.c(12, 12, 6.6); q.f('M12 5.4 A6.6 6.6 0 0 1 18.6 12 H12Z', 'h'); q.f('M12 12 H18.6 A6.6 6.6 0 0 1 12 18.6Z', 'k'); q.f('M12 7.4 L13.4 10.6 L16.8 10.8 L14.2 13 L15.2 16.4 L12 14.6 L8.8 16.4 L9.8 13 L7.2 10.8 L10.6 10.6Z', 'e'); });
   var SHAPE_ALIAS = I.SHAPE_ALIASES = { pin: 'cloakpin', gear: 'gearbox', polearms: 'polearm', spear: 'polearm', glove: 'gloves', boot: 'boots', helmet: 'helm', armor: 'chest', body: 'chest', blade: 'sword', claws: 'claw', daggers: 'dagger', book: 'tome', ration: 'food', ore: 'material', orb: 'charm', ring: 'charm', amulet: 'talisman' };
   /** itemShape(name) -> a shape that exists (aliases; unknown -> 'material'). Pure. */
   I.itemShape = function (name) {
@@ -129078,26 +129114,125 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
       return out;
     });
   }
+  // ---- which shape a whole item gets (gear review v0.8): armour by class, weapons by type, charms and relics by name
+  var ARMOR_SHAPE = {
+    head: { heavy: 'helm', medium: 'helm_kettle', light: 'hood_masked', cloth: 'hood' },
+    body: { heavy: 'chest', medium: 'mail', light: 'jerkin', cloth: 'robe' },
+    hands: { heavy: 'gauntlet', medium: 'gloves', light: 'wraps', cloth: 'wraps' },
+    feet: { heavy: 'boots', medium: 'boots', light: 'shoes', cloth: 'shoes' }
+  };
+  var BY_NAME = [      // [shape the item was made with, test on its type / base / relic id, shape to draw]
+    ['sword', /falchion|sabre|crescent|wither|spur|saw/, 'sword_curve'], ['sword', /greatsword|runeblade|blade2h|estoc/, 'sword_broad'],
+    ['dagger', /fang|venom|shiv/, 'dagger_curved'], ['bow', /long|war/, 'bow_long'],
+    ['staff', /scribe|quill|great_staff/, 'staff_crook'], ['staff', /brazier/, 'staff_brazier'],
+    ['charm', /feather|quill/, 'charm_feather'], ['charm', /tooth|tusk|claw|knuckle|bone|foot|burr|wishbone/, 'charm_tooth'],
+    ['charm', /coin|pearl|bead|pebble|badge|token|locket/, 'amulet'], ['charm', /thimble|horseshoe|iron_nail|ring|ribbon/, 'ring'],
+    ['charm', /jar|glass|amber|sand|tinder|wick|spoon/, 'charm_vial'],
+    ['relic', /eye|spectacle/, 'relic_eye'], ['relic', /crown|jewel|halo/, 'relic_crown'], ['relic', /horn|bell|drum|clapper|flute|choir/, 'relic_horn'], ['relic', /bone|tooth|rib|vertebra|finger|knuckle|antler|dice|whisker|tusk|heartwood/, 'relic_bone'],
+    ['relic', /coin|ring|scale|pendant|shell|horseshoe|wheel|flywheel/, 'relic_coin'],
+    ['relic', /chalice|cup|font|vial|jar|censer|oil|candle|wick|lantern|bottle/, 'relic'], ['relic', /./, 'relic_box']
+  ];
+  /** itemVariant(item) -> the shape key to draw for a whole item (pure: no randomness, the same item always looks the same). */
+  I.itemVariant = function (it) {
+    var base = I.itemShape(it && it.icon && it.icon.shape);
+    if (!it) return base;
+    if (it.armorClass && ARMOR_SHAPE[it.slot] && ARMOR_SHAPE[it.slot][it.armorClass]) return ARMOR_SHAPE[it.slot][it.armorClass];
+    var id = String(it.slot === 'relic' ? it.relic || it.base : (it.baseType || it.base || '')).toLowerCase();
+    for (var i = 0; i < BY_NAME.length; i++) if (BY_NAME[i][0] === base && BY_NAME[i][1].test(id)) return BY_NAME[i][2];
+    return base;
+  };
+  /** Rarity frame: none (common), thin (fine), studded (rare), gilded (storied), thorned (cursed), relic. */
+  function frameOf(it, tint) {
+    if (!it || !tint) return null;
+    if (it.slot === 'relic') return 'relic';
+    if (it.slot === 'sigil') return it.grade >= 2 ? 'studded' : (it.grade === 1 ? 'thin' : null);
+    return { fine: 'thin', rare: 'studded', storied: 'gilded', cursed: 'thorned' }[it.rarity] || null;
+  }
+  function frame(g, px, kind, tint) {
+    var u = px / 24, r = px * 0.1, inset = function (d) { var a = d * u, b = px - d * u, rr = Math.max(0.5, r - d * u); g.beginPath(); g.moveTo(a + rr, a); g.lineTo(b - rr, a); g.quadraticCurveTo(b, a, b, a + rr); g.lineTo(b, b - rr); g.quadraticCurveTo(b, b, b - rr, b); g.lineTo(a + rr, b); g.quadraticCurveTo(a, b, a, b - rr); g.lineTo(a, a + rr); g.quadraticCurveTo(a, a, a + rr, a); g.closePath(); };
+    var light = I.mix(tint, '#ffffff', 0.35), dark = I.mix(tint, '#0c0906', 0.55);
+    g.save(); g.lineJoin = 'round';
+    g.strokeStyle = 'rgba(0,0,0,.65)'; g.lineWidth = 1.6 * u; inset(0.8); g.stroke();
+    g.strokeStyle = kind === 'thin' ? rgba(tint, 0.75) : light; g.lineWidth = (kind === 'thin' ? 0.9 : 1.2) * u; inset(1.2); g.stroke();
+    if (kind !== 'thin') { g.strokeStyle = dark; g.lineWidth = 0.7 * u; inset(2.4); g.stroke(); }
+    var corners = [[2.6, 2.6], [21.4, 2.6], [2.6, 21.4], [21.4, 21.4]];
+    corners.forEach(function (c, i) {
+      var x = c[0] * u, y = c[1] * u;
+      if (kind === 'studded' || kind === 'relic') { g.fillStyle = dark; g.beginPath(); g.arc(x, y, 1.5 * u, 0, 6.2832); g.fill(); g.fillStyle = light; g.beginPath(); g.arc(x - 0.3 * u, y - 0.3 * u, 0.9 * u, 0, 6.2832); g.fill(); }
+      else if (kind === 'gilded') { g.fillStyle = light; g.beginPath(); g.moveTo(x, y - 2.2 * u); g.lineTo(x + 2.2 * u, y); g.lineTo(x, y + 2.2 * u); g.lineTo(x - 2.2 * u, y); g.closePath(); g.fill(); g.fillStyle = dark; g.beginPath(); g.arc(x, y, 0.7 * u, 0, 6.2832); g.fill(); }
+      else if (kind === 'thorned') {      // a thorn curling in from each corner
+        var sx = i % 2 ? -1 : 1, sy = i < 2 ? 1 : -1, x0 = (i % 2 ? 24 : 0) * u, y0 = (i < 2 ? 0 : 24) * u;
+        g.fillStyle = light; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x0 + sx * 6 * u, y0 + sy * 1.2 * u); g.lineTo(x0 + sx * 1.2 * u, y0 + sy * 6 * u); g.closePath(); g.fill();
+        g.fillStyle = dark; g.beginPath(); g.moveTo(x0 + sx * 1.4 * u, y0 + sy * 1.4 * u); g.lineTo(x0 + sx * 4.2 * u, y0 + sy * 2.2 * u); g.lineTo(x0 + sx * 2.2 * u, y0 + sy * 4.2 * u); g.closePath(); g.fill();
+      }
+    });
+    g.restore();
+  }
+  /** A soft glow behind the art of Storied, Cursed and relic items (and a spark in the corner of a Storied one). */
+  function aura(g, px, kind, tint) {
+    if (kind !== 'gilded' && kind !== 'thorned' && kind !== 'relic') return;
+    var gr = g.createRadialGradient(px / 2, px / 2, px * 0.05, px / 2, px / 2, px * 0.48);
+    gr.addColorStop(0, rgba(I.mix(tint, '#ffffff', 0.3), kind === 'thorned' ? 0.5 : 0.42)); gr.addColorStop(1, rgba(tint, 0));
+    g.fillStyle = gr; g.fillRect(0, 0, px, px);
+    if (kind === 'thorned') {      // a few dark veins creeping from the bottom
+      g.save(); g.strokeStyle = rgba('#0c0906', 0.55); g.lineWidth = px / 40; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(px * 0.12, px * 0.95); g.quadraticCurveTo(px * 0.2, px * 0.75, px * 0.1, px * 0.62); g.moveTo(px * 0.88, px * 0.95); g.quadraticCurveTo(px * 0.8, px * 0.78, px * 0.9, px * 0.66); g.stroke(); g.restore();
+    }
+  }
+  function spark(g, px, tint) {
+    var x = px * 0.8, y = px * 0.2, s = px * 0.1;
+    g.save(); g.fillStyle = I.mix(tint, '#ffffff', 0.7); g.shadowColor = tint; g.shadowBlur = px * 0.08;
+    g.beginPath(); g.moveTo(x, y - s); g.quadraticCurveTo(x, y, x + s, y); g.quadraticCurveTo(x, y, x, y + s); g.quadraticCurveTo(x, y, x - s, y); g.quadraticCurveTo(x, y, x, y - s); g.fill(); g.restore();
+  }
+  var ELEM_HUE = [['dmgFire', '#ff8a3d'], ['dmgCold', '#7fd4ff'], ['dmgShock', '#ffe45c'], ['dmgPoison', '#8fd14f'], ['dmgHoly', '#fff2b0'], ['dmgShadow', '#b07bff'],
+    ['minion', '#8ff0c8'], ['lifesteal', '#e0465a'], ['heal', '#9fe8a0'], ['crit', '#ff5a6e'], ['ward', '#9ad8ff'], ['armor', '#cfd6dc'], ['block', '#cfd6dc'], ['gold', '#f5c542']];
+  /** The signature colour of a Storied or Cursed item (its first telling mod), or null: the gem in its corner. */
+  I.itemSignature = function (it) {
+    if (!it || !it.unique || it.slot === 'relic' || it.slot === 'sigil') return null;
+    var mods = (it.unique.mods || []).map(function (m) { return m.s; }).join(' ');
+    for (var i = 0; i < ELEM_HUE.length; i++) if (mods.indexOf(ELEM_HUE[i][0]) >= 0 || (mods.toLowerCase().indexOf(ELEM_HUE[i][0].toLowerCase()) >= 0)) return ELEM_HUE[i][1];
+    var h = 0, id = String(it.unique.id || ''); for (var k = 0; k < id.length; k++) h = (h * 31 + id.charCodeAt(k)) >>> 0;
+    return ['#e2b94a', '#d86a4a', '#6fb0ff', '#b07bff', '#8fd14f'][h % 5];
+  };
+  function gem(g, px, color) {
+    var x = px * 0.2, y = px * 0.8, s = px * 0.085;
+    g.save(); g.shadowColor = color; g.shadowBlur = px * 0.08;
+    g.fillStyle = '#120d09'; g.beginPath(); g.moveTo(x, y - s * 1.35); g.lineTo(x + s * 1.35, y); g.lineTo(x, y + s * 1.35); g.lineTo(x - s * 1.35, y); g.closePath(); g.fill();
+    g.shadowBlur = 0; g.fillStyle = color; g.beginPath(); g.moveTo(x, y - s); g.lineTo(x + s, y); g.lineTo(x, y + s); g.lineTo(x - s, y); g.closePath(); g.fill();
+    g.fillStyle = 'rgba(255,255,255,.75)'; g.beginPath(); g.moveTo(x, y - s); g.lineTo(x + s * 0.5, y - s * 0.5); g.lineTo(x, y); g.lineTo(x - s * 0.5, y - s * 0.5); g.closePath(); g.fill();
+    g.restore();
+  }
+  I.itemFrame = frameOf;
+  I.itemDecor = { frame: frame, aura: aura, spark: spark, gem: gem };      // shared with the painted look (02_paint_icons.js)
   /**
    * item(iconOrItem, size, rarity?) -> canvas.
-   *   iconOrItem: { shape, color, accent } or a whole item (its .icon and .rarity are used).
+   *   iconOrItem: { shape, color, accent } or a whole item (its .icon and .rarity are used; a whole item also gets its
+   *   variant shape (I.itemVariant), its rarity frame and, for Storied / Cursed / relic items, a glow behind the art).
    *   rarity: rarity key or '#colour' for the plate tint; false = no plate (transparent background).
    */
   I.item = function (icon, size, rarity) {
     if (!HAS_DOM) return null;
-    if (icon && icon.icon) { if (rarity === undefined) rarity = icon.rarity; icon = icon.icon; }
+    var whole = null;
+    if (icon && icon.icon) { whole = icon; if (rarity === undefined) rarity = icon.rarity; icon = icon.icon; }
     icon = icon || {}; size = size || 40;
-    var px = Math.max(12, Math.round(size * res())), sk = I.itemShape(icon.shape), color = icon.color || '#b8b3a7', accent = icon.accent || '#e2b94a';
+    var px = Math.max(12, Math.round(size * res())), sk = whole ? I.itemVariant(whole) : I.itemShape(icon.shape), color = icon.color || '#b8b3a7', accent = icon.accent || '#e2b94a';
     var tint = rarity === false ? null : (rarity ? UI.rarityColor ? UI.rarityColor(rarity) : rarity : '#6e675a');
-    var master = cached('i|' + sk + '|' + px + '|' + color + '|' + accent + '|' + tint, function () {
-      var c = mk(px), g = c.getContext('2d'), inner = Math.round(px * 0.8), off = Math.round((px - inner) / 2);
+    if (whole && whole.slot === 'relic' && tint) tint = '#e0523f';
+    var fk = frameOf(whole, tint), star = !!(whole && whole.unique && whole.rarity === 'storied' && whole.slot !== 'relic'), sig = I.itemSignature(whole);
+    var master = cached('i|' + sk + '|' + px + '|' + color + '|' + accent + '|' + tint + '|' + fk + '|' + star + '|' + sig, function () {
+      var c = mk(px), g = c.getContext('2d'), inner = Math.round(px * (fk === 'thorned' || fk === 'gilded' ? 0.76 : 0.8)), off = Math.round((px - inner) / 2);
       if (tint) plate(g, px, tint, false);
-      g.shadowColor = 'rgba(0,0,0,.7)'; g.shadowBlur = px * 0.07; g.shadowOffsetY = px * 0.035;
-      g.drawImage(itemArt(sk, inner, color, accent), off, off);
+      if (fk) aura(g, px, fk, tint);
+      g.save(); g.shadowColor = 'rgba(0,0,0,.7)'; g.shadowBlur = px * 0.07; g.shadowOffsetY = px * 0.035;
+      g.drawImage(itemArt(sk, inner, color, accent), off, off); g.restore();
+      if (fk) frame(g, px, fk, tint);
+      if (star) spark(g, px, tint);
+      if (sig) gem(g, px, sig);
       return c;
     });
     var out = clone(master, size);
     out.setAttribute('data-shape', sk);
+    if (fk) out.setAttribute('data-frame', fk);
     return out;
   };
   // test hooks: run glyph / shape functions against any 2D context
@@ -129328,19 +129463,28 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
   }
   I.item = function (icon, size, rarity) {
     if (!HAS_DOM || !P.on) return flat.item.apply(I, arguments);
-    if (icon && icon.icon) { if (rarity === undefined) rarity = icon.rarity; icon = icon.icon; }
+    var whole = null;
+    if (icon && icon.icon) { whole = icon; if (rarity === undefined) rarity = icon.rarity; icon = icon.icon; }
     icon = icon || {}; size = size || 40;
-    var px = Math.max(12, Math.round(size * res())), sk = I.itemShape(icon.shape), color = safeHex(icon.color || '#b8b3a7'), accent = safeHex(icon.accent || '#e2b94a');
+    var px = Math.max(12, Math.round(size * res())), sk = whole && I.itemVariant ? I.itemVariant(whole) : I.itemShape(icon.shape), color = safeHex(icon.color || '#b8b3a7'), accent = safeHex(icon.accent || '#e2b94a');
     var tint = rarity === false ? null : (rarity ? (UI.rarityColor ? UI.rarityColor(rarity) : rarity) : '#6e675a');
-    var master = cached('i|' + sk + '|' + px + '|' + color + '|' + accent + '|' + tint, function () {
-      var c = mk(px), g = c.getContext('2d'), inner = Math.round(px * 0.84), off = Math.round((px - inner) / 2);
+    if (whole && whole.slot === 'relic' && tint) tint = '#e0523f';
+    tint = tint ? safeHex(tint) : null;
+    var D = I.itemDecor, fk = D && I.itemFrame ? I.itemFrame(whole, tint) : null, star = !!(whole && whole.unique && whole.rarity === 'storied' && whole.slot !== 'relic'), sig = I.itemSignature ? I.itemSignature(whole) : null;
+    var master = cached('i|' + sk + '|' + px + '|' + color + '|' + accent + '|' + tint + '|' + fk + '|' + star + '|' + sig, function () {
+      var c = mk(px), g = c.getContext('2d'), inner = Math.round(px * (fk === 'thorned' || fk === 'gilded' ? 0.78 : 0.84)), off = Math.round((px - inner) / 2);
       if (tint) plate(g, px, tint, false, false);
+      if (fk) D.aura(g, px, fk, tint);
       g.save(); g.shadowColor = 'rgba(0,0,0,.75)'; g.shadowBlur = px * 0.07; g.shadowOffsetY = px * 0.04;
       g.drawImage(itemArt(sk, inner, color, accent), off, off); g.restore();
+      if (fk) D.frame(g, px, fk, tint);
+      if (star) D.spark(g, px, tint);
+      if (sig && D.gem) D.gem(g, px, sig);
       return c;
     });
     var out = clone(master, size);
     out.setAttribute('data-shape', sk);
+    if (fk) out.setAttribute('data-frame', fk);
     return out;
   };
   // test hooks
