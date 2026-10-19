@@ -4167,7 +4167,7 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
 (function (root) {
   'use strict';
   var KD = root.KD = root.KD || {};
-  KD.VERSION = '0.7.120';
+  KD.VERSION = '0.7.121';
   KD.NAME = "Kingdom's Descent";
   /**
    * Feature switches (owner decisions). Every module must honour them.
@@ -37522,6 +37522,390 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     'Walked through the rot, the city and the castle, and came out the other side.',
     'The crown is broken. The hero is not.'
   ];
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/80_ow_items.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var D = KD.data = KD.data || {};
+
+  /**
+   * THE KINGDOM: GEAR DATA (owner: gear agent, docs/OPENWORLD.md "Gear contract").
+   * Kingdom-only. Nothing here is read by The Descent: Descent items never carry `item.ow`, and these tables are only
+   * looked up by src/ow/gear*.js and src/ow/craft*.js.
+   *
+   *   owGear       regions and item level bands, rarities, drop tables, tempering, sockets, durability, salvage
+   *   owSets       10 four-piece sets, one per dungeon (2 and 4 piece bonuses)
+   *   owRunes      12 rune kinds x 5 tiers (socketed into Rare, Storied and Set gear)
+   *   owFoods      25 foods (Cooking): out-of-combat timed buffs, never healing
+   *   owGoods      every stackable good (materials, runes, foods, recipe scrolls, flux, drills): built in 81_ow_items_craft.js
+   */
+  var G = D.owGear = {};
+
+  /** Regions in level order. `tier` is the material tier (1..5) of the region. Item levels of drops follow the zone. */
+  G.REGIONS = [
+    { id: 'vale', alias: 'hearthmoor_vale', name: 'Hearthmoor Vale', lo: 1, hi: 12, tier: 1, dungeons: ['old_mill_cellars', 'wolfden'] },
+    { id: 'gloamwood', name: 'The Gloamwood', lo: 12, hi: 24, tier: 2, dungeons: ['webmothers_hollow', 'sunken_chapel'] },
+    { id: 'iron_pass', name: 'The Iron Pass', lo: 24, hi: 36, tier: 3, dungeons: ['rockjaw_mine', 'gatehouse_vaults'] },
+    { id: 'river', name: 'The River Kingdom', lo: 36, hi: 48, tier: 4, dungeons: ['sewers', 'ferrymans_wreck'] },
+    { id: 'hollow_crown', name: 'The Hollow Crown', lo: 48, hi: 60, tier: 5, dungeons: ['throne_depths', 'crown_crypts'] }
+  ];
+  /** Dungeon difficulty: item level bonus, gear quantity, rarity weight multipliers, set piece chance multiplier. */
+  G.DIFFICULTY = {
+    normal: { name: 'Normal', ilvl: 0, qty: 1, rare: 1, storied: 1, set: 1 },
+    veteran: { name: 'Veteran', ilvl: 2, qty: 1.25, rare: 1.4, storied: 1.5, set: 1.5 },
+    nightmare: { name: 'Nightmare', ilvl: 4, qty: 1.5, rare: 2, storied: 2.2, set: 2 }
+  };
+  /** Kingdom rarities. Set is new (Kingdom only): base x1.2, 2 random affixes, one set mod, set bonuses. */
+  G.RARITIES = ['common', 'fine', 'rare', 'storied', 'set'];
+  G.SET_COLOR = '#36d6c0';
+  G.SET_MULT = 1.2;
+
+  /**
+   * DROP TABLES per source. gear = expected gear items per kill (fractional part is a chance); first = the first item
+   * is at least this rarity; w = rarity weights of the other items; set = chance of a set piece (dungeon / world boss);
+   * gold = x KD.balance.enemyGold(level); mats = expected material stacks; recipe = chance of a recipe scroll;
+   * ilvl = item level bonus over the enemy level. Rare and better stay uncommon: normal enemies 2% of their few items.
+   */
+  G.DROPS = {
+    minion: { gear: 0.006, w: { common: 75, fine: 24, rare: 1 }, gold: 0.3, goldChance: 0.35, mats: 0.03, ilvl: 0 },
+    normal: { gear: 0.025, w: { common: 66, fine: 33, rare: 1.5 }, gold: 1, goldChance: 0.55, mats: 0.06, ilvl: 0 },
+    elite: { gear: 0.3, w: { common: 36, fine: 54, rare: 9, storied: 1 }, gold: 5, mats: 0.5, recipe: 0.004, ilvl: 0 },
+    named: { gear: 1.2, first: 'fine', w: { common: 8, fine: 58, rare: 30, storied: 4 }, gold: 25, mats: 2, recipe: 0.05, ilvl: 1 },
+    miniboss: { gear: 0.8, w: { common: 12, fine: 62, rare: 23, storied: 3 }, gold: 25, mats: 1.5, recipe: 0.03, ilvl: 1 },
+    boss: { gear: 1.4, first: 'fine', w: { common: 5, fine: 60, rare: 31, storied: 4 }, set: 0.22, gold: 70, mats: 3, recipe: 0.1, ilvl: 1 },
+    worldboss: { gear: 3, first: 'rare', w: { fine: 35, rare: 52, storied: 13 }, set: 0.3, gold: 150, mats: 5, recipe: 0.35, ilvl: 2 },
+    chest: { gear: 0.5, w: { common: 50, fine: 44, rare: 5.5, storied: 0.5 }, gold: 8, mats: 1, recipe: 0.01, ilvl: 0 },
+    chest_large: { gear: 1, first: 'fine', w: { common: 25, fine: 58, rare: 15, storied: 2 }, gold: 20, mats: 2, recipe: 0.03, ilvl: 1 },
+    treasure: { gear: 2, first: 'rare', w: { fine: 50, rare: 43, storied: 7 }, gold: 60, mats: 3, recipe: 0.1, ilvl: 2 },
+    quest: { gear: 1, first: 'fine', w: { fine: 80, rare: 20 }, gold: 0, mats: 0, ilvl: 1 }
+  };
+  /** Enemy tiers (KD.balance.TIER keys and the Kingdom's own) mapped to a drop table. */
+  G.TIER_DROPS = { minion: 'minion', normal: 'normal', elite: 'elite', miniboss: 'miniboss', nemesis: 'named', roaming: 'named', named: 'named',
+    boss: 'boss', actboss: 'boss', finalboss: 'boss', worldboss: 'worldboss' };
+  /** Set pieces prefer pieces the looter does not own yet (smart set loot). */
+  G.SET_SMART = 0.75;
+  /** Material stacks from kills: what kind of thing fell (humanoids drop cloth scraps: "scavenging"). */
+  G.KILL_MATS = { humanoid: { cloth: 0.7, parts: 0.3 }, beast: { parts: 0.4, meat: 0.6 }, other: { parts: 1 } };
+
+  /**
+   * TEMPERING at a smith, +1..+10. bonus = cumulative increase of the item's base values (weapon damage, armor, evasion,
+   * ward). fail = chance an attempt fails (from +7): a failure costs the materials only, never the item, its level or
+   * the gold fee. pity = each failure at a level lowers the next attempt's fail chance by this much (kept on the item).
+   */
+  G.TEMPER = {
+    max: 10,
+    bonus: [0, 0.025, 0.05, 0.075, 0.10, 0.125, 0.15, 0.185, 0.22, 0.255, 0.30],
+    fail: [0, 0, 0, 0, 0, 0, 0, 0.25, 0.40, 0.55, 0.70],
+    pity: 0.10, flux: 0.15,
+    gold: function (k, gold1) { return Math.round(gold1 * (8 + 6 * Math.pow(k, 1.5))); }
+  };
+  /** Sockets: Rare 1, Set 1, Storied 2; a Socket Drill (Jewelcraft) adds one up to the slot's maximum. */
+  G.SOCKETS = { base: { rare: 1, set: 1, storied: 2 }, max: { weapon: 2, body: 2, offhand: 1, head: 1, hands: 1, feet: 1, charm: 1 },
+    unsocketGold: 4 };
+  /** Durability (item.dur): 100; each death costs 12 on every worn item (the foundation's rule); at 0 it is Broken (gives nothing). */
+  G.DURABILITY = { max: 100, deathLoss: 12, repairPerPoint: 0.004 };
+  /** Salvage yields: parts of the item's tier and essences by rarity. Temper levels give parts back (1 per 2 levels). */
+  G.SALVAGE = {
+    common: { parts: 1 }, fine: { parts: 2, dim: 1 }, rare: { parts: 3, bright: 1, dim: 1 },
+    storied: { parts: 4, storied: 1, bright: 1 }, set: { parts: 4, storied: 1, bright: 1 }, cursed: { parts: 4, storied: 1 }
+  };
+  /** Profession skill: 0..300; recipe and node tiers open at these levels. */
+  G.SKILL = { max: 300, tier: [0, 0, 60, 120, 180, 240], green: 25, yellow: 50 };
+  G.PROFESSIONS = {
+    salvaging: { name: 'Salvaging', kind: 'all', icon: 'hammer', text: 'Break gear into parts and essences. Everyone can.' },
+    mining: { name: 'Mining', kind: 'gather', icon: 'mine', text: 'Ore and gems from veins.' },
+    skinning: { name: 'Skinning and scavenging', kind: 'gather', icon: 'claw', text: 'Hides and meat from hunted beasts, cloth from salvage piles.' },
+    smithing: { name: 'Smithing', kind: 'craft', icon: 'hammer', text: 'Metal weapons, heavy armour, shields and tempering flux.' },
+    leathercraft: { name: 'Leathercraft', kind: 'craft', icon: 'glove', text: 'Bows, quivers, masks, pins, light and medium armour.' },
+    jewelcraft: { name: 'Jewelcraft', kind: 'craft', icon: 'gem', text: 'Charms, talismans, lanterns, skulls and socket drills.' },
+    runecraft: { name: 'Runecraft', kind: 'craft', icon: 'rune_b', text: 'Runes for sockets, staves, tomes and cloth armour.' },
+    cooking: { name: 'Cooking', kind: 'craft', icon: 'ration', text: 'Meals that grant a timed buff. Eat out of combat. Never heals.' }
+  };
+  G.CRAFTS_PER_HERO = 2;
+  /** Cost of dropping a craft (its skill is lost): gold x enemyGold(hero level). */
+  G.UNLEARN_GOLD = 40;
+  /** Food: one meal buff at a time, eaten out of combat, lasts this long (game seconds). */
+  G.FOOD_SECONDS = 1800;
+
+  /** Gathering node kinds (data and placement API: KD.ow.craft.placeNodes / makeNode). */
+  G.NODES = {
+    ore_vein: { name: 'Ore vein', prof: 'mining', icon: 'mine', yields: [{ kind: 'ore', n: [2, 3] }, { kind: 'gem', n: [1, 1], chance: 0.12 }], respawn: 300, density: 1 },
+    rich_vein: { name: 'Rich vein', prof: 'mining', icon: 'gem', yields: [{ kind: 'ore', n: [3, 5] }, { kind: 'gem', n: [1, 2], chance: 0.45 }], respawn: 600, density: 0.2 },
+    salvage_pile: { name: 'Salvage pile', prof: 'skinning', icon: 'trash', yields: [{ kind: 'cloth', n: [2, 3] }, { kind: 'parts', n: [1, 2], chance: 0.5 }], respawn: 300, density: 0.8 },
+    carcass: { name: 'Hunted beast', prof: 'skinning', icon: 'claw', yields: [{ kind: 'hide', n: [1, 3] }, { kind: 'meat', n: [1, 2], chance: 0.7 }], respawn: 0, density: 0 }
+  };
+  /** Body plans and species that leave a skinnable carcass when killed (hide sources from hunted beasts). */
+  G.BEAST_PLANS = ['quadruped', 'serpent', 'spider', 'flyer'];
+  G.NOT_BEASTS = ['undead', 'skeleton', 'wisp', 'gargoyle', 'shade', 'spirit', 'banshee', 'wraith', 'golem_small', 'iron', 'armor', 'ghost', 'moth'];
+
+  // -------------------------------------------------------------------------------------------------- sets
+  /**
+   * One 4-piece set per dungeon. Pieces are armour (head, body, hands, feet) in the looter's armour class, so every
+   * class can wear every set. Each piece: Set rarity (base x1.2), its own mod (scaled like a Storied signature mod) and
+   * 2 random affixes. Bonuses hook into tools every class has (main attacks, dodge, block, Break, slows, Ultimate,
+   * ranged skills, kills): 2 pieces = plain mods, 4 pieces = plain mods + one data effect (KD.sim item effects).
+   */
+  KD.register('owSets', [
+    { id: 'millers_grind', name: "The Miller's Grind", dungeon: 'old_mill_cellars', region: 'vale', color: '#c9a36a',
+      pieces: { head: "Miller's Hood", body: "Miller's Apron", hands: "Miller's Grips", feet: "Miller's Clogs" },
+      mods: { head: ['breakPower', 'inc', 0.12], body: ['hp', 'add', 0.30], hands: ['dmgBroken', 'inc', 0.12], feet: ['poise', 'add', 30] },
+      bonus2: { text: '+15% Poise damage', mods: [{ s: 'breakPower', t: 'inc', v: 0.15 }] },
+      bonus4: { text: 'Breaking an enemy gives you 20% more damage for 5 s.', mods: [{ s: 'dmgBroken', t: 'inc', v: 0.10 }],
+        effect: { hook: 'onHit', act: 'buff', params: { filter: 'broke', mods: [{ s: 'dmg', t: 'more', v: 0.2 }], dur: 5 } } },
+      flavor: 'The wheel ground grain, then bones, then anything brought to it.' },
+    { id: 'packrunner', name: "Packrunner's Hides", dungeon: 'wolfden', region: 'vale', color: '#8a9aa6',
+      pieces: { head: 'Packrunner Mask', body: 'Packrunner Coat', hands: 'Packrunner Paws', feet: 'Packrunner Treads' },
+      mods: { head: ['critChance', 'add', 0.03], body: ['evasion', 'add', 0.25], hands: ['atkSpeed', 'inc', 0.05], feet: ['moveSpeed', 'inc', 0.05] },
+      bonus2: { text: '+6% Movement Speed, +10% Dodge Recovery', mods: [{ s: 'moveSpeed', t: 'inc', v: 0.06 }, { s: 'dodgeCdr', t: 'inc', v: 0.10 }] },
+      bonus4: { text: 'After a dodge your next 2 hits deal 30% more damage.', mods: [],
+        effect: { hook: 'onDodge', act: 'buff', params: { mods: [{ s: 'dmg', t: 'more', v: 0.3 }], dur: 4, hits: 2 } } },
+      flavor: 'Run with the pack, or be run down by it.' },
+    { id: 'silkbinder', name: "Silkbinder's Wraps", dungeon: 'webmothers_hollow', region: 'gloamwood', color: '#b9b2c8',
+      pieces: { head: 'Silkbinder Veil', body: 'Silkbinder Wrap', hands: 'Silkbinder Fingers', feet: 'Silkbinder Steps' },
+      mods: { head: ['statusChance', 'inc', 0.12], body: ['hp', 'add', 0.30], hands: ['dmgAfflicted', 'inc', 0.10], feet: ['statusDur', 'inc', 0.12] },
+      bonus2: { text: '+15% Status Duration (your slows and roots last longer)', mods: [{ s: 'statusDur', t: 'inc', v: 0.15 }] },
+      bonus4: { text: '+15% damage against afflicted enemies; every 5th hit slows the target for 2 s.', mods: [{ s: 'dmgAfflicted', t: 'inc', v: 0.15 }],
+        effect: { hook: 'onHit', act: 'status', params: { every: 5, status: 'slow', dur: 2, at: 'target' } } },
+      flavor: 'She never chased anything. She only waited.' },
+    { id: 'drowned_vigil', name: 'The Drowned Vigil', dungeon: 'sunken_chapel', region: 'gloamwood', color: '#6aa6b8',
+      pieces: { head: 'Drowned Mitre', body: 'Drowned Surplice', hands: 'Drowned Gloves', feet: 'Drowned Sandals' },
+      mods: { head: ['ward', 'add', 0.25], body: ['resShadow', 'add', 0.10], hands: ['block', 'add', 0.04], feet: ['resCold', 'add', 0.10] },
+      bonus2: { text: '+5% Block Chance, +10% Ward', mods: [{ s: 'block', t: 'add', v: 0.05 }, { s: 'ward', t: 'inc', v: 0.10 }] },
+      bonus4: { text: 'After you block, gain Ward equal to 8% of your Health (6 s cooldown).', mods: [],
+        effect: { hook: 'onBlock', act: 'ward', params: { cd: 6, pct: 0.08, cap: 0.24 } } },
+      flavor: 'The bells still ring under the water. Someone still answers.' },
+    { id: 'deepdelver', name: "Deepdelver's Plate", dungeon: 'rockjaw_mine', region: 'iron_pass', color: '#9a7a52',
+      pieces: { head: 'Deepdelver Lamp-Helm', body: 'Deepdelver Plate', hands: 'Deepdelver Mitts', feet: 'Deepdelver Boots' },
+      mods: { head: ['armor', 'inc', 0.08], body: ['hp', 'add', 0.35], hands: ['thorns', 'add', 0.4], feet: ['poise', 'add', 35] },
+      bonus2: { text: '+10% Armor and +5% Health', mods: [{ s: 'armor', t: 'inc', v: 0.10 }, { s: 'hp', t: 'inc', v: 0.05 }] },
+      bonus4: { text: 'A heavy hit (15% of your Health or more) gives you 25% less damage taken for 4 s (10 s cooldown).', mods: [],
+        effect: { hook: 'onDamaged', act: 'buff', params: { filter: 'heavy', cd: 10, mods: [{ s: 'dmgTaken', t: 'more', v: -0.25 }], dur: 4 } } },
+      flavor: 'Rockjaw kept digging after the lamps went out.' },
+    { id: 'gatewarden', name: "Gatewarden's Resolve", dungeon: 'gatehouse_vaults', region: 'iron_pass', color: '#a8b4c2',
+      pieces: { head: 'Gatewarden Helm', body: 'Gatewarden Hauberk', hands: 'Gatewarden Gauntlets', feet: 'Gatewarden Greaves' },
+      mods: { head: ['cdr', 'inc', 0.05], body: ['hp', 'add', 0.30], hands: ['dmgElite', 'inc', 0.08], feet: ['resRegen', 'inc', 0.08] },
+      bonus2: { text: '+8% Cooldown Recovery', mods: [{ s: 'cdr', t: 'inc', v: 0.08 }] },
+      bonus4: { text: 'Using your Ultimate takes 4 s off every other cooldown.', mods: [],
+        effect: { hook: 'onCast', act: 'cooldown', params: { filter: 'ultimate', which: 'all', sec: 4 } } },
+      flavor: 'Hold the gate. Then hold it again.' },
+    { id: 'ratcatcher', name: "Ratcatcher's Kit", dungeon: 'sewers', region: 'river', color: '#7f8a5a',
+      pieces: { head: 'Ratcatcher Cap', body: 'Ratcatcher Coat', hands: 'Ratcatcher Gloves', feet: 'Ratcatcher Waders' },
+      mods: { head: ['dmgRanged', 'inc', 0.08], body: ['resPoison', 'add', 0.12], hands: ['projSpeed', 'inc', 0.10], feet: ['moveSpeed', 'inc', 0.04] },
+      bonus2: { text: '+10% Ranged Damage, +10% Projectile Speed', mods: [{ s: 'dmgRanged', t: 'inc', v: 0.10 }, { s: 'projSpeed', t: 'inc', v: 0.10 }] },
+      bonus4: { text: 'Every 4th skill also fires 3 bolts at nearby enemies for 40% weapon damage each.', mods: [],
+        effect: { hook: 'onCast', act: 'bolt', params: { filter: 'skill', every: 4, count: 3, mult: 0.4, elem: 'phys', range: 14 } } },
+      flavor: 'Paid by the tail. Never paid enough.' },
+    { id: 'ferrymans_toll', name: "The Ferryman's Toll", dungeon: 'ferrymans_wreck', region: 'river', color: '#5a8ab8',
+      pieces: { head: "Ferryman's Hat", body: "Ferryman's Oilskin", hands: "Ferryman's Oarhands", feet: "Ferryman's Boots" },
+      mods: { head: ['resMax', 'inc', 0.06], body: ['hp', 'add', 0.30], hands: ['resRegen', 'inc', 0.08], feet: ['goldFind', 'inc', 0.10] },
+      bonus2: { text: '+10% Resource Regeneration', mods: [{ s: 'resRegen', t: 'inc', v: 0.10 }] },
+      bonus4: { text: 'Kills restore 5% of your class resource.', mods: [],
+        effect: { hook: 'onKill', act: 'resource', params: { cd: 0.5, pct: 0.05 } } },
+      flavor: 'Everyone pays. The question is only when.' },
+    { id: 'usurper', name: "Usurper's Regalia", dungeon: 'throne_depths', region: 'hollow_crown', color: '#c9a24a',
+      pieces: { head: "Usurper's Circlet", body: "Usurper's Mantle", hands: "Usurper's Signet Gloves", feet: "Usurper's Slippers" },
+      mods: { head: ['critMult', 'add', 0.15], body: ['hp', 'add', 0.30], hands: ['atkSpeed', 'inc', 0.05], feet: ['critChance', 'add', 0.03] },
+      bonus2: { text: '+8% Attack Speed', mods: [{ s: 'atkSpeed', t: 'inc', v: 0.08 }] },
+      bonus4: { text: 'Every 3rd hit of your main attack strikes again for 50% of its damage.', mods: [],
+        effect: { hook: 'onHit', act: 'repeat', params: { filter: 'primary', every: 3, mult: 0.5 } } },
+      flavor: 'He sat the throne for nine days. The crown remembers every one.' },
+    { id: 'gravewarden', name: "Gravewarden's Shroud", dungeon: 'crown_crypts', region: 'hollow_crown', color: '#8f8aa8',
+      pieces: { head: 'Gravewarden Cowl', body: 'Gravewarden Shroud', hands: 'Gravewarden Grasp', feet: 'Gravewarden Tread' },
+      mods: { head: ['dmgBoss', 'inc', 0.08], body: ['hp', 'add', 0.30], hands: ['dmgElite', 'inc', 0.08], feet: ['moveSpeed', 'inc', 0.04] },
+      bonus2: { text: '+8% damage against elites and bosses', mods: [{ s: 'dmgElite', t: 'inc', v: 0.08 }, { s: 'dmgBoss', t: 'inc', v: 0.08 }] },
+      bonus4: { text: 'Kills give 6% more damage and 5% Movement Speed for 4 s, stacking 3 times.', mods: [],
+        effect: { hook: 'onKill', act: 'buff', params: { mods: [{ s: 'dmg', t: 'more', v: 0.06 }, { s: 'moveSpeed', t: 'inc', v: 0.05 }], dur: 4, maxStacks: 3 } } },
+      flavor: 'The dead of the crown are buried standing. They are waiting for orders.' }
+  ]);
+
+  // -------------------------------------------------------------------------------------------------- runes
+  /** Rune kinds: one mod each, value = max (tier 5) x RUNE_TIER[tier]. Any rune fits any socket. */
+  G.RUNE_TIER = [0, 0.3, 0.45, 0.6, 0.8, 1];
+  G.RUNE_TIER_NAMES = ['', 'Chipped', 'Cut', 'Carved', 'Graven', 'Kingsmark'];
+  KD.register('owRunes', [
+    { id: 'edge', name: 'Edge', mod: ['dmgPhys', 'inc', 0.06], color: '#d8d2c4', glyph: 'rune_a' },
+    { id: 'ember', name: 'Ember', mod: ['dmgFire', 'inc', 0.06], color: '#ff8a3d', glyph: 'rune_c' },
+    { id: 'frost', name: 'Frost', mod: ['dmgCold', 'inc', 0.06], color: '#7fd4ff', glyph: 'rune_b' },
+    { id: 'storm', name: 'Storm', mod: ['dmgShock', 'inc', 0.06], color: '#ffe45c', glyph: 'rune_c' },
+    { id: 'venom', name: 'Venom', mod: ['dmgPoison', 'inc', 0.06], color: '#8fd14f', glyph: 'rune_a' },
+    { id: 'dawn', name: 'Dawn', mod: ['dmgHoly', 'inc', 0.06], color: '#fff2b0', glyph: 'rune_b' },
+    { id: 'gloam', name: 'Gloam', mod: ['dmgShadow', 'inc', 0.06], color: '#b07bff', glyph: 'rune_a' },
+    { id: 'keen', name: 'Keen', mod: ['critChance', 'add', 0.025], color: '#ff5a6e', glyph: 'rune_c' },
+    { id: 'haste', name: 'Haste', mod: ['atkSpeed', 'inc', 0.03], color: '#f2c14e', glyph: 'rune_b' },
+    { id: 'vigor', name: 'Vigor', mod: ['hp', 'inc', 0.04], color: '#e0465a', glyph: 'rune_a' },
+    { id: 'aegis', name: 'Aegis', mod: ['dmgTaken', 'more', -0.02], color: '#9fb4d0', glyph: 'rune_b' },
+    { id: 'focus', name: 'Focus', mod: ['cdr', 'inc', 0.04], color: '#8ec8ee', glyph: 'rune_c' }
+  ]);
+
+  // -------------------------------------------------------------------------------------------------- foods
+  /** Cooking: 5 buff families x 5 tiers. Values per tier (index 1..5). NO healing anywhere. */
+  G.FOOD_FAMILIES = {
+    hearty: { mod: ['hp', 'inc'], v: [0, 0.03, 0.04, 0.05, 0.06, 0.07], text: 'Health' },
+    spiced: { mod: ['dmg', 'inc'], v: [0, 0.02, 0.03, 0.04, 0.05, 0.06], text: 'damage' },
+    trail: { mod: ['moveSpeed', 'inc'], v: [0, 0.03, 0.035, 0.04, 0.05, 0.06], text: 'Movement Speed' },
+    smoked: { mod: ['resAll', 'add'], v: [0, 0.03, 0.04, 0.05, 0.06, 0.08], text: 'to all resistances' },
+    scholar: { mod: ['xpGain', 'inc'], v: [0, 0.03, 0.04, 0.05, 0.06, 0.07], text: 'experience' }
+  };
+  var FOOD_NAMES = [null,
+    { hearty: 'Hearty Venison Stew', spiced: 'Peppered Venison Sausage', trail: "Drover's Hand Pie", smoked: 'Smoked Venison Strips', scholar: "Reeve's Honey Oatcake" },
+    { hearty: 'Mire Boar Pottage', spiced: 'Blackroot Boar Ribs', trail: 'Bogwalker Pasty', smoked: 'Peat-Smoked Boar', scholar: "Hermit's Boar Pie" },
+    { hearty: 'Frostgate Ram Broth', spiced: 'Firecap Ram Skewers', trail: "Climber's Ram Jerky", smoked: 'Snowsmoked Ram Leg', scholar: "Abbot's Ram Roast" },
+    { hearty: 'Harrowport Crab Chowder', spiced: 'Saffron River Crab', trail: "Bargeman's Crab Bun", smoked: 'Alder-Smoked Crab', scholar: "Guildmaster's Crab Tart" },
+    { hearty: 'Ashfowl Bastion Stew', spiced: 'Ember-Glazed Ashfowl', trail: "Courier's Ashfowl Wrap", smoked: 'Blacksun-Smoked Fowl', scholar: "Archivist's Ashfowl Pie" }
+  ];
+  var foods = [];
+  for (var t = 1; t <= 5; t++) Object.keys(G.FOOD_FAMILIES).forEach(function (f) {
+    foods.push({ id: 'food_' + f + '_' + t, name: FOOD_NAMES[t][f], family: f, tier: t });
+  });
+  KD.register('owFoods', foods);
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/data/81_ow_items_craft.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var D = KD.data = KD.data || {};
+  var G = D.owGear;
+
+  /**
+   * THE KINGDOM: MATERIALS, GOODS AND RECIPES (owner: gear agent). Kingdom only.
+   *
+   * owGoods: every stackable thing a Kingdom hero carries in `hero.craft.mats` (no bag slots):
+   *   { id, name, kind, tier, icon: { shape, color, accent }, value (gold a vendor pays for one), text, source }
+   *   kinds: ore gem hide cloth meat parts essence spice rune food scroll flux drill
+   * owRecipes: { id, prof, tier, name, req (skill), source: 'trainer' | 'drop' | 'faction', rank? (faction rank 1..5),
+   *   makes: { gear: { slot, family?, armorClass?, masterwork? } | { good: id, n } }, mats: { goodId: n }, gold }
+   */
+  var TIER_SKILL = G.SKILL.tier;
+
+  var goods = [];
+  function good(o) { goods.push(o); return o; }
+  // ---- gathered and salvaged materials, 5 tiers each
+  var MATS = {
+    ore: { shape: 'material', names: ['Copper Ore', 'Bog Iron Ore', 'Frostvein Ore', 'Riversilver Ore', 'Starfall Iron'],
+      colors: ['#b87333', '#6f6a5e', '#9ec6dc', '#c9d2dc', '#5a5f8a'], accent: '#e8e2d0', value: 2, source: 'Mining: ore veins' },
+    gem: { shape: 'gem', names: ['Rough Garnet', 'Bog Jade', 'Ice Sapphire', 'River Topaz', 'Starstone'],
+      colors: ['#a52a3a', '#3f9a5a', '#4a7fd8', '#e8b040', '#e8e0ff'], accent: '#ffffff', value: 12, source: 'Mining: veins (rare), rich veins' },
+    hide: { shape: 'hide', names: ['Rough Hide', 'Mire Hide', 'Frost Pelt', 'River Scale', 'Ashen Hide'],
+      colors: ['#9a7650', '#5f5a3a', '#d8d8d0', '#5a8a7a', '#4a4248'], accent: '#e8d8b8', value: 2, source: 'Skinning: hunted beasts' },
+    cloth: { shape: 'cloth', names: ['Linen Scraps', 'Mirewool', 'Felted Wool', 'Silk Remnants', 'Crown Velvet'],
+      colors: ['#d8ccb0', '#7a8a6a', '#a89a8a', '#d8b8d8', '#7a2a4a'], accent: '#e2b94a', value: 2, source: 'Scavenging: salvage piles, fallen soldiers' },
+    meat: { shape: 'meat', names: ['Venison', 'Mire Boar', 'Mountain Ram', 'River Crab', 'Ashfowl'],
+      colors: ['#b0503a', '#8a4a3a', '#c0604a', '#d86a3a', '#8a3a3a'], accent: '#f0e0c8', value: 1, source: 'Skinning: hunted beasts' },
+    parts: { shape: 'parts', names: ['Rough Parts', 'Sturdy Parts', 'Fine Parts', 'Superior Parts', 'Masterwork Parts'],
+      colors: ['#7d7468', '#8a949e', '#a9b0bb', '#c2cad1', '#d8b65c'], accent: '#bd9440', value: 1, source: 'Salvaging gear, salvage piles' }
+  };
+  Object.keys(MATS).forEach(function (kind) {
+    var m = MATS[kind];
+    for (var t = 1; t <= 5; t++) good({ id: kind + t, name: m.names[t - 1], kind: kind, tier: t, value: Math.round(m.value * (1 + (t - 1) * 0.8)),
+      icon: { shape: m.shape, color: m.colors[t - 1], accent: m.accent }, source: m.source, text: 'Tier ' + t + ' ' + kind + '.' });
+  });
+  // ---- essences from salvaging (no tier)
+  good({ id: 'dim', name: 'Dim Essence', kind: 'essence', tier: 0, value: 4, icon: { shape: 'essence', color: '#8fc0a0', accent: '#e0ffe8' }, source: 'Salvaging Fine gear and better', text: 'A faint glow left when a Fine item is broken down.' });
+  good({ id: 'bright', name: 'Bright Essence', kind: 'essence', tier: 0, value: 15, icon: { shape: 'essence', color: '#5aa2e6', accent: '#e0f0ff' }, source: 'Salvaging Rare gear and better', text: 'The steady light of a Rare item.' });
+  good({ id: 'storied', name: 'Storied Essence', kind: 'essence', tier: 0, value: 60, icon: { shape: 'essence', color: '#e2a93b', accent: '#fff2c0' }, source: 'Salvaging Storied and Set gear', text: 'A story, boiled down to a spark.' });
+  // ---- spices: bought from cooks for gold (a gold sink), no herbs anywhere
+  good({ id: 'salt', name: 'Coarse Salt', kind: 'spice', tier: 0, value: 1, buy: 4, icon: { shape: 'spice', color: '#e8e4dc', accent: '#9a8a6a' }, source: 'Cooks and general goods vendors', text: 'Used in every meal.' });
+  good({ id: 'pepper', name: 'Pepper Pouch', kind: 'spice', tier: 0, value: 2, buy: 10, icon: { shape: 'spice', color: '#6a4a3a', accent: '#c8a060' }, source: 'Cooks in towns', text: 'Used in spiced and smoked meals.' });
+  good({ id: 'flour', name: 'Sack of Flour', kind: 'spice', tier: 0, value: 1, buy: 6, icon: { shape: 'spice', color: '#efe6c8', accent: '#b89a5a' }, source: 'Cooks and millers', text: 'Used in pies and cakes.' });
+  // ---- runes (12 kinds x 5 tiers)
+  KD.list('owRunes').forEach(function (r) {
+    for (var t = 1; t <= 5; t++) good({ id: 'rune_' + r.id + '_' + t, name: G.RUNE_TIER_NAMES[t] + ' Rune of ' + r.name, kind: 'rune', tier: t, rune: r.id,
+      value: Math.round(6 * Math.pow(2, t)), icon: { shape: 'runestone', color: r.color, accent: '#2a2420' }, source: 'Runecraft', text: 'Socket it into Rare, Storied or Set gear at a smith.' });
+  });
+  // ---- foods
+  KD.list('owFoods').forEach(function (f) {
+    good({ id: f.id, name: f.name, kind: 'food', tier: f.tier, food: f.id, value: 3 + 4 * f.tier,
+      icon: { shape: f.family === 'scholar' || f.family === 'trail' ? 'pie' : 'bowl', color: ['#c08a4a', '#b0503a', '#d8a050', '#8a5a3a', '#e0c070'][Object.keys(G.FOOD_FAMILIES).indexOf(f.family)], accent: '#f0e0c8' },
+      source: 'Cooking', text: 'Eat out of combat for a 30 minute buff. Does not heal.' });
+  });
+  // ---- smith goods
+  for (var ft = 1; ft <= 5; ft++) good({ id: 'flux' + ft, name: ['', 'Copper', 'Bog Iron', 'Frostvein', 'Riversilver', 'Starfall'][ft] + ' Tempering Flux', kind: 'flux', tier: ft, value: 8 * ft,
+    icon: { shape: 'flux', color: MATS.ore.colors[ft - 1], accent: '#ff9a4a' }, source: 'Smithing', text: 'Used in a tempering attempt: 15% less chance to fail. Item level up to ' + G.REGIONS[ft - 1].hi + '.' });
+  good({ id: 'drill', name: 'Socket Drill', kind: 'drill', tier: 0, value: 40, icon: { shape: 'drill', color: '#a9b0bb', accent: '#e8b040' }, source: 'Jewelcraft', text: 'A smith uses it to add a socket to Rare, Storied or Set gear (weapons and body armour up to 2).' });
+
+  // -------------------------------------------------------------------------------------------------- recipes
+  var recipes = [];
+  var TOP = [0, 12, 24, 36, 48, 60];
+  function R(o) { o.req = TIER_SKILL[o.tier] + (o.reqAdd || 0); delete o.reqAdd; recipes.push(o); return o; }
+  // gear made by each craft: [key, label, slot, family | armorClass, main material kind]
+  var GEAR = {
+    smithing: [['sword1h', 'Sword', 'weapon', 'sword1h'], ['blade2h', 'Great Blade', 'weapon', 'blade2h'], ['mace1h', 'Mace', 'weapon', 'mace1h'],
+      ['polearm', 'Polearm', 'weapon', 'polearm'], ['daggers', 'Daggers', 'weapon', 'daggers'], ['claws', 'Claws', 'weapon', 'claws'],
+      ['pistol', 'Pistol', 'weapon', 'pistol'], ['scythe', 'Scythe', 'weapon', 'scythe'], ['shield', 'Shield', 'offhand', 'shield'],
+      ['gearbox', 'Gearbox', 'offhand', 'gearbox'], ['banner', 'Banner', 'offhand', 'banner'],
+      ['heavy_head', 'Heavy Helm', 'head', 'heavy'], ['heavy_body', 'Heavy Armour', 'body', 'heavy'], ['heavy_hands', 'Heavy Gauntlets', 'hands', 'heavy'], ['heavy_feet', 'Heavy Boots', 'feet', 'heavy']],
+    leathercraft: [['bow', 'Bow', 'weapon', 'bow'], ['quiver', 'Quiver', 'offhand', 'quiver'], ['mask', 'Mask', 'offhand', 'mask'], ['cloakpin', 'Cloak Pin', 'offhand', 'cloakpin'],
+      ['medium_head', 'Medium Helm', 'head', 'medium'], ['medium_body', 'Medium Armour', 'body', 'medium'], ['medium_hands', 'Medium Gloves', 'hands', 'medium'], ['medium_feet', 'Medium Boots', 'feet', 'medium'],
+      ['light_head', 'Light Hood', 'head', 'light'], ['light_body', 'Light Jerkin', 'body', 'light'], ['light_hands', 'Light Wraps', 'hands', 'light'], ['light_feet', 'Light Shoes', 'feet', 'light']],
+    jewelcraft: [['charm', 'Charm', 'charm', null], ['talisman', 'Talisman', 'offhand', 'talisman'], ['lantern', 'Lantern', 'offhand', 'lantern'], ['skull', 'Skull', 'offhand', 'skull']],
+    runecraft: [['staff', 'Staff', 'weapon', 'staff'], ['tome', 'Tome', 'offhand', 'tome'],
+      ['cloth_head', 'Cloth Hood', 'head', 'cloth'], ['cloth_body', 'Robe', 'body', 'cloth'], ['cloth_hands', 'Cloth Wraps', 'hands', 'cloth'], ['cloth_feet', 'Cloth Shoes', 'feet', 'cloth']]
+  };
+  var MAIN = { smithing: 'ore', leathercraft: 'hide', jewelcraft: 'gem', runecraft: 'cloth' };
+  var TIER_WORD = ['', 'Copper', 'Bog Iron', 'Frostvein', 'Riversilver', 'Starfall'];
+  var TIER_WORD_SOFT = { leathercraft: ['', 'Rough', 'Mire', 'Frost', 'Riverscale', 'Ashen'], runecraft: ['', 'Linen', 'Mirewool', 'Felted', 'Silken', 'Velvet'], jewelcraft: ['', 'Garnet', 'Jade', 'Sapphire', 'Topaz', 'Starstone'] };
+  Object.keys(GEAR).forEach(function (prof) {
+    for (var t = 1; t <= 5; t++) {
+      var word = (TIER_WORD_SOFT[prof] || TIER_WORD)[t];
+      GEAR[prof].forEach(function (g, i) {
+        var big = g[2] === 'weapon' || g[2] === 'body', mats = {};
+        mats[MAIN[prof] + t] = prof === 'jewelcraft' ? 2 + (big ? 1 : 0) : (big ? 8 : 5);
+        if (prof === 'jewelcraft') mats['ore' + t] = 3;
+        mats['parts' + t] = big ? 3 : 2;
+        var makes = { gear: { slot: g[2] } };
+        if (g[3] && g[2] !== 'head' && g[2] !== 'body' && g[2] !== 'hands' && g[2] !== 'feet') makes.gear.family = g[3];
+        if (g[2] === 'head' || g[2] === 'body' || g[2] === 'hands' || g[2] === 'feet') makes.gear.armorClass = g[3];
+        R({ id: prof + '_' + g[0] + '_' + t, prof: prof, tier: t, name: word + ' ' + g[1], reqAdd: Math.min(40, i * 3), source: 'trainer',
+          makes: makes, mats: mats, gold: Math.round(4 * TOP[t]), ilvl: TOP[t] - 2 });
+        // masterwork patterns (guaranteed Rare, top of the band, 1 socket): weapons and body pieces, from bosses and factions
+        if (big) {
+          var mm = {}; Object.keys(mats).forEach(function (k) { mm[k] = mats[k] * 2; }); mm.bright = 1; mm.dim = 2;
+          R({ id: prof + '_' + g[0] + '_mw' + t, prof: prof, tier: t, name: 'Masterwork ' + word + ' ' + g[1], reqAdd: 45, source: i % 2 ? 'faction' : 'drop', rank: 3 + (t >= 4 ? 1 : 0),
+            makes: { gear: U_assign({ masterwork: true }, makes.gear) }, mats: mm, gold: Math.round(10 * TOP[t]), ilvl: TOP[t] });
+        }
+      });
+    }
+  });
+  function U_assign(a, b) { for (var k in b) if (Object.prototype.hasOwnProperty.call(b, k)) a[k] = b[k]; return a; }
+  // ---- smith goods, socket drills, runes, foods
+  for (var t2 = 1; t2 <= 5; t2++) {
+    var fm = {}; fm['ore' + t2] = 3; fm.dim = 1;
+    R({ id: 'smithing_flux_' + t2, prof: 'smithing', tier: t2, name: TIER_WORD[t2] + ' Tempering Flux', reqAdd: 20, source: t2 === 1 ? 'trainer' : 'drop', makes: { good: 'flux' + t2, n: 2 }, mats: fm, gold: 2 * TOP[t2] });
+    if (t2 >= 2) {
+      var dm = {}; dm['gem' + t2] = 2; dm['ore' + t2] = 4; dm.bright = 1;
+      R({ id: 'jewelcraft_drill_' + t2, prof: 'jewelcraft', tier: t2, name: 'Socket Drill (' + TIER_WORD_SOFT.jewelcraft[t2] + ')', reqAdd: 30, source: t2 === 2 ? 'faction' : 'drop', rank: 3, makes: { good: 'drill', n: 1 }, mats: dm, gold: 6 * TOP[t2] });
+    }
+    KD.list('owRunes').forEach(function (r, i) {
+      var rm = {}; rm['gem' + t2] = 1; rm['parts' + t2] = 2; rm[t2 >= 4 ? 'bright' : 'dim'] = 1;
+      // three basic runes per tier from the trainer; the rest drop from bosses or are sold by factions at higher rank
+      var basic = i === 0 || i === 9 || i === (t2 % 6) + 1;
+      R({ id: 'runecraft_' + r.id + '_' + t2, prof: 'runecraft', tier: t2, name: G.RUNE_TIER_NAMES[t2] + ' Rune of ' + r.name, reqAdd: 5 + i * 2,
+        source: basic ? 'trainer' : (i % 2 ? 'faction' : 'drop'), rank: 2 + Math.min(3, Math.floor(t2 / 2)), makes: { good: 'rune_' + r.id + '_' + t2, n: 1 }, mats: rm, gold: 3 * TOP[t2] });
+    });
+    Object.keys(G.FOOD_FAMILIES).forEach(function (f, i) {
+      var cm = {}; cm['meat' + t2] = 2; cm.salt = 1;
+      if (f === 'spiced' || f === 'smoked') cm.pepper = 1;
+      if (f === 'trail' || f === 'scholar') cm.flour = 1;
+      R({ id: 'cooking_' + f + '_' + t2, prof: 'cooking', tier: t2, name: KD.get('owFoods', 'food_' + f + '_' + t2).name, reqAdd: i * 6,
+        source: i < 2 ? 'trainer' : (i % 2 ? 'faction' : 'drop'), rank: 2 + Math.min(3, Math.floor(t2 / 2)), makes: { good: 'food_' + f + '_' + t2, n: 2 }, mats: cm, gold: TOP[t2] });
+    });
+  }
+  KD.register('owRecipes', recipes);
+  // a scroll good per learnable (non-trainer) recipe
+  recipes.forEach(function (r) {
+    if (r.source === 'trainer') return;
+    good({ id: 'scroll_' + r.id, name: 'Recipe: ' + r.name, kind: 'scroll', tier: r.tier, recipe: r.id, value: 10 + 15 * r.tier,
+      icon: { shape: 'recipe', color: '#e9d9ae', accent: { smithing: '#9aa3ab', leathercraft: '#9a7650', jewelcraft: '#4a7fd8', runecraft: '#b07bff', cooking: '#d86a3a' }[r.prof] },
+      source: r.source === 'faction' ? 'Faction vendors at rank ' + r.rank : 'Dungeon and world bosses', text: 'Teaches a ' + G.PROFESSIONS[r.prof].name + ' recipe (skill ' + r.req + ').' });
+  });
+  KD.register('owGoods', goods);
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -75563,6 +75947,1123 @@ html.kd-touch input, html.kd-touch textarea { -webkit-user-select: text; user-se
     if (frac > 0 && frac <= ST.TUNE.low.at && state.armed !== false) { state.armed = false; return true; }
     return false;
   };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/ow/00_ow.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+
+  /**
+   * THE KINGDOM (open world mode): the shared namespace and the small event bus every open-world module talks through.
+   * Docs: docs/OPENWORLD.md (section "Foundation APIs").
+   *
+   * KD.ow.events.emit(type, data) / on(type, fn) / off(type, fn). Types used by the foundation:
+   *   'xp'       { hero, amount, source: 'kill'|'discover'|'quest'|'dungeon'|'dev', level }   before the XP is added
+   *   'levelup'  { hero, level, prev }                                                      after the hero went up
+   *   'kill'     { hero, defId, tier, level, zone, x, z }                                    an enemy died (credit: this hero)
+   *   'discover' { hero, kind: 'zone'|'shrine'|'poi', id, name, zone }                      something new was found
+   *   'quest'    { hero, id, step, data }                                                    reserved for the quest system
+   * A listener that throws never breaks the game (the error is logged). Listeners run on the hero's own screen only
+   * (never inside the shared simulation), so they may change the live hero freely.
+   */
+  var OW = KD.ow = KD.ow || {};
+  OW.VERSION = 1;
+  var bus = new KD.Emitter();
+  OW.events = {
+    on: function (type, fn) { return bus.on(type, fn); },
+    off: function (type, fn) { bus.off(type, fn); },
+    emit: function (type, data) {
+      var a = bus._h[type], all = bus._h['*'], list = [].concat(a || [], all || []), i;
+      for (i = 0; i < list.length; i++) {
+        try { list[i](data, type); } catch (e) { if (KD.log) KD.log('[ow] ' + type + ' listener failed: ' + (e && e.message || e)); }
+      }
+    },
+    /** Number of listeners (tests). */
+    count: function (type) { return (bus._h[type] || []).length; },
+    _bus: bus
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/ow/craft_00_core.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var U = KD.util, B = KD.balance, I = KD.items;
+  var OW = KD.ow = KD.ow || {};
+  var GD = KD.data.owGear;
+
+  /**
+   * THE KINGDOM: PROFESSIONS (owner: gear agent). docs/OPENWORLD.md "Gear contract".
+   *
+   * hero.craft (plain JSON, saved with the Kingdom hero; KD.ow.craft.ensure creates it):
+   *   { v: 1, seed, n,                         // the hero's own deterministic random stream (temper, craft, gather)
+   *     mats: { goodId: count },               // every stackable good: materials, runes, foods, recipe scrolls, flux, drills
+   *     skills: { salvaging, mining, skinning, <craft>: 0..300 },
+   *     crafts: [profId, profId],              // at most 2 of smithing, leathercraft, jewelcraft, runecraft, cooking
+   *     known: { recipeId: true },             // recipes learned from scrolls (trainer recipes are known by having the craft)
+   *     food: { id, left } | null }            // the meal buff: seconds left (KD.ow.craft.tick counts it down)
+   * Everyone salvages, mines and skins. Cooking makes out-of-combat timed buffs: no healing, no potions.
+   */
+  if (!OW.events) {
+    OW.events = (function () {
+      var h = {};
+      return {
+        on: function (type, fn) { (h[type] = h[type] || []).push(fn); return fn; },
+        off: function (type, fn) { var a = h[type]; if (!a) return; var i = a.indexOf(fn); if (i >= 0) a.splice(i, 1); },
+        emit: function (type, payload) { var a = (h[type] || []).slice(); for (var i = 0; i < a.length; i++) a[i](payload); return payload; },
+        has: function (type) { return !!(h[type] && h[type].length); }
+      };
+    })();
+  }
+  var C = OW.craft = OW.craft || {};
+  function fail(reason, extra) { return U.assign({ ok: false, reason: reason }, extra || {}); }
+  var CRAFTS = ['smithing', 'leathercraft', 'jewelcraft', 'runecraft', 'cooking'];
+  C.CRAFTS = CRAFTS;
+  C.GATHER = ['mining', 'skinning'];
+
+  // ------------------------------------------------------------------------------------------------ state
+  /** Creates (or upgrades) hero.craft. seed: any number or string; default from the hero's name and class. */
+  C.ensure = function (hero, seed) {
+    if (!hero) return null;
+    var c = hero.craft;
+    if (!c) {
+      c = hero.craft = { v: 1, seed: (typeof seed === 'number' ? seed >>> 0 : U.hash(String(seed || ((hero.name || '') + '|' + hero.classId)))), n: 0,
+        mats: {}, skills: { salvaging: 1, mining: 1, skinning: 1 }, crafts: [], known: {}, food: null };
+    }
+    c.mats = c.mats || {}; c.skills = c.skills || {}; c.crafts = c.crafts || []; c.known = c.known || {};
+    ['salvaging', 'mining', 'skinning'].forEach(function (k) { if (!(c.skills[k] >= 1)) c.skills[k] = 1; });
+    return c;
+  };
+  /** A fresh KD.RNG from the hero's stream (advances it). */
+  C.rng = function (hero, label) {
+    var c = C.ensure(hero);
+    c.n = (c.n || 0) + 1;
+    return new KD.RNG((U.hash(String(label || '')) ^ Math.imul(c.seed >>> 0, 2654435761) ^ Math.imul(c.n, 40503)) >>> 0);
+  };
+
+  // ------------------------------------------------------------------------------------------------ goods
+  C.good = function (id) { return KD.has('owGoods', id) ? KD.get('owGoods', id) : null; };
+  C.count = function (hero, id) { var c = hero && hero.craft; return c && c.mats[id] ? c.mats[id] : 0; };
+  C.addGood = function (hero, id, n) {
+    var c = C.ensure(hero), v = (c.mats[id] || 0) + (n === undefined ? 1 : n);
+    if (v > 0) c.mats[id] = v; else delete c.mats[id];
+    return v;
+  };
+  /** missing(hero, { id: n }) -> null when the hero has everything, else { id: shortfall }. */
+  C.missing = function (hero, mats) {
+    var miss = null;
+    Object.keys(mats || {}).forEach(function (id) { var short = mats[id] - C.count(hero, id); if (short > 0) { miss = miss || {}; miss[id] = short; } });
+    return miss;
+  };
+  C.spend = function (hero, mats) { Object.keys(mats || {}).forEach(function (id) { C.addGood(hero, id, -mats[id]); }); };
+  /** The lowest-tier flux that covers an item tier, or null. */
+  C.bestFlux = function (hero, tier) { for (var t = tier; t <= 5; t++) if (C.count(hero, 'flux' + t) > 0) return 'flux' + t; return null; };
+  /** Goods the hero holds, sorted by kind then tier: [{ id, n, good }]. */
+  C.list = function (hero, kind) {
+    var c = hero && hero.craft, out = [];
+    if (!c) return out;
+    var ORDER = ['ore', 'gem', 'hide', 'cloth', 'meat', 'parts', 'essence', 'spice', 'rune', 'food', 'flux', 'drill', 'scroll'];
+    Object.keys(c.mats).forEach(function (id) { var g = C.good(id); if (g && (!kind || g.kind === kind)) out.push({ id: id, n: c.mats[id], good: g }); });
+    out.sort(function (a, b) { return (ORDER.indexOf(a.good.kind) - ORDER.indexOf(b.good.kind)) || (a.good.tier - b.good.tier) || (a.id < b.id ? -1 : 1); });
+    return out;
+  };
+
+  // ------------------------------------------------------------------------------------------------ professions and skill
+  C.skill = function (hero, prof) { var c = hero && hero.craft; return c && c.skills[prof] ? c.skills[prof] : 0; };
+  C.has = function (hero, prof) {
+    if (prof === 'salvaging' || prof === 'mining' || prof === 'skinning') return true;
+    return !!(hero && hero.craft && hero.craft.crafts.indexOf(prof) >= 0);
+  };
+  /** learn(hero, prof) -> { ok }: take up a craft (2 at most). reasons: not_a_craft, known, full */
+  C.learn = function (hero, prof) {
+    var c = C.ensure(hero);
+    if (CRAFTS.indexOf(prof) < 0) return fail('not_a_craft');
+    if (c.crafts.indexOf(prof) >= 0) return fail('known');
+    if (c.crafts.length >= GD.CRAFTS_PER_HERO) return fail('full');
+    c.crafts.push(prof); c.skills[prof] = 1;
+    return { ok: true };
+  };
+  C.unlearnCost = function (hero) { return Math.round(GD.UNLEARN_GOLD * B.enemyGold(hero.level || 1)); };
+  /** unlearn(hero, prof) -> { ok, cost }: drop a craft for gold; its skill and learned recipes are lost. */
+  C.unlearn = function (hero, prof) {
+    var c = C.ensure(hero), i = c.crafts.indexOf(prof);
+    if (i < 0) return fail('not_known');
+    var cost = C.unlearnCost(hero);
+    if ((hero.gold || 0) < cost) return fail('gold', { cost: cost });
+    hero.gold -= cost; c.crafts.splice(i, 1); delete c.skills[prof];
+    Object.keys(c.known).forEach(function (id) { if (KD.has('owRecipes', id) && KD.get('owRecipes', id).prof === prof) delete c.known[id]; });
+    return { ok: true, cost: cost };
+  };
+  /** Colour of a task for a skill level: 'orange' (always +1), 'yellow' (50%), 'green' (25%), 'grey' (nothing). */
+  C.difficulty = function (skill, req) {
+    var S = GD.SKILL;
+    if (skill < req) return 'red';
+    if (skill < req + S.green) return 'orange';
+    if (skill < req + S.yellow) return 'yellow';
+    if (skill < req + S.yellow + 25) return 'green';
+    return 'grey';
+  };
+  /** Raises a skill after a task of requirement `req` (deterministic through rng). Returns the points gained. */
+  C.skillUp = function (hero, prof, req, rng) {
+    var c = C.ensure(hero), s = c.skills[prof] || 0;
+    if (s >= GD.SKILL.max) return 0;
+    var p = { orange: 1, yellow: 0.5, green: 0.25 }[C.difficulty(s, req)] || 0;
+    if (p > 0 && (p >= 1 || rng.next() < p)) { c.skills[prof] = s + 1; return 1; }
+    return 0;
+  };
+  /** Skill needed for a tier (1..5). */
+  C.tierReq = function (tier) { return GD.SKILL.tier[U.clamp(tier, 1, 5)]; };
+
+  // ------------------------------------------------------------------------------------------------ recipes
+  C.recipe = function (id) { return KD.has('owRecipes', id) ? KD.get('owRecipes', id) : null; };
+  /** Is the recipe known? Trainer recipes come with the craft; drop / faction recipes are learned from scrolls. */
+  C.knows = function (hero, r) {
+    if (typeof r === 'string') r = C.recipe(r);
+    if (!r || !C.has(hero, r.prof)) return false;
+    return r.source === 'trainer' || !!(hero.craft && hero.craft.known[r.id]);
+  };
+  /**
+   * recipes(hero, prof, { all }) -> [{ recipe, known, skillOk, missing, color, canMake }] sorted by tier and requirement.
+   * Without `all`: only known recipes. Tiers above the hero's skill are listed (greyed: skillOk false) so the player sees
+   * what comes next.
+   */
+  C.recipes = function (hero, prof, o) {
+    o = o || {};
+    var s = C.skill(hero, prof);
+    return KD.list('owRecipes').filter(function (r) { return r.prof === prof && (o.all || C.knows(hero, r)); }).map(function (r) {
+      var miss = C.missing(hero, r.mats), known = C.knows(hero, r), skillOk = s >= r.req;
+      return { recipe: r, known: known, skillOk: skillOk, missing: miss, goldOk: (hero.gold || 0) >= (r.gold || 0), color: C.difficulty(s, r.req),
+        canMake: known && skillOk && !miss && (hero.gold || 0) >= (r.gold || 0) };
+    }).sort(function (a, b) { return (a.recipe.tier - b.recipe.tier) || (a.recipe.req - b.recipe.req) || (a.recipe.id < b.recipe.id ? -1 : 1); });
+  };
+  /** learnScroll(hero, scrollGoodId) -> { ok, recipe }. reasons: not_a_scroll, no_scroll, no_craft, known */
+  C.learnScroll = function (hero, id) {
+    var g = C.good(id);
+    if (!g || g.kind !== 'scroll') return fail('not_a_scroll');
+    if (C.count(hero, id) < 1) return fail('no_scroll');
+    var r = C.recipe(g.recipe);
+    if (!C.has(hero, r.prof)) return fail('no_craft', { prof: r.prof });
+    if (C.knows(hero, r)) return fail('known');
+    C.addGood(hero, id, -1); hero.craft.known[r.id] = true;
+    return { ok: true, recipe: r };
+  };
+  /** Chance a crafted (non-masterwork) piece comes out Rare: 10%, up to 35% at 100 points over the requirement. */
+  C.rareChance = function (skill, req) { return 0.10 + 0.25 * U.clamp((skill - req) / 100, 0, 1); };
+  /**
+   * craft(hero, recipeId) -> { ok, item?, good?, n?, skill (points gained) }.
+   * reasons: no_recipe, no_craft, unknown, skill, missing (+ missing), gold, bag_full
+   */
+  C.craft = function (hero, id) {
+    var r = C.recipe(id);
+    if (!r) return fail('no_recipe');
+    if (!C.has(hero, r.prof)) return fail('no_craft');
+    if (!C.knows(hero, r)) return fail('unknown');
+    var s = C.skill(hero, r.prof);
+    if (s < r.req) return fail('skill', { need: r.req });
+    var miss = C.missing(hero, r.mats);
+    if (miss) return fail('missing', { missing: miss });
+    if ((hero.gold || 0) < (r.gold || 0)) return fail('gold', { cost: r.gold });
+    if (r.makes.gear && hero.bag.length >= ((KD.hero && KD.hero.BAG_SIZE) || 40)) return fail('bag_full');
+    var rng = C.rng(hero, 'craft:' + id), out = { ok: true, recipe: r };
+    C.spend(hero, r.mats); hero.gold -= (r.gold || 0);
+    if (r.makes.gear) {
+      var g = r.makes.gear, rarity = g.masterwork ? 'rare' : (rng.next() < C.rareChance(s, r.req) ? 'rare' : 'fine');
+      var item = OW.gear.makeItem({ ilvl: r.ilvl, rarity: rarity, rng: rng, classId: hero.classId, slot: g.slot, family: g.family, armorClass: g.armorClass,
+        affixes: g.masterwork ? 4 : undefined });
+      item.ow.maker = hero.name || null;
+      if (g.masterwork && item.ow.sockets.length < 1) item.ow.sockets.push(null);
+      hero.bag.push(item); out.item = item;
+    } else { C.addGood(hero, r.makes.good, r.makes.n || 1); out.good = r.makes.good; out.n = r.makes.n || 1; }
+    out.skill = C.skillUp(hero, r.prof, r.req, rng);
+    return out;
+  };
+
+  // ------------------------------------------------------------------------------------------------ cooking: eat
+  /**
+   * eat(hero, foodGoodId, { inCombat }) -> { ok, food }. One meal buff at a time (a new meal replaces the old one).
+   * Never heals. reasons: not_food, none, in_combat
+   */
+  C.eat = function (hero, id, o) {
+    var g = C.good(id);
+    if (!g || g.kind !== 'food') return fail('not_food');
+    if (C.count(hero, id) < 1) return fail('none');
+    if (o && o.inCombat) return fail('in_combat');
+    C.addGood(hero, id, -1);
+    hero.craft.food = { id: g.food, left: GD.FOOD_SECONDS };
+    return { ok: true, food: hero.craft.food };
+  };
+  /** Counts the meal buff down (call with game seconds). Returns true when it just ran out. */
+  C.tick = function (hero, dt) {
+    var f = hero && hero.craft && hero.craft.food;
+    if (!f) return false;
+    f.left -= dt;
+    if (f.left <= 0) { hero.craft.food = null; return true; }
+    return false;
+  };
+  /** Text of a food buff: "+5% Health" etc. */
+  C.foodText = function (foodId) {
+    var f = KD.get('owFoods', foodId), fam = GD.FOOD_FAMILIES[f.family], v = fam.v[f.tier];
+    return '+' + Math.round(v * 100) + '% ' + fam.text + ' for ' + Math.round(GD.FOOD_SECONDS / 60) + ' minutes';
+  };
+
+  // ------------------------------------------------------------------------------------------------ salvaging
+  /** What salvaging an item gives: { goodId: n } (runes in its sockets come back too). */
+  C.salvageYield = function (item) {
+    var y = {}, S = GD.SALVAGE[item.rarity] || GD.SALVAGE.common, t = OW.gear.tierOfIlvl(item.ilvl || 1);
+    y['parts' + t] = (S.parts || 1) + Math.floor(((item.ow && item.ow.temper) || 0) / 2);
+    if (S.dim) y.dim = S.dim;
+    if (S.bright) y.bright = S.bright;
+    if (S.storied) y.storied = S.storied;
+    ((item.ow && item.ow.sockets) || []).forEach(function (r) { if (r) y[r] = (y[r] || 0) + 1; });
+    return y;
+  };
+  /** salvage(hero, uid) -> { ok, yield }: a bag item becomes parts and essences. reasons: not_in_bag, not_gear */
+  C.salvage = function (hero, uid) {
+    var f = I.find(hero, uid);
+    if (!f || f.where !== 'bag') return fail('not_in_bag');
+    if (!I.isGear(f.item)) return fail('not_gear');
+    var y = C.salvageYield(f.item);
+    hero.bag.splice(f.index, 1);
+    Object.keys(y).forEach(function (id) { C.addGood(hero, id, y[id]); });
+    C.ensure(hero).skills.salvaging = Math.min(GD.SKILL.max, (hero.craft.skills.salvaging || 1) + 1);
+    return { ok: true, yield: y };
+  };
+
+  // ------------------------------------------------------------------------------------------------ recipe sources
+  /** A random boss-drop recipe scroll of a tier (or lower), or null. */
+  C.dropScroll = function (rng, tier) {
+    var pool = KD.list('owRecipes').filter(function (r) { return r.source === 'drop' && r.tier <= tier && r.tier >= tier - 1; });
+    if (!pool.length) return null;
+    var r = rng.weighted(pool, pool.map(function (x) { return x.tier === tier ? 3 : 1; }));
+    return 'scroll_' + r.id;
+  };
+  /**
+   * vendorRecipes(rank, tier) -> [{ good: scrollId, price, recipe }]: what a region's faction quartermaster sells at a
+   * reputation rank (1..5): its region tier's faction recipes whose rank is reached, plus lower tiers.
+   */
+  C.vendorRecipes = function (rank, tier) {
+    return KD.list('owRecipes').filter(function (r) { return r.source === 'faction' && r.rank <= rank && r.tier <= tier; }).map(function (r) {
+      var g = C.good('scroll_' + r.id);
+      return { good: g.id, recipe: r, price: Math.round(g.value * 6) };
+    });
+  };
+  /** Spices and other things a cook sells: [{ good, price }]. */
+  C.cookStock = function () { return KD.list('owGoods').filter(function (g) { return g.kind === 'spice'; }).map(function (g) { return { good: g.id, price: g.buy }; }); };
+  /** buyGood(hero, id, n, unitPrice) -> { ok, cost }. */
+  C.buyGood = function (hero, id, n, price) {
+    n = Math.max(1, n || 1);
+    var cost = price * n;
+    if ((hero.gold || 0) < cost) return fail('gold', { cost: cost });
+    hero.gold -= cost; C.addGood(hero, id, n);
+    return { ok: true, cost: cost };
+  };
+  /** sellGood(hero, id, n) -> { ok, gold }: a vendor pays the good's value. */
+  C.sellGood = function (hero, id, n) {
+    var g = C.good(id); n = Math.min(n || 1, C.count(hero, id));
+    if (!g || n < 1) return fail('none');
+    C.addGood(hero, id, -n); hero.gold = (hero.gold || 0) + g.value * n;
+    return { ok: true, gold: g.value * n };
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/ow/craft_10_gather.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var U = KD.util;
+  var OW = KD.ow = KD.ow || {};
+  var C = OW.craft, GD = KD.data.owGear;
+
+  /**
+   * THE KINGDOM: GATHERING NODES (data and placement API for the zones; owner: gear agent).
+   *
+   * A node is plain JSON: { id, type: 'ore_vein' | 'rich_vein' | 'salvage_pile' | 'carcass', tier: 1..5, x, z, left: 0 }
+   * (`left` = seconds until it can be gathered again; 0 = ready). Zones either author nodes (`makeNode`) or scatter them
+   * (`placeNodes`, deterministic from the zone's rng). Carcasses come from beast kills: the 'kill' event payload gets
+   * `carcass` when the enemy is a beast (hide sources from hunted beasts; no herbs anywhere).
+   *
+   *   makeNode(type, tier, x, z, id?)                              -> node
+   *   placeNodes({ rng, bounds: { x0, z0, x1, z1 }, tier | region | level, count? | density?, kinds?, avoid?(x, z), spacing? }) -> [node]
+   *   canGather(hero, node) -> { ok, reason, need }    gather(hero, node, rng?) -> { ok, goods: [{ id, n }], skill }
+   *   tickNodes(nodes, dt)                                         counts respawn timers down
+   */
+  C.NODE_TYPES = GD.NODES;
+  C.makeNode = function (type, tier, x, z, id) {
+    if (!GD.NODES[type]) throw new Error('KD.ow.craft.makeNode: unknown node type ' + type);
+    return { id: id || (type + '_' + Math.round(x * 10) + '_' + Math.round(z * 10)), type: type, tier: U.clamp(tier | 0 || 1, 1, 5), x: x, z: z, left: 0 };
+  };
+  /** Scatter gathering nodes in a zone. count default: about 1 per 900 m2 x density (a 300 x 300 m zone: about 30). */
+  C.placeNodes = function (o) {
+    var rng = o.rng, b = o.bounds, tier = o.tier || (o.region ? OW.gear.region(o.region).tier : OW.gear.region(o.level || 1).tier);
+    var kinds = o.kinds || { ore_vein: GD.NODES.ore_vein.density, rich_vein: GD.NODES.rich_vein.density, salvage_pile: GD.NODES.salvage_pile.density };
+    var area = Math.abs((b.x1 - b.x0) * (b.z1 - b.z0)), n = o.count || Math.round(area / 900 * (o.density || 0.33));
+    var spacing = o.spacing || 12, out = [], tries = 0, keys = Object.keys(kinds).sort();
+    while (out.length < n && tries < n * 30) {
+      tries++;
+      var x = rng.range(b.x0, b.x1), z = rng.range(b.z0, b.z1);
+      if (o.avoid && o.avoid(x, z)) continue;
+      var close = false;
+      for (var i = 0; i < out.length; i++) if (U.dist2(x, z, out[i].x, out[i].z) < spacing * spacing) { close = true; break; }
+      if (close) continue;
+      var type = rng.weighted(keys, keys.map(function (k) { return kinds[k]; }));
+      out.push(C.makeNode(type, tier, Math.round(x * 100) / 100, Math.round(z * 100) / 100, 'n' + out.length + '_' + type));
+    }
+    return out;
+  };
+  C.tickNodes = function (nodes, dt) { (nodes || []).forEach(function (n) { if (n.left > 0) n.left = Math.max(0, n.left - dt); }); };
+  /** canGather(hero, node) -> { ok, reason: 'respawning' | 'skill', need }. */
+  C.canGather = function (hero, node) {
+    var T = GD.NODES[node.type], need = C.tierReq(node.tier);
+    if (node.left > 0 || node.taken) return { ok: false, reason: 'respawning' };
+    if (C.skill(hero, T.prof) < need) return { ok: false, reason: 'skill', need: need, prof: T.prof };
+    return { ok: true, need: need, prof: T.prof };
+  };
+  /**
+   * gather(hero, node, rng?) -> { ok, goods: [{ id, n }], skill }. Use the world rng in a shared world (every client
+   * gets the same yield); without it the hero's own stream is used. Sets node.left to the respawn time (carcasses are
+   * used up: node.taken).
+   */
+  C.gather = function (hero, node, rng) {
+    C.ensure(hero);
+    var ok = C.canGather(hero, node);
+    if (!ok.ok) return ok;
+    var T = GD.NODES[node.type], r = rng || C.rng(hero, 'gather'), goods = [];
+    T.yields.forEach(function (y) {
+      if (y.chance !== undefined && r.next() >= y.chance) return;
+      var n = r.int(y.n[0], y.n[1]), id = y.kind + node.tier;
+      // a skilled gatherer gets a little more: +1 per 100 points over the node's requirement (chance for the remainder)
+      var bonus = Math.max(0, C.skill(hero, T.prof) - C.tierReq(node.tier)) / 100;
+      n += Math.floor(bonus) + (r.next() < bonus % 1 ? 1 : 0);
+      C.addGood(hero, id, n); goods.push({ id: id, n: n });
+    });
+    var up = C.skillUp(hero, T.prof, C.tierReq(node.tier), r);
+    if (T.respawn > 0) node.left = T.respawn; else node.taken = true;
+    return { ok: true, goods: goods, skill: up, prof: T.prof };
+  };
+  /** A carcass node for a killed beast (null for anything else). */
+  C.carcassFor = function (enemy, x, z) {
+    var def = enemy && (enemy.def || (enemy.id && KD.has('enemies', enemy.id) ? KD.get('enemies', enemy.id) : null));
+    var body = enemy && enemy.body || OW.gear.bodyKind(def);
+    if (body !== 'beast') return null;
+    return C.makeNode('carcass', OW.gear.tierOfIlvl(enemy.level || 1), x || 0, z || 0, 'carcass_' + (enemy.uid || enemy.id || 'beast') + '_' + Math.round((x || 0) * 10));
+  };
+  /** 'kill' (foundation payload { hero, defId, tier, level, zone, x, z }): a beast adds `carcass` (a node) to the payload for the zone to place. */
+  OW.events.on('kill', function (p) { if (!p) return; var c = C.carcassFor(p.enemy || { id: p.defId, level: p.level, uid: p.uid }, p.x, p.z); if (c) p.carcass = c; });
+  OW.events.on('gather', function (p) { if (p && p.hero && p.node) p.result = C.gather(p.hero, p.node, p.rng); });
+  OW.events.on('tick', function (p) { if (p && p.hero && p.dt) C.tick(p.hero, p.dt); });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/ow/gear_00_core.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var U = KD.util, B = KD.balance, I = KD.items, St = KD.Stats;
+  var OW = KD.ow = KD.ow || {};
+
+  /**
+   * THE KINGDOM: GEAR (owner: gear agent). docs/OPENWORLD.md "Gear contract".
+   *
+   * Kingdom items are ordinary KD.items gear objects (plain JSON, saved with the hero) plus one extra field:
+   *   item.ow = { temper: 0..10, pity, sockets: [runeGoodId | null], base: { dmg?, armor?, evasion?, ward? }, set?, maker? }
+ *   item.dur / item.durMax: durability, the fields the foundation's death rule (KD.ow.kingdom.onDeath) already writes
+   * Every rule here applies only to items that carry `item.ow` and to heroes with `hero.mode === 'kingdom'` or a
+   * `hero.craft` record, so The Descent (whose items never have `ow`) is untouched by construction.
+   *
+   * Wrapped KD.items functions (Kingdom heroes only, Descent heroes take the original path unchanged):
+   *   heroMods      skips Broken items, adds socketed runes, set bonuses and the meal buff
+   *   heroEffects   skips Broken items, adds the 4-piece set effects (data effects: the sim runs them generically)
+   *   rarityInfo    knows the Set rarity
+   *   KD.hero.weaponDamage   a Broken weapon counts as no weapon (the level floor)
+   */
+  var G = OW.gear = OW.gear || {};
+  var GD = KD.data.owGear;
+  G.data = GD;
+
+  // ------------------------------------------------------------------------------------------------ event bus
+  /** KD.ow.events: tiny synchronous bus. Handlers run in registration order (deterministic for lockstep). */
+  if (!OW.events) {
+    OW.events = (function () {
+      var h = {};
+      return {
+        on: function (type, fn) { (h[type] = h[type] || []).push(fn); return fn; },
+        off: function (type, fn) { var a = h[type]; if (!a) return; var i = a.indexOf(fn); if (i >= 0) a.splice(i, 1); },
+        emit: function (type, payload) { var a = (h[type] || []).slice(); for (var i = 0; i < a.length; i++) a[i](payload); return payload; },
+        has: function (type) { return !!(h[type] && h[type].length); }
+      };
+    })();
+  }
+
+  // ------------------------------------------------------------------------------------------------ regions and item level
+  G.REGIONS = GD.REGIONS;
+  G.region = function (idOrLevel) {
+    if (typeof idOrLevel === 'string') {
+      for (var i = 0; i < GD.REGIONS.length; i++) if (GD.REGIONS[i].id === idOrLevel || GD.REGIONS[i].alias === idOrLevel) return GD.REGIONS[i];
+      // the foundation's region / zone / dungeon ids (KD.data.owRegions, owZones, owDungeons): by their level band
+      var R = KD.data.owRegions && KD.data.owRegions[idOrLevel], Z = KD.data.owZones && KD.data.owZones[idOrLevel], Dn = KD.data.owDungeons && KD.data.owDungeons[idOrLevel];
+      var lv = (R && R.levels) || (Z && Z.levels) || (Dn && Dn.levels);
+      return lv ? G.region(Math.round((lv[0] + lv[1]) / 2)) : null;
+    }
+    var L = U.clamp(Math.round(idOrLevel || 1), 1, 60);
+    for (var j = 0; j < GD.REGIONS.length; j++) if (L <= GD.REGIONS[j].hi) return GD.REGIONS[j];
+    return GD.REGIONS[GD.REGIONS.length - 1];
+  };
+  /** Material tier (1..5) of an item level. */
+  G.tierOfIlvl = function (ilvl) { return G.region(ilvl).tier; };
+  /** dungeonId -> set record (or null). */
+  G.setOfDungeon = function (dungeonId) { var s = KD.list('owSets'); for (var i = 0; i < s.length; i++) if (s[i].dungeon === dungeonId) return s[i]; return null; };
+  /**
+   * Item level of a drop: enemy level + source bonus + difficulty bonus, kept inside the region band (up to 4 over its
+   * top on Nightmare) and 1..60.
+   */
+  G.dropIlvl = function (level, o) {
+    o = o || {};
+    var reg = (o.region && G.region(o.region)) || G.region(level), diff = GD.DIFFICULTY[o.difficulty || 'normal'] || GD.DIFFICULTY.normal;
+    var L = Math.round((level || reg.lo) + (o.bonus || 0) + diff.ilvl);
+    return U.clamp(L, Math.max(1, reg.lo - 2), Math.min(60, reg.hi + diff.ilvl));
+  };
+
+  // ------------------------------------------------------------------------------------------------ Kingdom items
+  G.isKingdomHero = function (hero) { return !!(hero && (hero.mode === 'kingdom' || hero.craft || (hero.ow && typeof hero.ow === 'object'))); };
+  G.isKingdomItem = function (item) { return !!(item && item.ow); };
+  /** Broken: a Kingdom item at 0 durability gives nothing (no stats, no effects, no set count) until repaired. */
+  G.broken = function (item) { return !!(item && item.ow && typeof item.dur === 'number' && item.dur <= 0); };
+  function baseOf(item) { var b = {}; ['dmg', 'armor', 'evasion', 'ward'].forEach(function (k) { if (item[k]) b[k] = item[k]; }); return b; }
+  /** Socket count an item starts with (Rare 1, Set 1, Storied 2; the slot's maximum caps it). */
+  G.baseSockets = function (item) { var n = GD.SOCKETS.base[item.rarity] || 0; return Math.min(n, GD.SOCKETS.max[item.slot] || 1); };
+  G.maxSockets = function (item) { return (GD.SOCKETS.base[item.rarity] ? (GD.SOCKETS.max[item.slot] || 1) : 0); };
+  /** Turns a KD.items gear object into a Kingdom item (adds item.ow). Idempotent. */
+  G.kingdomize = function (item) {
+    if (!item || !I.isGear(item)) return item;
+    if (item.ow) { if (typeof item.dur !== 'number') { item.dur = GD.DURABILITY.max; item.durMax = GD.DURABILITY.max; } return item; }
+    var n = G.baseSockets(item), s = [];
+    for (var i = 0; i < n; i++) s.push(null);
+    item.ow = { temper: 0, pity: 0, sockets: s, base: baseOf(item) };
+    if (typeof item.dur !== 'number') item.dur = GD.DURABILITY.max;
+    if (typeof item.durMax !== 'number') item.durMax = GD.DURABILITY.max;
+    return item;
+  };
+  /**
+   * makeItem({ ilvl, rarity, rng, hero?, classId?, slot?, family?, armorClass? }) -> a Kingdom gear item.
+   * rarity common | fine | rare | storied (Set pieces: makeSetItem). Smart loot as in KD.items.dropGear when no slot is given.
+   */
+  G.makeItem = function (o) {
+    var item;
+    if (o.slot || o.family || o.armorClass || o.base) {
+      item = I.generate({ ilvl: o.ilvl, rarity: o.rarity, rng: o.rng, classId: o.classId || (o.hero && o.hero.classId), slot: o.slot, family: o.family, armorClass: o.armorClass, base: o.base, affixes: o.affixes });
+    } else item = I.dropGear({ rng: o.rng, hero: o.hero, classId: o.classId }, o.rarity || 'common', o.ilvl);
+    return G.kingdomize(item);
+  };
+  /** Pieces of a set the hero owns (worn or in the bag): { head: true, ... }. */
+  G.ownedPieces = function (hero, setId) {
+    var own = {};
+    if (!hero) return own;
+    I.allItems(hero).forEach(function (it) { if (it && it.ow && it.ow.set === setId) own[it.slot] = true; });
+    return own;
+  };
+  /**
+   * makeSetItem({ set, ilvl, rng, hero?, classId?, slot? }) -> a Set piece: armour in the looter's armour class, base
+   * values x1.2, 2 random affixes, the piece's own set mod (as an implicit). Smart: prefers a piece the hero lacks.
+   */
+  G.makeSetItem = function (o) {
+    var set = typeof o.set === 'string' ? KD.get('owSets', o.set) : o.set, rng = o.rng;
+    var classId = o.classId || (o.hero && o.hero.classId), slots = Object.keys(set.pieces), slot = o.slot;
+    if (!slot) {
+      var own = G.ownedPieces(o.hero, set.id), missing = slots.filter(function (s) { return !own[s]; });
+      slot = missing.length && rng.chance(GD.SET_SMART) ? rng.pick(missing) : rng.pick(slots);
+    }
+    var ac = classId ? KD.get('classes', classId).armor : rng.pick(Object.keys(KD.data.ARMOR_CLASSES));
+    var item = I.generate({ ilvl: o.ilvl, rarity: 'rare', affixes: 2, rng: rng, classId: classId, slot: slot, armorClass: ac });
+    var k = GD.SET_MULT / B.RARITY.rare.mult;
+    ['armor', 'evasion', 'ward'].forEach(function (s) { if (item[s]) item[s] = Math.max(1, Math.round(item[s] * k)); });
+    item.rarity = 'set';
+    item.name = set.pieces[slot];
+    var sp = set.mods[slot];
+    if (sp) item.implicit.push(I.resolveSpec(sp, item.ilvl, I.uniqueFrac(item.ilvl)));
+    item.flavor = set.flavor;
+    item.icon.accent = GD.SET_COLOR;
+    item.value = Math.round(item.value * 2.2);
+    G.kingdomize(item);
+    item.ow.set = set.id;
+    return item;
+  };
+
+  // ------------------------------------------------------------------------------------------------ rarity info (Set)
+  var rarityInfo0 = I.rarityInfo;
+  G.SET_INFO = { id: 'set', label: 'Set', color: GD.SET_COLOR };
+  I.rarityInfo = function (x) {
+    var r = x && typeof x === 'object' ? (x.slot === 'relic' ? null : x.rarity) : x;
+    if (r === 'set') return { id: 'set', label: 'Set', color: GD.SET_COLOR };
+    return rarityInfo0(x);
+  };
+  /** { id, label, color } for any Kingdom rarity. */
+  G.rarityInfo = function (r) { return I.rarityInfo(r); };
+
+  // ------------------------------------------------------------------------------------------------ set bonuses
+  /** [{ set, n, two, four }] for every set the hero wears at least one (unbroken) piece of. */
+  G.setState = function (hero) {
+    var n = {}, out = [];
+    I.equipped(hero).forEach(function (it) { if (it && it.ow && it.ow.set && !G.broken(it)) n[it.ow.set] = (n[it.ow.set] || 0) + 1; });
+    Object.keys(n).sort().forEach(function (id) { if (KD.has('owSets', id)) out.push({ set: KD.get('owSets', id), n: n[id], two: n[id] >= 2, four: n[id] >= 4 }); });
+    return out;
+  };
+  G.setBonusMods = function (hero) {
+    var out = [];
+    G.setState(hero).forEach(function (s) {
+      if (s.two) s.set.bonus2.mods.forEach(function (m) { out.push(U.assign({}, m)); });
+      if (s.four) (s.set.bonus4.mods || []).forEach(function (m) { out.push(U.assign({}, m)); });
+    });
+    return out;
+  };
+  G.setBonusEffects = function (hero) {
+    var out = [];
+    G.setState(hero).forEach(function (s) {
+      var e = s.four && s.set.bonus4.effect;
+      if (!e) return;
+      out.push({ key: 'owset_' + s.set.id, source: 'item', hook: e.hook, act: e.act, params: U.deepClone(e.params), text: s.set.bonus4.text,
+        curse: false, itemUid: 'set:' + s.set.id, itemName: s.set.name, slot: 'set' });
+    });
+    return out;
+  };
+
+  // ------------------------------------------------------------------------------------------------ runes and food mods
+  /** The mod of a rune good id ('rune_ember_3'). */
+  G.runeMod = function (goodId) {
+    var g = KD.has('owGoods', goodId) ? KD.get('owGoods', goodId) : null;
+    if (!g || g.kind !== 'rune') return null;
+    var r = KD.get('owRunes', g.rune), f = GD.RUNE_TIER[g.tier] || 0;
+    return { s: r.mod[0], t: r.mod[1], v: Math.round(r.mod[2] * f * 10000) / 10000 };
+  };
+  G.socketMods = function (item) {
+    var out = [];
+    if (!item || !item.ow) return out;
+    (item.ow.sockets || []).forEach(function (r) { var m = r && G.runeMod(r); if (m) out.push(m); });
+    return out;
+  };
+  /** Mods of a food buff record { id, left } (expands "all resistances"). */
+  G.foodMods = function (food) {
+    if (!food || !(food.left > 0) || !KD.has('owFoods', food.id)) return [];
+    var f = KD.get('owFoods', food.id), fam = GD.FOOD_FAMILIES[f.family], v = fam.v[f.tier];
+    if (fam.mod[0] === 'resAll') return Object.keys(St.RES_STAT).map(function (e) { return { s: St.RES_STAT[e], t: 'add', v: v }; });
+    return [{ s: fam.mod[0], t: fam.mod[1], v: v }];
+  };
+
+  // ------------------------------------------------------------------------------------------------ wrappers
+  var heroMods0 = I.heroMods, heroEffects0 = I.heroEffects;
+  I.heroMods = function (hero, run) {
+    if (!G.isKingdomHero(hero)) return heroMods0(hero, run);
+    var out = [];
+    I.equipped(hero).forEach(function (it) {
+      if (G.broken(it)) return;
+      var b = I.baseMods(it), m = I.itemMods(it, run), r = G.socketMods(it), i;
+      for (i = 0; i < b.length; i++) out.push(b[i]);
+      for (i = 0; i < m.length; i++) out.push(m[i]);
+      for (i = 0; i < r.length; i++) out.push(r[i]);
+    });
+    G.setBonusMods(hero).forEach(function (m) { out.push(m); });
+    if (hero.craft && hero.craft.food) G.foodMods(hero.craft.food).forEach(function (m) { out.push(m); });
+    var extra = I.attrBonusMods(out);
+    for (var j = 0; j < extra.length; j++) out.push(extra[j]);
+    return out;
+  };
+  I.heroEffects = function (hero) {
+    var out = heroEffects0(hero);
+    if (!G.isKingdomHero(hero)) return out;
+    var dead = {};
+    I.equipped(hero).forEach(function (it) { if (G.broken(it)) dead[it.uid] = true; });
+    return out.filter(function (e) { return !dead[e.itemUid]; }).concat(G.setBonusEffects(hero));
+  };
+  if (KD.hero && KD.hero.weaponDamage) {
+    var wd0 = KD.hero.weaponDamage;
+    KD.hero.weaponDamage = function (hero) {
+      if (hero && hero.gear && G.broken(hero.gear.weapon)) return B.weaponFloor(hero.level);
+      return wd0(hero);
+    };
+  }
+
+  // ------------------------------------------------------------------------------------------------ drops
+  function stochastic(rng, x) { var n = Math.floor(x); return n + (rng.next() < x - n ? 1 : 0); }
+  var RANK = { common: 0, fine: 1, rare: 2, storied: 3, set: 3 };
+  function rollRarity(rng, w, diff, find) {
+    var keys = ['common', 'fine', 'rare', 'storied'], ws = keys.map(function (k) {
+      var v = w[k] || 0;
+      if (k === 'fine') v *= find;
+      if (k === 'rare') v *= diff.rare * Math.pow(find, 1.25);
+      if (k === 'storied') v *= diff.storied * Math.pow(find, 1.25);
+      return v;
+    });
+    return rng.weighted(keys, ws);
+  }
+  /** Table key for a drop context: ctx.table, else the enemy tier mapped through TIER_DROPS. */
+  G.tableKey = function (ctx) {
+    if (ctx.table && GD.DROPS[ctx.table]) return ctx.table;
+    return GD.TIER_DROPS[ctx.tier] || 'normal';
+  };
+  /** Body kind of an enemy def for material drops: humanoid | beast | other. */
+  G.bodyKind = function (def) {
+    var b = def && def.body;
+    if (!b) return 'other';
+    if (GD.NOT_BEASTS.indexOf(b.species) >= 0) return 'other';
+    if (b.plan === 'humanoid' || b.plan === 'brute') return 'humanoid';
+    if (GD.BEAST_PLANS.indexOf(b.plan) >= 0) return 'beast';
+    return 'other';
+  };
+  /**
+   * rollDrop(ctx) -> [ gearItem | { gold: n } | { good: id, n } ].
+   * ctx: { rng (required: world.rng or the loot rng), level (enemy / chest level), tier (enemy tier) | table (G.DROPS key),
+   *        hero (smart loot, set pieces), classId?, region?, difficulty? ('normal' | 'veteran' | 'nightmare'),
+   *        dungeon? (dungeon id: its set can drop), body? ('humanoid' | 'beast' | 'other'), itemFind? (1 = none),
+   *        noGold? }
+   * Deterministic for a given rng state. Rare and better stay uncommon (see GD.DROPS).
+   */
+  G.rollDrop = function (ctx) {
+    var rng = ctx.rng, key = G.tableKey(ctx), T = GD.DROPS[key], out = [];
+    var diff = GD.DIFFICULTY[ctx.difficulty || 'normal'] || GD.DIFFICULTY.normal, find = Math.max(0.2, ctx.itemFind || 1);
+    var level = ctx.level || 1, ilvl = G.dropIlvl(level, { region: ctx.region, difficulty: ctx.difficulty, bonus: T.ilvl });
+    var hero = ctx.hero || null, mk = { rng: rng, hero: hero, classId: ctx.classId };
+    var n = stochastic(rng, T.gear * diff.qty * (1 + 0.3 * (find - 1)));
+    for (var i = 0; i < n; i++) {
+      var r = rollRarity(rng, T.w, diff, find);
+      if (i === 0 && T.first && RANK[r] < RANK[T.first]) r = T.first;
+      mk.ilvl = ilvl; mk.rarity = r;
+      out.push(G.makeItem(mk));
+    }
+    if (T.set && rng.chance(Math.min(0.95, T.set * diff.set))) {
+      var set = ctx.dungeon ? G.setOfDungeon(ctx.dungeon) : null;
+      if (!set) {
+        var reg = (ctx.region && G.region(ctx.region)) || G.region(level), pool = KD.list('owSets').filter(function (s) { return s.region === reg.id; });
+        set = rng.pick(pool.length ? pool : KD.list('owSets'));
+      }
+      out.push(G.makeSetItem({ set: set, ilvl: ilvl, rng: rng, hero: hero, classId: ctx.classId }));
+    }
+    if (!ctx.noGold && T.gold && (!T.goldChance || rng.chance(T.goldChance))) {
+      var g = B.enemyGold(level) * T.gold / (T.goldChance || 1) * rng.range(0.8, 1.2);
+      if (g >= 1) out.push({ gold: Math.round(g) });
+    }
+    var tier = G.tierOfIlvl(ilvl), nm = stochastic(rng, T.mats || 0), mix = GD.KILL_MATS[ctx.body || 'other'] || GD.KILL_MATS.other;
+    for (var m = 0; m < nm; m++) {
+      var kind = rng.weighted(Object.keys(mix), Object.keys(mix).map(function (k) { return mix[k]; }));
+      out.push({ good: kind + tier, n: kind === 'parts' ? rng.int(1, 2) : rng.int(1, 3) });
+    }
+    if (T.recipe && rng.chance(T.recipe * (ctx.dungeon ? diff.set : 1))) {
+      var sc = OW.craft && OW.craft.dropScroll ? OW.craft.dropScroll(rng, tier) : null;
+      if (sc) out.push({ good: sc, n: 1 });
+    }
+    return out;
+  };
+  /** Rarity rank (Set counts with Storied). */
+  G.rank = function (r) { return RANK[r] === undefined ? 0 : RANK[r]; };
+
+  // ------------------------------------------------------------------------------------------------ picking up
+  /**
+   * pickup(hero, entry) -> { ok, reason?, kind }. gear -> bag (bag_full leaves it on the ground), gold -> purse,
+   * goods -> hero.craft.mats. Kingdom heroes only.
+   */
+  G.pickup = function (hero, e) {
+    if (!e) return { ok: false, reason: 'nothing' };
+    if (e.gold) { hero.gold = (hero.gold || 0) + e.gold; return { ok: true, kind: 'gold', amount: e.gold }; }
+    if (e.good) { OW.craft.addGood(hero, e.good, e.n || 1); return { ok: true, kind: 'good', good: e.good, n: e.n || 1 }; }
+    if (I.isGear(e)) {
+      if (hero.bag.length >= ((KD.hero && KD.hero.BAG_SIZE) || 40)) return { ok: false, reason: 'bag_full', kind: 'item' };
+      G.kingdomize(e); hero.bag.push(e);
+      return { ok: true, kind: 'item', item: e };
+    }
+    return { ok: false, reason: 'unknown' };
+  };
+
+  // ------------------------------------------------------------------------------------------------ durability
+  /**
+   * Every worn Kingdom item loses deathLoss durability. The foundation's KD.ow.kingdom.onDeath applies the death rule in
+   * play (same field, same 12 points); this is the gear side's own version for tools and tests. Returns what just broke.
+   */
+  G.onDeath = function (hero) {
+    var broke = [];
+    if (!G.isKingdomHero(hero)) return broke;
+    I.equipped(hero).forEach(function (it) {
+      if (!it || !it.ow) return;
+      var was = typeof it.dur === 'number' ? it.dur : GD.DURABILITY.max;
+      it.dur = Math.max(0, was - GD.DURABILITY.deathLoss); it.durMax = it.durMax || GD.DURABILITY.max;
+      if (was > 0 && it.dur <= 0) broke.push(it);
+    });
+    return broke;
+  };
+  G.repairCost = function (itemOrHero) {
+    if (!itemOrHero) return 0;
+    if (itemOrHero.uid) { var it = itemOrHero, miss = (it.durMax || GD.DURABILITY.max) - (typeof it.dur === 'number' ? it.dur : GD.DURABILITY.max); return miss > 0 ? Math.max(1, Math.ceil(miss * (it.value || 1) * GD.DURABILITY.repairPerPoint)) : 0; }
+    var s = 0; I.allItems(itemOrHero).forEach(function (x) { if (x && I.isGear(x)) s += G.repairCost(x); });
+    return s;
+  };
+  /** repair(hero, uid?) -> { ok, cost, reason }: one item, or everything the hero carries. Gold only, at a smith. */
+  G.repair = function (hero, uid) {
+    var items = uid ? [(I.find(hero, uid) || {}).item].filter(Boolean) : I.allItems(hero).filter(function (x) { return x && I.isGear(x); });
+    var cost = 0; items.forEach(function (x) { cost += G.repairCost(x); });
+    if (!items.length || cost <= 0) return { ok: false, reason: 'nothing_to_repair', cost: 0 };
+    if ((hero.gold || 0) < cost) return { ok: false, reason: 'gold', cost: cost };
+    hero.gold -= cost;
+    items.forEach(function (x) { if (typeof x.dur === 'number') x.dur = x.durMax || GD.DURABILITY.max; });
+    return { ok: true, cost: cost };
+  };
+
+  // ------------------------------------------------------------------------------------------------ event listeners
+  /**
+   * The foundation's events (src/ow/00_ow.js) run on the hero's own screen, never inside the shared simulation, so the
+   * gear changes the live hero directly (personal loot: every co-op player rolls their own from their own stream,
+   * KD.ow.craft.rng, and the hero sync carries the result).
+   *   'kill' { hero, defId, tier, level, zone, x, z, difficulty?, dungeon? }  loot is rolled and picked up at once; a full
+   *          bag salvages the item into parts instead (nothing is lost). Then 'loot' is emitted (below).
+   *          A caller that wants the entries itself passes `drops: []` (and `rng`): entries go there, nothing is picked up.
+   *   'quest' { hero, id, step, data: { level?, gear?: true } }               a quest gear reward when data.gear
+   *   'discover' { hero, kind: 'chest' | 'chest_large' | 'treasure', level? } a container (zones, shrines: nothing)
+   * Emitted: 'loot' { hero, entries: [entry], picked: [result], salvaged: [item], x, z, zone, source }
+   */
+  function zoneInfo(zoneId) {
+    var Z = KD.data.owZones && zoneId ? KD.data.owZones[zoneId] : null, Dn = KD.data.owDungeons && zoneId ? KD.data.owDungeons[zoneId] : null;
+    if (Dn && !Z && KD.data.owZones) Z = KD.data.owZones[Dn.zone] || null;
+    return { zone: Z, dungeon: Dn ? Dn.id : null, region: Z ? Z.region : null, level: Z && Z.levels ? Math.round((Z.levels[0] + Z.levels[1]) / 2) : null };
+  }
+  G.zoneInfo = zoneInfo;
+  /** Rolls and gives loot to a hero; returns the 'loot' payload. */
+  G.lootFor = function (hero, ctx, meta) {
+    var rng = ctx.rng || OW.craft.rng(hero, 'loot'), st = null;
+    try { st = KD.hero.stats(hero); } catch (e) { st = null; }
+    var entries = G.rollDrop(U.assign({ rng: rng, hero: hero, itemFind: st ? st.itemFind : 1 }, ctx)), picked = [], salvaged = [];
+    entries.forEach(function (e) {
+      var r = G.pickup(hero, e);
+      if (!r.ok && r.reason === 'bag_full' && I.isGear(e)) { G.kingdomize(e); var y = OW.craft.salvageYield(e); Object.keys(y).forEach(function (id) { OW.craft.addGood(hero, id, y[id]); }); salvaged.push(e); }
+      picked.push(r);
+    });
+    var out = U.assign({ hero: hero, entries: entries, picked: picked, salvaged: salvaged }, meta || {});
+    if (entries.length) OW.events.emit('loot', out);
+    return out;
+  };
+  G.onKill = function (p) {
+    if (!p) return p;
+    var en = p.enemy || { id: p.defId, tier: p.tier, level: p.level }, defId = en.id || en.defId || p.defId;
+    var def = en.def || (defId && KD.has('enemies', defId) ? KD.get('enemies', defId) : null);
+    var zi = zoneInfo(p.zone), level = en.level || p.level || zi.level || 1;
+    var ctx = { level: level, tier: en.tier || p.tier || 'normal', table: en.table, region: p.region || zi.region, difficulty: p.difficulty,
+      dungeon: p.dungeon || zi.dungeon, body: en.body || G.bodyKind(def) };
+    if (Array.isArray(p.drops) && p.rng) {
+      (p.heroes || [p.hero]).forEach(function (h, idx) {
+        if (!h) return;
+        var st = null; try { st = KD.hero.stats(h); } catch (e) { st = null; }
+        G.rollDrop(U.assign({ rng: p.rng, hero: h, itemFind: st ? st.itemFind : 1 }, ctx)).forEach(function (e) { p.drops.push({ heroIndex: idx, entry: e }); });
+      });
+      return p;
+    }
+    if (!p.hero || !G.isKingdomHero(p.hero)) return p;
+    p.loot = G.lootFor(p.hero, ctx, { x: p.x, z: p.z, zone: p.zone || null, source: 'kill' });
+    return p;
+  };
+  OW.events.on('kill', G.onKill);
+  OW.events.on('quest', function (p) {
+    var d = p && (p.data || p.quest);
+    if (!p || !p.hero || !d || !d.gear || !G.isKingdomHero(p.hero)) return;
+    p.loot = G.lootFor(p.hero, { level: d.level || p.hero.level, table: 'quest', noGold: true }, { source: 'quest', zone: p.zone || null });
+  });
+  OW.events.on('discover', function (p) {
+    if (!p || !p.hero || !GD.DROPS[p.kind] || !G.isKingdomHero(p.hero)) return;
+    var zi = zoneInfo(p.zone);
+    p.loot = G.lootFor(p.hero, { level: p.level || zi.level || p.hero.level, table: p.kind, region: zi.region }, { source: p.kind, zone: p.zone || null, x: p.x, z: p.z });
+  });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/ow/gear_10_smith.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var U = KD.util, B = KD.balance, I = KD.items;
+  var OW = KD.ow = KD.ow || {};
+  var G = OW.gear, GD = KD.data.owGear;
+
+  /**
+   * THE KINGDOM: THE SMITH (tempering, sockets, repair lives in gear_00_core). Pure; every function returns
+   * { ok, reason? } and changes nothing on failure (except a failed temper, which spends its materials).
+   * Random outcomes come from the hero's own deterministic stream (KD.ow.craft.rng), so a co-op replica that applies the
+   * same action gets the same result.
+   */
+  function fail(reason, extra) { return U.assign({ ok: false, reason: reason }, extra || {}); }
+
+  /** Main material kind used to temper an item: ore (metal), hide (leather), cloth, gem (jewellery). */
+  G.temperMaterial = function (item) {
+    if (item.armorClass) return { heavy: 'ore', medium: 'hide', light: 'hide', cloth: 'cloth' }[item.armorClass] || 'ore';
+    var f = item.family;
+    if (item.slot === 'charm' || f === 'talisman' || f === 'lantern' || f === 'skull') return 'gem';
+    if (f === 'bow' || f === 'quiver' || f === 'mask' || f === 'cloakpin') return 'hide';
+    if (f === 'staff' || f === 'tome') return 'cloth';
+    return 'ore';
+  };
+  /**
+   * temperCost(item) -> { level: next level, mats: { goodId: n }, gold, fail (chance before flux), maxed } for the next
+   * attempt. Costs rise with every level; from +7 an attempt can fail (pity lowers the chance after each failure).
+   */
+  G.temperCost = function (item) {
+    var T = GD.TEMPER, k = (item.ow ? item.ow.temper : 0) + 1;
+    if (k > T.max) return { maxed: true, level: T.max };
+    var tier = G.tierOfIlvl(item.ilvl), mats = {}, kind = G.temperMaterial(item);
+    mats[kind + tier] = Math.ceil(2 + 1.2 * k) - (kind === 'gem' ? Math.ceil(k / 2) : 0);
+    mats['parts' + tier] = 1 + Math.floor(k / 2);
+    if (k >= 4) mats.dim = k - 3;
+    if (k >= 7) mats.bright = k - 6;
+    if (k >= 9) mats.storied = 1;
+    var chance = Math.max(0, (T.fail[k] || 0) - (item.ow ? item.ow.pity || 0 : 0) * T.pity);
+    return { level: k, mats: mats, gold: T.gold(k, B.enemyGold(item.ilvl)), fail: chance, maxed: false };
+  };
+  /** Re-applies the temper bonus to the item's base values. */
+  G.applyTemper = function (item) {
+    var b = item.ow.base || {}, f = 1 + GD.TEMPER.bonus[item.ow.temper || 0];
+    if (b.dmg) item.dmg = Math.round(b.dmg * f * 10) / 10;
+    ['armor', 'evasion', 'ward'].forEach(function (k) { if (b[k]) item[k] = Math.max(1, Math.round(b[k] * f)); });
+  };
+  /**
+   * temper(hero, uid, { flux }?) -> { ok, item, level, failed, cost, chance } | { ok:false, reason }.
+   * reasons: no_item, not_kingdom, maxed, missing (+ missing: { id: n }), gold, no_flux.
+   * Success: gold and materials are spent, temper +1. Failure (from +7): only the materials (and flux) are spent; the
+   * item, its level and the gold stay; pity +1 for the next try at that level.
+   */
+  G.temper = function (hero, uid, opts) {
+    opts = opts || {};
+    var f = I.find(hero, uid), C = OW.craft;
+    if (!f) return fail('no_item');
+    var item = f.item;
+    if (!item.ow) return fail('not_kingdom');
+    var cost = G.temperCost(item);
+    if (cost.maxed) return fail('maxed');
+    var miss = C.missing(hero, cost.mats);
+    if (miss) return fail('missing', { missing: miss });
+    if ((hero.gold || 0) < cost.gold) return fail('gold', { cost: cost });
+    var tier = G.tierOfIlvl(item.ilvl), flux = null;
+    if (opts.flux) { flux = C.bestFlux(hero, tier); if (!flux) return fail('no_flux'); }
+    var chance = Math.max(0, cost.fail - (flux ? GD.TEMPER.flux : 0));
+    var rng = C.rng(hero, 'temper');
+    C.spend(hero, cost.mats);
+    if (flux) C.addGood(hero, flux, -1);
+    var failed = chance > 0 && rng.next() < chance;
+    if (failed) { item.ow.pity = (item.ow.pity || 0) + 1; return { ok: true, failed: true, item: item, level: item.ow.temper, cost: cost, chance: chance }; }
+    hero.gold -= cost.gold;
+    item.ow.temper = cost.level; item.ow.pity = 0;
+    G.applyTemper(item);
+    return { ok: true, failed: false, item: item, level: item.ow.temper, cost: cost, chance: chance };
+  };
+
+  // ------------------------------------------------------------------------------------------------ sockets
+  /**
+   * socket(hero, uid, index, runeGoodId) -> { ok, replaced }. The rune comes out of hero.craft.mats; a rune already in
+   * that socket goes back there. reasons: no_item, not_kingdom, no_socket, no_rune, not_a_rune
+   */
+  G.socket = function (hero, uid, index, runeId) {
+    var f = I.find(hero, uid), C = OW.craft;
+    if (!f) return fail('no_item');
+    var item = f.item;
+    if (!item.ow) return fail('not_kingdom');
+    var s = item.ow.sockets || [];
+    if (!(index >= 0 && index < s.length)) return fail('no_socket');
+    if (!KD.has('owGoods', runeId) || KD.get('owGoods', runeId).kind !== 'rune') return fail('not_a_rune');
+    if (C.count(hero, runeId) < 1) return fail('no_rune');
+    var old = s[index];
+    C.addGood(hero, runeId, -1);
+    if (old) C.addGood(hero, old, 1);
+    s[index] = runeId;
+    return { ok: true, item: item, replaced: old || null };
+  };
+  G.unsocketCost = function (item) { return Math.round(GD.SOCKETS.unsocketGold * B.enemyGold(item.ilvl)); };
+  /** unsocket(hero, uid, index) -> { ok, rune, cost }: the rune goes back to the hero's goods for a little gold. */
+  G.unsocket = function (hero, uid, index) {
+    var f = I.find(hero, uid), C = OW.craft;
+    if (!f) return fail('no_item');
+    var item = f.item, s = item.ow && item.ow.sockets;
+    if (!s || !s[index]) return fail('empty');
+    var cost = G.unsocketCost(item);
+    if ((hero.gold || 0) < cost) return fail('gold', { cost: cost });
+    hero.gold -= cost;
+    var r = s[index]; s[index] = null; C.addGood(hero, r, 1);
+    return { ok: true, rune: r, cost: cost };
+  };
+  /** drill(hero, uid) -> { ok, sockets }: a Socket Drill adds one socket (Rare / Storied / Set, up to the slot maximum). */
+  G.drill = function (hero, uid) {
+    var f = I.find(hero, uid), C = OW.craft;
+    if (!f) return fail('no_item');
+    var item = f.item;
+    if (!item.ow) return fail('not_kingdom');
+    if (!G.maxSockets(item)) return fail('rarity');
+    if (item.ow.sockets.length >= G.maxSockets(item)) return fail('max_sockets');
+    if (C.count(hero, 'drill') < 1) return fail('missing', { missing: { drill: 1 } });
+    C.addGood(hero, 'drill', -1);
+    item.ow.sockets.push(null);
+    return { ok: true, sockets: item.ow.sockets.length };
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+//# sourceURL=src/ow/gear_40_trade.js
+(function (root) {
+  'use strict';
+  var KD = root.KD = root.KD || {};
+  var U = KD.util, I = KD.items;
+  var OW = KD.ow = KD.ow || {};
+
+  /**
+   * THE KINGDOM: CO-OP TRADE WINDOW, PHASE 1 (owner: gear agent). docs/OPENWORLD.md "Trade".
+   *
+   * Lockstep-safe: the UI never changes a hero. Every trade action is a lockstep command
+   *   { o: 'owTrade', p: playerIndex, a: 'open' | 'offer' | 'confirm' | 'cancel', ... }
+   * that every client applies in the same tick order to the same trade state (KD.ow.trade.applyCmd). The swap happens
+   * inside the tick in which the second player confirms, on every client at once, against the heroes the simulation
+   * reads (the replicas), after checking everything again; it is all or nothing. Each owner then mirrors the result
+   * into its live hero (mirror). Changing an offer clears both confirmations, and a confirm names the revision it saw,
+   * so nobody can swap the goods under the other player's thumb.
+   *
+   * Trust: phase 1 trusts each player's save (the items in an offer are what the owner's client says it has). The
+   * auction house (phase 2) waits for a server that can hold the truth.
+   *
+   * State (plain JSON): { id, a, b, offers: [{ items: [uid], goods: { id: n }, gold }, ...], ok: [bool, bool], rev,
+   *   status: 'open' | 'done' | 'cancelled' | 'failed', reason? }
+   */
+  var T = OW.trade = OW.trade || {};
+  T.MAX_ITEMS = 8;
+  function fail(reason, extra) { return U.assign({ ok: false, reason: reason }, extra || {}); }
+  T.create = function (id, a, b) { return { id: id, a: a, b: b, offers: [{ items: [], goods: {}, gold: 0 }, { items: [], goods: {}, gold: 0 }], ok: [false, false], rev: 0, status: 'open' }; };
+  /** Which side (0 / 1) a player index is on, or -1. */
+  T.side = function (st, p) { return st.a === p ? 0 : (st.b === p ? 1 : -1); };
+  /** Is an offer valid for this hero? Items must sit in the bag (not worn), goods and gold must be there. */
+  T.checkOffer = function (hero, off) {
+    if (!hero) return fail('no_hero');
+    if ((off.items || []).length > T.MAX_ITEMS) return fail('too_many');
+    var seen = {};
+    for (var i = 0; i < off.items.length; i++) {
+      var uid = off.items[i], f = I.find(hero, uid);
+      if (seen[uid]) return fail('duplicate');
+      seen[uid] = true;
+      if (!f || f.where !== 'bag') return fail('not_in_bag', { uid: uid });
+    }
+    var miss = OW.craft.missing(hero, off.goods || {});
+    if (miss) return fail('missing', { missing: miss });
+    if ((off.gold || 0) < 0 || (off.gold || 0) > (hero.gold || 0)) return fail('gold');
+    return { ok: true };
+  };
+  /** Normalises an offer from a command (only plain values survive). */
+  function cleanOffer(o) {
+    o = o || {};
+    var goods = {};
+    Object.keys(o.goods || {}).sort().forEach(function (k) { var n = Math.floor(o.goods[k]); if (n > 0 && KD.has('owGoods', k)) goods[k] = n; });
+    return { items: (o.items || []).filter(function (u) { return typeof u === 'string'; }).slice(0, T.MAX_ITEMS), goods: goods, gold: Math.max(0, Math.floor(o.gold || 0)) };
+  }
+  /**
+   * The swap itself, on the two heroes the simulation reads. All checks first, then every change; returns
+   * { ok, moved: [[items a gave], [items b gave]], goods: [ga, gb], gold: [na, nb] } or { ok:false, reason }.
+   */
+  T.swap = function (st, heroA, heroB) {
+    var H = [heroA, heroB], bag = (KD.hero && KD.hero.BAG_SIZE) || 40;
+    for (var s = 0; s < 2; s++) { var c = T.checkOffer(H[s], st.offers[s]); if (!c.ok) return c; }
+    for (var t = 0; t < 2; t++) {
+      var incoming = st.offers[1 - t].items.length, outgoing = st.offers[t].items.length;
+      if (H[t].bag.length - outgoing + incoming > bag) return fail('bag_full', { side: t });
+    }
+    var moved = [[], []];
+    for (var k = 0; k < 2; k++) st.offers[k].items.forEach(function (uid) {
+      var f = I.find(H[k], uid); moved[k].push(H[k].bag.splice(f.index, 1)[0]);
+    });
+    for (var m = 0; m < 2; m++) {
+      moved[m].forEach(function (it) { H[1 - m].bag.push(it); });
+      var g = st.offers[m].goods;
+      Object.keys(g).forEach(function (id) { OW.craft.addGood(H[m], id, -g[id]); OW.craft.addGood(H[1 - m], id, g[id]); });
+      H[m].gold -= st.offers[m].gold; H[1 - m].gold = (H[1 - m].gold || 0) + st.offers[m].gold;
+    }
+    return { ok: true, moved: moved, goods: [U.deepClone(st.offers[0].goods), U.deepClone(st.offers[1].goods)], gold: [st.offers[0].gold, st.offers[1].gold] };
+  };
+  /**
+   * applyCmd(trades, cmd, heroOf(playerIndex)) -> { state, changed, result? }. trades: { id: state } (session-level,
+   * identical on every client). Commands:
+   *   open    { b }                    a = cmd.p; one open trade per player (an older one is cancelled)
+   *   offer   { id, offer: { items, goods, gold } }   replaces your offer, clears both confirmations, rev + 1
+   *   confirm { id, rev }              ignored unless rev is the current one; the second confirm swaps
+   *   cancel  { id }
+   */
+  T.applyCmd = function (trades, c, heroOf) {
+    var st = c.id && trades[c.id], side;
+    if (c.a === 'open') {
+      if (c.b === c.p || c.b === undefined) return { state: null, changed: false };
+      Object.keys(trades).forEach(function (k) { var x = trades[k]; if (x.status === 'open' && (T.side(x, c.p) >= 0 || T.side(x, c.b) >= 0)) { x.status = 'cancelled'; x.reason = 'replaced'; } });
+      var id = 't' + (Object.keys(trades).length + 1) + '_' + c.p + '_' + c.b;      // same on every client: commands arrive in the same order
+      st = trades[id] = T.create(id, c.p, c.b);
+      return { state: st, changed: true };
+    }
+    if (!st || st.status !== 'open' || (side = T.side(st, c.p)) < 0) return { state: st || null, changed: false };
+    if (c.a === 'cancel') { st.status = 'cancelled'; st.reason = 'cancel'; st.by = c.p; return { state: st, changed: true }; }
+    if (c.a === 'offer') {
+      var off = cleanOffer(c.offer), chk = T.checkOffer(heroOf(c.p), off);
+      if (!chk.ok) return { state: st, changed: false, reason: chk.reason };
+      st.offers[side] = off; st.ok = [false, false]; st.rev++;
+      return { state: st, changed: true };
+    }
+    if (c.a === 'confirm') {
+      if (c.rev !== st.rev) return { state: st, changed: false, reason: 'stale' };
+      st.ok[side] = true;
+      if (!(st.ok[0] && st.ok[1])) return { state: st, changed: true };
+      var res = T.swap(st, heroOf(st.a), heroOf(st.b));
+      if (!res.ok) { st.status = 'failed'; st.reason = res.reason; return { state: st, changed: true, result: res }; }
+      st.status = 'done';
+      return { state: st, changed: true, result: res };
+    }
+    return { state: st, changed: false };
+  };
+  /**
+   * mirror(state, result, myIndex, liveHero): after a swap, makes the owner's live hero match what the simulation's
+   * copy did (remove what you gave by uid, add what you got, goods and gold as differences). Skip it when the live hero
+   * and the simulated hero are the same object.
+   */
+  T.mirror = function (st, res, me, live) {
+    var side = T.side(st, me);
+    if (side < 0 || !res || !res.ok || !live) return false;
+    res.moved[side].forEach(function (it) { var f = I.find(live, it.uid); if (f && f.where === 'bag') live.bag.splice(f.index, 1); });
+    res.moved[1 - side].forEach(function (it) { if (!I.find(live, it.uid)) live.bag.push(U.deepClone(it)); });
+    var give = res.goods[side], get = res.goods[1 - side];
+    Object.keys(give).forEach(function (id) { OW.craft.addGood(live, id, -give[id]); });
+    Object.keys(get).forEach(function (id) { OW.craft.addGood(live, id, get[id]); });
+    live.gold = (live.gold || 0) - res.gold[side] + res.gold[1 - side];
+    return true;
+  };
+
+  // ------------------------------------------------------------------------------------------------ co-op session glue
+  /**
+   * In a KD.coop.Session the commands travel like 'bandage' ({ o: 'owTrade', ... } through session.command) and are
+   * applied in applyCmd (wrapped below). The simulated heroes are session.replicas[i].hero; the live hero comes from
+   * T.liveHero() (the Kingdom sets it; default KD.game.run.hero). Events: KD.ow.events 'trade' { session, state, result }.
+   */
+  T.liveHero = function () { return KD.game && KD.game.run ? KD.game.run.hero : null; };
+  T.send = function (session, a, data) {
+    if (!session || !session.command) return false;
+    session.command(U.assign({ o: 'owTrade', a: a }, data || {}));
+    return true;
+  };
+  T.forSession = function (session, me) {
+    var tr = session && session.owTrades, out = null;
+    if (!tr) return null;
+    Object.keys(tr).forEach(function (k) { var s = tr[k]; if (s.status === 'open' && T.side(s, me) >= 0) out = s; });
+    return out;
+  };
+  if (KD.coop && KD.coop.Session && !KD.coop.Session.prototype._owTrade) {
+    var SP = KD.coop.Session.prototype, apply0 = SP.applyCmd;
+    SP._owTrade = true;
+    SP.applyCmd = function (c) {
+      if (!c || c.o !== 'owTrade') return apply0.call(this, c);
+      var self = this; self.owTrades = self.owTrades || {};
+      var r = T.applyCmd(self.owTrades, c, function (i) { return self.replicas[i] && self.replicas[i].hero; });
+      if (r.result && r.result.ok && r.state && self.replicas[self.localIdx] && T.liveHero() !== self.replicas[self.localIdx].hero) T.mirror(r.state, r.result, self.localIdx, T.liveHero());
+      if (r.changed) OW.events.emit('trade', { session: self, state: r.state, result: r.result || null });
+    };
+  }
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
